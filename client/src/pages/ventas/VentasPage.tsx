@@ -169,15 +169,15 @@ export default function VentasPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Pendiente":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+        return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800";
       case "Pagada":
-        return "bg-green-100 text-green-800 border-green-200";
+        return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800";
       case "Vencida":
-        return "bg-red-100 text-red-800 border-red-200";
+        return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800";
       case "Anulada":
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
+        return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600";
     }
   };
 
@@ -564,7 +564,7 @@ export default function VentasPage() {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-4">
             <FileText className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               Ventas y Facturación
             </h1>
           </div>
@@ -573,7 +573,7 @@ export default function VentasPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card className="border-l-4 border-l-yellow-400 shadow-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
                   <Clock className="h-4 w-4 text-yellow-500" />
                   Facturas Pendientes
                 </CardTitle>
@@ -581,10 +581,10 @@ export default function VentasPage() {
               <CardContent>
                 <div className="flex justify-between items-end">
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
                       {summary.pendientes.count}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       Documentos por cobrar
                     </p>
                   </div>
@@ -592,7 +592,7 @@ export default function VentasPage() {
                     <p className="text-xl font-bold text-yellow-600">
                       ${summary.pendientes.total.toLocaleString()}
                     </p>
-                    <p className="text-[10px] text-gray-400 uppercase font-semibold">
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-semibold">
                       Monto Total
                     </p>
                   </div>
@@ -602,7 +602,7 @@ export default function VentasPage() {
 
             <Card className="border-l-4 border-l-red-500 shadow-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-red-500" />
                   Facturas Vencidas
                 </CardTitle>
@@ -610,10 +610,10 @@ export default function VentasPage() {
               <CardContent>
                 <div className="flex justify-between items-end">
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
                       {summary.vencidas.count}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       Documentos atrasados
                     </p>
                   </div>
@@ -621,7 +621,7 @@ export default function VentasPage() {
                     <p className="text-xl font-bold text-red-600">
                       ${summary.vencidas.total.toLocaleString()}
                     </p>
-                    <p className="text-[10px] text-gray-400 uppercase font-semibold">
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-semibold">
                       Monto Total
                     </p>
                   </div>
@@ -632,8 +632,8 @@ export default function VentasPage() {
         </div>
 
         {/* Botón sincronización */}
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-4 w-72">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm p-4 w-72">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
             <RefreshCw className="h-4 w-4 text-blue-600" />
             Sincronizar Facturas
           </h3>
@@ -656,18 +656,18 @@ export default function VentasPage() {
       </div>
 
       {/* Tabla */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-          <h2 className="text-lg font-semibold text-gray-800">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
             Detalle de Facturas
           </h2>
         </div>
 
         {/* Filtros */}
-        <div className="p-4 border-b border-gray-200 bg-gray-50">
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
           <div className="flex flex-wrap gap-4 items-center">
             <div className="flex-1 min-w-[200px] max-w-[400px]">
-              <Label className="text-xs text-gray-500 mb-1 block">
+              <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">
                 Buscar por Razón Social
               </Label>
               <div className="relative">
@@ -684,7 +684,7 @@ export default function VentasPage() {
               </div>
             </div>
             <div className="min-w-[180px]">
-              <Label className="text-xs text-gray-500 mb-1 block">
+              <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">
                 Filtrar por Estado
               </Label>
               <Select
@@ -724,7 +724,7 @@ export default function VentasPage() {
                 </Button>
               </div>
             )}
-            <div className="ml-auto text-sm text-gray-500">
+            <div className="ml-auto text-sm text-gray-500 dark:text-gray-400">
               {ventasFiltradas.length} de {ventas.length} facturas
             </div>
           </div>
@@ -738,7 +738,7 @@ export default function VentasPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+              <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                 <tr>
                   <th className="px-6 py-3 font-semibold">Folio</th>
                   <th className="px-6 py-3 font-semibold">Razón Social</th>
@@ -758,28 +758,28 @@ export default function VentasPage() {
                   <th className="px-6 py-3 font-semibold text-center w-10"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {paginatedVentas.map((venta) => (
                   <tr
                     key={venta.id}
-                    className="hover:bg-gray-50/50 transition-colors"
+                    className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors"
                   >
-                    <td className="px-6 py-4 font-medium text-gray-900">
+                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
                       {venta.folio}
                     </td>
-                    <td className="px-6 py-4 text-gray-800 font-medium">
+                    <td className="px-6 py-4 text-gray-800 dark:text-gray-200 font-medium">
                       {venta.rzn_soc_recep}
                     </td>
-                    <td className="px-6 py-4 text-right font-medium text-gray-700">
+                    <td className="px-6 py-4 text-right font-medium text-gray-700 dark:text-gray-300">
                       ${venta.mnt_total?.toLocaleString() || 0}
                     </td>
-                    <td className="px-6 py-4 text-right font-bold text-gray-900">
+                    <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-white">
                       ${venta.saldo?.toLocaleString() || 0}
                     </td>
-                    <td className="px-6 py-4 text-center text-gray-500 whitespace-nowrap">
+                    <td className="px-6 py-4 text-center text-gray-500 dark:text-gray-400 whitespace-nowrap">
                       {venta.fch_emis}
                     </td>
-                    <td className="px-6 py-4 text-center text-gray-500 whitespace-nowrap">
+                    <td className="px-6 py-4 text-center text-gray-500 dark:text-gray-400 whitespace-nowrap">
                       {venta.fch_venc}
                     </td>
                     <td className="px-6 py-4 text-center">
@@ -1112,8 +1112,8 @@ export default function VentasPage() {
 
         {/* Paginación */}
         {!cargando && ventasFiltradas.length > ITEMS_PER_PAGE && (
-          <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
-            <div className="text-sm text-gray-500">
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
               Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1} a{" "}
               {Math.min(currentPage * ITEMS_PER_PAGE, ventasFiltradas.length)}{" "}
               de {ventasFiltradas.length} facturas
@@ -1122,17 +1122,17 @@ export default function VentasPage() {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 hover:bg-gray-50"
+                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-300"
               >
                 Anterior
               </button>
-              <div className="flex items-center px-2 text-sm font-medium text-gray-700">
+              <div className="flex items-center px-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 Página {currentPage} de {totalPages}
               </div>
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 hover:bg-gray-50"
+                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-300"
               >
                 Siguiente
               </button>

@@ -972,7 +972,7 @@ export default function CotizacionForm() {
             </div>
             <div className="flex flex-1 items-center justify-end gap-4 ml-6">
               {/* Resumen Financiero Sticky */}
-              <div className="hidden md:grid grid-cols-4 gap-3 flex-1 items-center bg-slate-50/50 dark:bg-gray-800/50 p-2 rounded-lg border border-slate-100 dark:border-gray-700">
+              <div className="hidden md:grid grid-cols-5 gap-3 flex-1 items-center bg-slate-50/50 dark:bg-gray-800/50 p-2 rounded-lg border border-slate-100 dark:border-gray-700">
                 <div className="flex flex-col items-start pl-3 border-l-4 border-slate-300 dark:border-gray-600">
                   <span className="text-[10px] text-slate-400 dark:text-gray-500 font-bold uppercase tracking-wider">
                     Costos
@@ -999,12 +999,20 @@ export default function CotizacionForm() {
                     +${Math.round(totales.ganancia).toLocaleString()}
                   </span>
                 </div>
-                <div className="flex flex-col items-start pl-3 border-l-4 border-slate-800 dark:border-gray-600 bg-slate-50 dark:bg-gray-800 rounded-r-md">
+                <div className="flex flex-col items-start pl-3 border-l-4 border-slate-400 dark:border-gray-500">
                   <span className="text-[10px] text-slate-500 dark:text-gray-400 font-bold uppercase tracking-widest">
                     Neto
                   </span>
-                  <span className="text-base font-bold tracking-tight text-slate-900 dark:text-gray-100">
+                  <span className="text-sm font-bold tracking-tight text-slate-700 dark:text-gray-200">
                     ${Math.round(totales.totalVenta).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex flex-col items-start pl-3 border-l-4 border-slate-800 dark:border-blue-500 bg-slate-100 dark:bg-gray-700 rounded-r-md py-1">
+                  <span className="text-[10px] text-slate-600 dark:text-gray-300 font-bold uppercase tracking-widest">
+                    Total
+                  </span>
+                  <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+                    ${Math.round(totales.totalVenta * 1.19).toLocaleString()}
                   </span>
                 </div>
               </div>
