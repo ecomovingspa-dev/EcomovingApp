@@ -4,5 +4,9 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/(.*)", "destination": "/" }
-  ]
+  ],
+  "crons": [{
+    "path": "/api/marketing",
+    "schedule": "0 10 * * *"
+  }]
 }
