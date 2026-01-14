@@ -421,7 +421,6 @@ export default function CotizacionForm() {
     }
   };
 
-  // ✅ CORRECCIÓN: CARGA COMPLETA DE COTIZACIÓN AL EDITAR
   const cargarCotizacion = async () => {
     setCargando(true);
     try {
@@ -435,7 +434,6 @@ export default function CotizacionForm() {
         throw new Error("No se encontró la cotización");
       }
 
-      // Cargar datos de la cuenta
       let cuentaData = null;
       if (cotizacionData.cuenta_id) {
         const { data: cuenta, error: cuentaError } = await supabase
@@ -448,7 +446,6 @@ export default function CotizacionForm() {
         }
       }
 
-      // Cargar datos del contacto
       let contactoData = null;
       if (cotizacionData.contacto_id) {
         const { data: contacto, error: contactoError } = await supabase
@@ -461,7 +458,6 @@ export default function CotizacionForm() {
         }
       }
 
-      // ✅ ACTUALIZAR ESTADO CON TODOS LOS DATOS
       setCotizacion({
         ...cotizacionData,
         cuentas: cuentaData,
@@ -469,7 +465,6 @@ export default function CotizacionForm() {
         items: cotizacionData.items || [],
       });
 
-      // Cargar contactos de la cuenta si existe
       if (cotizacionData.cuenta_id) {
         await cargarContactosDeCuenta(cotizacionData.cuenta_id);
       }
@@ -484,12 +479,15 @@ export default function CotizacionForm() {
     }
   };
 
+  // ✅ MODIFICADO: Cálculo de descuento como PORCENTAJE
   const calcularSubtotalCosto = (
     cantidad: number,
     precio: number,
-    descuento: number,
+    descuentoPorcentaje: number,
   ) => {
-    return cantidad * precio - descuento;
+    const subtotal = cantidad * precio;
+    const descuento = subtotal * (descuentoPorcentaje / 100);
+    return subtotal - descuento;
   };
 
   const costoItem = (item: Item) =>
@@ -822,7 +820,6 @@ export default function CotizacionForm() {
       if (cotizacion.estado_cotizacion === "borrador" && !esEdicion) {
         numeroCotizacion = await generarNumeroCotizacion();
 
-        // Verificar si ya existe
         let intentos = 0;
         const maxIntentos = 5;
         while (intentos < maxIntentos) {
@@ -944,7 +941,6 @@ export default function CotizacionForm() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-900">
-      {/* Header sticky con panel financiero */}
       <div className="sticky top-0 z-50 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border-b border-slate-200 dark:border-gray-700 shadow-sm">
         <div className="max-w-[1400px] mx-auto px-6 py-3">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -971,7 +967,6 @@ export default function CotizacionForm() {
               </div>
             </div>
             <div className="flex flex-1 items-center justify-end gap-4 ml-6">
-              {/* Resumen Financiero Sticky */}
               <div className="hidden md:grid grid-cols-5 gap-3 flex-1 items-center bg-slate-50/50 dark:bg-gray-800/50 p-2 rounded-lg border border-slate-100 dark:border-gray-700">
                 <div className="flex flex-col items-start pl-3 border-l-4 border-slate-300 dark:border-gray-600">
                   <span className="text-[10px] text-slate-400 dark:text-gray-500 font-bold uppercase tracking-wider">
@@ -1111,7 +1106,6 @@ export default function CotizacionForm() {
           </CardHeader>
           <CardContent className="p-6 bg-white dark:bg-gray-900">
             <div className="space-y-6">
-              {/* FILA 1: Cliente + Contacto + Vendedor */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <Label className={labelClass}>Cliente *</Label>
@@ -1755,7 +1749,6 @@ export default function CotizacionForm() {
                   </div>
                 </div>
               </div>
-              {/* FILA 2: Tiempo Entrega + Validez Oferta */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label htmlFor="tiempo" className={labelClass}>
@@ -1790,7 +1783,6 @@ export default function CotizacionForm() {
                   />
                 </div>
               </div>
-              {/* FILA 3: N° OC + N° Guía + N° Factura */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <Label className={labelClass}>N° Orden de Compra</Label>
@@ -1844,14 +1836,12 @@ export default function CotizacionForm() {
             </div>
           </CardContent>
         </Card>
-        {/* SECCIÓN DE PRODUCTOS */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-700 dark:text-gray-300 flex items-center gap-2 uppercase tracking-wide">
               <Wallet className="h-4 w-4 text-slate-500 dark:text-gray-400" />
               Detalle de Productos
             </h2>
-            {/* ✅ BOTÓN MOVIDO A LA DERECHA */}
             {(cotizacion.items || []).length > 0 && (
               <Button
                 onClick={agregarItem}
@@ -2022,12 +2012,13 @@ export default function CotizacionForm() {
                         <Plus className="h-3 w-3 mr-1" /> Agregar Costo
                       </Button>
                     </div>
+                    {/* ✅ MODIFICADO: Header con "Desc. %" */}
                     <div className="hidden md:grid grid-cols-12 gap-2 px-2 text-[9px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-wide mb-1">
                       <div className="col-span-3">Proveedor</div>
                       <div className="col-span-2">Código</div>
                       <div className="col-span-1 text-center">Cant</div>
                       <div className="col-span-2 text-right">Unitario</div>
-                      <div className="col-span-2 text-right">Desc.</div>
+                      <div className="col-span-2 text-right">Desc. %</div>
                       <div className="col-span-2 text-right">Subtotal</div>
                     </div>
                     <div className="space-y-1.5">
@@ -2094,20 +2085,27 @@ export default function CotizacionForm() {
                               className={`${elegantInputClass} h-7 text-[11px] text-right dark:text-gray-100`}
                             />
                           </div>
+                          {/* ✅ MODIFICADO: Input de descuento con ícono % */}
                           <div className="col-span-1 md:col-span-2">
-                            <Input
-                              type="number"
-                              value={subcosto.descuento || 0}
-                              onChange={(e) =>
-                                actualizarSubcosto(
-                                  item.id,
-                                  subcosto.id,
-                                  "descuento",
-                                  Number(e.target.value),
-                                )
-                              }
-                              className={`${elegantInputClass} h-7 text-[11px] text-right text-red-500 dark:text-red-400`}
-                            />
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                value={subcosto.descuento || 0}
+                                onChange={(e) =>
+                                  actualizarSubcosto(
+                                    item.id,
+                                    subcosto.id,
+                                    "descuento",
+                                    Number(e.target.value),
+                                  )
+                                }
+                                className={`${elegantInputClass} h-7 text-[11px] text-right text-red-500 dark:text-red-400 pr-6`}
+                              />
+                              <Percent className="absolute right-2 top-1.5 h-3.5 w-3.5 text-red-400 opacity-70" />
+                            </div>
                           </div>
                           <div className="col-span-1 md:col-span-2 flex items-center justify-between md:justify-end gap-2">
                             <div className="min-w-[60px] text-right">
@@ -2119,7 +2117,7 @@ export default function CotizacionForm() {
                               </span>
                             </div>
                             <Button
-                              variant="gesto" // ⚠️ Esto debería ser "ghost"
+                              variant="ghost"
                               size="icon"
                               className="h-6 w-6 text-slate-300 dark:text-gray-600 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity -mr-2"
                               onClick={() =>
@@ -2134,8 +2132,6 @@ export default function CotizacionForm() {
                       ))}
                     </div>
                   </div>
-                  {/* ✅ BOTÓN MOVIDO AQUÍ: debajo de subtotales */}
-                  {/* (ya no se muestra debajo de la lista, sino en el header de productos) */}
                 </CardContent>
               </Card>
             ))}
