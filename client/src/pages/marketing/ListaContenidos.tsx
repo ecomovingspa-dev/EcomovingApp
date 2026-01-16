@@ -13,10 +13,12 @@ import {
 import { Button } from "../../components/ui/button";
 
 interface MarketingMessage {
-    id: string; // Es UUID según la captura
+    id: string;
     asunto: string;
     cuerpo_html: string;
+    cuerpo: string;
     numero_secuencia: number;
+    imagen_url?: string;
     created_at?: string;
 }
 
@@ -24,6 +26,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
     const [mensajes, setMensajes] = useState<MarketingMessage[]>([]);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState("");
+    const [vistaPrevia, setVistaPrevia] = useState<string | null>(null);
 
     useEffect(() => {
         cargarMensajes();
@@ -91,58 +94,111 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                 </div>
             )}
 
-            <div className="grid gap-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 {cargando ? (
-                    <div className="py-12 text-center text-gray-500">
-                        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 opacity-50" />
-                        Cargando biblioteca...
+                    <div className="py-20 text-center">
+                        <Loader2 className="h-10 w-10 animate-spin mx-auto text-indigo-500 opacity-50 mb-4" />
+                        <p className="text-gray-500 dark:text-gray-400 font-medium tracking-wide uppercase text-xs">Sincronizando biblioteca...</p>
                     </div>
                 ) : mensajes.length === 0 ? (
-                    <div className="py-12 text-center bg-gray-50 dark:bg-gray-900/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-800">
-                        <Mail className="h-12 w-12 text-gray-300 dark:text-gray-700 mx-auto mb-4" />
-                        <p className="text-gray-500 dark:text-gray-400">No hay mensajes en la secuencia todavía.</p>
+                    <div className="py-20 text-center">
+                        <Mail className="h-16 w-16 text-gray-200 dark:text-gray-700 mx-auto mb-4" />
+                        <p className="text-gray-500 dark:text-gray-400 font-medium">La secuencia está vacía.</p>
                         <Button variant="link" onClick={onNew} className="text-indigo-600 mt-2">
-                            Comenzar a crear con IA
+                            Crear tu primer contenido con IA
                         </Button>
                     </div>
                 ) : (
-                    mensajes.map((msg, index) => (
-                        <div
-                            key={msg.id}
-                            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between group hover:border-indigo-200 dark:hover:border-indigo-900/50 transition-all"
-                        >
-                            <div className="flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
-                                    {msg.numero_secuencia}
-                                </div>
-                                <div>
-                                    <h3 className="font-medium text-gray-900 dark:text-gray-100">
-                                        {msg.asunto}
-                                    </h3>
-                                    <p className="text-xs text-gray-500 dark:text-gray-500">
-                                        ID de secuencia: {msg.id}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="icon" className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                                    <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => eliminarMensaje(msg.id)}
-                                    className="text-gray-400 hover:text-red-500 dark:hover:text-red-400"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                                <ChevronRight className="h-5 w-5 text-gray-300 dark:text-gray-700 ml-2" />
-                            </div>
-                        </div>
-                    ))
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                                <tr>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest w-16">#</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Asunto</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest max-w-xs">Contenido</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center">HTML</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
+                                {mensajes.map((msg) => (
+                                    <tr key={msg.id} className="group hover:bg-indigo-50/5 dark:hover:bg-indigo-900/10 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <span className="h-8 w-8 rounded-lg bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-400">
+                                                {msg.numero_secuencia}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                {msg.imagen_url && (
+                                                    <img src={msg.imagen_url} className="h-10 w-10 rounded object-cover border border-gray-100 dark:border-gray-700" alt="" />
+                                                )}
+                                                <p className="font-semibold text-gray-900 dark:text-gray-100 leading-tight">
+                                                    {msg.asunto}
+                                                </p>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 italic">
+                                                {msg.cuerpo || "(Sin texto plano)"}
+                                            </p>
+                                        </td>
+                                        <td className="px-6 py-4 text-center">
+                                            <button
+                                                onClick={() => setVistaPrevia(msg.cuerpo_html)}
+                                                className="inline-flex items-center gap-1.5 text-[10px] font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-2 py-1 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors border border-indigo-100 dark:border-indigo-900/30"
+                                            >
+                                                <Eye className="h-3 w-3" />
+                                                VER HTML
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => eliminarMensaje(msg.id)}
+                                                    className="h-8 w-8 text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
+
+            {/* Modal de Vista Previa HTML */}
+            {vistaPrevia && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
+                        <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+                            <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Eye className="h-4 w-4 text-indigo-500" />
+                                Vista Previa del Email
+                            </h3>
+                            <Button variant="ghost" size="sm" onClick={() => setVistaPrevia(null)} className="h-8 w-8 p-0">
+                                ✕
+                            </Button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+                            <div
+                                className="bg-white rounded shadow-sm overflow-hidden mx-auto max-w-[600px] border border-gray-200"
+                                dangerouslySetInnerHTML={{ __html: vistaPrevia }}
+                            />
+                        </div>
+                        <div className="p-4 border-t border-gray-100 dark:border-gray-800 text-center">
+                            <Button onClick={() => setVistaPrevia(null)} className="bg-gray-900 dark:bg-white dark:text-gray-900">
+                                Cerrar Vista
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
