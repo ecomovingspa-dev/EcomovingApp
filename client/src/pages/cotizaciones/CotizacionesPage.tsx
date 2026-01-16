@@ -50,7 +50,7 @@ export default function CotizacionesPage() {
           )
         `,
         )
-        .order("id", { ascending: false });
+        .order("numero_cotizacion", { ascending: false });
 
       if (error) throw error;
       const cotizacionesFormateadas = (data || []).map((item: any) => ({
@@ -105,15 +105,39 @@ export default function CotizacionesPage() {
     return `${valor}%`;
   };
 
+  const stats = useMemo(() => {
+    const defaultStats = {
+      borrador: { total: 0, count: 0, label: "Borradores", color: "text-gray-500", icon: <FileText className="h-4 w-4" /> },
+      pendiente: { total: 0, count: 0, label: "Pendientes", color: "text-amber-500", icon: <Search className="h-4 w-4" /> },
+      produccion: { total: 0, count: 0, label: "Producción", color: "text-blue-500", icon: <Plus className="h-4 w-4" /> },
+      despachada: { total: 0, count: 0, label: "Despachadas", color: "text-purple-500", icon: <FileText className="h-4 w-4" /> },
+      facturada: { total: 0, count: 0, label: "Facturadas", color: "text-emerald-500", icon: <FileText className="h-4 w-4" /> },
+    };
+
+    return cotizaciones.reduce((acc, cot) => {
+      const estado = (cot.estado_cotizacion || "borrador").toLowerCase();
+      if (acc[estado as keyof typeof defaultStats]) {
+        acc[estado as keyof typeof defaultStats].total += cot.total || 0;
+        acc[estado as keyof typeof defaultStats].count += 1;
+      }
+      return acc;
+    }, defaultStats);
+  }, [cotizaciones]);
+
   const getEstadoColor = (estado?: string) => {
     switch (estado?.toLowerCase()) {
-      case "activo":
-      case "aprobada":
+      case "facturada":
         return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
       case "pendiente":
+      case "borrador":
         return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
+      case "produccion":
+        return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200";
+      case "despachada":
+        return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400";
       case "rechazada":
       case "cancelada":
+      case "perdida":
         return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
       default:
         return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
@@ -141,13 +165,34 @@ export default function CotizacionesPage() {
         </Button>
       </div>
 
+      {/* Panel de Resumen Ejectuivo */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {Object.entries(stats).map(([key, value]) => (
+          <div key={key} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow group">
+            <div className={`flex items-center gap-2 mb-2 ${value.color} font-bold text-[10px] uppercase tracking-wider`}>
+              <div className="p-1.5 rounded-lg bg-gray-50 dark:bg-gray-900 group-hover:bg-white dark:group-hover:bg-gray-700 transition-colors">
+                {value.icon}
+              </div>
+              {value.label}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-none">
+                ${formatearNumero(value.total)}
+              </span>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium mt-1">
+                {value.count} documentos
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
       {mensaje && (
         <div
-          className={`p-4 rounded-lg font-medium border flex items-center gap-2 ${
-            mensaje.includes("Error")
-              ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
-              : "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
-          }`}
+          className={`p-4 rounded-lg font-medium border flex items-center gap-2 ${mensaje.includes("Error")
+            ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+            : "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
+            }`}
         >
           {mensaje}
         </div>
