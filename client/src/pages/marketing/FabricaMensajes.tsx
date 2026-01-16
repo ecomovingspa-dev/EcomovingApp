@@ -93,11 +93,25 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
             // Usar la imagen mejorada si existe, sino la original
             const imagenAGuardar = imagenMejorada || imagenOriginal;
 
+            // Obtener el último numero_secuencia para autoincrementar
+            const { data: lastMsg } = await supabase
+                .from("marketing")
+                .select("numero_secuencia")
+                .order("numero_secuencia", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            const nextSeq = (lastMsg?.numero_secuencia || 0) + 1;
+
             const { error } = await supabase
                 .from("marketing")
                 .insert([{
                     asunto: contenido.subject,
-                    html: contenido.html.replace("IMAGE_PLACEHOLDER", imagenAGuardar),
+                    cuerpo_html: contenido.html.replace("IMAGE_PLACEHOLDER", imagenAGuardar),
+                    cuerpo: `${contenido.part1}\n\n${contenido.part2}`, // Texto plano para respaldo
+                    numero_secuencia: nextSeq,
+                    imagen_url: imagenAGuardar,
+                    estado: 'Activo'
                 }]);
 
             if (error) throw error;

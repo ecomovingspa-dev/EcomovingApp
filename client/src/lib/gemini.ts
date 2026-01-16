@@ -138,17 +138,52 @@ Reglas:
     const p2 = part2Match ? part2Match[1].trim() : "";
     const sc = socialMatch ? socialMatch[1].trim() : "";
 
-    // Generar HTML base para el email
+    // Generar HTML profesional estilo Brevo para el email
     const html = `
-    <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;">
-      <p style="font-size: 16px; line-height: 1.6;">${p1}</p>
-      <div style="margin: 30px 0; text-align: center;">
-        <img src="IMAGE_PLACEHOLDER" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" alt="Producto" />
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    .email-container { max-width: 600px; margin: 0 auto; font-family: 'Segoe UI', Arial, sans-serif; background-color: #ffffff; }
+    .content-padding { padding: 40px 20px; }
+    .footer { background-color: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6;">
+  <div class="email-container">
+    <div class="content-padding">
+      <h1 style="color: #111827; font-size: 24px; font-weight: bold; margin-bottom: 24px; text-align: center;">${subject}</h1>
+      
+      <p style="font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 30px;">
+        ${p1}
+      </p>
+
+      <div style="text-align: center; margin-bottom: 30px;">
+        <img src="IMAGE_PLACEHOLDER" style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);" alt="${subject}" />
       </div>
-      <p style="font-size: 16px; line-height: 1.6;">${p2}</p>
-      <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
-      <p style="font-size: 12px; color: #666; text-align: center;">Ecomoving - Regalos Corporativos Sustentables</p>
+
+      <p style="font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 32px;">
+        ${p2}
+      </p>
+
+      <div style="text-align: center;">
+        <a href="#" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">
+          Ver Catálogo Completo
+        </a>
+      </div>
     </div>
+    
+    <div class="footer">
+      <p style="margin: 0 0 8px 0;"><strong>Ecomoving SpA</strong></p>
+      <p style="margin: 0 0 16px 0;">Regalos Corporativos con Impacto Sustentable</p>
+      <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 16px;">
+        <p style="margin: 0;">Recibiste este correo porque estás en nuestra lista de contactos preferenciales.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
   `.trim();
 
     return {

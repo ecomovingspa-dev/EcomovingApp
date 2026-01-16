@@ -50,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         let { data: messageData, error: msgError } = await supabase
           .from('marketing')
           .select('*')
-          .eq('id', contact.indice_secuencia)
+          .eq('numero_secuencia', contact.indice_secuencia)
           .maybeSingle();
 
         // If no message found for this index (end of sequence?), wrap around?
@@ -62,7 +62,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const { data: firstMsg } = await supabase
               .from('marketing')
               .select('*')
-              .eq('id', RESTART_INDEX)
+              .eq('numero_secuencia', RESTART_INDEX)
               .maybeSingle();
 
             if (firstMsg) {
@@ -83,7 +83,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           sender: { name: "Mario", email: "mario@tudominio.com" }, // Needs to be configured or dynamic
           to: [{ email: contact.correo }], // Changed from contact.email
           subject: messageData.asunto,
-          htmlContent: messageData.html // + maybe tracking pixels?
+          htmlContent: messageData.cuerpo_html // + maybe tracking pixels?
         };
 
         await axios.post('https://api.brevo.com/v3/smtp/email', emailPayload, {

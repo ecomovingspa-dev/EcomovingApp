@@ -13,9 +13,10 @@ import {
 import { Button } from "../../components/ui/button";
 
 interface MarketingMessage {
-    id: number;
+    id: string; // Es UUID según la captura
     asunto: string;
-    html: string;
+    cuerpo_html: string;
+    numero_secuencia: number;
     created_at?: string;
 }
 
@@ -34,7 +35,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
             const { data, error: dbError } = await supabase
                 .from("marketing")
                 .select("*")
-                .order("id", { ascending: true });
+                .order("numero_secuencia", { ascending: true });
 
             if (dbError) throw dbError;
             setMensajes(data || []);
@@ -46,7 +47,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
         }
     };
 
-    const eliminarMensaje = async (id: number) => {
+    const eliminarMensaje = async (id: string) => {
         if (!confirm("¿Estás seguro de que deseas eliminar este mensaje de la secuencia?")) return;
 
         try {
@@ -112,7 +113,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                         >
                             <div className="flex items-center gap-4">
                                 <div className="h-10 w-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold">
-                                    {index + 1}
+                                    {msg.numero_secuencia}
                                 </div>
                                 <div>
                                     <h3 className="font-medium text-gray-900 dark:text-gray-100">
