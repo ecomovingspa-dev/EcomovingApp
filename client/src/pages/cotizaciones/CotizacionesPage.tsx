@@ -232,36 +232,36 @@ export default function CotizacionesPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+              <thead className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                 <tr>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     N°
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Cliente
                   </th>
-                  <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Neto
                   </th>
-                  <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     IVA
                   </th>
-                  <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Total
                   </th>
-                  <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     MG
                   </th>
-                  <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Ganancia
                   </th>
-                  <th className="px-3 py-3 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Vendedor
                   </th>
-                  <th className="px-3 py-3 text-center text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-center text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Estado
                   </th>
-                  <th className="px-3 py-3 text-center text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                  <th className="px-4 py-3 text-center text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Acc.
                   </th>
                 </tr>
@@ -270,56 +270,56 @@ export default function CotizacionesPage() {
                 {cotizacionesFiltradas.map((cot) => (
                   <tr
                     key={cot.id}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors"
                   >
-                    <td className="px-3 py-3 text-xs font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                    <td className="px-4 py-4 text-sm font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                       {cot.numero_cotizacion || "-"}
                     </td>
-                    <td className="px-3 py-3 text-xs text-gray-700 dark:text-gray-300 font-medium">
-                      <div className="max-w-[180px] lg:max-w-none truncate lg:whitespace-normal">
+                    <td className="px-4 py-4 text-sm text-gray-900 dark:text-gray-100 font-medium">
+                      <div className="max-w-[220px] lg:max-w-none truncate lg:whitespace-normal">
                         {cot.cuentas?.cliente || "-"}
                       </div>
                     </td>
-                    <td className="px-3 py-3 text-xs text-right text-gray-900 dark:text-gray-100 font-medium whitespace-nowrap">
+                    <td className="px-4 py-4 text-sm text-right text-gray-900 dark:text-gray-100 font-medium whitespace-nowrap">
                       ${formatearNumero(cot.total_neto)}
                     </td>
-                    <td className="px-3 py-3 text-xs text-right text-gray-500 dark:text-gray-400 italic whitespace-nowrap">
+                    <td className="px-4 py-4 text-sm text-right text-gray-500 dark:text-gray-400 italic whitespace-nowrap">
                       ${formatearNumero(cot.iva)}
                     </td>
-                    <td className="px-3 py-3 text-xs text-right text-gray-900 dark:text-gray-100 font-bold whitespace-nowrap">
+                    <td className="px-4 py-4 text-sm text-right text-gray-900 dark:text-gray-100 font-bold whitespace-nowrap">
                       ${formatearNumero(cot.total)}
                     </td>
-                    <td className="px-3 py-3 text-xs text-right text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap">
+                    <td className="px-4 py-4 text-sm text-right text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap">
                       {formatearPorcentaje(cot.mg)}
                     </td>
-                    <td className="px-3 py-3 text-xs text-right text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
+                    <td className="px-4 py-4 text-sm text-right text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
                       ${formatearNumero(cot.ganancias)}
                     </td>
-                    <td className="px-3 py-3 text-[11px] text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
+                    <td className="px-4 py-4 text-[13px] text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
                       {cot.vendedores?.nombre || "-"}
                     </td>
-                    <td className="px-3 py-3 text-center whitespace-nowrap">
+                    <td className="px-4 py-4 text-center whitespace-nowrap">
                       <span
-                        className={`px-2 py-0.5 text-[9px] rounded-full uppercase font-bold tracking-tighter ${getEstadoColor(cot.estado_cotizacion)}`}
+                        className={`px-3 py-1 text-[10px] rounded-full uppercase font-bold tracking-tight shadow-sm ${getEstadoColor(cot.estado_cotizacion)}`}
                       >
                         {cot.estado_cotizacion || "Sin estado"}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-center whitespace-nowrap">
-                      <div className="flex justify-center gap-1.5">
+                    <td className="px-4 py-4 text-center whitespace-nowrap">
+                      <div className="flex justify-center gap-2">
                         <button
                           onClick={() => navigate(`/cotizaciones/${cot.id}`)}
-                          className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors group"
+                          className="p-1.5 hover:bg-white dark:hover:bg-gray-800 rounded-lg shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-all group"
                           title="Editar"
                         >
-                          <Edit className="h-3.5 w-3.5 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+                          <Edit className="h-4 w-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
                         </button>
                         <button
                           onClick={() => handleEliminar(cot.id)}
-                          className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors group"
+                          className="p-1.5 hover:bg-white dark:hover:bg-gray-800 rounded-lg shadow-sm border border-transparent hover:border-red-200 dark:hover:border-red-900/50 transition-all group"
                           title="Eliminar"
                         >
-                          <Trash2 className="h-3.5 w-3.5 text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400" />
+                          <Trash2 className="h-4 w-4 text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400" />
                         </button>
                       </div>
                     </td>
