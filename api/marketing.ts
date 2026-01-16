@@ -83,7 +83,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           sender: { name: "Mario", email: "mario@tudominio.com" }, // Needs to be configured or dynamic
           to: [{ email: contact.correo }], // Changed from contact.email
           subject: messageData.asunto,
-          htmlContent: messageData.cuerpo_html // + maybe tracking pixels?
+          htmlContent: messageData.cuerpo_html,
+          textContent: messageData.cuerpo // ✅ Agregamos versión texto plano para Brevo
         };
 
         await axios.post('https://api.brevo.com/v3/smtp/email', emailPayload, {

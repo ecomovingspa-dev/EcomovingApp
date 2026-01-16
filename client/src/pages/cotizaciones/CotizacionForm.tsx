@@ -132,11 +132,10 @@ const TimelineEstado = ({
         <div key={e.key} className="flex items-center gap-2 flex-1">
           <div className="flex flex-col items-center">
             <div
-              className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${
-                index <= estadoIndex
+              className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${index <= estadoIndex
                   ? getColorClasses(e.color, true)
                   : getColorClasses(e.color, false)
-              }`}
+                }`}
             >
               {index < estadoIndex && <Check className="h-4 w-4 text-white" />}
               {index === estadoIndex && (
@@ -144,11 +143,10 @@ const TimelineEstado = ({
               )}
             </div>
             <div
-              className={`text-[10px] font-medium mt-1 ${
-                index === estadoIndex
+              className={`text-[10px] font-medium mt-1 ${index === estadoIndex
                   ? "text-gray-900 dark:text-gray-100"
                   : "text-gray-400 dark:text-gray-500"
-              }`}
+                }`}
             >
               {e.label}
             </div>
@@ -160,11 +158,10 @@ const TimelineEstado = ({
           </div>
           {index < estados.length - 1 && (
             <div
-              className={`flex-1 h-0.5 ${
-                index < estadoIndex
+              className={`flex-1 h-0.5 ${index < estadoIndex
                   ? "bg-gray-400 dark:bg-gray-500"
                   : "bg-gray-200 dark:bg-gray-700"
-              }`}
+                }`}
             ></div>
           )}
         </div>
@@ -252,7 +249,7 @@ export default function CotizacionForm() {
     ) {
       const dias = Math.floor(
         (Date.now() - new Date(cotizacion.created_at).getTime()) /
-          (1000 * 60 * 60 * 24),
+        (1000 * 60 * 60 * 24),
       );
       if (dias > 30) return "perdida";
     }
@@ -472,7 +469,7 @@ export default function CotizacionForm() {
       console.error("Error al cargar cotización:", error);
       setMensaje(
         "❌ Error al cargar cotización: " +
-          (error.message || "Error desconocido"),
+        (error.message || "Error desconocido"),
       );
     } finally {
       setCargando(false);
@@ -492,19 +489,24 @@ export default function CotizacionForm() {
 
   const costoItem = (item: Item) =>
     item.subcostos.reduce((s, c) => s + (c.valor || 0), 0);
+
   const precioVentaItem = (item: Item) => {
     const costoTotal = costoItem(item);
     const costoUnitario = item.cantidad > 0 ? costoTotal / item.cantidad : 0;
-    return costoUnitario > 0 ? costoUnitario / (1 - item.margen / 100) : 0;
+    const precioSugerido = costoUnitario > 0 ? costoUnitario / (1 - item.margen / 100) : 0;
+    return Math.round(precioSugerido); // ✅ Unificamos: siempre devolvemos el valor redondeado
   };
 
   const totales = useMemo(() => {
     const items = cotizacion.items || [];
     const totalCostos = items.reduce((sum, i) => sum + costoItem(i), 0);
+
+    // ✅ Calculamos el total de venta sumando los subtotales exactos que ve el usuario (Redondeado * Cantidad)
     const totalVenta = items.reduce(
-      (sum, i) => sum + precioVentaItem(i) * i.cantidad,
+      (sum, i) => sum + (precioVentaItem(i) * i.cantidad),
       0,
     );
+
     const ganancia = totalVenta - totalCostos;
     const margenTotal = totalVenta > 0 ? (ganancia / totalVenta) * 100 : 0;
     return { totalCostos, totalVenta, ganancia, margenTotal };
@@ -516,11 +518,16 @@ export default function CotizacionForm() {
     const vendedorData = vendedores.find(
       (v) => v.id === cotizacion.vendedor_id,
     );
-    const itemsFormateados = (cotizacion.items || []).map((item) => ({
-      ...item,
-      precio_unitario: Math.round(precioVentaItem(item)),
-      subtotal: Math.round(precioVentaItem(item) * item.cantidad),
-    }));
+
+    const itemsFormateados = (cotizacion.items || []).map((item) => {
+      const pUnitario = precioVentaItem(item);
+      return {
+        ...item,
+        precio_unitario: pUnitario,
+        subtotal: pUnitario * item.cantidad, // ✅ Subtotal coherente con el precio visual
+      };
+    });
+
     return {
       cotizacion: {
         ...cotizacion,
@@ -587,20 +594,20 @@ export default function CotizacionForm() {
       items: (prev.items || []).map((i) =>
         i.id === itemId
           ? {
-              ...i,
-              subcostos: [
-                ...i.subcostos,
-                {
-                  id: Date.now(),
-                  proveedor: "",
-                  codigo: "",
-                  cantidad: 1,
-                  precio_unitario: 0,
-                  descuento: 0,
-                  valor: 0,
-                },
-              ],
-            }
+            ...i,
+            subcostos: [
+              ...i.subcostos,
+              {
+                id: Date.now(),
+                proveedor: "",
+                codigo: "",
+                cantidad: 1,
+                precio_unitario: 0,
+                descuento: 0,
+                valor: 0,
+              },
+            ],
+          }
           : i,
       ),
     }));
@@ -628,22 +635,22 @@ export default function CotizacionForm() {
       items: (prev.items || []).map((i) =>
         i.id === itemId
           ? {
-              ...i,
-              subcostos: i.subcostos.map((s) => {
-                if (s.id !== subcostoId) return s;
-                const updatedSubcosto = { ...s, [campo]: valor };
-                if (
-                  ["cantidad", "precio_unitario", "descuento"].includes(campo)
-                ) {
-                  updatedSubcosto.valor = calcularSubtotalCosto(
-                    updatedSubcosto.cantidad,
-                    updatedSubcosto.precio_unitario,
-                    updatedSubcosto.descuento,
-                  );
-                }
-                return updatedSubcosto;
-              }),
-            }
+            ...i,
+            subcostos: i.subcostos.map((s) => {
+              if (s.id !== subcostoId) return s;
+              const updatedSubcosto = { ...s, [campo]: valor };
+              if (
+                ["cantidad", "precio_unitario", "descuento"].includes(campo)
+              ) {
+                updatedSubcosto.valor = calcularSubtotalCosto(
+                  updatedSubcosto.cantidad,
+                  updatedSubcosto.precio_unitario,
+                  updatedSubcosto.descuento,
+                );
+              }
+              return updatedSubcosto;
+            }),
+          }
           : i,
       ),
     }));
@@ -1039,13 +1046,12 @@ export default function CotizacionForm() {
       <div className="max-w-[1400px] mx-auto px-6 py-8 space-y-8">
         {mensaje && (
           <div
-            className={`p-4 rounded-xl font-medium border flex items-center gap-3 shadow-sm ${
-              mensaje.includes("❌") || mensaje.includes("⚠️")
+            className={`p-4 rounded-xl font-medium border flex items-center gap-3 shadow-sm ${mensaje.includes("❌") || mensaje.includes("⚠️")
                 ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-100 dark:border-red-800"
                 : mensaje.includes("💾")
                   ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-800"
                   : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800"
-            }`}
+              }`}
           >
             {mensaje}
           </div>
@@ -1121,8 +1127,8 @@ export default function CotizacionForm() {
                           <span className="truncate text-left flex-1 dark:text-gray-300">
                             {cotizacion.cuenta_id
                               ? cuentas.find(
-                                  (c) => c.id === cotizacion.cuenta_id,
-                                )?.cliente
+                                (c) => c.id === cotizacion.cuenta_id,
+                              )?.cliente
                               : "Seleccionar Cliente..."}
                           </span>
                           <Search className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
@@ -1430,10 +1436,10 @@ export default function CotizacionForm() {
                       <SelectTrigger className="bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 h-8 text-xs flex-1 dark:text-gray-100">
                         <SelectValue>
                           {cotizacion.contacto_id &&
-                          contactosFiltrados.length > 0
+                            contactosFiltrados.length > 0
                             ? contactosFiltrados.find(
-                                (c) => c.id === cotizacion.contacto_id,
-                              )?.nombre || "Seleccionar..."
+                              (c) => c.id === cotizacion.contacto_id,
+                            )?.nombre || "Seleccionar..."
                             : cotizacion.cuenta_id
                               ? "Seleccionar..."
                               : "Primero seleccione cliente"}
