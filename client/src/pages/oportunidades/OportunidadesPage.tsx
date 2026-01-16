@@ -50,7 +50,7 @@ export default function OportunidadesPage() {
   const [procesando, setProcesando] = useState(false);
   const [editandoVendedor, setEditandoVendedor] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const itemsPorPagina = 10;
+  const itemsPorPagina = 50;
 
   const navigate = useNavigate();
   const { vendedores } = useVendedores();
@@ -233,7 +233,32 @@ export default function OportunidadesPage() {
 
           const oportunidadesFiltradas = jsonData
             .map((row) => {
-              const campos = [row["Nombre"] || "", row["Organismo"] || ""];
+              // Mapeo flexible de columnas para soportar distintos formatos de archivo
+              const getVal = (keys: string[]) => {
+                const foundKey = Object.keys(row).find((k) =>
+                  keys.some(
+                    (key) => k.toLowerCase().trim() === key.toLowerCase().trim(),
+                  ),
+                );
+                return foundKey ? row[foundKey] : "";
+              };
+
+              const idVal = getVal(["ID", "Código", "Codigo", "Cod"]);
+              const nombreVal = getVal(["Nombre", "Descripción", "Descripcion"]);
+              const organismoVal = getVal([
+                "Organismo",
+                "Comprador",
+                "Institución",
+                "Institucion",
+                "Entidad",
+              ]);
+              const fechaVal = getVal(["Fecha de cierre", "Cierre", "Fecha"]);
+              const montoVal = getVal(["Monto Disponible", "Monto", "Valor"]);
+              const estadoVal = getVal(["Estado"]);
+              const claveVal = getVal(["Clave"]);
+
+              // Identificar palabras clave encontradas
+              const campos = [nombreVal || "", organismoVal || ""];
               const textoCompleto = campos.join(" ").toLowerCase();
               const keywordsEncontradas = PALABRAS_CLAVE.filter((kw) =>
                 textoCompleto.includes(kw),
@@ -241,7 +266,7 @@ export default function OportunidadesPage() {
 
               if (!keywordsEncontradas) return null;
 
-              let monto = row["Monto Disponible"];
+              let monto = montoVal;
               if (typeof monto === "string") {
                 monto = monto
                   .replace(/\$/g, "")
@@ -251,14 +276,12 @@ export default function OportunidadesPage() {
               const montoNum = parseFloat(monto) || null;
 
               // Lógica de normalización de fecha y hora (Dato SENSIBLE)
-              let fechaCierre = row["Fecha de cierre"];
+              let fechaCierre = fechaVal;
               if (fechaCierre) {
                 if (fechaCierre instanceof Date) {
-                  // Si el objeto ya es una fecha (producido por el parser de Excel)
                   fechaCierre = fechaCierre.toISOString();
                 } else if (typeof fechaCierre === "string") {
                   const fechaStr = fechaCierre.trim();
-                  // Soportar tanto / como - (ej: 19/01/2026 o 19-01-2026)
                   const match = fechaStr.match(
                     /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:\s+(\d{1,2}:\d{1,2}(?::\d{1,2})?))?/,
                   );
@@ -269,21 +292,19 @@ export default function OportunidadesPage() {
                     const month = m.padStart(2, "0");
                     const day = d.padStart(2, "0");
                     const time = h || "00:00";
-                    // Formato ISO: YYYY-MM-DDTHH:mm:ss
                     fechaCierre = `${year}-${month}-${day}T${time}${time.split(":").length === 2 ? ":00" : ""}`;
                   }
                 }
               }
 
               return {
-                id: (row["ID"] || "").toString().trim() || null,
-                nombre: (row["Nombre"] || "").toString().trim() || null,
+                id: (idVal || "").toString().trim() || null,
+                nombre: (nombreVal || "").toString().trim() || null,
                 fecha_cierre: fechaCierre || null,
-                organismo: (row["Organismo"] || "").toString().trim() || null,
+                organismo: (organismoVal || "").toString().trim() || null,
                 monto_disponible: montoNum,
-                estado: (row["Estado"] || "Publicada").toString().trim(),
-                clave:
-                  (row["Clave"] || "").toString().trim() || keywordsEncontradas,
+                estado: (estadoVal || "Publicada").toString().trim(),
+                clave: (claveVal || "").toString().trim() || keywordsEncontradas,
                 vendedor_id: null,
               };
             })
@@ -518,7 +539,7 @@ export default function OportunidadesPage() {
             <div className="text-gray-300 dark:text-gray-600 mb-4 flex justify-center">
               <Briefcase className="h-16 w-16" />
             </div>
-            <p className="text-gray-600 dark:text-gray-400 font-medium mb-2">
+            <p className="text-gray-500 dark:text-gray-400 font-medium mb-2">
               No hay oportunidades registradas
             </p>
             <Button
@@ -534,29 +555,29 @@ export default function OportunidadesPage() {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-12"></th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-40">
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12"></th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">
                       ID
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-64">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[300px]">
                       Organismo
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-44">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">
                       F. Cierre
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-32">
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
                       Monto
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-28">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">
                       Estado
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-32">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
                       Clave
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-40">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">
                       Vendedor
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-24">
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
                       Acciones
                     </th>
                   </tr>
@@ -569,11 +590,11 @@ export default function OportunidadesPage() {
                         className={`transition-colors ${estaDescartada(op.estado)
                           ? "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
                           : estaVencida(op.fecha_cierre)
-                            ? "bg-red-50 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-900"
+                            ? "bg-red-50 dark:bg-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/60"
                             : "hover:bg-gray-50 dark:hover:bg-gray-750"
                           }`}
                       >
-                        <td className="px-4 py-2 text-center">
+                        <td className="px-4 py-3 text-center">
                           <Checkbox
                             checked={estaDescartada(op.estado)}
                             onCheckedChange={() =>
@@ -583,9 +604,9 @@ export default function OportunidadesPage() {
                             data-testid={`checkbox-descartada-${op.id}`}
                           />
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <div
-                            className={`font-medium text-sm truncate max-w-[200px] ${estaDescartada(op.estado)
+                            className={`font-medium text-sm truncate max-w-[150px] ${estaDescartada(op.estado)
                               ? "text-gray-500 dark:text-gray-400"
                               : "text-gray-900 dark:text-gray-100"
                               }`}
@@ -595,52 +616,54 @@ export default function OportunidadesPage() {
                           </div>
                         </td>
                         <td
-                          className={`px-4 py-2 whitespace-nowrap text-sm truncate max-w-[150px] ${estaDescartada(op.estado)
+                          className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado)
                             ? "text-gray-500 dark:text-gray-400"
-                            : "text-gray-600 dark:text-gray-300"
-                            }`}
+                            : "text-gray-900 dark:text-gray-100"
+                            } whitespace-normal break-words leading-tight max-w-[400px]`}
                           title={op.organismo || ""}
                         >
                           {op.organismo || "-"}
                         </td>
                         <td
-                          className={`px-4 py-2 whitespace-nowrap text-sm ${estaDescartada(op.estado)
+                          className={`px-4 py-3 whitespace-nowrap text-sm ${estaDescartada(op.estado)
                             ? "text-gray-500 dark:text-gray-400"
                             : estaVencida(op.fecha_cierre)
-                              ? "text-red-600 dark:text-red-400 font-medium"
-                              : "text-gray-600 dark:text-gray-300"
+                              ? "text-red-600 dark:text-red-400 font-bold"
+                              : "text-gray-700 dark:text-gray-300"
                             }`}
                         >
                           {formatearFecha(op.fecha_cierre)}
                         </td>
                         <td
-                          className={`px-4 py-2 whitespace-nowrap text-sm text-right ${estaDescartada(op.estado)
+                          className={`px-4 py-3 whitespace-nowrap text-sm text-right font-mono ${estaDescartada(op.estado)
                             ? "text-gray-500 dark:text-gray-400"
-                            : "text-gray-600 dark:text-gray-300"
+                            : "text-gray-800 dark:text-gray-200"
                             }`}
                         >
                           {formatearMonto(op.monto_disponible)}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getEstadoColor(op.estado)}`}
+                            className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getEstadoColor(op.estado)}`}
                           >
                             {op.estado || "Sin estado"}
                           </span>
                         </td>
                         <td
-                          className={`px-4 py-2 text-sm max-w-[200px] ${estaDescartada(op.estado)
+                          className={`px-4 py-3 text-xs italic ${estaDescartada(op.estado)
                             ? "text-gray-500 dark:text-gray-400"
-                            : "text-gray-600 dark:text-gray-300"
+                            : "text-blue-600 dark:text-blue-400"
                             }`}
                           title={op.clave || ""}
                         >
-                          <div className="truncate">{op.clave || "-"}</div>
+                          <div className="whitespace-normal leading-tight min-w-[150px]">
+                            {op.clave || "-"}
+                          </div>
                         </td>
                         <td
-                          className={`px-4 py-2 whitespace-nowrap text-sm cursor-pointer ${estaDescartada(op.estado)
+                          className={`px-4 py-3 whitespace-nowrap text-sm cursor-pointer ${estaDescartada(op.estado)
                             ? "text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
-                            : "hover:bg-blue-50 dark:hover:bg-blue-950"
+                            : "text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/40"
                             }`}
                           onClick={() => setEditandoVendedor(op.id)}
                         >
@@ -658,10 +681,10 @@ export default function OportunidadesPage() {
                                 !open && setEditandoVendedor(null)
                               }
                             >
-                              <SelectTrigger className="h-8 w-full">
+                              <SelectTrigger className="h-8 w-full bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
                                 <SelectValue placeholder="Seleccionar" />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                                 <SelectItem value="sin-asignar">
                                   Sin asignar
                                 </SelectItem>
@@ -674,7 +697,7 @@ export default function OportunidadesPage() {
                             </Select>
                           ) : (
                             <div
-                              className={`flex items-center gap-2 ${estaDescartada(op.estado) ? "" : "text-gray-600 dark:text-gray-300"}`}
+                              className={`flex items-center gap-2 ${estaDescartada(op.estado) ? "" : "text-gray-700 dark:text-gray-300"}`}
                             >
                               {op.vendedor?.nombre || "-"}
                               <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100">
@@ -683,12 +706,12 @@ export default function OportunidadesPage() {
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-2 whitespace-nowrap text-right text-sm font-medium">
+                        <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end gap-2">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950"
+                              className="h-8 w-8 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-200 hover:bg-red-50 dark:hover:bg-red-900/50"
                               onClick={() => eliminarOportunidad(op.id)}
                               data-testid={`button-delete-oportunidad-${op.id}`}
                             >
