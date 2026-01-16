@@ -4,6 +4,7 @@
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const BASE_URL = "https://generativelanguage.googleapis.com/v1/models";
+const MODEL_NAME = "gemini-1.5-flash";
 
 export interface GeneratedContent {
     subject: string;
@@ -39,7 +40,7 @@ Reglas:
     // Limpiar el prefijo data:image/...;base64,
     const base64Data = base64Image.split(',')[1] || base64Image;
 
-    const response = await fetch(`${BASE_URL}/gemini-1.5-flash-latest:generateContent?key=${API_KEY}`, {
+    const response = await fetch(`${BASE_URL}/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
