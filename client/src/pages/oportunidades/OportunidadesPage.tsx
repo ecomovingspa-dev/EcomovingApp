@@ -231,15 +231,16 @@ export default function OportunidadesPage() {
             "cargos públicos",
           ].map((kw) => kw.toLowerCase());
 
-          const contieneKeyword = (fila: any): boolean => {
-            const campos = [fila["Nombre"] || "", fila["Organismo"] || ""];
-            const textoCompleto = campos.join(" ").toLowerCase();
-            return PALABRAS_CLAVE.some((kw) => textoCompleto.includes(kw));
-          };
-
           const oportunidadesFiltradas = jsonData
-            .filter(contieneKeyword)
             .map((row) => {
+              const campos = [row["Nombre"] || "", row["Organismo"] || ""];
+              const textoCompleto = campos.join(" ").toLowerCase();
+              const keywordsEncontradas = PALABRAS_CLAVE.filter((kw) =>
+                textoCompleto.includes(kw),
+              ).join(", ");
+
+              if (!keywordsEncontradas) return null;
+
               let monto = row["Monto Disponible"];
               if (typeof monto === "string") {
                 monto = monto
@@ -258,7 +259,9 @@ export default function OportunidadesPage() {
                 } else if (typeof fechaCierre === "string") {
                   const fechaStr = fechaCierre.trim();
                   // Soportar tanto / como - (ej: 19/01/2026 o 19-01-2026)
-                  const match = fechaStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:\s+(\d{1,2}:\d{1,2}(?::\d{1,2})?))?/);
+                  const match = fechaStr.match(
+                    /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:\s+(\d{1,2}:\d{1,2}(?::\d{1,2})?))?/,
+                  );
 
                   if (match) {
                     let [, d, m, y, h] = match;
@@ -267,7 +270,7 @@ export default function OportunidadesPage() {
                     const day = d.padStart(2, "0");
                     const time = h || "00:00";
                     // Formato ISO: YYYY-MM-DDTHH:mm:ss
-                    fechaCierre = `${year}-${month}-${day}T${time}${time.split(':').length === 2 ? ':00' : ''}`;
+                    fechaCierre = `${year}-${month}-${day}T${time}${time.split(":").length === 2 ? ":00" : ""}`;
                   }
                 }
               }
@@ -279,11 +282,12 @@ export default function OportunidadesPage() {
                 organismo: (row["Organismo"] || "").toString().trim() || null,
                 monto_disponible: montoNum,
                 estado: (row["Estado"] || "Publicada").toString().trim(),
-                clave: (row["Clave"] || "").toString().trim() || null,
+                clave:
+                  (row["Clave"] || "").toString().trim() || keywordsEncontradas,
                 vendedor_id: null,
               };
             })
-            .filter((op) => op.id);
+            .filter((op) => op !== null && op.id);
 
           if (oportunidadesFiltradas.length === 0) {
             setMensaje(
@@ -295,7 +299,7 @@ export default function OportunidadesPage() {
 
           const idsExistentes = new Set(oportunidades.map((op) => op.id));
           const nuevasOportunidades = oportunidadesFiltradas.filter(
-            (op) => !idsExistentes.has(op.id),
+            (op) => op && !idsExistentes.has(op.id),
           );
 
           if (nuevasOportunidades.length === 0) {
