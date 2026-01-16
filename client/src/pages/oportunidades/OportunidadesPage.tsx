@@ -249,10 +249,33 @@ export default function OportunidadesPage() {
               }
               const montoNum = parseFloat(monto) || null;
 
+              // Lógica de normalización de fecha y hora (Dato SENSIBLE)
+              let fechaCierre = row["Fecha de cierre"];
+              if (fechaCierre) {
+                if (fechaCierre instanceof Date) {
+                  // Si el objeto ya es una fecha (producido por el parser de Excel)
+                  fechaCierre = fechaCierre.toISOString();
+                } else if (typeof fechaCierre === "string") {
+                  const fechaStr = fechaCierre.trim();
+                  // Soportar tanto / como - (ej: 19/01/2026 o 19-01-2026)
+                  const match = fechaStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:\s+(\d{1,2}:\d{1,2}(?::\d{1,2})?))?/);
+
+                  if (match) {
+                    let [, d, m, y, h] = match;
+                    const year = y.length === 2 ? `20${y}` : y;
+                    const month = m.padStart(2, "0");
+                    const day = d.padStart(2, "0");
+                    const time = h || "00:00";
+                    // Formato ISO: YYYY-MM-DDTHH:mm:ss
+                    fechaCierre = `${year}-${month}-${day}T${time}${time.split(':').length === 2 ? ':00' : ''}`;
+                  }
+                }
+              }
+
               return {
                 id: (row["ID"] || "").toString().trim() || null,
                 nombre: (row["Nombre"] || "").toString().trim() || null,
-                fecha_cierre: row["Fecha de cierre"] || null,
+                fecha_cierre: fechaCierre || null,
                 organismo: (row["Organismo"] || "").toString().trim() || null,
                 monto_disponible: montoNum,
                 estado: (row["Estado"] || "Publicada").toString().trim(),
@@ -436,11 +459,10 @@ export default function OportunidadesPage() {
 
       {mensaje && (
         <div
-          className={`p-4 rounded-lg font-medium border flex items-center gap-2 ${
-            mensaje.includes("Error") || mensaje.includes("❌")
-              ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
-              : "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
-          }`}
+          className={`p-4 rounded-lg font-medium border flex items-center gap-2 ${mensaje.includes("Error") || mensaje.includes("❌")
+            ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+            : "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
+            }`}
         >
           {mensaje}
         </div>
@@ -540,13 +562,12 @@ export default function OportunidadesPage() {
                     oportunidadesPagina.map((op) => (
                       <tr
                         key={op.id}
-                        className={`transition-colors ${
-                          estaDescartada(op.estado)
-                            ? "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
-                            : estaVencida(op.fecha_cierre)
-                              ? "bg-red-50 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-900"
-                              : "hover:bg-gray-50 dark:hover:bg-gray-750"
-                        }`}
+                        className={`transition-colors ${estaDescartada(op.estado)
+                          ? "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                          : estaVencida(op.fecha_cierre)
+                            ? "bg-red-50 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-900"
+                            : "hover:bg-gray-50 dark:hover:bg-gray-750"
+                          }`}
                       >
                         <td className="px-4 py-2 text-center">
                           <Checkbox
@@ -560,43 +581,39 @@ export default function OportunidadesPage() {
                         </td>
                         <td className="px-4 py-2 whitespace-nowrap">
                           <div
-                            className={`font-medium text-sm truncate max-w-[200px] ${
-                              estaDescartada(op.estado)
-                                ? "text-gray-500 dark:text-gray-400"
-                                : "text-gray-900 dark:text-gray-100"
-                            }`}
+                            className={`font-medium text-sm truncate max-w-[200px] ${estaDescartada(op.estado)
+                              ? "text-gray-500 dark:text-gray-400"
+                              : "text-gray-900 dark:text-gray-100"
+                              }`}
                             title={op.id}
                           >
                             {op.id}
                           </div>
                         </td>
                         <td
-                          className={`px-4 py-2 whitespace-nowrap text-sm truncate max-w-[150px] ${
-                            estaDescartada(op.estado)
-                              ? "text-gray-500 dark:text-gray-400"
-                              : "text-gray-600 dark:text-gray-300"
-                          }`}
+                          className={`px-4 py-2 whitespace-nowrap text-sm truncate max-w-[150px] ${estaDescartada(op.estado)
+                            ? "text-gray-500 dark:text-gray-400"
+                            : "text-gray-600 dark:text-gray-300"
+                            }`}
                           title={op.organismo || ""}
                         >
                           {op.organismo || "-"}
                         </td>
                         <td
-                          className={`px-4 py-2 whitespace-nowrap text-sm ${
-                            estaDescartada(op.estado)
-                              ? "text-gray-500 dark:text-gray-400"
-                              : estaVencida(op.fecha_cierre)
-                                ? "text-red-600 dark:text-red-400 font-medium"
-                                : "text-gray-600 dark:text-gray-300"
-                          }`}
+                          className={`px-4 py-2 whitespace-nowrap text-sm ${estaDescartada(op.estado)
+                            ? "text-gray-500 dark:text-gray-400"
+                            : estaVencida(op.fecha_cierre)
+                              ? "text-red-600 dark:text-red-400 font-medium"
+                              : "text-gray-600 dark:text-gray-300"
+                            }`}
                         >
                           {formatearFecha(op.fecha_cierre)}
                         </td>
                         <td
-                          className={`px-4 py-2 whitespace-nowrap text-sm text-right ${
-                            estaDescartada(op.estado)
-                              ? "text-gray-500 dark:text-gray-400"
-                              : "text-gray-600 dark:text-gray-300"
-                          }`}
+                          className={`px-4 py-2 whitespace-nowrap text-sm text-right ${estaDescartada(op.estado)
+                            ? "text-gray-500 dark:text-gray-400"
+                            : "text-gray-600 dark:text-gray-300"
+                            }`}
                         >
                           {formatearMonto(op.monto_disponible)}
                         </td>
@@ -608,21 +625,19 @@ export default function OportunidadesPage() {
                           </span>
                         </td>
                         <td
-                          className={`px-4 py-2 text-sm max-w-[200px] ${
-                            estaDescartada(op.estado)
-                              ? "text-gray-500 dark:text-gray-400"
-                              : "text-gray-600 dark:text-gray-300"
-                          }`}
+                          className={`px-4 py-2 text-sm max-w-[200px] ${estaDescartada(op.estado)
+                            ? "text-gray-500 dark:text-gray-400"
+                            : "text-gray-600 dark:text-gray-300"
+                            }`}
                           title={op.clave || ""}
                         >
                           <div className="truncate">{op.clave || "-"}</div>
                         </td>
                         <td
-                          className={`px-4 py-2 whitespace-nowrap text-sm cursor-pointer ${
-                            estaDescartada(op.estado)
-                              ? "text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
-                              : "hover:bg-blue-50 dark:hover:bg-blue-950"
-                          }`}
+                          className={`px-4 py-2 whitespace-nowrap text-sm cursor-pointer ${estaDescartada(op.estado)
+                            ? "text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
+                            : "hover:bg-blue-50 dark:hover:bg-blue-950"
+                            }`}
                           onClick={() => setEditandoVendedor(op.id)}
                         >
                           {editandoVendedor === op.id ? (
