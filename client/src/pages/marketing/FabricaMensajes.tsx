@@ -15,11 +15,13 @@ import {
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { optimizeImage } from "../../utils/image";
-import { generateMarketingContent, GeneratedContent } from "../../lib/gemini";
+import { generateMarketingContent, improveProductImage, GeneratedContent } from "../../lib/gemini";
 
 export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [imagenOriginal, setImagenOriginal] = useState<string | null>(null);
+    const [imagenMejorada, setImagenMejorada] = useState<string | null>(null);
     const [procesando, setProcesando] = useState(false);
+    const [mejorandoImagen, setMejorandoImagen] = useState(false);
     const [guardando, setGuardando] = useState(false);
     const [mensaje, setMensaje] = useState("");
     const [contenido, setContenido] = useState<GeneratedContent | null>(null);
@@ -36,6 +38,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                 const base64 = event.target?.result as string;
                 const optimized = await optimizeImage(base64);
                 setImagenOriginal(optimized);
+                setImagenMejorada(null); // Reset mejorada al subir nueva
                 setProcesando(false);
             };
             reader.readAsDataURL(file);
@@ -46,12 +49,30 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         }
     };
 
+    const mejorarImagen = async () => {
+        if (!imagenOriginal) return;
+        try {
+            setMejorandoImagen(true);
+            setMensaje("🎨 Aplicando retoque profesional con Imagen 3...");
+            const mejorada = await improveProductImage(imagenOriginal);
+            setImagenMejorada(mejorada);
+            setMensaje("✨ ¡Imagen mejorada con éxito!");
+            setTimeout(() => setMensaje(""), 3000);
+        } catch (err: any) {
+            console.error(err);
+            setMensaje("❌ Error al mejorar imagen: " + err.message);
+        } finally {
+            setMejorandoImagen(false);
+        }
+    };
+
     const generarConIA = async () => {
         if (!imagenOriginal) return;
         try {
             setProcesando(true);
             setMensaje("🤖 Gemini está analizando tu producto...");
-            const result = await generateMarketingContent(imagenOriginal);
+            // Usar la imagen mejorada si existe para el análisis y copia
+            const result = await generateMarketingContent(imagenMejorada || imagenOriginal);
             setContenido(result);
             setMensaje("✨ ¡Contenido generado con éxito!");
             setTimeout(() => setMensaje(""), 3000);
@@ -69,15 +90,14 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         try {
             setGuardando(true);
 
-            // 1. (Opcional) Subir imagen a Supabase Storage
-            // Por ahora guardaremos el HTML con el marcador IMAGE_PLACEHOLDER 
-            // y la imagen base64 como referencia temporal o URL si estuviera disponible.
+            // Usar la imagen mejorada si existe, sino la original
+            const imagenAGuardar = imagenMejorada || imagenOriginal;
 
             const { error } = await supabase
                 .from("marketing")
                 .insert([{
                     asunto: contenido.subject,
-                    html: contenido.html.replace("IMAGE_PLACEHOLDER", imagenOriginal),
+                    html: contenido.html.replace("IMAGE_PLACEHOLDER", imagenAGuardar),
                 }]);
 
             if (error) throw error;
@@ -145,9 +165,14 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                 {/* Columna Izquierda: Imagen y Control */}
                 <div className="space-y-6">
                     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm aspect-square flex flex-col items-center justify-center relative group">
-                        {imagenOriginal ? (
+                        {imagenMejorada || imagenOriginal ? (
                             <>
-                                <img src={imagenOriginal} className="w-full h-full object-contain p-4" alt="Original" />
+                                <img src={imagenMejorada || imagenOriginal || ""} className="w-full h-full object-contain p-4 transition-all duration-500" alt="Vista previa" />
+                                {imagenMejorada && (
+                                    <div className="absolute top-4 right-4 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg animate-bounce">
+                                        IA MEJORADA
+                                    </div>
+                                )}
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                     <Button variant="secondary" onClick={() => fileInputRef.current?.click()} size="sm">
                                         Cambiar Imagen
@@ -177,20 +202,33 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                         />
                     </div>
 
-                    <Button
-                        className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 dark:shadow-none transition-transform active:scale-95"
-                        disabled={!imagenOriginal || procesando}
-                        onClick={generarConIA}
-                    >
-                        {procesando ? (
-                            <Loader2 className="h-6 w-6 animate-spin" />
-                        ) : (
-                            <>
-                                <Sparkles className="h-6 w-6" />
-                                Generar Contenido con Gemini
-                            </>
+                    <div className="grid grid-cols-1 gap-3">
+                        {!imagenMejorada && imagenOriginal && (
+                            <Button
+                                className="h-14 bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-bold flex items-center justify-center gap-3 shadow-lg transition-transform active:scale-95"
+                                disabled={mejorandoImagen}
+                                onClick={mejorarImagen}
+                            >
+                                {mejorandoImagen ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
+                                Mejorar con IA Pro
+                            </Button>
                         )}
-                    </Button>
+
+                        <Button
+                            className="h-14 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 dark:shadow-none transition-transform active:scale-95"
+                            disabled={!imagenOriginal || procesando}
+                            onClick={generarConIA}
+                        >
+                            {procesando ? (
+                                <Loader2 className="h-6 w-6 animate-spin" />
+                            ) : (
+                                <>
+                                    <Edit3 className="h-6 w-6" />
+                                    Generar Contenido IA
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Columna Derecha: Resultado */}

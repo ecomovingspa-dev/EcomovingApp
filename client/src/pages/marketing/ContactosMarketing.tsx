@@ -77,33 +77,35 @@ export default function Marketing() {
     <div className="max-w-7xl mx-auto p-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
           👥 Monitor de Contactos
         </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
+        <p className="text-gray-600 dark:text-gray-400 mt-2 font-medium">
           Monitorea el progreso de la campaña de email automatizada
         </p>
       </div>
 
       {/* Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-all hover:bg-gray-50 dark:hover:bg-gray-700/50">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Contactos Activos</p>
-              <p className="text-3xl font-bold text-green-600 dark:text-green-500">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-tight">Contactos Activos</p>
+              <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-1">
                 {contactos.length}
               </p>
             </div>
-            <ToggleRight className="h-12 w-12 text-green-500 opacity-20" />
+            <div className="h-12 w-12 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
+              <ToggleRight className="h-6 w-6 text-green-600 dark:text-green-500" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-all hover:bg-gray-50 dark:hover:bg-gray-700/50">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">En Progreso</p>
-              <p className="text-3xl font-bold text-blue-600 dark:text-blue-500">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-tight">En Progreso</p>
+              <p className="text-3xl font-bold text-blue-600 dark:text-blue-400 mt-1">
                 {
                   contactos.filter((c) => {
                     const etapa = parseInt(c.etapa_envio || "0");
@@ -112,22 +114,26 @@ export default function Marketing() {
                 }
               </p>
             </div>
-            <Mail className="h-12 w-12 text-blue-500 opacity-20" />
+            <div className="h-12 w-12 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+              <Mail className="h-6 w-6 text-blue-600 dark:text-blue-500" />
+            </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-all hover:bg-gray-50 dark:hover:bg-gray-700/50">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Completados</p>
-              <p className="text-3xl font-bold text-purple-600 dark:text-purple-500">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-tight">Completados</p>
+              <p className="text-3xl font-bold text-purple-600 dark:text-purple-400 mt-1">
                 {
                   contactos.filter((c) => parseInt(c.etapa_envio || "0") >= 100)
                     .length
                 }
               </p>
             </div>
-            <Mail className="h-12 w-12 text-purple-500 opacity-20" />
+            <div className="h-12 w-12 rounded-full bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
+              <Mail className="h-6 w-6 text-purple-600 dark:text-purple-500" />
+            </div>
           </div>
         </div>
       </div>
@@ -184,14 +190,14 @@ export default function Marketing() {
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {contactosFiltrados.map((contacto) => (
-                <tr key={contacto.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
+                <tr key={contacto.id} className="hover:bg-indigo-50/5 dark:hover:bg-indigo-900/10 transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0">
                   {/* Contacto */}
                   <td className="px-6 py-4">
                     <div>
-                      <p className="font-semibold text-gray-900 dark:text-gray-100">
+                      <p className="font-bold text-gray-900 dark:text-gray-100">
                         {contacto.nombre}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{contacto.correo}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">{contacto.correo}</p>
                     </div>
                   </td>
 
