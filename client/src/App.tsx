@@ -10,6 +10,7 @@ import CotizacionSelector from "./pages/cotizaciones/CotizacionSelector";
 import CotizacionForm from "./pages/cotizaciones/CotizacionForm";
 import OportunidadesPage from "./pages/oportunidades/OportunidadesPage";
 import OportunidadForm from "./pages/oportunidades/OportunidadForm";
+import ConfiguracionKeywords from "./pages/oportunidades/ConfiguracionKeywords";
 import VentasPage from "./pages/ventas/VentasPage";
 import Marketing from "./pages/marketing/marketing";
 
@@ -40,6 +41,7 @@ export default function App() {
           {/* Oportunidades */}
           <Route path="oportunidades" element={<OportunidadesPage />} />
           <Route path="oportunidades/nueva" element={<OportunidadForm />} />
+          <Route path="oportunidades/configuracion" element={<ConfiguracionKeywords />} />
           <Route path="oportunidades/:id" element={<OportunidadForm />} />
           {/* Marketing */}
           <Route path="marketing" element={<Marketing />} />

@@ -14,10 +14,12 @@ import {
   Trash2,
   Briefcase,
   Search,
+  Upload,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
-  Upload,
+  Loader2,
+  Settings,
 } from "lucide-react";
 import { useRef } from "react";
 import { useVendedores } from "../../hooks/useVendedores";
@@ -49,6 +51,7 @@ export default function OportunidadesPage() {
   const [limpiando, setLimpiando] = useState(false);
   const [procesando, setProcesando] = useState(false);
   const [editandoVendedor, setEditandoVendedor] = useState<string | null>(null);
+  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsPorPagina = 50;
 
@@ -101,13 +104,67 @@ export default function OportunidadesPage() {
         .eq("id", id);
 
       if (error) throw error;
-
-      setMensaje("Oportunidad eliminada");
-      cargarOportunidades();
+      setOportunidades(oportunidades.filter((op) => op.id !== id));
+      setSeleccionados((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setMensaje("✅ Oportunidad eliminada");
       setTimeout(() => setMensaje(""), 3000);
     } catch (error: any) {
       console.error("Error:", error);
-      setMensaje("Error al eliminar: " + error.message);
+      alert("Error al eliminar: " + error.message);
+    }
+  };
+
+  const eliminarSeleccionadas = async () => {
+    if (seleccionados.size === 0) return;
+    if (
+      !confirm(
+        `¿Estás seguro de que deseas eliminar las ${seleccionados.size} oportunidades seleccionadas?`,
+      )
+    )
+      return;
+
+    try {
+      const idsAEliminar = Array.from(seleccionados);
+      const { error } = await supabase
+        .from("oportunidades")
+        .delete()
+        .in("id", idsAEliminar);
+
+      if (error) throw error;
+
+      setOportunidades(
+        oportunidades.filter((op) => !seleccionados.has(op.id)),
+      );
+      setSeleccionados(new Set());
+      setMensaje(`✅ ${idsAEliminar.length} oportunidades eliminadas`);
+      setTimeout(() => setMensaje(""), 4000);
+    } catch (error: any) {
+      console.error("Error:", error);
+      alert("Error al eliminar seleccionadas: " + error.message);
+    }
+  };
+
+  const toggleSeleccion = (id: string) => {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSeleccionarTodo = () => {
+    if (seleccionados.size === oportunidadesFiltradas.length) {
+      setSeleccionados(new Set());
+    } else {
+      setSeleccionados(new Set(oportunidadesFiltradas.map((op) => op.id)));
     }
   };
 
@@ -218,18 +275,22 @@ export default function OportunidadesPage() {
             return;
           }
 
-          const PALABRAS_CLAVE = [
-            "evaluación psicolaboral",
-            "fotocopiadoras",
-            "impresión",
-            "digitación",
-            "servicio",
-            "arriendo",
-            "multifuncionales",
-            "psicométricas",
-            "postulaciones",
-            "cargos públicos",
-          ].map((kw) => kw.toLowerCase());
+          const { data: keywordsDB, error: errorDB } = await supabase
+            .from("config_oportunidades")
+            .select("keyword");
+
+          if (errorDB) {
+            console.error("Error cargando keywords:", errorDB);
+            throw new Error("No se pudieron cargar las palabras clave de configuración");
+          }
+
+          const PALABRAS_CLAVE = (keywordsDB || []).map((k) => k.keyword.toLowerCase());
+
+          if (PALABRAS_CLAVE.length === 0) {
+            setMensaje("⚠️ No hay palabras clave configuradas. Ve a configuración.");
+            setTimeout(() => setMensaje(""), 4000);
+            return;
+          }
 
           const oportunidadesFiltradas = jsonData
             .map((row) => {
@@ -257,12 +318,13 @@ export default function OportunidadesPage() {
               const estadoVal = getVal(["Estado"]);
               const claveVal = getVal(["Clave"]);
 
-              // Identificar palabras clave encontradas
+              // Identificar palabras clave encontradas (Búsqueda por palabra completa para evitar falsos positivos)
               const campos = [nombreVal || "", organismoVal || ""];
               const textoCompleto = campos.join(" ").toLowerCase();
-              const keywordsEncontradas = PALABRAS_CLAVE.filter((kw) =>
-                textoCompleto.includes(kw),
-              ).join(", ");
+              const keywordsEncontradas = PALABRAS_CLAVE.filter((kw) => {
+                const regex = new RegExp(`\\b${kw}\\b`, "i");
+                return regex.test(textoCompleto);
+              }).join(", ");
 
               if (!keywordsEncontradas) return null;
 
@@ -450,27 +512,51 @@ export default function OportunidadesPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          {seleccionados.size > 0 && (
+            <Button
+              variant="destructive"
+              onClick={eliminarSeleccionadas}
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Eliminar {seleccionados.size}
+            </Button>
+          )}
           <Button
-            onClick={limpiarVencidas}
             variant="outline"
-            className="border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950"
+            onClick={limpiarVencidas}
             disabled={limpiando}
-            data-testid="button-limpiar-vencidas"
+            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border-red-200 dark:border-red-900/50 flex items-center gap-2"
           >
-            <RefreshCw
-              className={`mr-2 h-4 w-4 ${limpiando ? "animate-spin" : ""}`}
-            />
-            {limpiando ? "Limpiando..." : "Limpiar Vencidas"}
+            {limpiando ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Limpiar Vencidas
           </Button>
+
           <Button
             onClick={() => fileInputRef.current?.click()}
             disabled={procesando}
-            variant="outline"
-            className="border-green-200 dark:border-green-800 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-950"
-            data-testid="button-subir-archivo"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
           >
-            <Upload className="mr-2 h-4 w-4" />
+            {procesando ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
             Subir Archivo
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/oportunidades/configuracion")}
+            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            title="Configurar palabras clave"
+          >
+            <Settings className="h-5 w-5" />
           </Button>
           <input
             type="file"
@@ -555,7 +641,16 @@ export default function OportunidadesPage() {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
-                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12"></th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">
+                      <Checkbox
+                        checked={
+                          oportunidadesFiltradas.length > 0 &&
+                          seleccionados.size === oportunidadesFiltradas.length
+                        }
+                        onCheckedChange={toggleSeleccionarTodo}
+                        title="Seleccionar todo"
+                      />
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">
                       ID
                     </th>
@@ -596,12 +691,9 @@ export default function OportunidadesPage() {
                       >
                         <td className="px-4 py-3 text-center">
                           <Checkbox
-                            checked={estaDescartada(op.estado)}
-                            onCheckedChange={() =>
-                              toggleEstadoDescartada(op.id, op.estado)
-                            }
+                            checked={seleccionados.has(op.id)}
+                            onCheckedChange={() => toggleSeleccion(op.id)}
                             className="cursor-pointer"
-                            data-testid={`checkbox-descartada-${op.id}`}
                           />
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
