@@ -18,3 +18,6 @@ CREATE POLICY "Permitir actualización para todos" ON marketing FOR UPDATE USING
 
 -- Nota: Si tu sistema ya tiene la tabla pero le falta la columna html, podrías ejecutar:
 -- ALTER TABLE marketing ADD COLUMN IF NOT EXISTS html TEXT;
+
+-- FORZAR RECARGA DE ESQUEMA (Solución al error "schema cache")
+NOTIFY pgrst, 'reload schema';
