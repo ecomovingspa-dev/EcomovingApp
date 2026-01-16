@@ -234,38 +234,36 @@ export default function CotizacionesPage() {
             <table className="w-full">
               <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                 <tr>
-                  <tr>
-                    <th className="px-3 py-3 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                      N°
-                    </th>
-                    <th className="px-3 py-3 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                      Cliente
-                    </th>
-                    <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                      Neto
-                    </th>
-                    <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                      IVA
-                    </th>
-                    <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                      Total
-                    </th>
-                    <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                      MG
-                    </th>
-                    <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                      Ganancia
-                    </th>
-                    <th className="px-3 py-3 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                      Vendedor
-                    </th>
-                    <th className="px-3 py-3 text-center text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="px-3 py-3 text-center text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                      Acc.
-                    </th>
-                  </tr>
+                  <th className="px-3 py-3 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                    N°
+                  </th>
+                  <th className="px-3 py-3 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                    Cliente
+                  </th>
+                  <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                    Neto
+                  </th>
+                  <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                    IVA
+                  </th>
+                  <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                    Total
+                  </th>
+                  <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                    MG
+                  </th>
+                  <th className="px-3 py-3 text-right text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                    Ganancia
+                  </th>
+                  <th className="px-3 py-3 text-left text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                    Vendedor
+                  </th>
+                  <th className="px-3 py-3 text-center text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-3 py-3 text-center text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+                    Acc.
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -274,38 +272,40 @@ export default function CotizacionesPage() {
                     key={cot.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
-                    <td className="px-3 py-3 text-xs font-bold text-blue-600 dark:text-blue-400">
+                    <td className="px-3 py-3 text-xs font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                       {cot.numero_cotizacion || "-"}
                     </td>
-                    <td className="px-3 py-3 text-xs text-gray-700 dark:text-gray-300 font-medium truncate max-w-[150px]">
-                      {cot.cuentas?.cliente || "-"}
+                    <td className="px-3 py-3 text-xs text-gray-700 dark:text-gray-300 font-medium">
+                      <div className="max-w-[180px] lg:max-w-none truncate lg:whitespace-normal">
+                        {cot.cuentas?.cliente || "-"}
+                      </div>
                     </td>
-                    <td className="px-3 py-3 text-xs text-right text-gray-900 dark:text-gray-100 font-medium">
+                    <td className="px-3 py-3 text-xs text-right text-gray-900 dark:text-gray-100 font-medium whitespace-nowrap">
                       ${formatearNumero(cot.total_neto)}
                     </td>
-                    <td className="px-3 py-3 text-xs text-right text-gray-500 dark:text-gray-400 italic">
+                    <td className="px-3 py-3 text-xs text-right text-gray-500 dark:text-gray-400 italic whitespace-nowrap">
                       ${formatearNumero(cot.iva)}
                     </td>
-                    <td className="px-3 py-3 text-xs text-right text-gray-900 dark:text-gray-100 font-bold">
+                    <td className="px-3 py-3 text-xs text-right text-gray-900 dark:text-gray-100 font-bold whitespace-nowrap">
                       ${formatearNumero(cot.total)}
                     </td>
-                    <td className="px-3 py-3 text-xs text-right text-blue-600 dark:text-blue-400 font-medium">
+                    <td className="px-3 py-3 text-xs text-right text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap">
                       {formatearPorcentaje(cot.mg)}
                     </td>
-                    <td className="px-3 py-3 text-xs text-right text-emerald-600 dark:text-emerald-400 font-medium">
+                    <td className="px-3 py-3 text-xs text-right text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
                       ${formatearNumero(cot.ganancias)}
                     </td>
-                    <td className="px-3 py-3 text-[11px] text-gray-600 dark:text-gray-400 font-medium">
+                    <td className="px-3 py-3 text-[11px] text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
                       {cot.vendedores?.nombre || "-"}
                     </td>
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-3 py-3 text-center whitespace-nowrap">
                       <span
                         className={`px-2 py-0.5 text-[9px] rounded-full uppercase font-bold tracking-tighter ${getEstadoColor(cot.estado_cotizacion)}`}
                       >
                         {cot.estado_cotizacion || "Sin estado"}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-center">
+                    <td className="px-3 py-3 text-center whitespace-nowrap">
                       <div className="flex justify-center gap-1.5">
                         <button
                           onClick={() => navigate(`/cotizaciones/${cot.id}`)}
