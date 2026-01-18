@@ -45,46 +45,72 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       report.processed++;
 
       try {
-        // Fetch content based on sequence index
-        // Mapping contact.indice_secuencia -> marketing.id
+        // --- FACTORY LOGIC START ---
+        // Fetch content based on sequence index (Step #1 -> nombre_envio = 1)
         let { data: messageData, error: msgError } = await supabase
           .from('marketing')
           .select('*')
-          .eq('numero_secuencia', contact.indice_secuencia)
+          .eq('nombre_envio', contact.indice_secuencia)
+          .eq('activo', true) // Only active emails
           .maybeSingle();
 
-        // If no message found for this index (end of sequence?), wrap around?
+        // If no message found, try to restart the sequence
         if (!messageData) {
-          // Circular logic: Restart to 1
           const RESTART_INDEX = 1;
           if (contact.indice_secuencia !== RESTART_INDEX) {
-            // Try fetching the first one
             const { data: firstMsg } = await supabase
               .from('marketing')
               .select('*')
-              .eq('numero_secuencia', RESTART_INDEX)
+              .eq('nombre_envio', RESTART_INDEX)
+              .eq('activo', true)
               .maybeSingle();
 
             if (firstMsg) {
               messageData = firstMsg;
-              // Update contact's sequence to match
               contact.indice_secuencia = RESTART_INDEX;
             }
           }
         }
 
         if (!messageData) {
-          report.errors.push(`No content found for sequence ${contact.indice_secuencia} (Contact: ${contact.id})`);
+          report.errors.push(`No active content for sequence ${contact.indice_secuencia} (Contact: ${contact.id})`);
           continue;
         }
 
+        // --- ASSET ASSEMBLY (The Factory) ---
+        // 1. Construct Image URL from Storage
+        const bucketName = 'imagenes-marketing';
+        const imagePath = messageData.nombre_imagen || `imagen_${messageData.nombre_envio}.jpg`;
+        const imageUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${imagePath}`;
+
+        // 2. Fetch Logo URL (Assuming it's in a 'public' or similar bucket)
+        const logoUrl = `${supabaseUrl}/storage/v1/object/public/configuracion/logo.png`;
+
+        // 3. Prepare HTML Content
+        let finalHtml = messageData.cuerpo_html || '';
+
+        // Embed the main marketing image if the placeholder exists
+        finalHtml = finalHtml.replace('{{IMG_URL}}', imageUrl);
+
+        // Add Signature with Logo at the end
+        const signatureHtml = `
+          <br><br>
+          <hr style="border:none; border-top:1px solid #eee; margin:20px 0;">
+          <div style="font-family: Arial, sans-serif; color: #666;">
+            <img src="${logoUrl}" alt="Ecomoving Logo" style="width:150px; margin-bottom:10px;"><br>
+            <strong>Equipo Ecomoving</strong><br>
+            <a href="https://www.ecomoving.cl" style="color: #007bff; text-decoration: none;">www.ecomoving.cl</a>
+          </div>
+        `;
+        finalHtml += signatureHtml;
+
         // 4. Send via Brevo
         const emailPayload = {
-          sender: { name: "Mario", email: "mario@tudominio.com" }, // Needs to be configured or dynamic
-          to: [{ email: contact.correo }], // Changed from contact.email
+          sender: { name: "Ecomoving", email: "ventas@ecomoving.cl" },
+          to: [{ email: contact.correo }],
           subject: messageData.asunto,
-          htmlContent: messageData.cuerpo_html,
-          textContent: messageData.cuerpo // ✅ Agregamos versión texto plano para Brevo
+          htmlContent: finalHtml,
+          textContent: messageData.cuerpodetalle || "Ver correo en formato HTML"
         };
 
         await axios.post('https://api.brevo.com/v3/smtp/email', emailPayload, {
@@ -95,9 +121,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         });
 
-        // 5. Update Contact
+        // 5. Update Contact for the next sequence (+7 days)
         const nextDate = new Date();
-        nextDate.setDate(nextDate.getDate() + 7); // Schedule +7 days
+        nextDate.setDate(nextDate.getDate() + 7);
 
         await supabase
           .from('contactos')
@@ -109,6 +135,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           .eq('id', contact.id);
 
         report.sent++;
+        // --- FACTORY LOGIC END ---
 
       } catch (err: any) {
         console.error(`Error processing contact ${contact.id}:`, err);
