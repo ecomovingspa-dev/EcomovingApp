@@ -17,25 +17,28 @@ export interface GeneratedContent {
 }
 
 /**
- * Mejora la imagen del producto usando Gemini 2.5 Flash Image (Nano Banana)
- * Este modelo es específico para generación y edición de imágenes multimodales.
+ * Mejora la imagen del producto priorizando la BELLEZA del fondo y la FIDELIDAD del producto.
+ * Utiliza un enfoque multimodal avanzado.
  */
 export const improveProductImage = async (base64Image: string): Promise<string> => {
   if (!API_KEY) throw new Error("VITE_GEMINI_API_KEY no está configurada.");
 
-  const MODEL_GEN = "gemini-2.5-flash-image";
+  // Usamos el modelo más capaz de seguir instrucciones complejas y generar imágenes bellas en v1beta
+  const MODEL_GEN = "gemini-2.0-flash-exp-image-generation";
   const base64Data = base64Image.split(',')[1] || base64Image;
 
-  // Prompt estricto para preservar el producto y logos
-  const prompt = `Task: Background replacement for a product photo.
-STRICT REQUIREMENTS:
-1. DO NOT MODIFY THE PRODUCT: The product in the foreground (shape, texture, logos, colors) must remain 100% identical to the original image.
-2. NO RETOUCHING: Do not clean, smooth, or alter the product/backpack in any way.
-3. LOGOS: The embroidered or printed logos must be preserved without any changes.
-4. BACKGROUND: Only replace the existing background with a professional studio or high-end lifestyle setting (e.g., a neutral professional table or clean studio background).
-5. LIGHTING: Improve the environment's lighting to make it look professional, but don't let it change the product's appearance.
+  // Prompt equilibrado entre "Belleza" y "No tocar el producto"
+  const prompt = `Task: Professional Background Replacement.
+Product provided: [IMAGE]
 
-The ultimate goal is to keep the product exactly as is, but in a much better, professional environment.`;
+INSTRUCTIONS FOR THE AI:
+1. OVERALL BEAUTY: Create a stunning, high-end commercial photo. The final result should look like it was shot in a professional lighting studio with a luxury lifestyle aesthetic.
+2. PRESERVE THE PRODUCT: The backpack/product in the image must remain EXACTLY as it is in the original. Do not retouch the fabric, do not change the texture, and DO NOT alter the logos. The logos must be clear and identical.
+3. BACKGROUND TRANSFORMATION: Replace the current background with a beautiful, modern, and clean professional setting. Examples: A soft-textured stone surface, a high-end minimalist wooden table, or a neutral studio gradient with cinematic bokeh.
+4. LIGHTING & COLOR: Enhance the LIGHTING of the scene to be cinematic and professional, but ensure the COLORS of the product remain true to the original.
+5. QUALITY: 2K resolution, photorealistic, premium feel.
+
+RESPONSE FORMAT: You MUST return a generated image.`;
 
   const response = await fetch(`${BASE_URL}/${MODEL_GEN}:generateContent?key=${API_KEY}`, {
     method: "POST",
@@ -48,37 +51,30 @@ The ultimate goal is to keep the product exactly as is, but in a much better, pr
         ]
       }],
       generationConfig: {
-        // Importante: Algunos modelos requieren TEXT junto con IMAGE
-        responseModalities: ["TEXT", "IMAGE"]
+        responseModalities: ["IMAGE"]
       }
     })
   });
 
   if (!response.ok) {
     const error = await response.json();
-    throw new Error(error.error?.message || "Error al mejorar la imagen con IA Pro");
+    throw new Error(error.error?.message || "Error al conectar con la IA de mejora");
   }
 
   const result = await response.json();
 
-  // Buscar el componente de imagen en la respuesta multimodal
-  const candidates = result.candidates || [];
-  let generatedBase64 = null;
-
-  for (const candidate of candidates) {
-    const parts = candidate.content?.parts || [];
-    for (const part of parts) {
-      if (part.inline_data && part.inline_data.data) {
-        generatedBase64 = part.inline_data.data;
-        break;
-      }
-    }
-    if (generatedBase64) break;
-  }
+  // Extraer la imagen de la respuesta multimodal
+  const generatedBase64 = result.candidates?.[0]?.content?.parts?.find((p: any) => p.inline_data)?.inline_data?.data;
 
   if (!generatedBase64) {
+    // Si no hay imagen, buscamos el motivo en el texto para ayudar al usuario
     const textReason = result.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text;
-    throw new Error(textReason || "El modelo no generó una imagen. Intenta con un prompt más simple o revisa la calidad de la foto.");
+
+    if (textReason && textReason.toLowerCase().includes("logos") || textReason.toLowerCase().includes("policy")) {
+      throw new Error("La IA ha detectado logos protegidos o restricciones de fidelidad y no ha podido generar la imagen para evitar alterarlos. Intenta con una toma más cercana o fondo más simple.");
+    }
+
+    throw new Error(textReason || "El modelo no pudo generar la imagen con el estándar de belleza y fidelidad solicitado. Por favor, intenta de nuevo.");
   }
 
   return `data:image/png;base64,${generatedBase64}`;
