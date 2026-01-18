@@ -15,72 +15,14 @@ import {
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { optimizeImage } from "../../utils/image";
-import {
-    generateMarketingContent,
-    improveProductImage,
-    GeneratedContent,
-    ImageEnhancementOptions
-} from "../../lib/gemini";
-
-// Definición de las categorías y sus opciones (Smart Chips)
-const CATEGORIES = {
-    background_type: {
-        label: "Fondo",
-        options: [
-            { id: "white", label: "Blanco", desc: "Estudio limpio profesional" },
-            { id: "gray_gradient", label: "Gris", desc: "Degradado suave elegante" },
-            { id: "black", label: "Negro", desc: "Contraste dramático premium" },
-            { id: "custom", label: "Bosque/Playa", desc: "Ambientes naturales" },
-        ]
-    },
-    lighting_style: {
-        label: "Iluminación",
-        options: [
-            { id: "soft", label: "Suave", desc: "Luz de estudio difuminada" },
-            { id: "dramatic", label: "Dramática", desc: "Sombras marcadas cine" },
-            { id: "neutral", label: "Neutral", desc: "Balance de blancos natural" },
-        ]
-    },
-    shadow: {
-        label: "Sombra/Reflejo",
-        options: [
-            { id: "soft", label: "Sombra", desc: "Sombra suave bajo el producto" },
-            { id: "reflection", label: "Reflejo", desc: "Reflejo sutil tipo cristal" },
-            { id: "none", label: "Ninguno", desc: "Sin efectos adicionales" },
-        ]
-    },
-    output_quality: {
-        label: "Calidad",
-        options: [
-            { id: "high", label: "Alta", desc: "Nitidez estándar catálogo" },
-            { id: "ultra", label: "Ultra", desc: "Máximo detalle y enfoque" },
-        ]
-    },
-    humanElement: {
-        label: "Interacción",
-        options: [
-            { id: "none", label: "Producto solo", desc: "Enfoque 100% en objeto" },
-            { id: "using", label: "Persona", desc: "Persona usando el producto" },
-            { id: "nearby", label: "Entorno", desc: "Persona cerca del producto" },
-        ]
-    }
-};
+import { generateMarketingContent, GeneratedContent } from "../../lib/gemini";
 
 export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [imagenOriginal, setImagenOriginal] = useState<string | null>(null);
-    const [imagenMejorada, setImagenMejorada] = useState<string | null>(null);
     const [procesando, setProcesando] = useState(false);
-    const [mejorandoImagen, setMejorandoImagen] = useState(false);
     const [guardando, setGuardando] = useState(false);
     const [mensaje, setMensaje] = useState("");
     const [contenido, setContenido] = useState<GeneratedContent | null>(null);
-    const [opcionesMejora, setOpcionesMejora] = useState<ImageEnhancementOptions>({
-        background_type: "white",
-        lighting_style: "soft",
-        shadow: "soft",
-        output_quality: "high",
-        humanElement: "none"
-    });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,7 +36,6 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                 const base64 = event.target?.result as string;
                 const optimized = await optimizeImage(base64);
                 setImagenOriginal(optimized);
-                setImagenMejorada(null); // Reset mejorada al subir nueva
                 setProcesando(false);
             };
             reader.readAsDataURL(file);
@@ -105,30 +46,12 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         }
     };
 
-    const mejorarImagen = async () => {
-        if (!imagenOriginal) return;
-        try {
-            setMejorandoImagen(true);
-            setMensaje("🎨 La IA está aplicando tu configuración personalizada...");
-            const mejorada = await improveProductImage(imagenOriginal, opcionesMejora);
-            setImagenMejorada(mejorada);
-            setMensaje("✨ ¡Imagen mejorada con éxito!");
-            setTimeout(() => setMensaje(""), 3000);
-        } catch (err: any) {
-            console.error(err);
-            setMensaje("❌ Error al mejorar imagen: " + err.message);
-        } finally {
-            setMejorandoImagen(false);
-        }
-    };
-
     const generarConIA = async () => {
         if (!imagenOriginal) return;
         try {
             setProcesando(true);
             setMensaje("🤖 Gemini está analizando tu producto...");
-            // Usar la imagen mejorada si existe para el análisis y copia
-            const result = await generateMarketingContent(imagenMejorada || imagenOriginal);
+            const result = await generateMarketingContent(imagenOriginal);
             setContenido(result);
             setMensaje("✨ ¡Contenido generado con éxito!");
             setTimeout(() => setMensaje(""), 3000);
@@ -146,9 +69,6 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         try {
             setGuardando(true);
 
-            // Usar la imagen mejorada si existe, sino la original
-            const imagenAGuardar = imagenMejorada || imagenOriginal;
-
             // Obtener el último numero_secuencia para autoincrementar
             const { data: lastMsg } = await supabase
                 .from("marketing")
@@ -163,10 +83,10 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                 .from("marketing")
                 .insert([{
                     asunto: contenido.subject,
-                    cuerpo_html: contenido.html.replace("IMAGE_PLACEHOLDER", imagenAGuardar),
-                    cuerpo: `${contenido.part1}\n\n${contenido.part2}`, // Texto plano para respaldo
+                    cuerpo_html: contenido.html.replace("IMAGE_PLACEHOLDER", imagenOriginal),
+                    cuerpo: `${contenido.part1}\n\n${contenido.part2}`,
                     numero_secuencia: nextSeq,
-                    imagen_url: imagenAGuardar,
+                    imagen_url: imagenOriginal,
                     estado: 'Activo'
                 }]);
 
@@ -175,7 +95,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
             setMensaje("✅ Mensaje guardado en la biblioteca");
             setTimeout(() => {
                 setMensaje("");
-                onSave(); // Volver a la lista
+                onSave();
             }, 2000);
         } catch (err: any) {
             console.error(err);
@@ -235,14 +155,9 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                 {/* Columna Izquierda: Imagen y Control */}
                 <div className="space-y-6">
                     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm aspect-square flex flex-col items-center justify-center relative group">
-                        {imagenMejorada || imagenOriginal ? (
+                        {imagenOriginal ? (
                             <>
-                                <img src={imagenMejorada || imagenOriginal || ""} className="w-full h-full object-contain p-4 transition-all duration-500" alt="Vista previa" />
-                                {imagenMejorada && (
-                                    <div className="absolute top-4 right-4 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-full shadow-lg animate-bounce">
-                                        IA MEJORADA
-                                    </div>
-                                )}
+                                <img src={imagenOriginal} className="w-full h-full object-contain p-4 transition-all duration-500" alt="Vista previa" />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                     <Button variant="secondary" onClick={() => fileInputRef.current?.click()} size="sm">
                                         Cambiar Imagen
@@ -272,55 +187,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                         />
                     </div>
 
-                    {/* Consola de Parámetros (Smart Chips) */}
-                    {imagenOriginal && !imagenMejorada && (
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm space-y-6">
-                            <div className="flex items-center gap-2 mb-2">
-                                <ImageIcon className="h-4 w-4 text-indigo-500" />
-                                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Consola de Control Creativo</h3>
-                            </div>
-
-                            {Object.entries(CATEGORIES).map(([catId, category]) => (
-                                <div key={catId} className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{category.label}</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {category.options.map((opt) => {
-                                            const isSelected = (opcionesMejora as any)[catId] === opt.id;
-                                            return (
-                                                <button
-                                                    key={opt.id}
-                                                    onClick={() => setOpcionesMejora(prev => ({ ...prev, [catId]: opt.id }))}
-                                                    className={`px-4 py-2 rounded-xl text-xs font-medium transition-all duration-200 border ${isSelected
-                                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-md scale-105'
-                                                        : 'bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-indigo-300'
-                                                        }`}
-                                                >
-                                                    {opt.label}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                    {/* Muestra descripción de la opción seleccionada */}
-                                    <p className="text-[10px] text-gray-400 italic">
-                                        {category.options.find(o => (opcionesMejora as any)[catId] === o.id)?.desc}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
                     <div className="grid grid-cols-1 gap-3">
-                        {!imagenMejorada && imagenOriginal && (
-                            <Button
-                                className="h-14 bg-emerald-600 hover:bg-emerald-700 text-white text-lg font-bold flex items-center justify-center gap-3 shadow-lg transition-transform active:scale-95"
-                                disabled={mejorandoImagen}
-                                onClick={mejorarImagen}
-                            >
-                                {mejorandoImagen ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
-                                Mejorar con IA Pro
-                            </Button>
-                        )}
-
                         <Button
                             className="h-14 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 dark:shadow-none transition-transform active:scale-95"
                             disabled={!imagenOriginal || procesando}

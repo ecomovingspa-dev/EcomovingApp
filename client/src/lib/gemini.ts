@@ -5,15 +5,6 @@
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 const MODEL_NAME = "gemini-1.5-flash";
-const IMAGE_MODEL = "imagen-4.0-generate-001";
-
-export interface ImageEnhancementOptions {
-  background_type?: string;
-  lighting_style?: string;
-  shadow?: string;
-  output_quality?: string;
-  humanElement?: string;
-}
 
 export interface GeneratedContent {
   subject: string;
@@ -21,82 +12,7 @@ export interface GeneratedContent {
   part2: string;
   social: string;
   html: string;
-  improvedImage?: string; // Base64 de la imagen generada
 }
-
-/**
- * Mejora la imagen del producto usando el motor Imagen 4.0 (Predict) con parámetros dinámicos.
- */
-export const improveProductImage = async (
-  base64Image: string,
-  options: ImageEnhancementOptions = {}
-): Promise<string> => {
-  if (!API_KEY) throw new Error("VITE_GEMINI_API_KEY no está configurada.");
-
-  const MODEL_ANALYSIS = "gemini-1.5-flash";
-  const MODEL_GEN = "imagen-4.0-generate-001";
-  const base64Data = base64Image.split(',')[1] || base64Image;
-
-  // 1. Análisis del producto con Gemini 1.5 Flash (Fidelidad total)
-  const analysisResponse = await fetch(`${BASE_URL}/${MODEL_ANALYSIS}:generateContent?key=${API_KEY}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{
-        parts: [
-          { text: "Describe este producto con precisión absoluta. Detalla color exacto, texturas, forma y, sobre todo, describe fielmente los logos y textos bordados/impresos. El objetivo es que la imagen final sea idéntica al original pero con un fondo profesional." },
-          { inline_data: { mime_type: "image/jpeg", data: base64Data } }
-        ]
-      }]
-    })
-  });
-
-  const analysisResult = await analysisResponse.json();
-  const productDesc = analysisResult.candidates?.[0]?.content?.parts?.[0]?.text || "un producto exclusivo";
-
-  // 2. Generación con Imagen 4.0 - Prompt depurado para evitar alucinaciones (como el celular)
-  const bgPrompt = options.background_type === 'custom' ? 'a beautiful professional outdoor setting' : `a solid ${options.background_type || 'white'} studio background`;
-  const lightPrompt = `professional studio lighting with ${options.lighting_style || 'soft'} shadows`;
-  const humanPrompt = options.humanElement && options.humanElement !== 'none'
-    ? `A person is naturally ${options.humanElement === 'using' ? 'holding and using' : 'standing near'} the product.`
-    : "No people, only the product.";
-
-  const finalPrompt = `Professional product photography.
-PRODUCT: ${productDesc}.
-IMPORTANT: The product and its logos MUST remain 100% identical to the original image. Do NOT change logos or text.
-SCENE: Place the product on ${bgPrompt} with ${lightPrompt}.
-COMPOSITION: Center the product. Add ${options.shadow || 'soft shadow'} for depth.
-TOTAL IMAGE BEAUTY: High-end catalog quality, 8k, sharp focus.
-${humanPrompt}`;
-
-  const response = await fetch(`${BASE_URL}/${MODEL_GEN}:predict?key=${API_KEY}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      instances: [
-        {
-          prompt: finalPrompt
-        }
-      ],
-      parameters: {
-        sampleCount: 1,
-        aspectRatio: "1:1"
-      }
-    })
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(`[Error Motor v4]: ${errorData.error?.message || "Error en generación"}`);
-  }
-
-  const result = await response.json();
-  const generatedBase64 = result.predictions?.[0]?.bytesBase64Encoded;
-
-  if (!generatedBase64) throw new Error("No se pudo generar la imagen mejorada.");
-
-  return `data:image/png;base64,${generatedBase64}`;
-};
 
 /**
  * Genera contenido de marketing basado en una imagen (base64)
