@@ -17,9 +17,10 @@ interface MarketingMessage {
     asunto: string;
     cuerpo_html: string;
     cuerpo: string;
-    nombre_envio: string;
+    nombre_envio: number;
     nombre_imagen?: string;
     imagen_url?: string;
+    estado?: string;
     activo?: boolean;
     created_at?: string;
 }

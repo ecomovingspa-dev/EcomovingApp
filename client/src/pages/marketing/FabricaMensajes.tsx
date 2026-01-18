@@ -69,36 +69,28 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         try {
             setGuardando(true);
 
-            // Obtener el último nombre_envio para generar el siguiente correlativo
+            // Obtener el último nombre_envio para generar el siguiente número
             const { data: lastMsg } = await supabase
                 .from("marketing")
                 .select("nombre_envio")
-                .order("created_at", { ascending: false })
+                .order("nombre_envio", { ascending: false })
                 .limit(1)
                 .maybeSingle();
 
-            // Extraer el número del último envío (ej: "Envio-005" -> 5)
-            let nextNumber = 1;
-            if (lastMsg?.nombre_envio) {
-                const match = lastMsg.nombre_envio.match(/Envio-(\d+)/);
-                if (match) {
-                    nextNumber = parseInt(match[1]) + 1;
-                }
-            }
-
-            // Generar nombre correlativo con padding (ej: "Envio-001")
-            const nombreEnvio = `Envio-${String(nextNumber).padStart(3, '0')}`;
+            // Generar siguiente número secuencial
+            const nextNumber = (lastMsg?.nombre_envio || 0) + 1;
 
             const { error } = await supabase
                 .from("marketing")
                 .insert([{
-                    nombre_envio: nombreEnvio,
+                    nombre_envio: nextNumber,
                     asunto: contenido.subject,
                     cuerpo_html: contenido.html.replace("IMAGE_PLACEHOLDER", imagenOriginal),
                     cuerpo: `${contenido.part1}\n\n${contenido.part2}`,
-                    nombre_imagen: `${nombreEnvio}.jpg`,
+                    nombre_imagen: `envio-${String(nextNumber).padStart(3, '0')}.jpg`,
                     imagen_url: imagenOriginal,
-                    activo: true
+                    estado: "en revisión",
+                    activo: false
                 }]);
 
             if (error) throw error;
