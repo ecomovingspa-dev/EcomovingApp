@@ -63,7 +63,7 @@ export const improveProductImage = async (
 
   const finalPrompt = `Professional product photography.
 PRODUCT: ${productDesc}.
-IMPORTANT: The product and its logos MUST remain 100% identical to the original image. Do NOT change logos, text, or proportions.
+IMPORTANT: The product and its logos MUST remain 100% identical to the original image. Do NOT change logos, text, or proportions. DO NOT include any smartphones, cameras, or mobile devices in the image.
 SCENE: Place the product on ${bgPrompt} with ${lightPrompt}.
 COMPOSITION: Center the product. Add ${options.shadow || 'soft shadow'} for depth.
 TOTAL IMAGE BEAUTY: High-end catalog quality, 8k, sharp focus.
@@ -75,9 +75,7 @@ ${humanPrompt}`;
     body: JSON.stringify({
       instances: [
         {
-          prompt: finalPrompt,
-          // Intentamos pasar la imagen como 'image' por si el modelo soporta edición simple
-          image: { bytesBase64Encoded: base64Data }
+          prompt: finalPrompt
         }
       ],
       parameters: {
