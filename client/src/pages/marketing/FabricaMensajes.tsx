@@ -179,23 +179,6 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                             onChange={handleFileUpload}
                         />
                     </div>
-
-                    <div className="grid grid-cols-1 gap-3">
-                        <Button
-                            className="h-14 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 dark:shadow-none transition-transform active:scale-95"
-                            disabled={!imagenOriginal || procesando}
-                            onClick={generarConIA}
-                        >
-                            {procesando ? (
-                                <Loader2 className="h-6 w-6 animate-spin" />
-                            ) : (
-                                <>
-                                    <Edit3 className="h-6 w-6" />
-                                    Generar Contenido IA
-                                </>
-                            )}
-                        </Button>
-                    </div>
                 </div>
 
                 {/* Columna Derecha: Resultado */}
@@ -231,9 +214,21 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                             </div>
                         </div>
                     ) : (
-                        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-800 h-full flex flex-col items-center justify-center p-12 text-center opacity-50">
-                            <Edit3 className="h-12 w-12 text-gray-300 mb-4" />
-                            <p className="text-gray-400">Sube una imagen y presiona generar para ver la magia de la IA aquí.</p>
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 h-full flex flex-col items-center justify-center">
+                            <Button
+                                className="h-14 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 dark:shadow-none transition-transform active:scale-95"
+                                disabled={!imagenOriginal || procesando}
+                                onClick={generarConIA}
+                            >
+                                {procesando ? (
+                                    <Loader2 className="h-6 w-6 animate-spin" />
+                                ) : (
+                                    <>
+                                        <Edit3 className="h-6 w-6" />
+                                        Generar Contenido IA
+                                    </>
+                                )}
+                            </Button>
                         </div>
                     )}
                 </div>
