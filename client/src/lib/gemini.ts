@@ -63,7 +63,7 @@ export const improveProductImage = async (
 
   const finalPrompt = `Professional product photography.
 PRODUCT: ${productDesc}.
-IMPORTANT: The product and its logos MUST remain 100% identical to the original image. Do NOT change logos, text, or proportions. DO NOT include any smartphones, cameras, or mobile devices in the image.
+IMPORTANT: The product and its logos MUST remain 100% identical to the original image. Do NOT change logos or text.
 SCENE: Place the product on ${bgPrompt} with ${lightPrompt}.
 COMPOSITION: Center the product. Add ${options.shadow || 'soft shadow'} for depth.
 TOTAL IMAGE BEAUTY: High-end catalog quality, 8k, sharp focus.
