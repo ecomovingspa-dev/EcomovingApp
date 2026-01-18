@@ -17,65 +17,62 @@ export interface GeneratedContent {
 }
 
 /**
- * Mejora la imagen del producto priorizando la BELLEZA del fondo y la FIDELIDAD del producto.
- * Utiliza un enfoque multimodal avanzado.
+ * Mejora la imagen del producto usando el motor Imagen 4.0 (Predict)
+ * Este es el motor que el usuario confirmó que funciona sin errores técnicos.
+ * Refinamos el prompt para maximizar la belleza y la fidelidad.
  */
 export const improveProductImage = async (base64Image: string): Promise<string> => {
   if (!API_KEY) throw new Error("VITE_GEMINI_API_KEY no está configurada.");
 
-  // Usamos el modelo más capaz de seguir instrucciones complejas y generar imágenes bellas en v1beta
-  const MODEL_GEN = "gemini-2.0-flash-exp-image-generation";
+  const MODEL_NAME = "gemini-2.0-flash";
+  const IMAGE_MODEL = "imagen-4.0-generate-001";
   const base64Data = base64Image.split(',')[1] || base64Image;
 
-  // Prompt equilibrado entre "Belleza" y "No tocar el producto"
-  const prompt = `Task: Professional Background Replacement.
-Product provided: [IMAGE]
-
-INSTRUCTIONS FOR THE AI:
-1. OVERALL BEAUTY: Create a stunning, high-end commercial photo. The final result should look like it was shot in a professional lighting studio with a luxury lifestyle aesthetic.
-2. PRESERVE THE PRODUCT: The backpack/product in the image must remain EXACTLY as it is in the original. Do not retouch the fabric, do not change the texture, and DO NOT alter the logos. The logos must be clear and identical.
-3. BACKGROUND TRANSFORMATION: Replace the current background with a beautiful, modern, and clean professional setting. Examples: A soft-textured stone surface, a high-end minimalist wooden table, or a neutral studio gradient with cinematic bokeh.
-4. LIGHTING & COLOR: Enhance the LIGHTING of the scene to be cinematic and professional, but ensure the COLORS of the product remain true to the original.
-5. QUALITY: 2K resolution, photorealistic, premium feel.
-
-RESPONSE FORMAT: You MUST return a generated image.`;
-
-  const response = await fetch(`${BASE_URL}/${MODEL_GEN}:generateContent?key=${API_KEY}`, {
+  // 1. Análisis quirúrgico del producto
+  const analysisResponse = await fetch(`${BASE_URL}/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{
         parts: [
-          { text: prompt },
+          { text: "Describe este producto con precisión absoluta. Detalla color exacto, texturas (ej: tela oxford negra), forma de los cierres y, sobre todo, describe fielmente los logos y textos bordados/impresos. El objetivo es que un generador de imágenes lo replique sin cambios." },
           { inline_data: { mime_type: "image/jpeg", data: base64Data } }
         ]
-      }],
-      generationConfig: {
-        responseModalities: ["IMAGE"]
+      }]
+    })
+  });
+
+  const analysisResult = await analysisResponse.json();
+  const productDesc = analysisResult.candidates?.[0]?.content?.parts?.[0]?.text || "un producto exclusivo";
+
+  // 2. Generación con Imagen 4.0 enfocada en BELLEZA y FIDELIDAD
+  const finalPrompt = `Professional commercial studio photography. 
+PRODUCT TO DEPICT: ${productDesc}.
+STRICT FIDELITY: The product must maintain its original shape, texture, and every detail of the branding/logos shown in the description. Do not modify or 'clean' the logos.
+BACKGROUND & AESTHETICS: Place the product in a stunningly beautiful, high-end professional studio environment. Use soft-box lighting, elegant cinematic highlights, and a clean minimalist backdrop (like light-grey marble or polished dark oak) that makes the product's colors pop. 
+Overall result must be exquisite, sharp, and high-resolution 8k.`;
+
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:predict?key=${API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      instances: [{ prompt: finalPrompt }],
+      parameters: {
+        sampleCount: 1,
+        aspectRatio: "1:1"
       }
     })
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error?.message || "Error al conectar con la IA de mejora");
+    const errorData = await response.json();
+    throw new Error(errorData.error?.message || "Error en el motor de generación Imagen 4");
   }
 
   const result = await response.json();
+  const generatedBase64 = result.predictions?.[0]?.bytesBase64Encoded;
 
-  // Extraer la imagen de la respuesta multimodal
-  const generatedBase64 = result.candidates?.[0]?.content?.parts?.find((p: any) => p.inline_data)?.inline_data?.data;
-
-  if (!generatedBase64) {
-    // Si no hay imagen, buscamos el motivo en el texto para ayudar al usuario
-    const textReason = result.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text;
-
-    if (textReason && textReason.toLowerCase().includes("logos") || textReason.toLowerCase().includes("policy")) {
-      throw new Error("La IA ha detectado logos protegidos o restricciones de fidelidad y no ha podido generar la imagen para evitar alterarlos. Intenta con una toma más cercana o fondo más simple.");
-    }
-
-    throw new Error(textReason || "El modelo no pudo generar la imagen con el estándar de belleza y fidelidad solicitado. Por favor, intenta de nuevo.");
-  }
+  if (!generatedBase64) throw new Error("No se pudo generar la imagen mejorada.");
 
   return `data:image/png;base64,${generatedBase64}`;
 };
