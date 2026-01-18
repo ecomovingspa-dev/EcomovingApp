@@ -17,52 +17,59 @@ export interface GeneratedContent {
 }
 
 /**
- * Mejora la imagen del producto usando Imagen 3 y el prompt profesional
+ * Mejora la imagen del producto usando Gemini 2.0 Flash Image Generation (Multimodal)
+ * Esto permite al modelo ver la imagen original y preservar el producto mientras cambia el fondo.
  */
 export const improveProductImage = async (base64Image: string): Promise<string> => {
   if (!API_KEY) throw new Error("VITE_GEMINI_API_KEY no está configurada.");
 
-  // 1. Primero, le pedimos a Gemini que describa el producto con precisión quirúrgica
-  const analysisResponse = await fetch(`${BASE_URL}/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
+  const MODEL_GEN = "gemini-2.0-flash-exp-image-generation";
+  const base64Data = base64Image.split(',')[1] || base64Image;
+
+  // Prompt estricto para preservar el producto y logos
+  const prompt = `Task: Background replacement for a product photo.
+I am providing an image of a product. Generate a new high-quality image based on this one.
+STRICT REQUIREMENTS:
+1. PRESERVE THE PRODUCT: The product in the foreground, including its original shape, texture, materials, and colors, must be preserved with maximum fidelity.
+2. LOGOS: Any printed logos, branding, or text on the product must remain EXACTLY as they are. Do not retouch, modify, or hallucinate different logos.
+3. BACKGROUND: Replace the current background with a professional studio-lifestyle setting. Use soft cinematic lighting, subtle shadows, and a clean aesthetic that makes the product stand out.
+4. QUALITY: 8k resolution, photorealistic, professional commercial photography style.
+
+The goal is to only change the environment, never the product itself.`;
+
+  const response = await fetch(`${BASE_URL}/${MODEL_GEN}:generateContent?key=${API_KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{
         parts: [
-          { text: "Describe este producto de forma técnica y visual muy detallada para un generador de imágenes. Enfócate en su forma, color, textura y logotipos." },
-          { inline_data: { mime_type: "image/jpeg", data: base64Image.split(',')[1] || base64Image } }
+          { text: prompt },
+          { inline_data: { mime_type: "image/jpeg", data: base64Data } }
         ]
-      }]
-    })
-  });
-
-  const analysisResult = await analysisResponse.json();
-  const productDescription = analysisResult.candidates?.[0]?.content?.parts?.[0]?.text || "un producto exclusivo";
-
-  // 2. Usamos el prompt profesional del usuario combinado con la descripción
-  const userPrompt = `Professional commercial lifestyle photography of the product described below. The product must maintain its original shape, texture, and branding logo with high fidelity. Place it in a clean, aesthetically pleasing, and subtly blurred background that complements the product's purpose. Lighting: Studio quality, soft shadows, cinematic highlights. High resolution, 8k, exquisite detail. PRODUCT DESCRIPTION: ${productDescription}`;
-
-  const imageResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:predict?key=${API_KEY}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      instances: [{ prompt: userPrompt }],
-      parameters: {
-        sampleCount: 1,
-        aspectRatio: "1:1"
+      }],
+      generationConfig: {
+        // Pedimos explícitamente una imagen como respuesta
+        responseModalities: ["IMAGE"]
       }
     })
   });
 
-  if (!imageResponse.ok) {
-    const error = await imageResponse.json();
+  if (!response.ok) {
+    const error = await response.json();
     throw new Error(error.error?.message || "Error al mejorar la imagen con IA Pro");
   }
 
-  const imageResult = await imageResponse.json();
-  const generatedBase64 = imageResult.predictions?.[0]?.bytesBase64Encoded;
+  const result = await response.json();
 
-  if (!generatedBase64) throw new Error("No se pudo generar la imagen.");
+  // El modelo multimodal devuelve la imagen en un part con inline_data
+  const generatedPart = result.candidates?.[0]?.content?.parts?.find((p: any) => p.inline_data);
+  const generatedBase64 = generatedPart?.inline_data?.data;
+
+  if (!generatedBase64) {
+    // Fallback: Si no generó imagen, quizás devolvió texto explicando por qué
+    const textReason = result.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text;
+    throw new Error(textReason || "El modelo no generó una imagen. Por favor, intenta con otra foto.");
+  }
 
   return `data:image/png;base64,${generatedBase64}`;
 };
