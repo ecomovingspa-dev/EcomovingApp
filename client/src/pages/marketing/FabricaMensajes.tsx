@@ -154,16 +154,9 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
 
                 {/* Columna Izquierda: Imagen y Control */}
                 <div className="space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm aspect-square flex flex-col items-center justify-center relative group">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm aspect-square flex flex-col items-center justify-center relative">
                         {imagenOriginal ? (
-                            <>
-                                <img src={imagenOriginal} className="w-full h-full object-contain p-4 transition-all duration-500" alt="Vista previa" />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                    <Button variant="secondary" onClick={() => fileInputRef.current?.click()} size="sm">
-                                        Cambiar Imagen
-                                    </Button>
-                                </div>
-                            </>
+                            <img src={imagenOriginal} className="w-full h-full object-contain p-4" alt="Vista previa" />
                         ) : (
                             <div
                                 className="flex flex-col items-center gap-4 cursor-pointer p-12 w-full h-full justify-center"
