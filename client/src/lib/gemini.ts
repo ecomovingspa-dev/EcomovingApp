@@ -8,11 +8,11 @@ const MODEL_NAME = "gemini-1.5-flash";
 const IMAGE_MODEL = "imagen-4.0-generate-001";
 
 export interface ImageEnhancementOptions {
-  environment?: string;
-  lighting?: string;
+  background_type?: string;
+  lighting_style?: string;
+  shadow?: string;
+  output_quality?: string;
   humanElement?: string;
-  surface?: string;
-  aesthetic?: string;
 }
 
 export interface GeneratedContent {
@@ -54,23 +54,39 @@ export const improveProductImage = async (
   const analysisResult = await analysisResponse.json();
   const productDesc = analysisResult.candidates?.[0]?.content?.parts?.[0]?.text || "un producto exclusivo";
 
-  // 2. Generación con Imagen 4.0 enfocada en BELLEZA y FIDELIDAD
-  // Construimos un prompt dinámico basado en las opciones de la "Consola Creativa"
-  const envPrompt = options.environment ? `Setting: ${options.environment}.` : "Setting: Professional commercial studio.";
-  const lightPrompt = options.lighting ? `Lighting: ${options.lighting}.` : "Lighting: Soft-box lighting with cinematic highlights.";
-  const humanPrompt = options.humanElement ? `Human Element: ${options.humanElement}.` : "Human Element: None.";
-  const surfacePrompt = options.surface ? `Surface: Supporting surface is ${options.surface}.` : "";
-  const aestheticPrompt = options.aesthetic ? `Aesthetic: ${options.aesthetic} style.` : "Aesthetic: Premium commercial photography.";
+  // 2. Generación con Imagen 4.0 enfocada en REGLAS CRÍTICAS del usuario
+  const bgPrompt = options.background_type === 'custom' ? 'Custom studio background' : `Background: ${options.background_type || 'white'}`;
+  const lightPrompt = `Lighting style: ${options.lighting_style || 'soft'}`;
+  const shadowPrompt = `Shadows/Reflections: ${options.shadow || 'soft'}`;
+  const qualityPrompt = `Output quality: ${options.output_quality || 'high'}`;
+  const humanPrompt = options.humanElement && options.humanElement !== 'none'
+    ? `HUMAN INTERACTION: Integrate a person ${options.humanElement === 'using' ? 'using/wearing' : 'near'} the product naturally, ensuring the product remains the focus and unchanged.`
+    : "No human elements.";
 
-  const finalPrompt = `Professional commercial studio photography. 
-PRODUCT: ${productDesc}.
-STRICT FIDELITY: The product must remain 100% identical to the original image in every detail, shape, and branding/logos. Do not alter the logos.
-${envPrompt}
-${lightPrompt}
-${humanPrompt}
-${surfacePrompt}
-${aestheticPrompt}
-Overall result must be exquisite, sharp, and high-resolution 8k. Beautiful and professionally composed total image.`;
+  const finalPrompt = `
+OBJECTIVE: Transform mobile product photo into a professional high-end studio photography.
+CENTRAL PRODUCT TO PRESERVE: ${productDesc}.
+
+CRITICAL RULES (NON-NEGOTIABLE):
+1. PRESERVE DESIGN INTEGRITY: 
+   - DO NOT modify, distort, or regenerate logos.
+   - DO NOT alter text, typography, or written content.
+   - DO NOT change colors of prints or impressions.
+   - THE PRODUCT AREA CONTAINING PERSONALIZATION IS A PROTECTED ZONE.
+2. PRESERVE THE PRODUCT:
+   - Maintain exact shape and proportions.
+   - Conserve original material and color (metal, fabric, plastic, etc.).
+   - DO NOT add or remove elements from the product itself.
+
+ALLOWED TRANSFORMATIONS:
+- BACKGROUND: ${bgPrompt}. (Options: white, gray_gradient, black).
+- LIGHTING: ${lightPrompt}. Apply professional 2-3 point studio lighting.
+- COMPOSITION: Center product, add ${shadowPrompt} for realism.
+- QUALITY: ${qualityPrompt}. Sharp focus, optimized contrast, zero noise.
+
+GOAL: Professional catalog/e-commerce photography quality.
+Overall result must be exquisite, sharp, and 8k.
+`;
 
   const response = await fetch(`${BASE_URL}/${MODEL_GEN}:predict?key=${API_KEY}`, {
     method: "POST",

@@ -24,40 +24,44 @@ import {
 
 // Definición de las categorías y sus opciones (Smart Chips)
 const CATEGORIES = {
-    environment: {
-        label: "Ambiente",
+    background_type: {
+        label: "Fondo",
         options: [
-            { id: "studio", label: "Estudio", desc: "Fondo limpio y profesional" },
-            { id: "nature", label: "Naturaleza", desc: "Bosque o jardín verde" },
-            { id: "beach", label: "Playa", desc: "Arena y mar de fondo" },
-            { id: "office", label: "Oficina", desc: "Entorno corporativo moderno" },
-            { id: "urban", label: "Ciudad", desc: "Entorno urbano elegante" },
+            { id: "white", label: "Blanco", desc: "Estudio limpio profesional" },
+            { id: "gray_gradient", label: "Gris", desc: "Degradado suave elegante" },
+            { id: "black", label: "Negro", desc: "Contraste dramático premium" },
+            { id: "custom", label: "Bosque/Playa", desc: "Ambientes naturales" },
         ]
     },
-    humanElement: {
-        label: "Personas",
-        options: [
-            { id: "none", label: "Ninguno", desc: "Solo el producto" },
-            { id: "using", label: "Usándolo", desc: "Persona usando el producto" },
-            { id: "nearby", label: "Cerca", desc: "Persona cerca del producto" },
-        ]
-    },
-    lighting: {
+    lighting_style: {
         label: "Iluminación",
         options: [
             { id: "soft", label: "Suave", desc: "Luz de estudio difuminada" },
-            { id: "sunlight", label: "Sol", desc: "Luz natural de día" },
-            { id: "golden", label: "Atardecer", desc: "Tonos cálidos y dorados" },
-            { id: "cinematic", label: "Cine", desc: "Contrastes dramáticos" },
+            { id: "dramatic", label: "Dramática", desc: "Sombras marcadas cine" },
+            { id: "neutral", label: "Neutral", desc: "Balance de blancos natural" },
         ]
     },
-    surface: {
-        label: "Superficie",
+    shadow: {
+        label: "Sombra/Reflejo",
         options: [
-            { id: "marble", label: "Mármol", desc: "Superficie blanca lujosa" },
-            { id: "wood", label: "Madera", desc: "Textura natural y cálida" },
-            { id: "stone", label: "Piedra", desc: "Base sólida y rústica" },
-            { id: "floor", label: "Piso", desc: "Piso de diseño moderno" },
+            { id: "soft", label: "Sombra", desc: "Sombra suave bajo el producto" },
+            { id: "reflection", label: "Reflejo", desc: "Reflejo sutil tipo cristal" },
+            { id: "none", label: "Ninguno", desc: "Sin efectos adicionales" },
+        ]
+    },
+    output_quality: {
+        label: "Calidad",
+        options: [
+            { id: "high", label: "Alta", desc: "Nitidez estándar catálogo" },
+            { id: "ultra", label: "Ultra", desc: "Máximo detalle y enfoque" },
+        ]
+    },
+    humanElement: {
+        label: "Interacción",
+        options: [
+            { id: "none", label: "Producto solo", desc: "Enfoque 100% en objeto" },
+            { id: "using", label: "Persona", desc: "Persona usando el producto" },
+            { id: "nearby", label: "Entorno", desc: "Persona cerca del producto" },
         ]
     }
 };
@@ -71,11 +75,11 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [mensaje, setMensaje] = useState("");
     const [contenido, setContenido] = useState<GeneratedContent | null>(null);
     const [opcionesMejora, setOpcionesMejora] = useState<ImageEnhancementOptions>({
-        environment: "studio",
-        humanElement: "none",
-        lighting: "soft",
-        surface: "marble",
-        aesthetic: "premium"
+        background_type: "white",
+        lighting_style: "soft",
+        shadow: "soft",
+        output_quality: "high",
+        humanElement: "none"
     });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -287,8 +291,8 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                                                     key={opt.id}
                                                     onClick={() => setOpcionesMejora(prev => ({ ...prev, [catId]: opt.id }))}
                                                     className={`px-4 py-2 rounded-xl text-xs font-medium transition-all duration-200 border ${isSelected
-                                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md scale-105'
-                                                            : 'bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-indigo-300'
+                                                        ? 'bg-indigo-600 border-indigo-600 text-white shadow-md scale-105'
+                                                        : 'bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-indigo-300'
                                                         }`}
                                                 >
                                                     {opt.label}
