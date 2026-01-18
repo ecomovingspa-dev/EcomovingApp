@@ -7,6 +7,14 @@ const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 const MODEL_NAME = "gemini-1.5-flash";
 const IMAGE_MODEL = "imagen-4.0-generate-001";
 
+export interface ImageEnhancementOptions {
+  environment?: string;
+  lighting?: string;
+  humanElement?: string;
+  surface?: string;
+  aesthetic?: string;
+}
+
 export interface GeneratedContent {
   subject: string;
   part1: string;
@@ -17,11 +25,12 @@ export interface GeneratedContent {
 }
 
 /**
- * Mejora la imagen del producto usando el motor Imagen 4.0 (Predict)
- * Este es el motor que el usuario confirmó que funciona sin errores técnicos.
- * Refinamos el prompt para maximizar la belleza y la fidelidad.
+ * Mejora la imagen del producto usando el motor Imagen 4.0 (Predict) con parámetros dinámicos.
  */
-export const improveProductImage = async (base64Image: string): Promise<string> => {
+export const improveProductImage = async (
+  base64Image: string,
+  options: ImageEnhancementOptions = {}
+): Promise<string> => {
   if (!API_KEY) throw new Error("VITE_GEMINI_API_KEY no está configurada.");
 
   const MODEL_ANALYSIS = "gemini-1.5-flash";
@@ -46,11 +55,22 @@ export const improveProductImage = async (base64Image: string): Promise<string> 
   const productDesc = analysisResult.candidates?.[0]?.content?.parts?.[0]?.text || "un producto exclusivo";
 
   // 2. Generación con Imagen 4.0 enfocada en BELLEZA y FIDELIDAD
+  // Construimos un prompt dinámico basado en las opciones de la "Consola Creativa"
+  const envPrompt = options.environment ? `Setting: ${options.environment}.` : "Setting: Professional commercial studio.";
+  const lightPrompt = options.lighting ? `Lighting: ${options.lighting}.` : "Lighting: Soft-box lighting with cinematic highlights.";
+  const humanPrompt = options.humanElement ? `Human Element: ${options.humanElement}.` : "Human Element: None.";
+  const surfacePrompt = options.surface ? `Surface: Supporting surface is ${options.surface}.` : "";
+  const aestheticPrompt = options.aesthetic ? `Aesthetic: ${options.aesthetic} style.` : "Aesthetic: Premium commercial photography.";
+
   const finalPrompt = `Professional commercial studio photography. 
 PRODUCT: ${productDesc}.
-STRICT FIDELITY: The product must remain identical to the original image in every detail, especially logos and branding. 
-BACKGROUND: Place it in a stunningly beautiful, high-end professional studio environment with luxury lighting and elegant minimalist aesthetics. 
-High resolution, 8k.`;
+STRICT FIDELITY: The product must remain 100% identical to the original image in every detail, shape, and branding/logos. Do not alter the logos.
+${envPrompt}
+${lightPrompt}
+${humanPrompt}
+${surfacePrompt}
+${aestheticPrompt}
+Overall result must be exquisite, sharp, and high-resolution 8k. Beautiful and professionally composed total image.`;
 
   const response = await fetch(`${BASE_URL}/${MODEL_GEN}:predict?key=${API_KEY}`, {
     method: "POST",

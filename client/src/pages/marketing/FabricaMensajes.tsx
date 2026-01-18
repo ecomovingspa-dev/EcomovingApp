@@ -15,7 +15,52 @@ import {
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { optimizeImage } from "../../utils/image";
-import { generateMarketingContent, improveProductImage, GeneratedContent } from "../../lib/gemini";
+import {
+    generateMarketingContent,
+    improveProductImage,
+    GeneratedContent,
+    ImageEnhancementOptions
+} from "../../lib/gemini";
+
+// Definición de las categorías y sus opciones (Smart Chips)
+const CATEGORIES = {
+    environment: {
+        label: "Ambiente",
+        options: [
+            { id: "studio", label: "Estudio", desc: "Fondo limpio y profesional" },
+            { id: "nature", label: "Naturaleza", desc: "Bosque o jardín verde" },
+            { id: "beach", label: "Playa", desc: "Arena y mar de fondo" },
+            { id: "office", label: "Oficina", desc: "Entorno corporativo moderno" },
+            { id: "urban", label: "Ciudad", desc: "Entorno urbano elegante" },
+        ]
+    },
+    humanElement: {
+        label: "Personas",
+        options: [
+            { id: "none", label: "Ninguno", desc: "Solo el producto" },
+            { id: "using", label: "Usándolo", desc: "Persona usando el producto" },
+            { id: "nearby", label: "Cerca", desc: "Persona cerca del producto" },
+        ]
+    },
+    lighting: {
+        label: "Iluminación",
+        options: [
+            { id: "soft", label: "Suave", desc: "Luz de estudio difuminada" },
+            { id: "sunlight", label: "Sol", desc: "Luz natural de día" },
+            { id: "golden", label: "Atardecer", desc: "Tonos cálidos y dorados" },
+            { id: "cinematic", label: "Cine", desc: "Contrastes dramáticos" },
+        ]
+    },
+    surface: {
+        label: "Superficie",
+        options: [
+            { id: "marble", label: "Mármol", desc: "Superficie blanca lujosa" },
+            { id: "wood", label: "Madera", desc: "Textura natural y cálida" },
+            { id: "stone", label: "Piedra", desc: "Base sólida y rústica" },
+            { id: "floor", label: "Piso", desc: "Piso de diseño moderno" },
+        ]
+    }
+};
 
 export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [imagenOriginal, setImagenOriginal] = useState<string | null>(null);
@@ -25,6 +70,13 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [guardando, setGuardando] = useState(false);
     const [mensaje, setMensaje] = useState("");
     const [contenido, setContenido] = useState<GeneratedContent | null>(null);
+    const [opcionesMejora, setOpcionesMejora] = useState<ImageEnhancementOptions>({
+        environment: "studio",
+        humanElement: "none",
+        lighting: "soft",
+        surface: "marble",
+        aesthetic: "premium"
+    });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,8 +105,8 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         if (!imagenOriginal) return;
         try {
             setMejorandoImagen(true);
-            setMensaje("🎨 Aplicando retoque profesional con Imagen 3...");
-            const mejorada = await improveProductImage(imagenOriginal);
+            setMensaje("🎨 La IA está aplicando tu configuración personalizada...");
+            const mejorada = await improveProductImage(imagenOriginal, opcionesMejora);
             setImagenMejorada(mejorada);
             setMensaje("✨ ¡Imagen mejorada con éxito!");
             setTimeout(() => setMensaje(""), 3000);
@@ -215,6 +267,43 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                             onChange={handleFileUpload}
                         />
                     </div>
+
+                    {/* Consola de Parámetros (Smart Chips) */}
+                    {imagenOriginal && !imagenMejorada && (
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm space-y-6">
+                            <div className="flex items-center gap-2 mb-2">
+                                <ImageIcon className="h-4 w-4 text-indigo-500" />
+                                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Consola de Control Creativo</h3>
+                            </div>
+
+                            {Object.entries(CATEGORIES).map(([catId, category]) => (
+                                <div key={catId} className="space-y-3">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{category.label}</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {category.options.map((opt) => {
+                                            const isSelected = (opcionesMejora as any)[catId] === opt.id;
+                                            return (
+                                                <button
+                                                    key={opt.id}
+                                                    onClick={() => setOpcionesMejora(prev => ({ ...prev, [catId]: opt.id }))}
+                                                    className={`px-4 py-2 rounded-xl text-xs font-medium transition-all duration-200 border ${isSelected
+                                                            ? 'bg-indigo-600 border-indigo-600 text-white shadow-md scale-105'
+                                                            : 'bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-indigo-300'
+                                                        }`}
+                                                >
+                                                    {opt.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {/* Muestra descripción de la opción seleccionada */}
+                                    <p className="text-[10px] text-gray-400 italic">
+                                        {category.options.find(o => (opcionesMejora as any)[catId] === o.id)?.desc}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 gap-3">
                         {!imagenMejorada && imagenOriginal && (
