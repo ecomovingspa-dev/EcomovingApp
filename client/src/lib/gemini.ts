@@ -54,45 +54,32 @@ export const improveProductImage = async (
   const analysisResult = await analysisResponse.json();
   const productDesc = analysisResult.candidates?.[0]?.content?.parts?.[0]?.text || "un producto exclusivo";
 
-  // 2. Generación con Imagen 4.0 enfocada en REGLAS CRÍTICAS del usuario
-  const bgPrompt = options.background_type === 'custom' ? 'Custom studio background' : `Background: ${options.background_type || 'white'}`;
-  const lightPrompt = `Lighting style: ${options.lighting_style || 'soft'}`;
-  const shadowPrompt = `Shadows/Reflections: ${options.shadow || 'soft'}`;
-  const qualityPrompt = `Output quality: ${options.output_quality || 'high'}`;
+  // 2. Generación con Imagen 4.0 - Prompt depurado para evitar alucinaciones (como el celular)
+  const bgPrompt = options.background_type === 'custom' ? 'a beautiful professional outdoor setting' : `a solid ${options.background_type || 'white'} studio background`;
+  const lightPrompt = `professional studio lighting with ${options.lighting_style || 'soft'} shadows`;
   const humanPrompt = options.humanElement && options.humanElement !== 'none'
-    ? `HUMAN INTERACTION: Integrate a person ${options.humanElement === 'using' ? 'using/wearing' : 'near'} the product naturally, ensuring the product remains the focus and unchanged.`
-    : "No human elements.";
+    ? `A person is naturally ${options.humanElement === 'using' ? 'holding and using' : 'standing near'} the product.`
+    : "No people, only the product.";
 
-  const finalPrompt = `
-OBJECTIVE: Transform mobile product photo into a professional high-end studio photography.
-CENTRAL PRODUCT TO PRESERVE: ${productDesc}.
-
-CRITICAL RULES (NON-NEGOTIABLE):
-1. PRESERVE DESIGN INTEGRITY: 
-   - DO NOT modify, distort, or regenerate logos.
-   - DO NOT alter text, typography, or written content.
-   - DO NOT change colors of prints or impressions.
-   - THE PRODUCT AREA CONTAINING PERSONALIZATION IS A PROTECTED ZONE.
-2. PRESERVE THE PRODUCT:
-   - Maintain exact shape and proportions.
-   - Conserve original material and color (metal, fabric, plastic, etc.).
-   - DO NOT add or remove elements from the product itself.
-
-ALLOWED TRANSFORMATIONS:
-- BACKGROUND: ${bgPrompt}. (Options: white, gray_gradient, black).
-- LIGHTING: ${lightPrompt}. Apply professional 2-3 point studio lighting.
-- COMPOSITION: Center product, add ${shadowPrompt} for realism.
-- QUALITY: ${qualityPrompt}. Sharp focus, optimized contrast, zero noise.
-
-GOAL: Professional catalog/e-commerce photography quality.
-Overall result must be exquisite, sharp, and 8k.
-`;
+  const finalPrompt = `Professional product photography.
+PRODUCT: ${productDesc}.
+IMPORTANT: The product and its logos MUST remain 100% identical to the original image. Do NOT change logos, text, or proportions.
+SCENE: Place the product on ${bgPrompt} with ${lightPrompt}.
+COMPOSITION: Center the product. Add ${options.shadow || 'soft shadow'} for depth.
+TOTAL IMAGE BEAUTY: High-end catalog quality, 8k, sharp focus.
+${humanPrompt}`;
 
   const response = await fetch(`${BASE_URL}/${MODEL_GEN}:predict?key=${API_KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      instances: [{ prompt: finalPrompt }],
+      instances: [
+        {
+          prompt: finalPrompt,
+          // Intentamos pasar la imagen como 'image' por si el modelo soporta edición simple
+          image: { bytesBase64Encoded: base64Data }
+        }
+      ],
       parameters: {
         sampleCount: 1,
         aspectRatio: "1:1"
