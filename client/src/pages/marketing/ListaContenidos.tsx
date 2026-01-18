@@ -8,7 +8,8 @@ import {
     ChevronRight,
     Library,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    Image as ImageIcon
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
@@ -133,13 +134,16 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-3">
-                                                {msg.imagen_url && (
-                                                    <img src={msg.imagen_url} className="h-10 w-10 rounded object-cover border border-gray-100 dark:border-gray-700" alt="" />
-                                                )}
                                                 <p className="font-semibold text-gray-900 dark:text-gray-100 leading-tight">
                                                     {msg.asunto}
                                                 </p>
                                             </div>
+                                            {msg.nombre_imagen && (
+                                                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                                    <ImageIcon className="h-3 w-3" />
+                                                    {msg.nombre_imagen}
+                                                </p>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 italic">

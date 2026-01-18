@@ -87,7 +87,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                     asunto: contenido.subject,
                     cuerpo_html: contenido.html.replace("IMAGE_PLACEHOLDER", imagenOriginal),
                     cuerpo: `${contenido.part1}\n\n${contenido.part2}`,
-                    nombre_imagen: `envio-${String(nextNumber).padStart(3, '0')}.jpg`,
+                    nombre_imagen: `imagen_${nextNumber}.jpg`,
                     imagen_url: imagenOriginal,
                     estado: "en revisión",
                     activo: false
