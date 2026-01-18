@@ -4,7 +4,7 @@
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-const MODEL_NAME = "gemini-2.0-flash";
+const MODEL_NAME = "gemini-1.5-flash";
 const IMAGE_MODEL = "imagen-4.0-generate-001";
 
 export interface GeneratedContent {
@@ -24,18 +24,18 @@ export interface GeneratedContent {
 export const improveProductImage = async (base64Image: string): Promise<string> => {
   if (!API_KEY) throw new Error("VITE_GEMINI_API_KEY no está configurada.");
 
-  const MODEL_NAME = "gemini-2.0-flash";
-  const IMAGE_MODEL = "imagen-4.0-generate-001";
+  const MODEL_ANALYSIS = "gemini-1.5-flash";
+  const MODEL_GEN = "imagen-4.0-generate-001";
   const base64Data = base64Image.split(',')[1] || base64Image;
 
-  // 1. Análisis quirúrgico del producto
-  const analysisResponse = await fetch(`${BASE_URL}/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
+  // 1. Análisis del producto con Gemini 1.5 Flash (Fidelidad total)
+  const analysisResponse = await fetch(`${BASE_URL}/${MODEL_ANALYSIS}:generateContent?key=${API_KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{
         parts: [
-          { text: "Describe este producto con precisión absoluta. Detalla color exacto, texturas (ej: tela oxford negra), forma de los cierres y, sobre todo, describe fielmente los logos y textos bordados/impresos. El objetivo es que un generador de imágenes lo replique sin cambios." },
+          { text: "Describe este producto con precisión absoluta. Detalla color exacto, texturas, forma y, sobre todo, describe fielmente los logos y textos bordados/impresos. El objetivo es que la imagen final sea idéntica al original pero con un fondo profesional." },
           { inline_data: { mime_type: "image/jpeg", data: base64Data } }
         ]
       }]
@@ -47,12 +47,12 @@ export const improveProductImage = async (base64Image: string): Promise<string> 
 
   // 2. Generación con Imagen 4.0 enfocada en BELLEZA y FIDELIDAD
   const finalPrompt = `Professional commercial studio photography. 
-PRODUCT TO DEPICT: ${productDesc}.
-STRICT FIDELITY: The product must maintain its original shape, texture, and every detail of the branding/logos shown in the description. Do not modify or 'clean' the logos.
-BACKGROUND & AESTHETICS: Place the product in a stunningly beautiful, high-end professional studio environment. Use soft-box lighting, elegant cinematic highlights, and a clean minimalist backdrop (like light-grey marble or polished dark oak) that makes the product's colors pop. 
-Overall result must be exquisite, sharp, and high-resolution 8k.`;
+PRODUCT: ${productDesc}.
+STRICT FIDELITY: The product must remain identical to the original image in every detail, especially logos and branding. 
+BACKGROUND: Place it in a stunningly beautiful, high-end professional studio environment with luxury lighting and elegant minimalist aesthetics. 
+High resolution, 8k.`;
 
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:predict?key=${API_KEY}`, {
+  const response = await fetch(`${BASE_URL}/${MODEL_GEN}:predict?key=${API_KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -66,7 +66,7 @@ Overall result must be exquisite, sharp, and high-resolution 8k.`;
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error?.message || "Error en el motor de generación Imagen 4");
+    throw new Error(`[Error Motor v4]: ${errorData.error?.message || "Error en generación"}`);
   }
 
   const result = await response.json();
