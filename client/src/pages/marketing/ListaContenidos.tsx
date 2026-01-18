@@ -17,8 +17,10 @@ interface MarketingMessage {
     asunto: string;
     cuerpo_html: string;
     cuerpo: string;
-    numero_secuencia: number;
+    nombre_envio: string;
+    nombre_imagen?: string;
     imagen_url?: string;
+    activo?: boolean;
     created_at?: string;
 }
 
@@ -38,7 +40,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
             const { data, error: dbError } = await supabase
                 .from("marketing")
                 .select("*")
-                .order("numero_secuencia", { ascending: true });
+                .order("created_at", { ascending: true });
 
             if (dbError) throw dbError;
             setMensajes(data || []);
@@ -124,8 +126,8 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                 {mensajes.map((msg) => (
                                     <tr key={msg.id} className="group hover:bg-indigo-50/5 dark:hover:bg-indigo-900/10 transition-colors">
                                         <td className="px-6 py-4">
-                                            <span className="h-8 w-8 rounded-lg bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-400">
-                                                {msg.numero_secuencia}
+                                            <span className="px-3 py-1 rounded-lg bg-gray-100 dark:bg-gray-900 text-xs font-bold text-gray-500 dark:text-gray-400">
+                                                {msg.nombre_envio}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
