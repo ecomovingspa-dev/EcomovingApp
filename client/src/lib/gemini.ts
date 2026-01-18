@@ -17,25 +17,25 @@ export interface GeneratedContent {
 }
 
 /**
- * Mejora la imagen del producto usando Gemini 2.0 Flash Image Generation (Multimodal)
- * Esto permite al modelo ver la imagen original y preservar el producto mientras cambia el fondo.
+ * Mejora la imagen del producto usando Gemini 2.5 Flash Image (Nano Banana)
+ * Este modelo es específico para generación y edición de imágenes multimodales.
  */
 export const improveProductImage = async (base64Image: string): Promise<string> => {
   if (!API_KEY) throw new Error("VITE_GEMINI_API_KEY no está configurada.");
 
-  const MODEL_GEN = "gemini-2.0-flash-exp-image-generation";
+  const MODEL_GEN = "gemini-2.5-flash-image";
   const base64Data = base64Image.split(',')[1] || base64Image;
 
   // Prompt estricto para preservar el producto y logos
   const prompt = `Task: Background replacement for a product photo.
-I am providing an image of a product. Generate a new high-quality image based on this one.
 STRICT REQUIREMENTS:
-1. PRESERVE THE PRODUCT: The product in the foreground, including its original shape, texture, materials, and colors, must be preserved with maximum fidelity.
-2. LOGOS: Any printed logos, branding, or text on the product must remain EXACTLY as they are. Do not retouch, modify, or hallucinate different logos.
-3. BACKGROUND: Replace the current background with a professional studio-lifestyle setting. Use soft cinematic lighting, subtle shadows, and a clean aesthetic that makes the product stand out.
-4. QUALITY: 8k resolution, photorealistic, professional commercial photography style.
+1. DO NOT MODIFY THE PRODUCT: The product in the foreground (shape, texture, logos, colors) must remain 100% identical to the original image.
+2. NO RETOUCHING: Do not clean, smooth, or alter the product/backpack in any way.
+3. LOGOS: The embroidered or printed logos must be preserved without any changes.
+4. BACKGROUND: Only replace the existing background with a professional studio or high-end lifestyle setting (e.g., a neutral professional table or clean studio background).
+5. LIGHTING: Improve the environment's lighting to make it look professional, but don't let it change the product's appearance.
 
-The goal is to only change the environment, never the product itself.`;
+The ultimate goal is to keep the product exactly as is, but in a much better, professional environment.`;
 
   const response = await fetch(`${BASE_URL}/${MODEL_GEN}:generateContent?key=${API_KEY}`, {
     method: "POST",
@@ -48,8 +48,8 @@ The goal is to only change the environment, never the product itself.`;
         ]
       }],
       generationConfig: {
-        // Pedimos explícitamente una imagen como respuesta
-        responseModalities: ["IMAGE"]
+        // Importante: Algunos modelos requieren TEXT junto con IMAGE
+        responseModalities: ["TEXT", "IMAGE"]
       }
     })
   });
@@ -61,14 +61,24 @@ The goal is to only change the environment, never the product itself.`;
 
   const result = await response.json();
 
-  // El modelo multimodal devuelve la imagen en un part con inline_data
-  const generatedPart = result.candidates?.[0]?.content?.parts?.find((p: any) => p.inline_data);
-  const generatedBase64 = generatedPart?.inline_data?.data;
+  // Buscar el componente de imagen en la respuesta multimodal
+  const candidates = result.candidates || [];
+  let generatedBase64 = null;
+
+  for (const candidate of candidates) {
+    const parts = candidate.content?.parts || [];
+    for (const part of parts) {
+      if (part.inline_data && part.inline_data.data) {
+        generatedBase64 = part.inline_data.data;
+        break;
+      }
+    }
+    if (generatedBase64) break;
+  }
 
   if (!generatedBase64) {
-    // Fallback: Si no generó imagen, quizás devolvió texto explicando por qué
     const textReason = result.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text;
-    throw new Error(textReason || "El modelo no generó una imagen. Por favor, intenta con otra foto.");
+    throw new Error(textReason || "El modelo no generó una imagen. Intenta con un prompt más simple o revisa la calidad de la foto.");
   }
 
   return `data:image/png;base64,${generatedBase64}`;
