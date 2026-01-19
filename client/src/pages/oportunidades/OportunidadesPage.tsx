@@ -314,7 +314,16 @@ export default function OportunidadesPage() {
                 "Entidad",
               ]);
               const fechaVal = getVal(["Fecha de cierre", "Cierre", "Fecha"]);
-              const montoVal = getVal(["Monto Disponible", "Monto", "Valor", "Presupuesto", "Total Estimado", "Total"]);
+              const montoVal = getVal([
+                "Monto Disponible",
+                "Monto",
+                "Valor",
+                "Presupuesto",
+                "Presupuesto estimado",
+                "Presupuesto Estimado",
+                "Total Estimado",
+                "Total"
+              ]);
               const estadoVal = getVal(["Estado"]);
               const claveVal = getVal(["Clave"]);
 
@@ -354,6 +363,10 @@ export default function OportunidadesPage() {
                 }
 
                 montoNum = parseFloat(limpio);
+                if (isNaN(montoNum)) {
+                  console.warn("Parseo fallido para monto:", montoVal);
+                  montoNum = null;
+                }
               }
 
               // Lógica de normalización de fecha y hora (Dato SENSIBLE)
