@@ -10,10 +10,14 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // Debug Key Presence
+    // Debug Key Presence & Prefix
+    const keyPrefix = BREVO_API_KEY ? BREVO_API_KEY.substring(0, 5) : "NONE";
+    const keyStatus = !BREVO_API_KEY ? "MISSING" : `PRESENT (Start: ${keyPrefix}...)`;
+
+    console.log(`[DEBUG] Brevo Key Status: ${keyStatus}`);
+
     if (!BREVO_API_KEY || BREVO_API_KEY.trim() === '') {
-        console.error("BREVO_API_KEY is missing in environment variables");
-        return res.status(500).json({ error: "Configuration Error: BREVO_API_KEY is missing in Vercel Settings." });
+        return res.status(500).json({ error: `Config Error: Key is MISSING. Status: ${keyStatus}` });
     }
     // Configurar CORS
     res.setHeader('Access-Control-Allow-Credentials', "true");
@@ -102,6 +106,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     } catch (err: any) {
         console.error('Test Email Error:', err);
-        return res.status(500).json({ error: err.message });
+
+        // Extract detailed Axios error info if available
+        if (axios.isAxiosError(err)) {
+            const status = err.response?.status;
+            const data = err.response?.data;
+            console.error('Upstream Error Details:', { status, data });
+            return res.status(status || 500).json({
+                error: "Upstream Error from Brevo",
+                details: data,
+                status: status
+            });
+        }
+
+        return res.status(500).json({ error: err.message, stack: err.stack });
     }
 }
