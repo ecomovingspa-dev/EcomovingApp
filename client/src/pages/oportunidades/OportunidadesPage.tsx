@@ -714,11 +714,11 @@ export default function OportunidadesPage() {
                     oportunidadesPagina.map((op) => (
                       <tr
                         key={op.id}
-                        className={`transition-colors ${estaDescartada(op.estado)
-                          ? "bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600"
+                        className={`transition-colors border-b border-gray-100 dark:border-gray-800/50 ${estaDescartada(op.estado)
+                          ? "bg-gray-100 dark:bg-gray-900/50 opacity-60 hover:opacity-100"
                           : estaVencida(op.fecha_cierre)
-                            ? "bg-red-50 dark:bg-red-900/40 hover:bg-red-100 dark:hover:bg-red-900/60"
-                            : "hover:bg-gray-50 dark:hover:bg-gray-750"
+                            ? "bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40"
+                            : "bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50"
                           }`}
                       >
                         <td className="px-4 py-3 text-center">
