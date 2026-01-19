@@ -57,18 +57,49 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
         }
     };
 
-    const pruebaEnvio = (msg: MarketingMessage) => {
+    const pruebaEnvio = async (msg: MarketingMessage) => {
         if (!msg.imagen_url) {
             alert("⚠️ Debes agregar una URL de imagen primero.");
             return;
         }
 
-        const htmlFinal = msg.cuerpo_html.replace("IMAGE_PLACEHOLDER", msg.imagen_url);
+        const emailDestino = prompt("Ingresa el correo para recibir la prueba:", "ventas@ecomoving.cl");
+        if (!emailDestino) return;
 
-        const win = window.open("", "_blank");
-        if (win) {
-            win.document.write(htmlFinal);
-            win.document.close();
+        try {
+            // Feedback simple pero efectivo
+            const btn = document.activeElement as HTMLButtonElement;
+            const originalIcon = btn.innerHTML;
+            btn.innerHTML = "⏳";
+            btn.disabled = true;
+
+            const response = await fetch('/api/send-test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messageId: msg.id,
+                    targetEmail: emailDestino
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || "Error al enviar");
+            }
+
+            alert("✅ ¡Correo de prueba enviado con éxito!");
+            btn.innerHTML = originalIcon;
+            btn.disabled = false;
+        } catch (err: any) {
+            console.error("Error envío prueba:", err);
+            alert("❌ Error: " + err.message);
+            // Restaurar botón si falla
+            const btn = document.activeElement as HTMLButtonElement;
+            if (btn) {
+                btn.innerHTML = "<svg...>"; // Simplificado, mejor refrescar o dejar como estaba
+                window.location.reload();
+            }
         }
     };
 

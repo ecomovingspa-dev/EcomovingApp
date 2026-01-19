@@ -78,19 +78,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // --- ASSET ASSEMBLY (The Factory) ---
-        // 1. Construct Image URL from Storage
+        // 1. Get Image URL directly from the manual field (fallback to constructed if empty, though manual is preferred now)
         const bucketName = 'imagenes-marketing';
-        const imagePath = messageData.nombre_imagen || `imagen_${messageData.nombre_envio}.jpg`;
-        const imageUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${imagePath}`;
+        let imageUrl = messageData.imagen_url;
 
-        // 2. Fetch Logo URL (Assuming it's in a 'public' or similar bucket)
+        if (!imageUrl && messageData.nombre_imagen) {
+          // Fallback for old legacy logic if needed, but manual URL is priority
+          imageUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${messageData.nombre_imagen}`;
+        }
+
+        // 2. Fetch Logo URL
         const logoUrl = `${supabaseUrl}/storage/v1/object/public/configuracion/logo.png`;
 
         // 3. Prepare HTML Content
         let finalHtml = messageData.cuerpo_html || '';
 
-        // Embed the main marketing image if the placeholder exists
-        finalHtml = finalHtml.replace('{{IMG_URL}}', imageUrl);
+        // Embed the main marketing image replacing the correct placeholder
+        if (imageUrl) {
+          finalHtml = finalHtml.replace('IMAGE_PLACEHOLDER', imageUrl);
+        }
 
         // Add Signature with Logo at the end
         const signatureHtml = `
