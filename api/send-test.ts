@@ -7,9 +7,14 @@ const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const BREVO_API_KEY = process.env.BREVO_API_KEY!;
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // Debug Key Presence
+    if (!BREVO_API_KEY || BREVO_API_KEY.trim() === '') {
+        console.error("BREVO_API_KEY is missing in environment variables");
+        return res.status(500).json({ error: "Configuration Error: BREVO_API_KEY is missing in Vercel Settings." });
+    }
     // Configurar CORS
     res.setHeader('Access-Control-Allow-Credentials', "true");
     res.setHeader('Access-Control-Allow-Origin', '*');
