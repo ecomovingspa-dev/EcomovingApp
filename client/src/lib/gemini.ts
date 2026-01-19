@@ -114,11 +114,7 @@ Reglas:
         ${p2}
       </p>
 
-      <div style="text-align: center;">
-        <a href="#" style="background-color: #4f46e5; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; display: inline-block;">
-          Ver Catálogo Completo
-        </a>
-      </div>
+
     </div>
     
     <div class="footer">
