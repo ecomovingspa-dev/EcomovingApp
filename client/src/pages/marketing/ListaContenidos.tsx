@@ -21,7 +21,6 @@ interface MarketingMessage {
     nombre_envio: number;
     nombre_imagen?: string;
     imagen_url?: string;
-    url_imagen_supabase?: string;
     estado?: string;
     activo?: boolean;
     created_at?: string;
@@ -77,13 +76,13 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
         try {
             const { error: dbError } = await supabase
                 .from("marketing")
-                .update({ url_imagen_supabase: urlTemporal })
+                .update({ imagen_url: urlTemporal })
                 .eq("id", id);
 
             if (dbError) throw dbError;
 
             setMensajes(mensajes.map(m =>
-                m.id === id ? { ...m, url_imagen_supabase: urlTemporal } : m
+                m.id === id ? { ...m, imagen_url: urlTemporal } : m
             ));
             setEditandoUrl(null);
             setUrlTemporal("");
@@ -202,12 +201,12 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                                 <button
                                                     onClick={() => {
                                                         setEditandoUrl(msg.id);
-                                                        setUrlTemporal(msg.url_imagen_supabase || "");
+                                                        setUrlTemporal(msg.imagen_url || "");
                                                     }}
                                                     className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 underline decoration-dotted transition-colors truncate max-w-full block"
                                                 >
-                                                    {msg.url_imagen_supabase ? (
-                                                        <span className="truncate">{msg.url_imagen_supabase}</span>
+                                                    {msg.imagen_url ? (
+                                                        <span className="truncate">{msg.imagen_url}</span>
                                                     ) : (
                                                         <span className="text-gray-400">+ Agregar URL</span>
                                                     )}
