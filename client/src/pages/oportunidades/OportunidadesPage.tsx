@@ -314,7 +314,7 @@ export default function OportunidadesPage() {
                 "Entidad",
               ]);
               const fechaVal = getVal(["Fecha de cierre", "Cierre", "Fecha"]);
-              const montoVal = getVal(["Monto Disponible", "Monto", "Valor"]);
+              const montoVal = getVal(["Monto Disponible", "Monto", "Valor", "Presupuesto", "Total Estimado", "Total"]);
               const estadoVal = getVal(["Estado"]);
               const claveVal = getVal(["Clave"]);
 
@@ -328,14 +328,33 @@ export default function OportunidadesPage() {
 
               if (!keywordsEncontradas) return null;
 
-              let monto = montoVal;
-              if (typeof monto === "string") {
-                monto = monto
-                  .replace(/\$/g, "")
-                  .replace(/\./g, "")
-                  .replace(/,/g, ".");
+              let montoNum: number | null = null;
+
+              if (typeof montoVal === "number") {
+                montoNum = montoVal;
+              } else if (typeof montoVal === "string") {
+                // Limpieza robusta para formato chileno/latino ($ 1.000.000 o 1.000.000,00)
+                let limpio = montoVal.trim();
+
+                // Si tiene formato $ 1.000 (con puntos de miles y sin comas decimales o con coma al final)
+                // Eliminamos todo lo que no sea número, coma o guion
+                limpio = limpio.replace(/[^0-9,.-]/g, "");
+
+                // Si tiene puntos y comas, asumimos punto=miles y coma=decimal (formato CL)
+                if (limpio.includes(".") && limpio.includes(",")) {
+                  limpio = limpio.replace(/\./g, "").replace(",", ".");
+                } else if (limpio.includes(".")) {
+                  // Si solo tiene puntos, asumimos que son miles si hay más de uno o si parece miles
+                  // Riesgo: 1.500 puede ser mil quinientos o uno punto cinco. 
+                  // En contexto licitaciones CL, suele ser miles. Eliminamos punto.
+                  limpio = limpio.replace(/\./g, "");
+                } else if (limpio.includes(",")) {
+                  // Si solo tiene coma, es decimal
+                  limpio = limpio.replace(",", ".");
+                }
+
+                montoNum = parseFloat(limpio);
               }
-              const montoNum = parseFloat(monto) || null;
 
               // Lógica de normalización de fecha y hora (Dato SENSIBLE)
               let fechaCierre = fechaVal;
