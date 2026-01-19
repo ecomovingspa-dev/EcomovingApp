@@ -9,7 +9,8 @@ import {
     Library,
     Loader2,
     AlertCircle,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Send
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
@@ -53,6 +54,21 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
             setError("No se pudo cargar la biblioteca de contenidos.");
         } finally {
             setCargando(false);
+        }
+    };
+
+    const pruebaEnvio = (msg: MarketingMessage) => {
+        if (!msg.imagen_url) {
+            alert("⚠️ Debes agregar una URL de imagen primero.");
+            return;
+        }
+
+        const htmlFinal = msg.cuerpo_html.replace("IMAGE_PLACEHOLDER", msg.imagen_url);
+
+        const win = window.open("", "_blank");
+        if (win) {
+            win.document.write(htmlFinal);
+            win.document.close();
         }
     };
 
@@ -228,14 +244,25 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                             </button>
                                         </td>
                                         <td className="px-4 py-4 text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={() => eliminarMensaje(msg.id)}
-                                                className="h-8 w-8 p-0 text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => pruebaEnvio(msg)}
+                                                    className="h-8 w-8 p-0 text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                                                    title="Probar HTML Final"
+                                                >
+                                                    <Send className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() => eliminarMensaje(msg.id)}
+                                                    className="h-8 w-8 p-0 text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
