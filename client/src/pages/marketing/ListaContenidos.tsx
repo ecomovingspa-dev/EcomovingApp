@@ -21,6 +21,7 @@ interface MarketingMessage {
     nombre_envio: number;
     nombre_imagen?: string;
     imagen_url?: string;
+    url_imagen_supabase?: string;
     estado?: string;
     activo?: boolean;
     created_at?: string;
@@ -31,6 +32,8 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState("");
     const [vistaPrevia, setVistaPrevia] = useState<string | null>(null);
+    const [editandoUrl, setEditandoUrl] = useState<string | null>(null);
+    const [urlTemporal, setUrlTemporal] = useState("");
 
     useEffect(() => {
         cargarMensajes();
@@ -67,6 +70,25 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
             setMensajes(mensajes.filter(m => m.id !== id));
         } catch (err: any) {
             alert("Error al eliminar: " + err.message);
+        }
+    };
+
+    const guardarUrl = async (id: string) => {
+        try {
+            const { error: dbError } = await supabase
+                .from("marketing")
+                .update({ url_imagen_supabase: urlTemporal })
+                .eq("id", id);
+
+            if (dbError) throw dbError;
+
+            setMensajes(mensajes.map(m =>
+                m.id === id ? { ...m, url_imagen_supabase: urlTemporal } : m
+            ));
+            setEditandoUrl(null);
+            setUrlTemporal("");
+        } catch (err: any) {
+            alert("Error al guardar URL: " + err.message);
         }
     };
 
@@ -119,6 +141,8 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                 <tr>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest w-16">#</th>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Asunto</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">Archivo</th>
+                                    <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest">URL Supabase</th>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest max-w-xs">Contenido</th>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center">HTML</th>
                                     <th className="px-6 py-4 text-[11px] font-bold text-gray-400 uppercase tracking-widest text-right">Acciones</th>
@@ -133,16 +157,58 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <p className="font-semibold text-gray-900 dark:text-gray-100 leading-tight">
-                                                    {msg.asunto}
-                                                </p>
-                                            </div>
+                                            <p className="font-semibold text-gray-900 dark:text-gray-100 leading-tight">
+                                                {msg.asunto}
+                                            </p>
+                                        </td>
+                                        <td className="px-6 py-4">
                                             {msg.nombre_imagen && (
-                                                <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                                                <p className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1 font-mono">
                                                     <ImageIcon className="h-3 w-3" />
                                                     {msg.nombre_imagen}
                                                 </p>
+                                            )}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            {editandoUrl === msg.id ? (
+                                                <div className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={urlTemporal}
+                                                        onChange={(e) => setUrlTemporal(e.target.value)}
+                                                        placeholder="https://..."
+                                                        className="px-2 py-1 text-xs border border-indigo-300 rounded focus:ring-2 focus:ring-indigo-500 outline-none w-full"
+                                                        autoFocus
+                                                    />
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => guardarUrl(msg.id)}
+                                                        className="bg-indigo-600 hover:bg-indigo-700 text-white h-7 px-2"
+                                                    >
+                                                        ✓
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            setEditandoUrl(null);
+                                                            setUrlTemporal("");
+                                                        }}
+                                                        className="h-7 px-2"
+                                                    >
+                                                        ✕
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => {
+                                                        setEditandoUrl(msg.id);
+                                                        setUrlTemporal(msg.url_imagen_supabase || "");
+                                                    }}
+                                                    className="text-xs text-gray-500 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 underline decoration-dotted"
+                                                >
+                                                    {msg.url_imagen_supabase || "+ Agregar URL"}
+                                                </button>
                                             )}
                                         </td>
                                         <td className="px-6 py-4">
