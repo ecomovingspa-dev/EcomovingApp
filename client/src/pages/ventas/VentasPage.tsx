@@ -1012,7 +1012,7 @@ export default function VentasPage() {
                                           fecha_abono: e.target.value,
                                         }))
                                       }
-                                      className="h-8 text-xs pl-7 text-gray-900 bg-white border-gray-300"
+                                      className="h-8 text-xs pl-7"
                                     />
                                   </div>
                                 </div>
@@ -1029,7 +1029,7 @@ export default function VentasPage() {
                                       }))
                                     }
                                   >
-                                    <SelectTrigger className="h-8 text-xs text-gray-900 bg-white border-gray-300">
+                                    <SelectTrigger className="h-8 text-xs">
                                       <SelectValue placeholder="Seleccionar..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1064,7 +1064,7 @@ export default function VentasPage() {
                                           monto_abono: e.target.value,
                                         }))
                                       }
-                                      className="h-8 text-xs pl-7 text-gray-900 bg-white border-gray-300"
+                                      className="h-8 text-xs pl-7"
                                       placeholder="0"
                                     />
                                   </div>
@@ -1083,7 +1083,7 @@ export default function VentasPage() {
                                           detalle_abono: e.target.value,
                                         }))
                                       }
-                                      className="h-8 text-xs pl-7 text-gray-900 bg-white border-gray-300"
+                                      className="h-8 text-xs pl-7"
                                       placeholder="Nota..."
                                     />
                                   </div>
