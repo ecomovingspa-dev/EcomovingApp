@@ -85,14 +85,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         let finalHtml = messageData.cuerpo_html || '';
         if (imageUrl) {
-            finalHtml = finalHtml.replace('IMAGE_PLACEHOLDER', imageUrl);
+            finalHtml = finalHtml
+                .replace('IMAGE_PLACEHOLDER', imageUrl)
+                .replace('{{IMG_URL}}', imageUrl); // Support for legacy placeholder
         }
 
         const signatureHtml = `
       <br><br>
       <hr style="border:none; border-top:1px solid #eee; margin:20px 0;">
-      <div style="font-family: Arial, sans-serif; color: #666;">
-        <img src="${logoUrl}" alt="Ecomoving Logo" style="width:150px; margin-bottom:10px;"><br>
+      <div style="font-family: Arial, sans-serif; color: #333;">
+        <h2 style="margin: 0; padding: 0; color: #4f46e5; font-size: 24px;">Ecomoving</h2>
+        <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">Regalos Corporativos con Impacto Sustentable</p>
+        <br>
         <strong>Equipo Ecomoving</strong><br>
         <a href="https://www.ecomoving.cl" style="color: #007bff; text-decoration: none;">www.ecomoving.cl</a>
       </div>
