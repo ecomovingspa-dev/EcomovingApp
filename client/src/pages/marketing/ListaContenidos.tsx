@@ -85,7 +85,11 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
             const result = await response.json();
 
             if (!response.ok) {
-                throw new Error(result.error || "Error al enviar");
+                let errorMsg = result.error || "Error al enviar";
+                if (result.details) {
+                    errorMsg += `\nDetalles: ${JSON.stringify(result.details, null, 2)}`;
+                }
+                throw new Error(errorMsg);
             }
 
             alert("✅ ¡Correo de prueba enviado con éxito!");
