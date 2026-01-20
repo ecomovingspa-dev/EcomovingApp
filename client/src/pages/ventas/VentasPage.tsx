@@ -538,7 +538,7 @@ export default function VentasPage() {
 
       alert(
         "Pago guardado correctamente. Nuevo saldo: $" +
-          nuevoSaldo.toLocaleString(),
+        nuevoSaldo.toLocaleString(),
       );
 
       setVentas((prev) =>
@@ -910,42 +910,42 @@ export default function VentasPage() {
                                   ?.ultimo_tipo_aviso ||
                                   ventas.find((v) => v.id === cobranzaOpen)
                                     ?.fecha_ultimo_aviso) && (
-                                  <div className="pt-2 border-t border-gray-200">
-                                    <p className="text-[10px] uppercase text-gray-500 font-semibold mb-2">
-                                      Información de Cobranza
-                                    </p>
-                                    {ventas.find((v) => v.id === cobranzaOpen)
-                                      ?.ultimo_tipo_aviso && (
-                                      <div className="flex justify-between items-center py-1">
-                                        <span className="text-xs text-gray-600">
-                                          Último Aviso:
-                                        </span>
-                                        <span className="text-xs font-medium text-gray-900 capitalize">
-                                          {
-                                            ventas.find(
-                                              (v) => v.id === cobranzaOpen,
-                                            )?.ultimo_tipo_aviso
-                                          }
-                                        </span>
-                                      </div>
-                                    )}
-                                    {ventas.find((v) => v.id === cobranzaOpen)
-                                      ?.fecha_ultimo_aviso && (
-                                      <div className="flex justify-between items-center py-1">
-                                        <span className="text-xs text-gray-600">
-                                          Fecha Aviso:
-                                        </span>
-                                        <span className="text-xs font-medium text-gray-900">
-                                          {
-                                            ventas.find(
-                                              (v) => v.id === cobranzaOpen,
-                                            )?.fecha_ultimo_aviso
-                                          }
-                                        </span>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                                    <div className="pt-2 border-t border-gray-200">
+                                      <p className="text-[10px] uppercase text-gray-500 font-semibold mb-2">
+                                        Información de Cobranza
+                                      </p>
+                                      {ventas.find((v) => v.id === cobranzaOpen)
+                                        ?.ultimo_tipo_aviso && (
+                                          <div className="flex justify-between items-center py-1">
+                                            <span className="text-xs text-gray-600">
+                                              Último Aviso:
+                                            </span>
+                                            <span className="text-xs font-medium text-gray-900 capitalize">
+                                              {
+                                                ventas.find(
+                                                  (v) => v.id === cobranzaOpen,
+                                                )?.ultimo_tipo_aviso
+                                              }
+                                            </span>
+                                          </div>
+                                        )}
+                                      {ventas.find((v) => v.id === cobranzaOpen)
+                                        ?.fecha_ultimo_aviso && (
+                                          <div className="flex justify-between items-center py-1">
+                                            <span className="text-xs text-gray-600">
+                                              Fecha Aviso:
+                                            </span>
+                                            <span className="text-xs font-medium text-gray-900">
+                                              {
+                                                ventas.find(
+                                                  (v) => v.id === cobranzaOpen,
+                                                )?.fecha_ultimo_aviso
+                                              }
+                                            </span>
+                                          </div>
+                                        )}
+                                    </div>
+                                  )}
                               </div>
                               <Button
                                 size="sm"
@@ -1012,7 +1012,7 @@ export default function VentasPage() {
                                           fecha_abono: e.target.value,
                                         }))
                                       }
-                                      className="h-8 text-xs pl-7"
+                                      className="h-8 text-xs pl-7 text-gray-900 bg-white border-gray-300"
                                     />
                                   </div>
                                 </div>
@@ -1029,7 +1029,7 @@ export default function VentasPage() {
                                       }))
                                     }
                                   >
-                                    <SelectTrigger className="h-8 text-xs">
+                                    <SelectTrigger className="h-8 text-xs text-gray-900 bg-white border-gray-300">
                                       <SelectValue placeholder="Seleccionar..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1064,7 +1064,7 @@ export default function VentasPage() {
                                           monto_abono: e.target.value,
                                         }))
                                       }
-                                      className="h-8 text-xs pl-7"
+                                      className="h-8 text-xs pl-7 text-gray-900 bg-white border-gray-300"
                                       placeholder="0"
                                     />
                                   </div>
@@ -1083,7 +1083,7 @@ export default function VentasPage() {
                                           detalle_abono: e.target.value,
                                         }))
                                       }
-                                      className="h-8 text-xs pl-7"
+                                      className="h-8 text-xs pl-7 text-gray-900 bg-white border-gray-300"
                                       placeholder="Nota..."
                                     />
                                   </div>
