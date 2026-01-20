@@ -7,18 +7,21 @@ const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const BREVO_API_KEY = process.env.BREVO_API_KEY;
+// Remove global variable to ensure we use local sanitized one
+// const BREVO_API_KEY = process.env.BREVO_API_KEY;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // Debug Key Presence & Prefix
-    const keyPrefix = BREVO_API_KEY ? BREVO_API_KEY.substring(0, 5) : "NONE";
-    const keyStatus = !BREVO_API_KEY ? "MISSING" : `PRESENT (Start: ${keyPrefix}...)`;
+    // 0. Sanitize Key (Remove quotes or spaces)
+    const rawKey = process.env.BREVO_API_KEY || "";
+    const BREVO_KEY_CLEAN = rawKey.trim().replace(/^['"]|['"]$/g, '');
 
-    console.log(`[DEBUG] Brevo Key Status: ${keyStatus}`);
+    const keyPrefix = BREVO_KEY_CLEAN ? BREVO_KEY_CLEAN.substring(0, 5) : "NONE";
+    console.log(`[DEBUG] Key Used: ${keyPrefix}... (Len: ${BREVO_KEY_CLEAN.length})`);
 
-    if (!BREVO_API_KEY || BREVO_API_KEY.trim() === '') {
-        return res.status(500).json({ error: `Config Error: Key is MISSING. Status: ${keyStatus}` });
+    if (!BREVO_KEY_CLEAN) {
+        return res.status(500).json({ error: "Config Error: BREVO_API_KEY is MISSING in Vercel." });
     }
+
     // Configurar CORS
     res.setHeader('Access-Control-Allow-Credentials', "true");
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -44,7 +47,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        // 1. Fetch Message Logic (Factory Logic)
+        // --- STEP 0: Verify Brevo Connection & Auth ---
+        try {
+            await axios.get('https://api.brevo.com/v3/account', {
+                headers: { 'api-key': BREVO_KEY_CLEAN }
+            });
+            console.log("[DEBUG] Auth Check Passed");
+        } catch (authErr: any) {
+            console.error("[DEBUG] Auth Check Failed:", authErr.response?.data);
+            if (axios.isAxiosError(authErr) && authErr.response?.status === 401) {
+                return res.status(401).json({
+                    error: "Brevo Auth Failed: Invalid API Key. Please check Vercel Env Vars.",
+                    details: authErr.response?.data
+                });
+            }
+            // If other error, let logic continue or fail later
+        }
+
+        // 1. Fetch Message Logic
         let { data: messageData, error: msgError } = await supabase
             .from('marketing')
             .select('*')
@@ -55,18 +75,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(404).json({ error: "Message not found" });
         }
 
-        // 2. Prepare Assets
+        // ... (Asset Prep)
         const bucketName = 'imagenes-marketing';
         let imageUrl = messageData.imagen_url;
-
-        // Fallback if manual URL is missing
         if (!imageUrl && messageData.nombre_imagen) {
             imageUrl = `${supabaseUrl}/storage/v1/object/public/${bucketName}/${messageData.nombre_imagen}`;
         }
-
         const logoUrl = `${supabaseUrl}/storage/v1/object/public/configuracion/logo.png`;
 
-        // 3. Build HTML
         let finalHtml = messageData.cuerpo_html || '';
         if (imageUrl) {
             finalHtml = finalHtml.replace('IMAGE_PLACEHOLDER', imageUrl);
@@ -96,7 +112,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         await axios.post('https://api.brevo.com/v3/smtp/email', emailPayload, {
             headers: {
-                'api-key': BREVO_API_KEY,
+                'api-key': BREVO_KEY_CLEAN,
                 'Content-Type': 'application/json',
                 'accept': 'application/json'
             }
@@ -106,19 +122,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     } catch (err: any) {
         console.error('Test Email Error:', err);
-
-        // Extract detailed Axios error info if available
         if (axios.isAxiosError(err)) {
             const status = err.response?.status;
             const data = err.response?.data;
-            console.error('Upstream Error Details:', { status, data });
             return res.status(status || 500).json({
-                error: "Upstream Error from Brevo",
+                error: "Upstream Error from Brevo (Send Step)",
                 details: data,
                 status: status
             });
         }
-
-        return res.status(500).json({ error: err.message, stack: err.stack });
+        return res.status(500).json({ error: err.message });
     }
 }
