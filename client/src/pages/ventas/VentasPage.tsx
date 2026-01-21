@@ -173,8 +173,32 @@ export default function VentasPage() {
     {
       pendientes: { count: 0, total: 0 },
       vencidas: { count: 0, total: 0 },
+      mensual: { count: 0, total: 0 },
     },
   );
+
+  // Calcular totales mensuales en una pasada separada o integrar arriba si es posible
+  // Lo integramos calculando en el render para asegurar reactividad correcta o extendemos el reduce
+  // Mejor extendemos el reduce anterior
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  ventas.forEach((venta) => {
+    // Sumar al acumulador mensual
+    if (venta.fch_emis) {
+      // Asumiendo formato YYYY-MM-DD
+      const parts = venta.fch_emis.split("-");
+      if (parts.length === 3) {
+        const y = parseInt(parts[0]);
+        const m = parseInt(parts[1]) - 1; // 0-indexed
+        if (y === currentYear && m === currentMonth) {
+          summary.mensual.count++;
+          summary.mensual.total += venta.mnt_total || 0;
+        }
+      }
+    }
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -600,98 +624,128 @@ export default function VentasPage() {
   return (
     <div className="space-y-6 pb-10">
       {/* Header */}
-      <div className="flex items-start justify-between gap-6">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-4">
+      {/* Header & Stats */}
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
             <FileText className="h-8 w-8 text-blue-600" />
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               Ventas y Facturación
             </h1>
           </div>
 
-          {/* Tarjetas inline */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Card className="border-l-4 border-l-yellow-400 shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-yellow-500" />
-                  Facturas Pendientes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-end">
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {summary.pendientes.count}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Documentos por cobrar
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-yellow-600">
-                      ${summary.pendientes.total.toLocaleString()}
-                    </p>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-semibold">
-                      Monto Total
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-red-500 shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-500" />
-                  Facturas Vencidas
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between items-end">
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {summary.vencidas.count}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      Documentos atrasados
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-red-600">
-                      ${summary.vencidas.total.toLocaleString()}
-                    </p>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-semibold">
-                      Monto Total
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {/* Botón sincronización Compacto */}
+          <div className="flex items-center">
+            <input
+              type="file"
+              id="sync-excel-input"
+              accept=".xls,.xlsx"
+              className="hidden"
+              onChange={handleFileChange}
+              disabled={sincronizando}
+            />
+            <Label
+              htmlFor="sync-excel-input"
+              className={`cursor-pointer inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2 bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 ${sincronizando ? 'opacity-70 cursor-wait' : ''}`}
+            >
+              {sincronizando ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2 text-white" />
+              )}
+              {sincronizando ? "Procesando..." : "Sincronizar Facturas"}
+            </Label>
           </div>
         </div>
 
-        {/* Botón sincronización */}
-        <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm p-4 w-72">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 flex items-center gap-2">
-            <RefreshCw className="h-4 w-4 text-blue-600" />
-            Sincronizar Facturas
-          </h3>
+        {/* Tarjetas Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="border-l-4 border-l-yellow-400 shadow-sm dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                <Clock className="h-4 w-4 text-yellow-500" />
+                Facturas Pendientes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {summary.pendientes.count}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Documentos por cobrar
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-yellow-600 dark:text-yellow-500">
+                    ${summary.pendientes.total.toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-semibold">
+                    Monto Total
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <Input
-            type="file"
-            accept=".xls,.xlsx"
-            onChange={handleFileChange}
-            className="mb-2 text-sm"
-            disabled={sincronizando}
-          />
+          <Card className="border-l-4 border-l-red-500 shadow-sm dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-red-500" />
+                Facturas Vencidas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {summary.vencidas.count}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Documentos atrasados
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-red-600 dark:text-red-500">
+                    ${summary.vencidas.total.toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-semibold">
+                    Monto Total
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          {sincronizando && (
-            <div className="flex items-center gap-2 text-xs text-blue-600 mt-2">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              Procesando Excel...
-            </div>
-          )}
+          <Card className="border-l-4 border-l-blue-500 shadow-sm dark:bg-gray-800 dark:border-gray-700">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300 flex items-center gap-2">
+                <CalendarDays className="h-4 w-4 text-blue-500" />
+                Facturación Mensual
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {summary.mensual.count}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Emitidas este mes
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                    ${summary.mensual.total.toLocaleString()}
+                  </p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-semibold">
+                    Monto Total
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
@@ -850,12 +904,12 @@ export default function VentasPage() {
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent
-                            className="w-72 p-4 bg-white"
+                            className="w-72 p-4 bg-white dark:bg-gray-800 dark:border-gray-700"
                             align="end"
                           >
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
-                                <h4 className="text-sm font-semibold text-gray-900">
+                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
                                   Cobranza
                                 </h4>
                                 <Button
@@ -950,7 +1004,7 @@ export default function VentasPage() {
                                   ?.ultimo_tipo_aviso ||
                                   ventas.find((v) => v.id === cobranzaOpen)
                                     ?.fecha_ultimo_aviso) && (
-                                    <div className="pt-2 border-t border-gray-200">
+                                    <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                                       <p className="text-[10px] uppercase text-gray-500 font-semibold mb-2">
                                         Información de Cobranza
                                       </p>
@@ -960,7 +1014,7 @@ export default function VentasPage() {
                                             <span className="text-xs text-gray-600">
                                               Último Aviso:
                                             </span>
-                                            <span className="text-xs font-medium text-gray-900 capitalize">
+                                            <span className="text-xs font-medium text-gray-900 dark:text-gray-200 capitalize">
                                               {
                                                 ventas.find(
                                                   (v) => v.id === cobranzaOpen,
@@ -975,7 +1029,7 @@ export default function VentasPage() {
                                             <span className="text-xs text-gray-600">
                                               Fecha Aviso:
                                             </span>
-                                            <span className="text-xs font-medium text-gray-900">
+                                            <span className="text-xs font-medium text-gray-900 dark:text-gray-200">
                                               {
                                                 ventas.find(
                                                   (v) => v.id === cobranzaOpen,
@@ -1019,12 +1073,12 @@ export default function VentasPage() {
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent
-                            className="w-72 p-4 bg-white"
+                            className="w-72 p-4 bg-white dark:bg-gray-800 dark:border-gray-700"
                             align="end"
                           >
                             <div className="space-y-3">
                               <div className="flex items-center justify-between">
-                                <h4 className="text-sm font-semibold text-gray-900">
+                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
                                   Registrar Pago
                                 </h4>
                                 <Button
@@ -1043,30 +1097,30 @@ export default function VentasPage() {
                                   Cargando historial...
                                 </div>
                               ) : abonosHistorial.length > 0 ? (
-                                <div className="bg-gray-50 rounded-md p-2 max-h-32 overflow-y-auto mb-3 border border-gray-100">
-                                  <h5 className="text-[10px] font-semibold text-gray-500 uppercase mb-2">
+                                <div className="bg-gray-50 dark:bg-gray-900 rounded-md p-2 max-h-32 overflow-y-auto mb-3 border border-gray-100 dark:border-gray-700">
+                                  <h5 className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">
                                     Pagos realizados
                                   </h5>
                                   <div className="space-y-2">
                                     {abonosHistorial.map((abono) => (
                                       <div
                                         key={abono.id}
-                                        className="flex justify-between items-start text-xs border-b border-gray-100 last:border-0 pb-1 last:pb-0"
+                                        className="flex justify-between items-start text-xs border-b border-gray-100 dark:border-gray-800 last:border-0 pb-1 last:pb-0"
                                       >
                                         <div>
-                                          <div className="font-medium text-gray-800">
+                                          <div className="font-medium text-gray-800 dark:text-gray-200">
                                             ${abono.monto_abono?.toLocaleString()}
                                           </div>
-                                          <div className="text-[10px] text-gray-500">
+                                          <div className="text-[10px] text-gray-500 dark:text-gray-400">
                                             {abono.fecha_abono}
                                           </div>
                                         </div>
                                         <div className="text-right">
-                                          <div className="font-medium text-gray-600 capitalize">
+                                          <div className="font-medium text-gray-600 dark:text-gray-300 capitalize">
                                             {abono.tipo_abono?.replace("_", " ")}
                                           </div>
                                           {abono.detalle_abono && (
-                                            <div className="text-[10px] text-gray-400 truncate max-w-[100px]" title={abono.detalle_abono}>
+                                            <div className="text-[10px] text-gray-400 dark:text-gray-500 truncate max-w-[100px]" title={abono.detalle_abono}>
                                               {abono.detalle_abono}
                                             </div>
                                           )}
@@ -1237,31 +1291,34 @@ export default function VentasPage() {
           </DialogHeader>
           {resultadoSync && (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                  <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                  <p className="text-3xl font-bold text-green-600">
-                    {resultadoSync.nuevas}
-                  </p>
-                  <p className="text-xs text-gray-600 font-medium">Nuevas</p>
-                </div>
-                <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <RefreshCw className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                  <p className="text-3xl font-bold text-blue-600">
-                    {resultadoSync.actualizadas}
-                  </p>
-                  <p className="text-xs text-gray-600 font-medium">
-                    Actualizadas
-                  </p>
-                </div>
-                <div className="text-center p-4 bg-gray-50 rounded-lg border border-gray-200">
-                  <XCircle className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                  <p className="text-3xl font-bold text-gray-600">
-                    {resultadoSync.sinCambios}
-                  </p>
-                  <p className="text-xs text-gray-600 font-medium">
-                    Sin cambios
-                  </p>
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                <h4 className="font-medium text-gray-900 dark:text-white mb-4">Resultado de Importación</h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
+                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                      {resultadoSync.nuevas}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Nuevas</p>
+                  </div>
+                  <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <RefreshCw className="h-8 w-8 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
+                    <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                      {resultadoSync.actualizadas}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                      Actualizadas
+                    </p>
+                  </div>
+                  <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <XCircle className="h-8 w-8 text-gray-600 dark:text-gray-400 mx-auto mb-2" />
+                    <p className="text-3xl font-bold text-gray-600 dark:text-gray-400">
+                      {resultadoSync.sinCambios}
+                    </p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                      Sin cambios
+                    </p>
+                  </div>
                 </div>
               </div>
 
