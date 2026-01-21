@@ -3,10 +3,19 @@
   "outputDirectory": "dist",
   "framework": "vite",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
   ],
-  "crons": [{
-    "path": "/api/marketing",
-    "schedule": "0 10 * * *"
-  }]
+  "crons": [
+    {
+      "path": "/api/marketing",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron-cobranza",
+      "schedule": "0 12 * * *"
+    }
+  ]
 }
