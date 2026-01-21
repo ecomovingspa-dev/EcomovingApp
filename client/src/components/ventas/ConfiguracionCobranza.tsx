@@ -22,6 +22,9 @@ import {
     LayoutDashboard,
     Mail,
     Zap,
+    Trash2,
+    PlusCircle,
+    Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +50,7 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
     const [reglas, setReglas] = useState<ReglaCobranza[]>([]);
     const [cargando, setCargando] = useState(false);
     const [guardando, setGuardando] = useState(false);
+    const [optimizing, setOptimizing] = useState<string | null>(null); // Field being optimized
     const [selectedReglaId, setSelectedReglaId] = useState<number | null>(null);
 
     useEffect(() => {
@@ -83,6 +87,95 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
         setReglas((prev) =>
             prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
         );
+    };
+
+    const handleMejorarTexto = async (field: 'asunto_template' | 'mensaje_intro' | 'mensaje_cierre') => {
+        if (!selectedRegla) return;
+
+        const textoActual = selectedRegla[field];
+        if (!textoActual || textoActual.length < 5) {
+            alert("El texto es muy corto para ser mejorado.");
+            return;
+        }
+
+        setOptimizing(field);
+        try {
+            const res = await fetch('/api/edita-texto-cobranza', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    text: textoActual,
+                    type: field === 'asunto_template' ? 'asunto' : field === 'mensaje_intro' ? 'intro' : 'cierre',
+                    context: `Regla de cobranza: ${selectedRegla.etiqueta} (Urgencia: ${selectedRegla.urgencia})`
+                })
+            });
+
+            if (!res.ok) throw new Error("Error en la API de IA");
+
+            const data = await res.json();
+            if (data.improvedText) {
+                handleUpdateRegla(selectedRegla.id, field, data.improvedText);
+            }
+        } catch (error) {
+            console.error("Error mejorando texto:", error);
+            alert("No se pudo mejorar el texto. Verifica tu conexión o intenta más tarde.");
+        } finally {
+            setOptimizing(null);
+        }
+    };
+
+    const handleCrearRegla = async () => {
+        const nuevaRegla = {
+            nombre: `Nueva Regla ${reglas.length + 1}`,
+            etiqueta: "Nueva Etapa",
+            dias_min: 0,
+            dias_max: 0,
+            asunto_template: "Recordatorio de Pago {folio}",
+            mensaje_intro: "Estimado cliente, le recordamos que su factura {folio} está pendiente.",
+            mensaje_cierre: "Favor realizar el pago a la brevedad.",
+            urgencia: "normal",
+            activo: true
+        };
+
+        try {
+            const { data, error } = await supabase
+                .from("configuracion_cobranza")
+                .insert(nuevaRegla)
+                .select()
+                .single();
+
+            if (error) throw error;
+            if (data) {
+                setReglas([...reglas, data]);
+                setSelectedReglaId(data.id);
+            }
+        } catch (error: any) {
+            console.error("Error creando regla:", error);
+            alert("Error al crear regla: " + error.message);
+        }
+    };
+
+    const handleEliminarRegla = async (id: number, e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!confirm("¿Estás seguro de eliminar esta regla?")) return;
+
+        try {
+            const { error } = await supabase
+                .from("configuracion_cobranza")
+                .delete()
+                .eq("id", id);
+
+            if (error) throw error;
+
+            const nuevasReglas = reglas.filter(r => r.id !== id);
+            setReglas(nuevasReglas);
+            if (selectedReglaId === id) {
+                setSelectedReglaId(nuevasReglas[0]?.id || null);
+            }
+        } catch (error: any) {
+            console.error("Error eliminando regla:", error);
+            alert("Error al eliminar: " + error.message);
+        }
     };
 
     const guardarCambios = async (regla: ReglaCobranza) => {
@@ -135,6 +228,14 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                             <h2 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Reglas de Cobro</h2>
                             <p className="text-[10px] text-gray-500 dark:text-gray-400">Automatización</p>
                         </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleCrearRegla}
+                            className="ml-auto h-7 w-7 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                        >
+                            <PlusCircle className="h-4 w-4" />
+                        </Button>
                     </div>
 
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -155,7 +256,15 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                                     {getUrgenciaIcon(regla.urgencia)}
                                     <span>{regla.etiqueta}</span>
                                 </div>
-                                {selectedReglaId === regla.id && <ChevronRight className="h-3 w-3 opacity-50" />}
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={(e) => handleEliminarRegla(regla.id, e)}
+                                        className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-opacity"
+                                    >
+                                        <Trash2 className="h-3 w-3" />
+                                    </button>
+                                    {selectedReglaId === regla.id && <ChevronRight className="h-3 w-3 opacity-50" />}
+                                </div>
                             </button>
                         ))}
                     </div>
@@ -194,7 +303,7 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                                     className="gap-2 h-8 text-xs font-medium text-purple-600 border-purple-200 dark:border-purple-800 dark:bg-purple-900/10 hover:bg-purple-50 dark:hover:bg-purple-900/20"
                                 >
                                     <Wand2 className="h-3.5 w-3.5" />
-                                    <span className="hidden sm:inline">Mejorar con IA</span>
+                                    <span className="hidden sm:inline">Mejorar todo con IA</span>
                                 </Button>
                             </div>
 
@@ -243,7 +352,19 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
 
                                         <div className="space-y-6">
                                             <div className="space-y-2">
-                                                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Asunto</Label>
+                                                <div className="flex justify-between items-center">
+                                                    <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Asunto</Label>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-6 px-2 text-[10px] text-purple-600 gap-1 hover:bg-purple-50"
+                                                        onClick={() => handleMejorarTexto('asunto_template')}
+                                                        disabled={!!optimizing}
+                                                    >
+                                                        {optimizing === 'asunto_template' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                                        Mejorar
+                                                    </Button>
+                                                </div>
                                                 <Input
                                                     className="bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 text-sm h-10 shadow-sm"
                                                     value={selectedRegla.asunto_template}
@@ -253,8 +374,18 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                 <div className="space-y-2">
-                                                    <div className="flex justify-between">
+                                                    <div className="flex justify-between items-center">
                                                         <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Introducción</Label>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-6 px-2 text-[10px] text-purple-600 gap-1 hover:bg-purple-50"
+                                                            onClick={() => handleMejorarTexto('mensaje_intro')}
+                                                            disabled={!!optimizing}
+                                                        >
+                                                            {optimizing === 'mensaje_intro' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                                            Mejorar
+                                                        </Button>
                                                     </div>
                                                     <Textarea
                                                         className="min-h-[140px] bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 resize-none text-sm leading-relaxed p-3 shadow-sm focus:ring-1 focus:ring-purple-500"
@@ -264,8 +395,18 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                                                     />
                                                 </div>
                                                 <div className="space-y-2">
-                                                    <div className="flex justify-between">
+                                                    <div className="flex justify-between items-center">
                                                         <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Cierre</Label>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-6 px-2 text-[10px] text-purple-600 gap-1 hover:bg-purple-50"
+                                                            onClick={() => handleMejorarTexto('mensaje_cierre')}
+                                                            disabled={!!optimizing}
+                                                        >
+                                                            {optimizing === 'mensaje_cierre' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                                                            Mejorar
+                                                        </Button>
                                                     </div>
                                                     <Textarea
                                                         className="min-h-[140px] bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 resize-none text-sm leading-relaxed p-3 shadow-sm focus:ring-1 focus:ring-purple-500"
