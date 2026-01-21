@@ -84,11 +84,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const logoUrl = `${supabaseUrl}/storage/v1/object/public/configuracion/logo.png`;
 
         let finalHtml = messageData.cuerpo_html || '';
-        if (imageUrl) {
-            finalHtml = finalHtml
-                .replace('IMAGE_PLACEHOLDER', imageUrl)
-                .replace('{{IMG_URL}}', imageUrl); // Support for legacy placeholder
+
+        // --- LOGIC MEJORADA: LA IMAGEN ES OBLIGATORIA ---
+        const isValidUrl = (url: string) => {
+            try { return Boolean(new URL(url)); } catch (e) { return false; }
+        };
+
+        if (!imageUrl || !isValidUrl(imageUrl)) {
+            // CRITICAL ERROR: Sin imagen no hay marketing válido.
+            const expectedUrl = imageUrl || `(Vacío - bucket: ${bucketName}, file: ${messageData.nombre_imagen})`;
+            return res.status(400).json({
+                error: "Error Crítico de Imagen",
+                details: `No se encontró una URL válida para la imagen. El envío fue cancelado para evitar correos rotos.`,
+                debugUrl: expectedUrl
+            });
         }
+
+        // Si llegamos aqui, la URL es sintácticamente válida.
+        // Opcional: Podríamos hacer un 'head' request rápido para ver si da 200 OK, pero puede ser lento.
+        // Asumimos que si hay URL, intentamos usarla.
+
+        finalHtml = finalHtml
+            .replace(/IMAGE_PLACEHOLDER/g, imageUrl)
+            .replace(/\{\{IMG_URL\}\}/g, imageUrl);
 
         const signatureHtml = `
       <br><br>
