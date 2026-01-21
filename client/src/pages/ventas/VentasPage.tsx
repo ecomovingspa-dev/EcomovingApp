@@ -77,6 +77,8 @@ export default function VentasPage() {
     monto_abono: "",
   });
   const [guardandoAbono, setGuardandoAbono] = useState(false);
+  const [abonosHistorial, setAbonosHistorial] = useState<any[]>([]);
+  const [cargandoAbonos, setCargandoAbonos] = useState(false);
 
   // Sincronización
   const [sincronizando, setSincronizando] = useState(false);
@@ -86,6 +88,14 @@ export default function VentasPage() {
   useEffect(() => {
     cargarVentas();
   }, []);
+
+  useEffect(() => {
+    if (abonoOpen) {
+      cargarAbonos(abonoOpen);
+    } else {
+      setAbonosHistorial([]);
+    }
+  }, [abonoOpen]);
 
   // Función auxiliar para calcular estado (debe estar antes de cargarVentas)
   const calcularEstado = (
@@ -485,6 +495,24 @@ export default function VentasPage() {
 
   // ==================== ABONO ====================
 
+  const cargarAbonos = async (ventaId: number) => {
+    setCargandoAbonos(true);
+    try {
+      const { data, error } = await supabase
+        .from("abonos")
+        .select("*")
+        .eq("venta_id", ventaId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setAbonosHistorial(data || []);
+    } catch (e) {
+      console.error("Error cargando abonos:", e);
+    } finally {
+      setCargandoAbonos(false);
+    }
+  };
+
   const openAbonoForm = (venta: Venta) => {
     setAbonoForm({
       fecha_abono: new Date().toISOString().split("T")[0],
@@ -536,6 +564,17 @@ export default function VentasPage() {
 
       if (errorVenta) throw errorVenta;
 
+      // Recargar abonos
+      await cargarAbonos(ventaId);
+
+      // Limpiar formulario y cerrar si se pagó total o dejar abierto para ver
+      setAbonoForm({
+        fecha_abono: new Date().toISOString().split("T")[0],
+        tipo_abono: "",
+        detalle_abono: "",
+        monto_abono: "",
+      });
+
       alert(
         "Pago guardado correctamente. Nuevo saldo: $" +
         nuevoSaldo.toLocaleString(),
@@ -548,7 +587,8 @@ export default function VentasPage() {
             : v,
         ),
       );
-      setAbonoOpen(null);
+      // No cerramos el modal inmediatamente para que vea el historial actualizado
+      // setAbonoOpen(null); 
     } catch (e: any) {
       console.error("Error guardando abono:", e);
       alert("Error al guardar: " + e.message);
@@ -996,7 +1036,52 @@ export default function VentasPage() {
                                   <X className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
-                              <div className="space-y-2">
+
+                              {/* Historial de Abonos */}
+                              {cargandoAbonos ? (
+                                <div className="text-center py-2 text-xs text-gray-400">
+                                  Cargando historial...
+                                </div>
+                              ) : abonosHistorial.length > 0 ? (
+                                <div className="bg-gray-50 rounded-md p-2 max-h-32 overflow-y-auto mb-3 border border-gray-100">
+                                  <h5 className="text-[10px] font-semibold text-gray-500 uppercase mb-2">
+                                    Pagos realizados
+                                  </h5>
+                                  <div className="space-y-2">
+                                    {abonosHistorial.map((abono) => (
+                                      <div
+                                        key={abono.id}
+                                        className="flex justify-between items-start text-xs border-b border-gray-100 last:border-0 pb-1 last:pb-0"
+                                      >
+                                        <div>
+                                          <div className="font-medium text-gray-800">
+                                            ${abono.monto_abono?.toLocaleString()}
+                                          </div>
+                                          <div className="text-[10px] text-gray-500">
+                                            {abono.fecha_abono}
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className="font-medium text-gray-600 capitalize">
+                                            {abono.tipo_abono?.replace("_", " ")}
+                                          </div>
+                                          {abono.detalle_abono && (
+                                            <div className="text-[10px] text-gray-400 truncate max-w-[100px]" title={abono.detalle_abono}>
+                                              {abono.detalle_abono}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-xs text-center py-2 text-gray-400 italic">
+                                  No hay pagos registrados
+                                </div>
+                              )}
+
+                              <div className="space-y-2 pt-2 border-t border-gray-100">
                                 <div className="space-y-1">
                                   <Label className="text-[10px] uppercase text-gray-500 font-semibold">
                                     Fecha
