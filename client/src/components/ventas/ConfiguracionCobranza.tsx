@@ -282,18 +282,49 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                             </div>
 
                             {/* Footer Actions */}
-                            <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#0f1117] flex justify-end gap-3 z-10">
-                                <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
-                                    Cancelar
-                                </Button>
-                                <Button
-                                    onClick={() => guardarCambios(selectedRegla)}
-                                    disabled={guardando}
-                                    className="bg-purple-600 hover:bg-purple-700 text-white min-w-[140px] shadow-lg shadow-purple-900/20"
-                                >
-                                    {guardando ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                                    Guardar Cambios
-                                </Button>
+                            <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#0f1117] flex justify-between items-center gap-3 z-10">
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-xs h-9 border-dashed border-gray-300 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800"
+                                        onClick={async () => {
+                                            const email = window.prompt("Ingresa el correo para enviar la prueba:", "mario@ecomoving.cl");
+                                            if (email && email.includes("@")) {
+                                                try {
+                                                    // Assuming the API is deployed at /api/send-test-cobranza
+                                                    // For local dev, we might need full URL, but relative usually works with Vite proxy or Vercel
+                                                    const res = await fetch('/api/send-test-cobranza', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ email, ruleId: selectedRegla.id })
+                                                    });
+                                                    if (res.ok) alert("✅ Correo de prueba enviado a " + email);
+                                                    else alert("❌ Error enviando prueba");
+                                                } catch (e) {
+                                                    alert("Error de conexión");
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        <Mail className="h-3.5 w-3.5 mr-2" />
+                                        Enviar Prueba
+                                    </Button>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                        Cancelar
+                                    </Button>
+                                    <Button
+                                        onClick={() => guardarCambios(selectedRegla)}
+                                        disabled={guardando}
+                                        className="bg-purple-600 hover:bg-purple-700 text-white min-w-[140px] shadow-lg shadow-purple-900/20"
+                                    >
+                                        {guardando ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                                        Guardar Cambios
+                                    </Button>
+                                </div>
                             </div>
                         </>
                     ) : (
