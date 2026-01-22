@@ -28,6 +28,7 @@ import {
   Check,
   Clock,
   Send,
+  Copy,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -133,8 +134,8 @@ const TimelineEstado = ({
           <div className="flex flex-col items-center">
             <div
               className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all ${index <= estadoIndex
-                  ? getColorClasses(e.color, true)
-                  : getColorClasses(e.color, false)
+                ? getColorClasses(e.color, true)
+                : getColorClasses(e.color, false)
                 }`}
             >
               {index < estadoIndex && <Check className="h-4 w-4 text-white" />}
@@ -144,8 +145,8 @@ const TimelineEstado = ({
             </div>
             <div
               className={`text-[10px] font-medium mt-1 ${index === estadoIndex
-                  ? "text-gray-900 dark:text-gray-100"
-                  : "text-gray-400 dark:text-gray-500"
+                ? "text-gray-900 dark:text-gray-100"
+                : "text-gray-400 dark:text-gray-500"
                 }`}
             >
               {e.label}
@@ -159,8 +160,8 @@ const TimelineEstado = ({
           {index < estados.length - 1 && (
             <div
               className={`flex-1 h-0.5 ${index < estadoIndex
-                  ? "bg-gray-400 dark:bg-gray-500"
-                  : "bg-gray-200 dark:bg-gray-700"
+                ? "bg-gray-400 dark:bg-gray-500"
+                : "bg-gray-200 dark:bg-gray-700"
                 }`}
             ></div>
           )}
@@ -810,6 +811,78 @@ export default function CotizacionForm() {
     }
   };
 
+  const handleDuplicate = async () => {
+    if (!cotizacion.id) return;
+
+    setGuardando(true);
+    setMensaje("Duplicando cotización...");
+
+    try {
+      let numeroCotizacion = await generarNumeroCotizacion();
+
+      let intentos = 0;
+      const maxIntentos = 5;
+      while (intentos < maxIntentos) {
+        const { data: existing, error: checkError } = await supabase
+          .from("cotizaciones")
+          .select("id")
+          .eq("numero_cotizacion", numeroCotizacion)
+          .limit(1);
+
+        if (checkError) throw checkError;
+
+        if (!existing || existing.length === 0) {
+          break;
+        } else {
+          const partes = numeroCotizacion.split("-");
+          const actual = parseInt(partes[1], 10);
+          if (isNaN(actual)) break;
+          numeroCotizacion = `COT-${actual + 1}`;
+          intentos++;
+        }
+      }
+
+      if (intentos >= maxIntentos) {
+        throw new Error("No se pudo generar un número único para la copia");
+      }
+
+      const { cuentas: _, contactos: __, id: ___, created_at: ____, ...cotizacionLimpia } = cotizacion;
+
+      const dataCotizacion = {
+        ...cotizacionLimpia,
+        numero_cotizacion: numeroCotizacion,
+        estado_cotizacion: "borrador",
+        nro_oc: "",
+        nro_guia: "",
+        nro_factura: "",
+        id_mercado_publico: "",
+        costo_total: totales.totalCostos,
+        total_neto: Math.round(totales.totalVenta),
+        iva: Math.round(totales.totalVenta * 0.19),
+        total: Math.round(totales.totalVenta * 1.19),
+        ganancias: Math.round(totales.ganancia),
+        mg: totales.margenTotal.toFixed(2),
+      };
+
+      const { data, error } = await supabase
+        .from("cotizaciones")
+        .insert([dataCotizacion])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setMensaje("✅ Cotización duplicada");
+      setTimeout(() => navigate(`/cotizaciones/${data.id}`), 1000);
+
+    } catch (error: any) {
+      console.error("Error al duplicar:", error);
+      setMensaje("❌ Error al duplicar: " + error.message);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cotizacion.cuenta_id) {
@@ -1020,6 +1093,18 @@ export default function CotizacionForm() {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <BotonExportarPDF {...datosParaPDF} />
+                {esEdicion && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleDuplicate}
+                    disabled={guardando}
+                    title="Duplicar Cotización"
+                    className="text-slate-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                )}
                 <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1"></div>
                 <Button
                   variant="ghost"
@@ -1047,10 +1132,10 @@ export default function CotizacionForm() {
         {mensaje && (
           <div
             className={`p-4 rounded-xl font-medium border flex items-center gap-3 shadow-sm ${mensaje.includes("❌") || mensaje.includes("⚠️")
-                ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-100 dark:border-red-800"
-                : mensaje.includes("💾")
-                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-800"
-                  : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800"
+              ? "bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-100 dark:border-red-800"
+              : mensaje.includes("💾")
+                ? "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-100 dark:border-blue-800"
+                : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800"
               }`}
           >
             {mensaje}
