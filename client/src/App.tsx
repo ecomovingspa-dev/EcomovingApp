@@ -12,6 +12,8 @@ import OportunidadesPage from "./pages/oportunidades/OportunidadesPage";
 import OportunidadForm from "./pages/oportunidades/OportunidadForm";
 import ConfiguracionKeywords from "./pages/oportunidades/ConfiguracionKeywords";
 import VentasPage from "./pages/ventas/VentasPage";
+import ComprasPage from "./pages/compras/ComprasPage";
+import ConciliacionPage from "./pages/conciliacion/ConciliacionPage";
 import Marketing from "./pages/marketing/marketing";
 
 export default function App() {
@@ -22,6 +24,10 @@ export default function App() {
           <Route index element={<Home />} />
           {/* Ventas */}
           <Route path="ventas" element={<VentasPage />} />
+          {/* Compras */}
+          <Route path="compras" element={<ComprasPage />} />
+          {/* Conciliación */}
+          <Route path="conciliacion" element={<ConciliacionPage />} />
           {/* Cuentas */}
           <Route path="cuentas" element={<CuentasPage />} />
           <Route path="cuentas/nueva" element={<CuentaForm />} />

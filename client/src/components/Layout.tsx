@@ -12,6 +12,8 @@ import {
   ChevronRight,
   LogOut,
   Mail,
+  ShoppingBag,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -34,6 +36,8 @@ export default function Layout() {
     { path: "/cotizaciones", label: "Cotizaciones", icon: FileText },
     { path: "/oportunidades", label: "Oportunidades", icon: Briefcase },
     { path: "/ventas", label: "Ventas", icon: DollarSign },
+    { path: "/compras", label: "Compras", icon: ShoppingBag },
+    { path: "/conciliacion", label: "Conciliación", icon: ArrowRightLeft },
     { path: "/marketing", label: "Marketing", icon: Mail },
   ];
 
