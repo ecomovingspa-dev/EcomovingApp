@@ -145,11 +145,18 @@ export default function ConciliacionPage() {
             let saldoInicial = 0;
             let saldoFinal = 0;
             let movementsStartIndex = -1;
+            let cargoIdx = 10; // Default BCI
+            let abonoIdx = 12; // Default BCI
+            let saldoIdx = 14; // Default BCI
 
-            for (let i = 0; i < rows.length; i++) {
-                const rowStr = JSON.stringify(rows[i]).toLowerCase();
+            // 1. Scan for headers and balance
+            for (let i = 0; i < Math.min(rows.length, 50); i++) {
+                const row = rows[i];
+                if (!row) continue;
+                const rowStr = JSON.stringify(row).toLowerCase();
+
+                // Capture Saldo
                 if (rowStr.includes("saldo anterior") && rowStr.includes("saldo contable final")) {
-                    // Try to capture Saldos if in the same row
                     const summaryRow = rows[i + 1];
                     if (summaryRow) {
                         const numbers = summaryRow.filter(cell => typeof cell === 'number');
@@ -159,9 +166,28 @@ export default function ConciliacionPage() {
                         }
                     }
                 }
-                if (rows[i] && rows[i].some((cell: any) => typeof cell === 'string' && cell.includes("Cheques y otros"))) {
+
+                // Detect Headers
+                if ((rowStr.includes("cargos") && rowStr.includes("abonos")) || rowStr.includes("cheques y otros")) {
+                    // Try to identify specific columns in this row
+                    row.forEach((cell: any, idx: number) => {
+                        if (typeof cell === 'string') {
+                            const val = cell.toLowerCase().trim();
+                            if (val === 'cargos' || val.includes('cargos')) cargoIdx = idx;
+                            if (val === 'abonos' || val.includes('abonos')) abonoIdx = idx;
+                            if (val === 'saldo' || val.includes('saldo')) saldoIdx = idx;
+                        }
+                    });
                     movementsStartIndex = i + 1;
                 }
+            }
+
+            // Ensure we have a start index
+            if (movementsStartIndex === -1) {
+                // Fallback: look for first date-like cell? Or just assume after some rows?
+                // Let's stick to what we had: if we didn't find headers, maybe the old check worked?
+                // The old check was: includes("Cheques y otros") -> start = i+1
+                // We covered that in the loop above.
             }
 
             const parsedMovimientos: any[] = [];
@@ -171,7 +197,7 @@ export default function ConciliacionPage() {
                     if (!row || row.length === 0) continue;
 
                     const fechaRaw = row[0]; // A
-                    if (!fechaRaw) continue;
+                    if (!fechaRaw && fechaRaw !== 0) continue;
 
                     // Parse Date
                     let fecha: string | null = null;
@@ -181,13 +207,20 @@ export default function ConciliacionPage() {
                     } else if (typeof fechaRaw === 'string') {
                         const parts = fechaRaw.split('/');
                         if (parts.length === 3) {
+                            // Assume DD/MM/YYYY
                             fecha = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                        } else {
+                            // Try parsing standard date string
+                            const d = new Date(fechaRaw);
+                            if (!isNaN(d.getTime())) {
+                                fecha = d.toISOString().split('T')[0];
+                            }
                         }
                     }
 
                     if (!fecha) continue;
 
-                    // Description Parts
+                    // Description Parts (Columns C to G usually)
                     const descParts = [];
                     for (let k = 2; k <= 6; k++) {
                         if (typeof row[k] === 'string') descParts.push(row[k]);
@@ -195,9 +228,24 @@ export default function ConciliacionPage() {
                     const finalDesc = descParts.join(" ") || "Sin descripción";
 
                     const nDoc = row[7] || row[8];
-                    const cargo = typeof row[10] === 'number' ? row[10] : 0;
-                    const abono = typeof row[12] === 'number' ? row[12] : 0;
-                    const saldo = typeof row[14] === 'number' ? row[14] : 0;
+
+                    const parseMoney = (val: any) => {
+                        if (typeof val === 'number') return val;
+                        if (typeof val === 'string') {
+                            // Remove $ and dots (thousands separator in CL), replace semi/colon with dot if needed? 
+                            // CL Locale: 1.000,00 or 1.000 usually. Excel might give raw number 1000.
+                            // If it's a string "$ 1.000", parsing it:
+                            const clean = val.replace(/[^0-9,.-]/g, '');
+                            // If using comma for decimal
+                            const normalized = clean.replace(/\./g, '').replace(',', '.');
+                            return parseFloat(normalized) || 0;
+                        }
+                        return 0;
+                    };
+
+                    const cargo = parseMoney(row[cargoIdx]);
+                    const abono = parseMoney(row[abonoIdx]);
+                    const saldo = parseMoney(row[saldoIdx]);
 
                     parsedMovimientos.push({
                         fecha,
@@ -417,11 +465,15 @@ export default function ConciliacionPage() {
                             value={selectedCartola || ""}
                             onChange={(e) => setSelectedCartola(Number(e.target.value))}
                         >
-                            {cartolas.map(c => (
-                                <option key={c.id} value={c.id}>
-                                    {new Date(c.fecha_carga).toLocaleDateString()} - {c.nombre_archivo}
-                                </option>
-                            ))}
+                            {cartolas.map(c => {
+                                const date = new Date(c.fecha_carga);
+                                const monthName = date.toLocaleString('es-CL', { month: 'long', year: 'numeric' });
+                                return (
+                                    <option key={c.id} value={c.id}>
+                                        {monthName.charAt(0).toUpperCase() + monthName.slice(1)} ({c.nombre_archivo})
+                                    </option>
+                                );
+                            })}
                             {!cartolas.length && <option value="">Sin cartolas</option>}
                         </select>
                     </div>
