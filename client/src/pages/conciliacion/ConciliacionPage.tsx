@@ -78,6 +78,18 @@ export default function ConciliacionPage() {
     const [uploading, setUploading] = useState(false);
     const [categorias, setCategorias] = useState<string[]>([]);
 
+    // Upload Summary Dialog State
+    const [uploadSummaryOpen, setUploadSummaryOpen] = useState(false);
+    const [uploadSummary, setUploadSummary] = useState<{
+        total: number;
+        nuevos: number;
+        duplicados: number;
+        cargos: number;
+        abonos: number;
+        saldoInicial: number;
+        saldoFinal: number;
+    } | null>(null);
+
     // Reconciliation Dialog State
     const [conciliarOpen, setConciliarOpen] = useState(false);
     const [selectedMovimiento, setSelectedMovimiento] = useState<BancoMovimiento | null>(null);
@@ -472,11 +484,25 @@ export default function ConciliacionPage() {
             alert("Error guardando movimientos: " + movsError.message);
         } else {
             const duplicateCount = movimientosConId.length - newMovimientos.length;
-            let message = `Cartola cargada exitosamente. ${newMovimientos.length} movimientos nuevos insertados.`;
-            if (duplicateCount > 0) {
-                message += ` ${duplicateCount} movimientos duplicados fueron omitidos.`;
-            }
-            alert(message);
+
+            // Calculate statistics
+            const totalCargos = newMovimientos.reduce((sum, m) => sum + (m.cargos || 0), 0);
+            const totalAbonos = newMovimientos.reduce((sum, m) => sum + (m.abonos || 0), 0);
+
+            // Set summary data
+            setUploadSummary({
+                total: movimientosConId.length,
+                nuevos: newMovimientos.length,
+                duplicados: duplicateCount,
+                cargos: totalCargos,
+                abonos: totalAbonos,
+                saldoInicial: sIni,
+                saldoFinal: sFin
+            });
+
+            // Show summary dialog
+            setUploadSummaryOpen(true);
+
             cargarCartolas();
             setSelectedCartola(cartolaData.id);
         }
@@ -895,6 +921,82 @@ export default function ConciliacionPage() {
                             </Tabs>
                         </div>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Upload Summary Dialog */}
+            <Dialog open={uploadSummaryOpen} onOpenChange={setUploadSummaryOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            Resumen de Carga
+                        </DialogTitle>
+                        <DialogDescription>
+                            Detalles de los movimientos procesados desde el archivo Excel.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {uploadSummary && (
+                        <div className="space-y-4 py-4">
+                            {/* Statistics Grid */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                                    <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold uppercase mb-1">Total Procesados</p>
+                                    <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">{uploadSummary.total}</p>
+                                </div>
+                                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                                    <p className="text-xs text-green-600 dark:text-green-400 font-semibold uppercase mb-1">Nuevos Insertados</p>
+                                    <p className="text-3xl font-bold text-green-700 dark:text-green-300">{uploadSummary.nuevos}</p>
+                                </div>
+                                {uploadSummary.duplicados > 0 && (
+                                    <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                                        <p className="text-xs text-yellow-600 dark:text-yellow-400 font-semibold uppercase mb-1">Duplicados Omitidos</p>
+                                        <p className="text-3xl font-bold text-yellow-700 dark:text-yellow-300">{uploadSummary.duplicados}</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Financial Summary */}
+                            <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Resumen Financiero</h4>
+
+                                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">Saldo Inicial</span>
+                                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                        ${uploadSummary.saldoInicial.toLocaleString()}
+                                    </span>
+                                </div>
+
+                                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                                    <span className="text-sm text-red-600 dark:text-red-400">Total Cargos</span>
+                                    <span className="font-semibold text-red-700 dark:text-red-400">
+                                        -${uploadSummary.cargos.toLocaleString()}
+                                    </span>
+                                </div>
+
+                                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
+                                    <span className="text-sm text-green-600 dark:text-green-400">Total Abonos</span>
+                                    <span className="font-semibold text-green-700 dark:text-green-400">
+                                        +${uploadSummary.abonos.toLocaleString()}
+                                    </span>
+                                </div>
+
+                                <div className="flex justify-between items-center py-2 bg-gray-50 dark:bg-gray-800 px-3 rounded-md">
+                                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Saldo Final</span>
+                                    <span className="font-bold text-lg text-gray-900 dark:text-gray-100">
+                                        ${uploadSummary.saldoFinal.toLocaleString()}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex justify-end">
+                        <Button onClick={() => setUploadSummaryOpen(false)}>
+                            Cerrar
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>
