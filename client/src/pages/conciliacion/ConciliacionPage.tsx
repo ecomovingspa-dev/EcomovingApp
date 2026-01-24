@@ -883,7 +883,7 @@ export default function ConciliacionPage() {
                                                 <div>
                                                     <div className="flex items-center gap-2">
                                                         <Badge variant="secondary" className="uppercase text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-none">{item.tipo}</Badge>
-                                                        <span className="font-bold text-sm text-gray-900 dark:text-gray-100">Folio #{item.folio}</span>
+                                                        <span className="font-bold text-sm text-gray-900 dark:text-gray-100">Folio {item.folio}</span>
                                                     </div>
                                                     <p className="text-sm text-gray-700 dark:text-gray-300">{item.entidad}</p>
                                                     <p className="text-xs text-gray-400 dark:text-gray-500">{item.fecha}</p>

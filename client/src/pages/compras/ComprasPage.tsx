@@ -630,7 +630,7 @@ export default function ComprasPage() {
                                                 {compra.fecha_vencimiento || "-"}
                                             </td>
                                             <td className="px-6 py-3 text-gray-600 dark:text-gray-300">
-                                                #{compra.folio}
+                                                {compra.folio}
                                             </td>
                                             <td className="px-6 py-3">
                                                 <div className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1 max-w-[200px]" title={compra.razon_social || ""}>
