@@ -92,6 +92,9 @@ export default function ConciliacionPage() {
     const [coincidencias, setCoincidencias] = useState<Coincidencia[]>([]);
     const [searchingMatch, setSearchingMatch] = useState(false);
     const [matchTab, setMatchTab] = useState("sugerencias"); // sugerencias | manual
+    const [preconciliacionOpen, setPreconciliacionOpen] = useState(false);
+    const [preconciliacionesEncontradas, setPreconciliacionesEncontradas] = useState<{ mov: BancoMovimiento; match: Coincidencia }[]>([]);
+    const [isPreconciliating, setIsPreconciliating] = useState(false);
 
     useEffect(() => {
         cargarCartolas();
@@ -698,6 +701,142 @@ export default function ConciliacionPage() {
     };
 
 
+    const handlePreconciliacion = async () => {
+        if (!selectedPeriod || movimientos.length === 0) return;
+
+        setIsPreconciliating(true);
+        const pendientes = movimientos.filter(m => m.estado === 'pendiente');
+        const encontradas: { mov: BancoMovimiento; match: Coincidencia }[] = [];
+        const tolerancia = 5;
+
+        try {
+            // Buscamos coincidencias para cada movimiento pendiente
+            for (const mov of pendientes) {
+                const esAbono = mov.abonos > 0;
+                const montoBuscado = esAbono ? mov.abonos : mov.cargos;
+                let candidate: Coincidencia | null = null;
+
+                if (esAbono) {
+                    const { data: ventasMatch } = await supabase
+                        .from("ventas")
+                        .select("*")
+                        .gte("mnt_total", montoBuscado - tolerancia)
+                        .lte("mnt_total", montoBuscado + tolerancia)
+                        .limit(2); // Solo nos interesa si hay exactamente 1
+
+                    if (ventasMatch && ventasMatch.length === 1) {
+                        const v = ventasMatch[0];
+                        candidate = {
+                            id: v.id,
+                            tipo: 'venta',
+                            entidad: v.rzn_soc_recep || "Desconocido",
+                            fecha: v.fch_emis,
+                            monto: v.mnt_total,
+                            folio: v.folio,
+                            estado: v.estado_deuda || "Pendiente",
+                            documento_relacionado: v
+                        };
+                    }
+                } else {
+                    const { data: comprasMatch } = await supabase
+                        .from("compras")
+                        .select("*")
+                        .gte("monto_total", montoBuscado - tolerancia)
+                        .lte("monto_total", montoBuscado + tolerancia)
+                        .limit(2);
+
+                    if (comprasMatch && comprasMatch.length === 1) {
+                        const c = comprasMatch[0];
+                        candidate = {
+                            id: c.id,
+                            tipo: 'compra',
+                            entidad: c.razon_social || "Desconocido",
+                            fecha: c.fecha_emision,
+                            monto: c.monto_total,
+                            folio: c.folio,
+                            estado: c.estado_pago || "Pendiente",
+                            documento_relacionado: c
+                        };
+                    }
+                }
+
+                if (candidate) {
+                    encontradas.push({ mov, match: candidate });
+                }
+            }
+
+            setPreconciliacionesEncontradas(encontradas);
+            setPreconciliacionOpen(true);
+        } catch (error) {
+            console.error("Error en preconciliación:", error);
+            alert("Ocurrió un error al buscar coincidencias.");
+        } finally {
+            setIsPreconciliating(false);
+        }
+    };
+
+    const ejecutarPreconciliacionMasiva = async () => {
+        if (preconciliacionesEncontradas.length === 0) return;
+
+        setLoading(true);
+        let exitosas = 0;
+        let errores = 0;
+
+        for (const item of preconciliacionesEncontradas) {
+            try {
+                // 1. Actualizar Movimiento Bancario
+                const { error: errMov } = await supabase
+                    .from("banco_movimientos")
+                    .update({
+                        estado: "conciliado",
+                        tipo_conciliacion: item.match.tipo,
+                        conciliado_id: item.match.id
+                    })
+                    .eq("id", item.mov.id);
+
+                if (errMov) throw errMov;
+
+                // 2. Actualizar Registro Relacionado (Venta o Compra)
+                if (item.match.estado !== "Pagada") {
+                    if (item.match.tipo === "venta") {
+                        await supabase.from("ventas").update({
+                            estado_deuda: "Pagada",
+                            saldo: 0,
+                            fecha_abono: new Date().toISOString().split("T")[0],
+                            monto_abono: item.match.monto
+                        }).eq("id", item.match.id);
+
+                        await supabase.from("abonos").insert({
+                            venta_id: item.match.id,
+                            monto_abono: item.match.monto,
+                            fecha_abono: new Date().toISOString().split("T")[0],
+                            tipo_abono: "Transferencia",
+                            detalle_abono: `Pre-conciliación automática - Movimiento: ${item.mov.descripcion}`
+                        });
+                    } else {
+                        await supabase.from("compras").update({
+                            estado_pago: "Pagada",
+                            saldo: 0
+                        }).eq("id", item.match.id);
+                    }
+                }
+                exitosas++;
+            } catch (e) {
+                console.error("Error conciliando item:", item, e);
+                errores++;
+            }
+        }
+
+        setPreconciliacionOpen(false);
+        setLoading(false);
+
+        if (selectedPeriod) {
+            cargarMovimientos(selectedPeriod);
+        }
+
+        alert(`Proceso finalizado. Exitosas: ${exitosas}, Errores: ${errores}`);
+    };
+
     const fmtMoney = (amount: number) => {
         return amount.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
     };
@@ -761,6 +900,20 @@ export default function ConciliacionPage() {
                             {uploading ? "Procesando..." : "Subir Cartola"}
                         </Label>
                     </div>
+
+                    <Button
+                        variant="outline"
+                        className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800"
+                        onClick={handlePreconciliacion}
+                        disabled={isPreconciliating || loading || movimientos.filter(m => m.estado === 'pendiente').length === 0}
+                    >
+                        {isPreconciliating ? (
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                            <ArrowRightLeft className="h-4 w-4 mr-2" />
+                        )}
+                        Pre-conciliar
+                    </Button>
                 </div>
             </div>
 
@@ -1044,6 +1197,67 @@ export default function ConciliacionPage() {
                             Cerrar
                         </Button>
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialog Pre-conciliacion */}
+            <Dialog open={preconciliacionOpen} onOpenChange={setPreconciliacionOpen}>
+                <DialogContent className="max-w-3xl bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800">
+                    <DialogHeader>
+                        <DialogTitle className="text-gray-900 dark:text-gray-100 font-bold flex items-center gap-2">
+                            <ArrowRightLeft className="h-5 w-5 text-amber-500" />
+                            Pre-conciliación Sugerida
+                        </DialogTitle>
+                        <DialogDescription className="text-gray-500 dark:text-gray-400">
+                            Se han encontrado {preconciliacionesEncontradas.length} movimientos con coincidencias exactas y únicas por monto.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="max-h-[50vh] overflow-y-auto space-y-2 py-4">
+                        {preconciliacionesEncontradas.length > 0 ? (
+                            preconciliacionesEncontradas.map((item, index) => (
+                                <div key={index} className="flex flex-col p-3 border border-gray-100 dark:border-gray-800 rounded-md bg-gray-50/50 dark:bg-gray-900/50">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className="flex-1">
+                                            <p className="text-xs font-semibold text-gray-500 uppercase">Movimiento Bancario</p>
+                                            <p className="text-sm font-bold truncate">{item.mov.descripcion}</p>
+                                            <p className="text-[10px] text-gray-400">{item.mov.fecha}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className={`text-sm font-bold ${item.mov.cargos > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                                {fmtMoney(item.mov.cargos || item.mov.abonos)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex justify-between items-center p-2 bg-indigo-50/50 dark:bg-indigo-900/20 rounded border border-indigo-100 dark:border-indigo-900/30">
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant="outline" className="text-[10px] uppercase">{item.match.tipo}</Badge>
+                                            <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300">Folio {item.match.folio}</span>
+                                        </div>
+                                        <p className="text-xs text-indigo-600 dark:text-indigo-400 truncate max-w-[200px]">{item.match.entidad}</p>
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-10">
+                                <AlertCircle className="h-10 w-10 text-gray-300 mx-auto mb-2" />
+                                <p className="text-gray-500">No se encontraron coincidencias únicas para pre-conciliar.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <DialogFooter className="gap-2">
+                        <Button variant="ghost" onClick={() => setPreconciliacionOpen(false)}>
+                            Cancelar
+                        </Button>
+                        <Button
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            onClick={ejecutarPreconciliacionMasiva}
+                            disabled={preconciliacionesEncontradas.length === 0}
+                        >
+                            Confirmar {preconciliacionesEncontradas.length} Conciliaciones
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
