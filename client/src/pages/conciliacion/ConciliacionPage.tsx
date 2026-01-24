@@ -981,14 +981,14 @@ export default function ConciliacionPage() {
                     <Table>
                         <TableHeader className="bg-gray-100 dark:bg-gray-800">
                             <TableRow>
-                                <TableHead>Fecha</TableHead>
-                                <TableHead>Descripción</TableHead>
-                                <TableHead>Tipo de Gasto</TableHead>
-                                <TableHead className="text-right text-red-600">Cargos</TableHead>
-                                <TableHead className="text-right text-green-600">Abonos</TableHead>
-                                <TableHead className="text-right">Saldo</TableHead>
-                                <TableHead className="text-center">Estado</TableHead>
-                                <TableHead className="text-center">Acción</TableHead>
+                                <TableHead className="w-[100px]">Fecha</TableHead>
+                                <TableHead className="min-w-[300px]">Descripción</TableHead>
+                                <TableHead className="w-[150px]">Tipo de Gasto</TableHead>
+                                <TableHead className="text-right text-red-600 w-[120px]">Cargos</TableHead>
+                                <TableHead className="text-right text-green-600 w-[120px]">Abonos</TableHead>
+                                <TableHead className="text-right w-[120px]">Saldo</TableHead>
+                                <TableHead className="text-center w-[130px]">Estado</TableHead>
+                                <TableHead className="text-center w-[120px]">Acción</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1018,8 +1018,10 @@ export default function ConciliacionPage() {
                                         }
                                     >
                                         <TableCell className="font-medium whitespace-nowrap">{mov.fecha}</TableCell>
-                                        <TableCell className="max-w-xs truncate" title={mov.descripcion}>{mov.descripcion}</TableCell>
-                                        <TableCell className="min-w-[180px]">
+                                        <TableCell className="whitespace-normal break-words py-4 leading-relaxed min-w-[300px]" title={mov.descripcion}>
+                                            {mov.descripcion}
+                                        </TableCell>
+                                        <TableCell className="w-[150px]">
                                             <select
                                                 className="w-full p-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
                                                 value={mov.tipo_gasto || ""}
