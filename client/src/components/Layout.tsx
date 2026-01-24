@@ -33,12 +33,12 @@ export default function Layout() {
     { path: "/", label: "Inicio", icon: Home },
     { path: "/cuentas", label: "Cuentas", icon: Building2 },
     { path: "/contactos", label: "Contactos", icon: Users },
+    { path: "/marketing", label: "Marketing", icon: Mail },
     { path: "/cotizaciones", label: "Cotizaciones", icon: FileText },
     { path: "/oportunidades", label: "Oportunidades", icon: Briefcase },
     { path: "/ventas", label: "Ventas", icon: DollarSign },
     { path: "/compras", label: "Compras", icon: ShoppingBag },
     { path: "/conciliacion", label: "Conciliación", icon: ArrowRightLeft },
-    { path: "/marketing", label: "Marketing", icon: Mail },
   ];
 
   return (
