@@ -69,7 +69,7 @@ export default function ComprasPage() {
     const [compras, setCompras] = useState<Compra[]>([]);
     const [cargando, setCargando] = useState(true);
     const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 15;
+    const ITEMS_PER_PAGE = 20;
 
     // Filtros
     const [filtroProveedor, setFiltroProveedor] = useState("");
@@ -539,11 +539,11 @@ export default function ComprasPage() {
                     </div>
 
                     <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                        <div className="flex flex-wrap gap-4 items-center">
-                            <div className="flex-1 min-w-[200px] max-w-[400px]">
-                                <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Buscar Proveedor</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                            <div className="space-y-1.5">
+                                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Buscar Proveedor</Label>
                                 <div className="relative">
-                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <Input
                                         placeholder="Nombre o RUT..."
                                         value={filtroProveedor}
@@ -551,15 +551,15 @@ export default function ComprasPage() {
                                             setFiltroProveedor(e.target.value);
                                             setCurrentPage(1);
                                         }}
-                                        className="pl-8 h-9"
+                                        className="pl-10 h-10 border-gray-200 focus:border-pink-500 focus:ring-pink-500 transition-all"
                                     />
                                 </div>
                             </div>
 
-                            <div className="w-32">
-                                <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Folio</Label>
+                            <div className="space-y-1.5">
+                                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Folio</Label>
                                 <div className="relative">
-                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <Input
                                         placeholder="N° Folio"
                                         value={filtroFolio}
@@ -567,21 +567,22 @@ export default function ComprasPage() {
                                             setFiltroFolio(e.target.value);
                                             setCurrentPage(1);
                                         }}
-                                        className="pl-8 h-9"
+                                        className="pl-10 h-10 border-gray-200 focus:border-pink-500 focus:ring-pink-500 transition-all"
                                     />
                                 </div>
                             </div>
-                            <div className="min-w-[180px]">
-                                <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Estado</Label>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Estado</Label>
                                 <Select value={filtroEstado} onValueChange={(val) => {
                                     setFiltroEstado(val);
                                     setCurrentPage(1);
                                 }}>
-                                    <SelectTrigger className="h-9">
-                                        <SelectValue placeholder="Estado" />
+                                    <SelectTrigger className="h-10 border-gray-200 focus:ring-pink-500 transition-all">
+                                        <SelectValue placeholder="Seleccionar Estado" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="todos">Todos</SelectItem>
+                                        <SelectItem value="todos">Todos los estados</SelectItem>
                                         <SelectItem value="Pendiente">Pendiente</SelectItem>
                                         <SelectItem value="Pagada">Pagada</SelectItem>
                                         <SelectItem value="Vencida">Vencida</SelectItem>
