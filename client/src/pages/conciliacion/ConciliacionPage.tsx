@@ -397,7 +397,20 @@ export default function ConciliacionPage() {
         }
     };
 
-    // Unchanged part kept for context matching if needed, but I am replacing the whole function block.
+    // Generate unique hash for a movement to prevent duplicates
+    const generateMovementHash = (mov: any, cartolaId: number): string => {
+        // Combine key fields to create a unique identifier
+        const data = `${cartolaId}|${mov.fecha}|${mov.descripcion}|${mov.cargos}|${mov.abonos}|${mov.saldo}`;
+
+        // Simple hash function (you could use crypto.subtle.digest for SHA-256 if needed)
+        let hash = 0;
+        for (let i = 0; i < data.length; i++) {
+            const char = data.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return `mov_${Math.abs(hash).toString(36)}`;
+    };
 
 
     const descomponerYGuardar = async (fileName: string, sIni: number, sFin: number, movs: any[]) => {
@@ -426,19 +439,44 @@ export default function ConciliacionPage() {
             return;
         }
 
-        const movimientosConId = movs.map(m => ({
-            ...m,
-            cartola_id: cartolaData.id
-        }));
+        const movimientosConId = movs.map(m => {
+            const uniqueId = generateMovementHash(m, cartolaData.id);
+            return {
+                ...m,
+                cartola_id: cartolaData.id,
+                unique_id: uniqueId
+            };
+        });
+
+        // Check for existing movements with same unique_id to prevent duplicates
+        const uniqueIds = movimientosConId.map(m => m.unique_id);
+        const { data: existingMovs } = await supabase
+            .from("banco_movimientos")
+            .select("unique_id")
+            .in("unique_id", uniqueIds);
+
+        const existingIds = new Set(existingMovs?.map(m => m.unique_id) || []);
+        const newMovimientos = movimientosConId.filter(m => !existingIds.has(m.unique_id));
+
+        if (newMovimientos.length === 0) {
+            alert("Todos los movimientos ya existen en la base de datos. No se insertaron duplicados.");
+            cargarCartolas();
+            return;
+        }
 
         const { error: movsError } = await supabase
             .from("banco_movimientos")
-            .insert(movimientosConId);
+            .insert(newMovimientos);
 
         if (movsError) {
             alert("Error guardando movimientos: " + movsError.message);
         } else {
-            alert("Cartola cargada exitosamente");
+            const duplicateCount = movimientosConId.length - newMovimientos.length;
+            let message = `Cartola cargada exitosamente. ${newMovimientos.length} movimientos nuevos insertados.`;
+            if (duplicateCount > 0) {
+                message += ` ${duplicateCount} movimientos duplicados fueron omitidos.`;
+            }
+            alert(message);
             cargarCartolas();
             setSelectedCartola(cartolaData.id);
         }
