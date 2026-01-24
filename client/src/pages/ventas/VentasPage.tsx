@@ -58,6 +58,7 @@ export default function VentasPage() {
 
   // Filtros
   const [filtroRazonSocial, setFiltroRazonSocial] = useState("");
+  const [filtroFolio, setFiltroFolio] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<string>("todos");
 
   // Cobranza
@@ -227,12 +228,16 @@ export default function VentasPage() {
           .toLowerCase()
           .includes(filtroRazonSocial.toLowerCase());
 
+      const matchFolio =
+        filtroFolio === "" ||
+        String(venta.folio || "").includes(filtroFolio);
+
       let matchEstado = true;
       if (filtroEstado !== "todos") {
         matchEstado = venta.estado_deuda === filtroEstado;
       }
 
-      return matchRazonSocial && matchEstado;
+      return matchRazonSocial && matchFolio && matchEstado;
     })
     .sort((a, b) => {
       // Mantener orden descendente por folio después de filtrar
@@ -289,7 +294,7 @@ export default function VentasPage() {
       const workbook = XLSX.read(data, { type: "array" });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-      const filas = XLSX.utils.sheet_to_json(sheet);
+      const filas = XLSX.utils.sheet_to_json(sheet) as any[];
 
       if (!filas || filas.length === 0) {
         alert("El archivo Excel está vacío");
@@ -789,6 +794,25 @@ export default function VentasPage() {
                 />
               </div>
             </div>
+
+            <div className="flex-1 min-w-[150px] max-w-[200px]">
+              <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">
+                Folio
+              </Label>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="N° Folio"
+                  value={filtroFolio}
+                  onChange={(e) => {
+                    setFiltroFolio(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="pl-8 h-9"
+                />
+              </div>
+            </div>
+
             <div className="min-w-[180px]">
               <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">
                 Filtrar por Estado
@@ -846,22 +870,21 @@ export default function VentasPage() {
             <table className="w-full text-sm text-left">
               <thead className="text-xs text-gray-500 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                 <tr>
+                  <th className="px-6 py-3 font-semibold">Emisión</th>
+                  <th className="px-6 py-3 font-semibold text-center">
+                    Vencimiento
+                  </th>
                   <th className="px-6 py-3 font-semibold">Folio</th>
                   <th className="px-6 py-3 font-semibold">Razón Social</th>
                   <th className="px-6 py-3 font-semibold text-right">
                     Monto Total
                   </th>
+                  <th className="px-6 py-3 font-semibold text-center">N.C.</th>
                   <th className="px-6 py-3 font-semibold text-right">Saldo</th>
-                  <th className="px-6 py-3 font-semibold text-center">
-                    Emisión
-                  </th>
-                  <th className="px-6 py-3 font-semibold text-center">
-                    Vencimiento
-                  </th>
                   <th className="px-6 py-3 font-semibold text-center">
                     Estado
                   </th>
-                  <th className="px-6 py-3 font-semibold text-center w-10"></th>
+                  <th className="px-6 py-3 font-semibold text-center w-10">Accion</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -870,6 +893,12 @@ export default function VentasPage() {
                     key={venta.id}
                     className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors"
                   >
+                    <td className="px-6 py-4 text-center text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      {venta.fch_emis}
+                    </td>
+                    <td className="px-6 py-4 text-center text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      {venta.fch_venc}
+                    </td>
                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
                       {venta.folio}
                     </td>
@@ -879,14 +908,11 @@ export default function VentasPage() {
                     <td className="px-6 py-4 text-right font-medium text-gray-700 dark:text-gray-300">
                       ${venta.mnt_total?.toLocaleString() || 0}
                     </td>
+                    <td className="px-6 py-4 text-center text-xs text-red-500 font-semibold">
+                      {venta.total_nc ? `$${venta.total_nc.toLocaleString()}` : "-"}
+                    </td>
                     <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-white">
                       ${venta.saldo?.toLocaleString() || 0}
-                    </td>
-                    <td className="px-6 py-4 text-center text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                      {venta.fch_emis}
-                    </td>
-                    <td className="px-6 py-4 text-center text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                      {venta.fch_venc}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span

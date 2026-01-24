@@ -52,12 +52,12 @@ export interface Cotizacion {
   numero_cotizacion?: string; // Ej: "COT-2026-001"
   ejecutiva_o?: string;
   estado_cotizacion?:
-    | "Borrador"
-    | "Pendiente"
-    | "Aprobada"
-    | "Rechazada"
-    | "Cerrada"
-    | string;
+  | "Borrador"
+  | "Pendiente"
+  | "Aprobada"
+  | "Rechazada"
+  | "Cerrada"
+  | string;
   vendedor_id?: string; // Relación con vendedor (si aplica)
   cuenta_id: string; // Obligatorio
   contacto_id: string; // Obligatorio
@@ -97,10 +97,19 @@ export interface Venta {
   rut_recep: string; // RUT del receptor
   rzn_soc_recep: string; // Razón social del receptor
   mnt_total: number; // Monto total de la factura
+  mnt_neto?: number;
+  mnt_iva?: number;
+  total_nc?: number;
+  total_ncnd?: number;
   saldo: number; // Saldo pendiente
   estado_deuda: "PE" | "PA" | "Protestable" | "PROTESTABLE" | string;
   fch_emis: string; // ✅ Formato: 'YYYY-MM-DD' (obligatorio, corregido de fch_em)
   fch_venc: string; // Formato: 'YYYY-MM-DD'
+  fec_recepcion?: string | null;
+  fec_reclamado?: string | null;
+  anulada?: boolean;
+  dte_cesion?: boolean;
+  tipo_dte?: number;
   contacto_cobranza?: string;
   correo_cobranza?: string;
   telefono_cobranza?: string;
@@ -111,4 +120,6 @@ export interface Venta {
   monto_abono?: number;
   // Campos útiles para lógica de negocio
   fecha_procesamiento?: string | null; // ✅ Nullable, formato 'YYYY-MM-DD', solo para registros nuevos
+  ultimo_tipo_aviso?: string | null;
+  fecha_ultimo_aviso?: string | null;
 }
