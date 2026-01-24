@@ -9,6 +9,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import {
     Loader2,
     Save,
@@ -115,10 +124,28 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
             const data = await res.json();
             if (data.improvedText) {
                 handleUpdateRegla(selectedRegla.id, field, data.improvedText);
+                return data.improvedText;
             }
         } catch (error) {
             console.error("Error mejorando texto:", error);
             alert("No se pudo mejorar el texto. Verifica tu conexión o intenta más tarde.");
+        } finally {
+            setOptimizing(null);
+        }
+        return null;
+    };
+
+    const handleMejorarTodoIA = async () => {
+        if (!selectedRegla) return;
+        setOptimizing('all');
+        try {
+            const fields: ('asunto_template' | 'mensaje_intro' | 'mensaje_cierre')[] = ['asunto_template', 'mensaje_intro', 'mensaje_cierre'];
+            for (const field of fields) {
+                await handleMejorarTexto(field);
+            }
+            alert("✅ Se han mejorado todos los textos del correo.");
+        } catch (error) {
+            console.error("Error mejorando todo:", error);
         } finally {
             setOptimizing(null);
         }
@@ -184,6 +211,9 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
             const { error } = await supabase
                 .from("configuracion_cobranza")
                 .update({
+                    etiqueta: regla.etiqueta,
+                    urgencia: regla.urgencia,
+                    activo: regla.activo,
                     asunto_template: regla.asunto_template,
                     mensaje_intro: regla.mensaje_intro,
                     mensaje_cierre: regla.mensaje_cierre,
@@ -282,27 +312,49 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                     {selectedRegla ? (
                         <>
                             {/* Header Area */}
-                            <div className="h-16 px-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white/50 dark:bg-[#0f1117]/50 backdrop-blur-sm">
-                                <div>
-                                    <h1 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                        {selectedRegla.etiqueta}
-                                        <span className={cn(
-                                            "text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full border font-semibold",
-                                            selectedRegla.urgencia === 'critica' ? "border-red-800/30 text-red-500 bg-red-900/10" :
-                                                selectedRegla.urgencia === 'alta' ? "border-orange-800/30 text-orange-500 bg-orange-900/10" :
-                                                    selectedRegla.urgencia === 'media' ? "border-yellow-800/30 text-yellow-500 bg-yellow-900/10" :
-                                                        "border-blue-800/30 text-blue-500 bg-blue-900/10"
-                                        )}>
-                                            {selectedRegla.urgencia}
-                                        </span>
-                                    </h1>
+                            <div className="h-20 px-6 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-white/50 dark:bg-[#0f1117]/50 backdrop-blur-sm">
+                                <div className="flex items-center gap-4 flex-1">
+                                    <div className="flex flex-col gap-1 w-full max-w-[300px]">
+                                        <Input
+                                            value={selectedRegla.etiqueta}
+                                            onChange={(e) => handleUpdateRegla(selectedRegla.id, "etiqueta", e.target.value)}
+                                            className="h-9 font-bold text-lg bg-transparent border-none focus-visible:ring-1 focus-visible:ring-purple-500/30 p-0"
+                                        />
+                                        <div className="flex items-center gap-3">
+                                            <Select
+                                                value={selectedRegla.urgencia}
+                                                onValueChange={(val) => handleUpdateRegla(selectedRegla.id, "urgencia", val)}
+                                            >
+                                                <SelectTrigger className="h-6 w-auto text-[10px] uppercase tracking-wider font-semibold border-none bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 p-0 pr-2 gap-2">
+                                                    <SelectValue placeholder="Urgencia" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="normal">Normal</SelectItem>
+                                                    <SelectItem value="media">Media</SelectItem>
+                                                    <SelectItem value="alta">Alta</SelectItem>
+                                                    <SelectItem value="critica">Crítica</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+
+                                            <div className="flex items-center gap-2 border-l border-gray-200 dark:border-gray-800 pl-3">
+                                                <span className="text-[10px] text-gray-400 font-medium">Estado:</span>
+                                                <Switch
+                                                    checked={selectedRegla.activo}
+                                                    onCheckedChange={(val) => handleUpdateRegla(selectedRegla.id, "activo", val)}
+                                                    className="scale-75"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="gap-2 h-8 text-xs font-medium text-purple-600 border-purple-200 dark:border-purple-800 dark:bg-purple-900/10 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                                    onClick={handleMejorarTodoIA}
+                                    disabled={optimizing === 'all'}
+                                    className="gap-2 h-9 text-xs font-semibold text-purple-600 border-purple-200 dark:border-purple-800 dark:bg-purple-900/10 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-sm"
                                 >
-                                    <Wand2 className="h-3.5 w-3.5" />
+                                    {optimizing === 'all' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
                                     <span className="hidden sm:inline">Mejorar todo con IA</span>
                                 </Button>
                             </div>
@@ -353,7 +405,12 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                                         <div className="space-y-6">
                                             <div className="space-y-2">
                                                 <div className="flex justify-between items-center">
-                                                    <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Asunto</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Asunto</Label>
+                                                        <Badge variant="outline" className="text-[9px] h-4 py-0 bg-gray-50 dark:bg-gray-800/50 text-gray-400 font-normal border-gray-200 dark:border-gray-700">
+                                                            Soportas: {"{folio}"}, {"{dias}"}
+                                                        </Badge>
+                                                    </div>
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
@@ -372,10 +429,16 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                                                 />
                                             </div>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-6">
+                                                {/* Introducción */}
                                                 <div className="space-y-2">
                                                     <div className="flex justify-between items-center">
-                                                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Introducción</Label>
+                                                        <div className="flex items-center gap-2">
+                                                            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Parte 1: Introducción</Label>
+                                                            <Badge variant="outline" className="text-[9px] h-4 py-0 bg-gray-50 dark:bg-gray-800/50 text-gray-400 font-normal border-gray-200 dark:border-gray-700">
+                                                                Soportas: {"{folio}"}, {"{cliente}"}, {"{monto}"}
+                                                            </Badge>
+                                                        </div>
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
@@ -384,19 +447,61 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                                                             disabled={!!optimizing}
                                                         >
                                                             {optimizing === 'mensaje_intro' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                                            Mejorar
+                                                            Mejorar con IA
                                                         </Button>
                                                     </div>
                                                     <Textarea
-                                                        className="min-h-[140px] bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 resize-none text-sm leading-relaxed p-3 shadow-sm focus:ring-1 focus:ring-purple-500"
-                                                        placeholder="Mensaje inicial..."
+                                                        className="min-h-[120px] bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 resize-none text-sm leading-relaxed p-3 shadow-sm focus:ring-1 focus:ring-purple-500"
+                                                        placeholder="Escribe el saludo y el motivo del contacto..."
                                                         value={selectedRegla.mensaje_intro}
                                                         onChange={(e) => handleUpdateRegla(selectedRegla.id, "mensaje_intro", e.target.value)}
                                                     />
                                                 </div>
+
+                                                {/* BLOQUE INTERMEDIO (AUTOMÁTICO) */}
+                                                <div className="relative py-4">
+                                                    <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                                        <div className="w-full border-t border-dashed border-gray-200 dark:border-gray-800"></div>
+                                                    </div>
+                                                    <div className="relative flex justify-center">
+                                                        <span className="bg-gray-50 dark:bg-[#0f1117] px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Contenido Automático</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-800/30 rounded-lg p-5 space-y-4">
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-1">
+                                                            <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70 font-bold uppercase">Detalles de Factura</p>
+                                                            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                                                                <div className="flex justify-between"><span>Fecha de Emisión:</span> <span className="font-mono text-[11px]">DD-MM-AAAA</span></div>
+                                                                <div className="flex justify-between"><span>Fecha de Vencimiento:</span> <span className="font-mono text-[11px] text-red-500">DD-MM-AAAA</span></div>
+                                                                <div className="flex justify-between"><span>Monto Total:</span> <span className="font-bold text-gray-900 dark:text-white">$ X.XXX.XXX</span></div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-1 border-l border-blue-100 dark:border-blue-800/50 pl-4">
+                                                            <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70 font-bold uppercase">Datos de Transferencia</p>
+                                                            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                                                                <p><strong>Banco:</strong> BCI</p>
+                                                                <p><strong>Cuenta:</strong> 13750780</p>
+                                                                <p className="text-[10px] italic">Enviar comprobante a cobranza@ecomoving.cl</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="relative py-4">
+                                                    <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                                        <div className="w-full border-t border-dashed border-gray-200 dark:border-gray-800"></div>
+                                                    </div>
+                                                    <div className="relative flex justify-center">
+                                                        <span className="bg-gray-50 dark:bg-[#0f1117] px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Fin de Contenido Automático</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Cierre */}
                                                 <div className="space-y-2">
                                                     <div className="flex justify-between items-center">
-                                                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Cierre</Label>
+                                                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Parte 2: Cierre</Label>
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
@@ -405,12 +510,12 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                                                             disabled={!!optimizing}
                                                         >
                                                             {optimizing === 'mensaje_cierre' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                                            Mejorar
+                                                            Mejorar con IA
                                                         </Button>
                                                     </div>
                                                     <Textarea
-                                                        className="min-h-[140px] bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 resize-none text-sm leading-relaxed p-3 shadow-sm focus:ring-1 focus:ring-purple-500"
-                                                        placeholder="Mensaje final..."
+                                                        className="min-h-[120px] bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 resize-none text-sm leading-relaxed p-3 shadow-sm focus:ring-1 focus:ring-purple-500"
+                                                        placeholder="Escribe la despedida y llamado a la acción..."
                                                         value={selectedRegla.mensaje_cierre}
                                                         onChange={(e) => handleUpdateRegla(selectedRegla.id, "mensaje_cierre", e.target.value)}
                                                     />
