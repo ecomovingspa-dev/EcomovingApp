@@ -148,18 +148,18 @@ export default function ContactosPage() {
     const segmentos = contactos
       .map((c) => c.cuentas?.segmento)
       .filter((s): s is string => !!s);
-    return [...new Set(segmentos)].sort();
+    return Array.from(new Set(segmentos)).sort();
   }, [contactos]);
 
   const sectoresUnicos = useMemo(() => {
     const sectores = contactos
       .map((c) => c.cuentas?.sector)
       .filter((s): s is string => !!s);
-    return [...new Set(sectores)].sort();
+    return Array.from(new Set(sectores)).sort();
   }, [contactos]);
 
   return (
-    <div className="space-y-6 dark:bg-gray-900 min-h-screen">
+    <div className="space-y-6 dark:bg-gray-900 min-h-screen max-w-[1600px] mx-auto w-full">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -182,11 +182,10 @@ export default function ContactosPage() {
       {/* Mensaje */}
       {mensaje && (
         <div
-          className={`p-4 rounded-lg font-medium border ${
-            mensaje.includes("❌")
-              ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
-              : "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
-          }`}
+          className={`p-4 rounded-lg font-medium border ${mensaje.includes("❌")
+            ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+            : "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
+            }`}
         >
           {mensaje}
         </div>
@@ -290,13 +289,13 @@ export default function ContactosPage() {
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[10%]">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[15%]">
                       Nombre
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[10%]">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[20%]">
                       Cuenta
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[18%]">
@@ -308,13 +307,13 @@ export default function ContactosPage() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[10%]">
                       Teléfono
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[12%]">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[10%]">
                       Departamento
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[10%]">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[8%]">
                       Estado
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[10%]">
+                    <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[9%]">
                       Acciones
                     </th>
                   </tr>
@@ -326,26 +325,26 @@ export default function ContactosPage() {
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">
+                        <div className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate" title={contacto.nombre}>
                           {contacto.nombre}
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <div className="text-sm text-gray-600 dark:text-gray-400 truncate">
+                        <div className="text-sm text-gray-600 dark:text-gray-400 truncate" title={contacto.cuentas?.cliente}>
                           {contacto.cuentas?.cliente || "Sin cuenta"}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {contacto.correo || "-"}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                        <div className="truncate" title={contacto.correo}>{contacto.correo || "-"}</div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {contacto.celular || "-"}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                        <div className="truncate" title={contacto.celular}>{contacto.celular || "-"}</div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {contacto.telefono || "-"}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                        <div className="truncate" title={contacto.telefono}>{contacto.telefono || "-"}</div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {contacto.departamento || "-"}
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
+                        <div className="truncate" title={contacto.departamento}>{contacto.departamento || "-"}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <button
@@ -355,11 +354,10 @@ export default function ContactosPage() {
                               contacto.estado || "inactivo",
                             )
                           }
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                            contacto.estado === "activo"
-                              ? "bg-green-500 dark:bg-green-600"
-                              : "bg-gray-300 dark:bg-gray-600"
-                          }`}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${contacto.estado === "activo"
+                            ? "bg-green-500 dark:bg-green-600"
+                            : "bg-gray-300 dark:bg-gray-600"
+                            }`}
                           title={
                             contacto.estado === "activo"
                               ? "Desactivar contacto"
@@ -367,11 +365,10 @@ export default function ContactosPage() {
                           }
                         >
                           <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              contacto.estado === "activo"
-                                ? "translate-x-6"
-                                : "translate-x-1"
-                            }`}
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${contacto.estado === "activo"
+                              ? "translate-x-6"
+                              : "translate-x-1"
+                              }`}
                           />
                         </button>
                       </td>
