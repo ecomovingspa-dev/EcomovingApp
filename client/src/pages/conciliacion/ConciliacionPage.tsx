@@ -843,10 +843,10 @@ export default function ConciliacionPage() {
 
             {/* Dialog Conciliacion */}
             <Dialog open={conciliarOpen} onOpenChange={setConciliarOpen}>
-                <DialogContent className="max-w-3xl">
+                <DialogContent className="max-w-3xl bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800">
                     <DialogHeader>
-                        <DialogTitle>Conciliar Movimiento</DialogTitle>
-                        <DialogDescription>
+                        <DialogTitle className="text-gray-900 dark:text-gray-100 font-bold">Conciliar Movimiento</DialogTitle>
+                        <DialogDescription className="text-gray-500 dark:text-gray-400">
                             Busca una venta o gasto que coincida con este movimiento bancario.
                         </DialogDescription>
                     </DialogHeader>
@@ -864,38 +864,40 @@ export default function ConciliacionPage() {
                                     <p className={`text-xl font-bold ${selectedMovimiento.cargos > 0 ? 'text-red-500' : 'text-green-500'}`}>
                                         {selectedMovimiento.cargos > 0 ? '-' : '+'}{fmtMoney(selectedMovimiento.cargos || selectedMovimiento.abonos)}
                                     </p>
-                                    <Badge variant="outline">{selectedMovimiento.cargos > 0 ? 'Cargo / Gasto' : 'Abono / Ingreso'}</Badge>
+                                    <Badge variant="outline" className="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400">
+                                        {selectedMovimiento.cargos > 0 ? 'Cargo / Gasto' : 'Abono / Ingreso'}
+                                    </Badge>
                                 </div>
                             </div>
 
                             <Tabs defaultValue="sugerencias">
-                                <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="sugerencias">Sugerencias Inteligentes</TabsTrigger>
-                                    <TabsTrigger value="manual">Búsqueda Manual</TabsTrigger>
+                                <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800">
+                                    <TabsTrigger value="sugerencias" className="dark:data-[state=active]:bg-gray-700">Sugerencias Inteligentes</TabsTrigger>
+                                    <TabsTrigger value="manual" className="dark:data-[state=active]:bg-gray-700">Búsqueda Manual</TabsTrigger>
                                 </TabsList>
 
                                 <TabsContent value="sugerencias" className="space-y-2 pt-2">
                                     {searchingMatch ? (
                                         <div className="text-center py-6">
                                             <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500" />
-                                            <p className="text-sm text-gray-500 mt-2">Buscando documentos relacionados...</p>
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Buscando documentos relacionados...</p>
                                         </div>
                                     ) : coincidencias.length > 0 ? (
                                         <div className="space-y-2">
-                                            <p className="text-xs text-gray-500 font-medium">Se encontraron posibles coincidencias por monto y estado.</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Se encontraron posibles coincidencias por monto y estado.</p>
                                             {coincidencias.map((item) => (
-                                                <div key={`${item.tipo}-${item.id}`} className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border-l-4 border-l-indigo-400">
+                                                <div key={`${item.tipo}-${item.id}`} className="flex items-center justify-between p-3 border border-gray-100 dark:border-gray-800 rounded-md bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border-l-4 border-l-indigo-400 shadow-sm">
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <Badge variant="secondary" className="uppercase text-[10px]">{item.tipo}</Badge>
-                                                            <span className="font-bold text-sm">Folio #{item.folio}</span>
+                                                            <Badge variant="secondary" className="uppercase text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-none">{item.tipo}</Badge>
+                                                            <span className="font-bold text-sm text-gray-900 dark:text-gray-100">Folio #{item.folio}</span>
                                                         </div>
                                                         <p className="text-sm text-gray-700 dark:text-gray-300">{item.entidad}</p>
-                                                        <p className="text-xs text-gray-400">{item.fecha}</p>
+                                                        <p className="text-xs text-gray-400 dark:text-gray-500">{item.fecha}</p>
                                                     </div>
                                                     <div className="text-right flex items-center gap-3">
-                                                        <div className="font-bold">{fmtMoney(item.monto)}</div>
-                                                        <Button size="sm" variant="default" onClick={() => ejecutarConciliacion(item)}>
+                                                        <div className="font-bold text-gray-900 dark:text-gray-100">{fmtMoney(item.monto)}</div>
+                                                        <Button size="sm" variant="default" className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => ejecutarConciliacion(item)}>
                                                             Conciliar
                                                         </Button>
                                                     </div>
@@ -903,19 +905,19 @@ export default function ConciliacionPage() {
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="text-center py-8 text-gray-500 border border-dashed rounded-md bg-gray-50/50">
-                                            <Search className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                                        <div className="text-center py-8 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-800 rounded-md bg-gray-50/50 dark:bg-gray-900/20">
+                                            <Search className="h-8 w-8 mx-auto text-gray-300 dark:text-gray-700 mb-2" />
                                             <p>No se encontraron coincidencias automáticas.</p>
-                                            <p className="text-xs">Prueba la búsqueda manual.</p>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500">Prueba la búsqueda manual.</p>
                                         </div>
                                     )}
                                 </TabsContent>
 
                                 <TabsContent value="manual">
-                                    <div className="py-4 text-center text-gray-500">
+                                    <div className="py-8 text-center text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-800 rounded-md bg-gray-50/50 dark:bg-gray-900/20">
                                         <AlertCircle className="h-8 w-8 mx-auto text-yellow-500 mb-2" />
                                         <p>Funcionalidad de búsqueda manual en desarrollo.</p>
-                                        <p className="text-xs">Por ahora usa las sugerencias automáticas basasdas en el monto.</p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500">Por ahora usa las sugerencias automáticas basasdas en el monto.</p>
                                     </div>
                                 </TabsContent>
                             </Tabs>
