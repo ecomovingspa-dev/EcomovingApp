@@ -468,22 +468,41 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                                                     </div>
                                                 </div>
 
-                                                <div className="bg-blue-50/30 dark:bg-blue-900/10 border border-blue-100/50 dark:border-blue-800/30 rounded-lg p-5 space-y-4">
-                                                    <div className="grid grid-cols-2 gap-4">
-                                                        <div className="space-y-1">
-                                                            <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70 font-bold uppercase">Detalles de Factura</p>
-                                                            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                                                                <div className="flex justify-between"><span>Fecha de Emisión:</span> <span className="font-mono text-[11px]">DD-MM-AAAA</span></div>
-                                                                <div className="flex justify-between"><span>Fecha de Vencimiento:</span> <span className="font-mono text-[11px] text-red-500">DD-MM-AAAA</span></div>
-                                                                <div className="flex justify-between"><span>Monto Total:</span> <span className="font-bold text-gray-900 dark:text-white">$ X.XXX.XXX</span></div>
+                                                <div className="bg-white dark:bg-[#111827] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm">
+                                                    <div className="bg-[#1e293b] p-4 text-center">
+                                                        <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Encabezado Institucional</p>
+                                                    </div>
+                                                    <div className="p-6 space-y-6">
+                                                        <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-5 border border-gray-100 dark:border-gray-800">
+                                                            <div className="space-y-3">
+                                                                <div className="flex justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
+                                                                    <span className="text-[10px] uppercase text-gray-400 font-bold">Documento</span>
+                                                                    <span className="text-xs font-medium dark:text-gray-200">Factura N° {selectedRegla.id}</span>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 gap-4">
+                                                                    <div>
+                                                                        <span className="text-[10px] uppercase text-gray-400 font-bold block">Emisión</span>
+                                                                        <span className="text-xs dark:text-gray-300">DD-MM-AAAA</span>
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="text-[10px] uppercase text-gray-400 font-bold block">Vencimiento</span>
+                                                                        <span className="text-xs text-red-500 font-medium">DD-MM-AAAA</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+                                                                    <span className="text-[10px] uppercase text-gray-400 font-bold block">Monto Total</span>
+                                                                    <span className="text-lg font-bold dark:text-white">$ X.XXX.XXX</span>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <div className="space-y-1 border-l border-blue-100 dark:border-blue-800/50 pl-4">
-                                                            <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70 font-bold uppercase">Datos de Transferencia</p>
-                                                            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                                                                <p><strong>Banco:</strong> BCI</p>
-                                                                <p><strong>Cuenta:</strong> 13750780</p>
-                                                                <p className="text-[10px] italic">Enviar comprobante a cobranza@ecomoving.cl</p>
+
+                                                        <div className="bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-lg p-5">
+                                                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase mb-3 border-b border-slate-200 dark:border-slate-800 pb-1 inline-block">Datos de Transferencia</p>
+                                                            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1.5">
+                                                                <div className="flex justify-between"><span>Banco:</span> <span className="font-semibold">BCI</span></div>
+                                                                <div className="flex justify-between"><span>Cuenta:</span> <span className="font-semibold">13750780</span></div>
+                                                                <div className="flex justify-between"><span>RUT:</span> <span className="font-semibold">76.812.285-K</span></div>
+                                                                <p className="text-[10px] italic text-slate-400 mt-2">Enviar comprobante a: cobranza@ecomoving.cl</p>
                                                             </div>
                                                         </div>
                                                     </div>

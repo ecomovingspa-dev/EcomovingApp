@@ -173,65 +173,101 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 const htmlContent = `
 <!DOCTYPE html>
 <html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
-  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 40px; text-align: center;">
-      <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">Departamento de Cobranzas</h1>
-      <p style="margin: 8px 0 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">Ecomoving SpA</p>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #334155; }
+    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; }
+    .header { background-color: #1e293b; padding: 30px; text-align: center; }
+    .header h1 { margin: 0; color: #ffffff; font-size: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+    .header p { margin: 5px 0 0 0; color: #94a3b8; font-size: 13px; }
+    .content { padding: 40px; }
+    .greeting { font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 20px; }
+    .message { font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 30px; }
+    .info-grid { background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 8px; padding: 25px; margin-bottom: 30px; }
+    .info-item { margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; }
+    .info-item:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+    .label { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; display: block; }
+    .value { font-size: 16px; color: #1e293b; font-weight: 500; }
+    .value-bold { font-size: 20px; color: #0f172a; font-weight: 700; }
+    .status-box { margin-top: 15px; padding: 12px 15px; border-radius: 6px; display: inline-block; }
+    .status-vencido { background-color: #fff7ed; border-left: 4px solid #f97316; color: #9a3412; }
+    .status-vencido .label { color: #c2410c; }
+    .bank-details { background-color: #f1f5f9; border-radius: 8px; padding: 25px; border: 1px solid #e2e8f0; }
+    .bank-title { font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 15px; text-transform: uppercase; border-bottom: 2px solid #334155; display: inline-block; }
+    .bank-item { font-size: 14px; margin-bottom: 8px; color: #334155; }
+    .footer { padding: 30px 40px; border-top: 1px solid #e2e8f0; font-size: 14px; }
+    .closing { margin-bottom: 1px; color: #475569; }
+    .signature { font-weight: 700; color: #1e293b; font-size: 16px; }
+    .legal { background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Departamento de Cobranzas</h1>
+      <p>Ecomoving SpA</p>
     </div>
-    <div style="padding: 40px;">
-      <p style="margin: 0 0 24px 0; font-size: 15px; color: #2c3e50; line-height: 1.6;">
-        Estimado/a <strong>${contacto}</strong>,
-      </p>
+    
+    <div class="content">
+      <div class="greeting">Estimado/a ${contacto},</div>
       
-      <!-- Mensaje Dynamic Intro -->
-      <div style="margin: 0 0 32px 0; font-size: 15px; color: #2c3e50; line-height: 1.6;">
+      <div class="message">
         ${introMsg}
       </div>
       
-      <div style="background-color: #f8f9fa; padding: 24px; border-radius: 6px; margin-bottom: 24px;">
-        <div style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #e9ecef;">
-          <p style="margin: 0 0 4px 0; font-size: 13px; color: #6c757d; text-transform: uppercase; letter-spacing: 0.5px;">Número de Factura</p>
-          <p style="margin: 0; font-size: 18px; color: #2c3e50; font-weight: 600;">${folio}</p>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="label">Documento</span>
+          <span class="value">Factura Electrónica N° ${folio}</span>
         </div>
-        <div style="margin-bottom: 12px;">
-          <p style="margin: 0 0 4px 0; font-size: 13px; color: #6c757d;">Fecha de Emisión</p>
-          <p style="margin: 0; font-size: 15px; color: #2c3e50;">${fechaEmision}</p>
+        <div style="display: table; width: 100%;">
+          <div style="display: table-cell; width: 50%;">
+            <span class="label">Fecha Emisión</span>
+            <span class="value">${fechaEmision}</span>
+          </div>
+          <div style="display: table-cell; width: 50%;">
+            <span class="label">Fecha Vencimiento</span>
+            <span class="value" style="${diffDias > 0 ? 'color: #dc2626; font-weight: 600;' : ''}">${fechaVencimiento}</span>
+          </div>
         </div>
-        <div style="margin-bottom: 12px;">
-          <p style="margin: 0 0 4px 0; font-size: 13px; color: #6c757d;">Fecha de Vencimiento</p>
-          <p style="margin: 0; font-size: 15px; color: #2c3e50;">${fechaVencimiento}</p>
+        <div class="info-item" style="margin-top: 15px; border-bottom: none; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+          <span class="label">Monto Total Pendiente</span>
+          <span class="value-bold">${montoTotal}</span>
         </div>
-        <div style="margin-bottom: ${diffDias > 0 ? '12px' : '0'};">
-          <p style="margin: 0 0 4px 0; font-size: 13px; color: #6c757d;">Monto Total</p>
-          <p style="margin: 0; font-size: 20px; color: #2c3e50; font-weight: 700;">${montoTotal}</p>
+        
+        ${diffDias > 0 ? `
+        <div class="status-box status-vencido">
+          <span class="label">Situación</span>
+          <span class="value" style="font-weight: 700;">Vencida hace ${diffDias} días</span>
         </div>
-        ${bloqueDiasVencidos}
+        ` : ''}
       </div>
       
-      <div style="background-color: #e8f4f8; padding: 20px; border-radius: 6px; border-left: 4px solid #17a2b8; margin-bottom: 32px;">
-        <p style="margin: 0 0 12px 0; font-size: 14px; color: #0c5460; font-weight: 600;">Datos para Transferencia</p>
-        <p style="margin: 0 0 6px 0; font-size: 14px; color: #0c5460;"><strong>Banco:</strong> BCI</p>
-        <p style="margin: 0 0 6px 0; font-size: 14px; color: #0c5460;"><strong>Cuenta Corriente:</strong> 13750780</p>
-        <p style="margin: 0; font-size: 14px; color: #0c5460;"><strong>Enviar comprobante a:</strong> cobranza@ecomoving.cl</p>
+      <div class="bank-details">
+        <div class="bank-title">Información de Pago</div>
+        <div class="bank-item"><strong>Banco:</strong> BCI</div>
+        <div class="bank-item"><strong>Tipo de Cuenta:</strong> Cuenta Corriente</div>
+        <div class="bank-item"><strong>N° de Cuenta:</strong> 13750780</div>
+        <div class="bank-item"><strong>RUT:</strong> 76.812.285-K</div>
+        <div class="bank-item"><strong>Email Comprobante:</strong> cobranza@ecomoving.cl</div>
       </div>
       
-      <!-- Mensaje Dynamic Cierre -->
-      <div style="margin: 0 0 32px 0; font-size: 15px; color: #2c3e50; line-height: 1.6;">
+      <div class="message" style="margin-top: 30px; margin-bottom: 0;">
         ${cierreMsg}
       </div>
-      
-      <div style="padding-top: 24px; border-top: 2px solid #e9ecef;">
-        <p style="margin: 0 0 4px 0; font-size: 15px; color: #2c3e50;">Saludos cordiales,</p>
-        <p style="margin: 0 0 2px 0; font-size: 16px; color: #2c3e50; font-weight: 600;">Departamento de Cobranzas</p>
-        <p style="margin: 0; font-size: 14px; color: #6c757d;">Ecomoving SpA</p>
-      </div>
     </div>
-    <div style="background-color: #f8f9fa; padding: 20px 40px; text-align: center; border-top: 1px solid #e9ecef;">
-      <p style="margin: 0; font-size: 12px; color: #6c757d;">
-        Este es un correo automático. Por favor no responder a esta dirección.
-      </p>
+    
+    <div class="footer">
+      <div class="closing">Atentamente,</div>
+      <div class="signature">Departamento de Cobranzas</div>
+      <div style="color: #64748b; font-size: 13px;">Ecomoving SpA</div>
+    </div>
+    
+    <div class="legal">
+      Este es un mensaje institucional automático relacionado con su facturación.<br>
+      Por favor, si ya realizó el pago, ignore este recordatorio.
     </div>
   </div>
 </body>
