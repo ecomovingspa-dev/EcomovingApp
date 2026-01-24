@@ -926,13 +926,13 @@ export default function ConciliacionPage() {
 
             {/* Upload Summary Dialog */}
             <Dialog open={uploadSummaryOpen} onOpenChange={setUploadSummaryOpen}>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[500px] bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-700">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                            <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-500" />
                             Resumen de Carga
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-gray-600 dark:text-gray-400">
                             Detalles de los movimientos procesados desde el archivo Excel.
                         </DialogDescription>
                     </DialogHeader>
