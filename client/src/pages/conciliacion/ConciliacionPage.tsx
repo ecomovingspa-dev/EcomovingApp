@@ -42,6 +42,7 @@ interface BancoMovimiento {
     tipo_conciliacion?: string;
     conciliado_id?: number | null;
     tipo_gasto?: string | null;
+    preconciliado_match?: Coincidencia | null;
 }
 
 interface BancoCartola {
@@ -766,6 +767,16 @@ export default function ConciliacionPage() {
             }
 
             setPreconciliacionesEncontradas(encontradas);
+
+            // Actualizar el estado local de los movimientos para marcar los preconciliados visualmente
+            setMovimientos(prev => prev.map(mov => {
+                const matchFound = encontradas.find(e => e.mov.id === mov.id);
+                if (matchFound) {
+                    return { ...mov, preconciliado_match: matchFound.match };
+                }
+                return mov;
+            }));
+
             setPreconciliacionOpen(true);
         } catch (error) {
             console.error("Error en preconciliación:", error);
@@ -890,7 +901,7 @@ export default function ConciliacionPage() {
                         />
                         <Label
                             htmlFor="upload-cartola"
-                            className={`cursor-pointer inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 ${uploading ? 'opacity-70' : ''}`}
+                            className={`cursor-pointer inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 ${uploading ? 'opacity-70' : ''}`}
                         >
                             {uploading ? (
                                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1000,7 +1011,16 @@ export default function ConciliacionPage() {
                                 </TableRow>
                             ) : (
                                 movimientos.map((mov) => (
-                                    <TableRow key={mov.id} className={mov.estado === 'conciliado' ? 'bg-gray-50 dark:bg-gray-900/30 opacity-75' : ''}>
+                                    <TableRow
+                                        key={mov.id}
+                                        className={
+                                            mov.estado === 'conciliado'
+                                                ? 'bg-gray-50 dark:bg-gray-900/30 opacity-75'
+                                                : mov.preconciliado_match
+                                                    ? 'bg-amber-50/50 dark:bg-amber-900/10 border-l-4 border-l-amber-400'
+                                                    : ''
+                                        }
+                                    >
                                         <TableCell className="font-medium whitespace-nowrap">{mov.fecha}</TableCell>
                                         <TableCell className="max-w-xs truncate" title={mov.descripcion}>{mov.descripcion}</TableCell>
                                         <TableCell className="min-w-[180px]">
@@ -1029,15 +1049,21 @@ export default function ConciliacionPage() {
                                                 <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200 border-none">
                                                     <Check className="w-3 h-3 mr-1" /> Conciliado
                                                 </Badge>
+                                            ) : mov.preconciliado_match ? (
+                                                <Badge variant="outline" className="text-amber-700 border-amber-300 bg-amber-100 flex items-center gap-1">
+                                                    <ArrowRightLeft className="w-3 h-3" /> Pre-conciliado
+                                                </Badge>
                                             ) : (
                                                 <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50">Pendiente</Badge>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-center">
                                             {mov.estado !== 'conciliado' && (
-                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleConciliarClick(mov)}>
-                                                    <Link className="h-4 w-4 text-indigo-600" />
-                                                </Button>
+                                                <div className="flex justify-center gap-1">
+                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleConciliarClick(mov)}>
+                                                        <Link className="h-4 w-4 text-indigo-600" />
+                                                    </Button>
+                                                </div>
                                             )}
                                         </TableCell>
                                     </TableRow>
