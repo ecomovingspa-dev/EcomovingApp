@@ -6,13 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     AlertCircle,
     Clock,
-    FileText,
     Upload,
     Loader2,
     CalendarDays,
     Search,
-    Filter,
-    RefreshCw,
     ShoppingBag,
 } from "lucide-react";
 import {
@@ -39,7 +36,6 @@ import {
 } from "@/components/ui/popover";
 import {
     Banknote,
-    CalendarDays as CalendarDaysIcon,
     DollarSign,
     Receipt,
     Save,
@@ -700,7 +696,7 @@ export default function ComprasPage() {
                                                                         Fecha
                                                                     </Label>
                                                                     <div className="relative">
-                                                                        <CalendarDaysIcon className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
+                                                                        <CalendarDays className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
                                                                         <Input
                                                                             type="date"
                                                                             value={abonoForm.fecha_abono}

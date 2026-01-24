@@ -6,16 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
     Upload,
     Loader2,
-    FileSpreadsheet,
     CheckCircle2,
     AlertCircle,
     ArrowRightLeft,
     Search,
-    PlusCircle,
-    Save,
-    DollarSign,
     Link,
-    Ban,
     Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -376,14 +371,7 @@ export default function ConciliacionPage() {
                     const abono = parseMoney(row[abonoIdx]);
                     const saldo = parseMoney(row[saldoIdx]);
 
-                    // Debug: log first few rows to verify parsing
-                    if (parsedMovimientos.length < 3) {
-                        console.log(`Row ${i}: Cargo=${cargo}, Abono=${abono}, Saldo=${saldo}`, {
-                            cargoRaw: row[cargoIdx],
-                            abonoRaw: row[abonoIdx],
-                            saldoRaw: row[saldoIdx]
-                        });
-                    }
+
 
                     parsedMovimientos.push({
                         fecha,
@@ -536,12 +524,12 @@ export default function ConciliacionPage() {
             // Buscar en tabla 'ventas' (que creamos anteriormente o asumimos)
             // NOTA: Asumimos 'ventas' existe y tiene 'mnt_total', 'fch_emis'
             const { data: ventasMatch, error } = await supabase
-                .from("ventas") // Make sure this table matches your schema
+                .from("ventas")
                 .select("*")
-                .gte("mnt_total", montoBuscado - tolerancia) // TODO: This might fail if mnt_total is numeric vs int discrepancy, but usually safe
+                .gt("saldo", 0) // Only suggest invoices with pending balance
+                .gte("mnt_total", montoBuscado - tolerancia)
                 .lte("mnt_total", montoBuscado + tolerancia)
-                //.eq("estado_deuda", "PE") // Only unpaid sales
-                .limit(10); // Check more
+                .limit(10);
 
             if (ventasMatch) {
                 ventasMatch.forEach((v: any) => {
@@ -608,19 +596,32 @@ export default function ConciliacionPage() {
 
             // 2. Update Related Record (Venta or Compra)
             if (item.tipo === "venta") {
-                // Update Venta -> estado_deuda = 'PA' (Pagada) ?
-                // Note: Maybe we should also record fecha_abono
-                await supabase.from("ventas").update({
-                    estado_deuda: "PA", // Asumiendo convención
+                // Update Venta -> saldo = 0, estado_deuda = 'Pagada'
+                const { error: errVenta } = await supabase.from("ventas").update({
+                    estado_deuda: "Pagada",
+                    saldo: 0,
                     fecha_abono: new Date().toISOString().split("T")[0],
                     monto_abono: item.monto
                 }).eq("id", item.id);
+
+                if (errVenta) throw errVenta;
+
+                // Also record in 'abonos' table to keep history consistent with VentasPage
+                await supabase.from("abonos").insert({
+                    venta_id: item.id,
+                    monto_abono: item.monto,
+                    fecha_abono: new Date().toISOString().split("T")[0],
+                    tipo_abono: "Transferencia",
+                    detalle_abono: `Conciliación bancaria - Movimiento: ${selectedMovimiento.descripcion}`
+                });
             } else {
-                // Update Compra -> estado_pago = 'Pagada'
-                await supabase.from("compras").update({
+                // Update Compra -> estado_pago = 'Pagada', saldo = 0
+                const { error: errCompra } = await supabase.from("compras").update({
                     estado_pago: "Pagada",
                     saldo: 0
                 }).eq("id", item.id);
+
+                if (errCompra) throw errCompra;
             }
 
             // 3. UI Updates
@@ -643,7 +644,7 @@ export default function ConciliacionPage() {
 
 
     const fmtMoney = (amount: number) => {
-        return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(amount);
+        return amount.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
     };
 
     return (
@@ -868,57 +869,42 @@ export default function ConciliacionPage() {
                                 </div>
                             </div>
 
-                            <Tabs defaultValue="sugerencias">
-                                <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800">
-                                    <TabsTrigger value="sugerencias" className="dark:data-[state=active]:bg-gray-700">Sugerencias Inteligentes</TabsTrigger>
-                                    <TabsTrigger value="manual" className="dark:data-[state=active]:bg-gray-700">Búsqueda Manual</TabsTrigger>
-                                </TabsList>
-
-                                <TabsContent value="sugerencias" className="space-y-2 pt-2">
-                                    {searchingMatch ? (
-                                        <div className="text-center py-6">
-                                            <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500" />
-                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Buscando documentos relacionados...</p>
-                                        </div>
-                                    ) : coincidencias.length > 0 ? (
-                                        <div className="space-y-2">
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Se encontraron posibles coincidencias por monto y estado.</p>
-                                            {coincidencias.map((item) => (
-                                                <div key={`${item.tipo}-${item.id}`} className="flex items-center justify-between p-3 border border-gray-100 dark:border-gray-800 rounded-md bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border-l-4 border-l-indigo-400 shadow-sm">
-                                                    <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <Badge variant="secondary" className="uppercase text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-none">{item.tipo}</Badge>
-                                                            <span className="font-bold text-sm text-gray-900 dark:text-gray-100">Folio #{item.folio}</span>
-                                                        </div>
-                                                        <p className="text-sm text-gray-700 dark:text-gray-300">{item.entidad}</p>
-                                                        <p className="text-xs text-gray-400 dark:text-gray-500">{item.fecha}</p>
-                                                    </div>
-                                                    <div className="text-right flex items-center gap-3">
-                                                        <div className="font-bold text-gray-900 dark:text-gray-100">{fmtMoney(item.monto)}</div>
-                                                        <Button size="sm" variant="default" className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => ejecutarConciliacion(item)}>
-                                                            Conciliar
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="text-center py-8 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-800 rounded-md bg-gray-50/50 dark:bg-gray-900/20">
-                                            <Search className="h-8 w-8 mx-auto text-gray-300 dark:text-gray-700 mb-2" />
-                                            <p>No se encontraron coincidencias automáticas.</p>
-                                            <p className="text-xs text-gray-400 dark:text-gray-500">Prueba la búsqueda manual.</p>
-                                        </div>
-                                    )}
-                                </TabsContent>
-
-                                <TabsContent value="manual">
-                                    <div className="py-8 text-center text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-800 rounded-md bg-gray-50/50 dark:bg-gray-900/20">
-                                        <AlertCircle className="h-8 w-8 mx-auto text-yellow-500 mb-2" />
-                                        <p>Funcionalidad de búsqueda manual en desarrollo.</p>
-                                        <p className="text-xs text-gray-400 dark:text-gray-500">Por ahora usa las sugerencias automáticas basasdas en el monto.</p>
+                            <div className="space-y-4">
+                                {searchingMatch ? (
+                                    <div className="text-center py-6">
+                                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500" />
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Buscando documentos relacionados...</p>
                                     </div>
-                                </TabsContent>
-                            </Tabs>
+                                ) : coincidencias.length > 0 ? (
+                                    <div className="space-y-2">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Se encontraron posibles coincidencias por monto y estado.</p>
+                                        {coincidencias.map((item) => (
+                                            <div key={`${item.tipo}-${item.id}`} className="flex items-center justify-between p-3 border border-gray-100 dark:border-gray-800 rounded-md bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border-l-4 border-l-indigo-400 shadow-sm">
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant="secondary" className="uppercase text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-none">{item.tipo}</Badge>
+                                                        <span className="font-bold text-sm text-gray-900 dark:text-gray-100">Folio #{item.folio}</span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300">{item.entidad}</p>
+                                                    <p className="text-xs text-gray-400 dark:text-gray-500">{item.fecha}</p>
+                                                </div>
+                                                <div className="text-right flex items-center gap-3">
+                                                    <div className="font-bold text-gray-900 dark:text-gray-100">{fmtMoney(item.monto)}</div>
+                                                    <Button size="sm" variant="default" className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => ejecutarConciliacion(item)}>
+                                                        Conciliar
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-800 rounded-md bg-gray-50/50 dark:bg-gray-900/20">
+                                        <Search className="h-8 w-8 mx-auto text-gray-300 dark:text-gray-700 mb-2" />
+                                        <p>No se encontraron coincidencias automáticas.</p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-500">Asegúrate de que el documento esté cargado y pendiente de pago.</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </DialogContent>
