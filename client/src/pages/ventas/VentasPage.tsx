@@ -768,21 +768,24 @@ export default function VentasPage() {
 
       {/* Tabla */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50">
+        <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex justify-between items-center">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
             Detalle de Facturas
           </h2>
+          <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">
+            {ventasFiltradas.length} de {ventas.length} facturas
+          </div>
         </div>
 
         {/* Filtros */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex-1 min-w-[200px] max-w-[400px]">
-              <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Buscar por Razón Social
               </Label>
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="Escriba para buscar cliente..."
                   value={filtroRazonSocial}
@@ -790,17 +793,17 @@ export default function VentasPage() {
                     setFiltroRazonSocial(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="pl-8 h-9"
+                  className="pl-10 h-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-all"
                 />
               </div>
             </div>
 
-            <div className="flex-1 min-w-[150px] max-w-[200px]">
-              <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Folio
               </Label>
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="N° Folio"
                   value={filtroFolio}
@@ -808,13 +811,13 @@ export default function VentasPage() {
                     setFiltroFolio(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="pl-8 h-9"
+                  className="pl-10 h-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-all"
                 />
               </div>
             </div>
 
-            <div className="min-w-[180px]">
-              <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Filtrar por Estado
               </Label>
               <Select
@@ -824,9 +827,11 @@ export default function VentasPage() {
                   setCurrentPage(1);
                 }}
               >
-                <SelectTrigger className="h-9">
-                  <Filter className="h-4 w-4 mr-2 text-gray-400" />
-                  <SelectValue placeholder="Todos los estados" />
+                <SelectTrigger className="h-10 border-gray-200 focus:ring-blue-500 transition-all">
+                  <div className="flex items-center">
+                    <Filter className="h-4 w-4 mr-2 text-gray-400" />
+                    <SelectValue placeholder="Todos los estados" />
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos los estados</SelectItem>
@@ -837,26 +842,24 @@ export default function VentasPage() {
                 </SelectContent>
               </Select>
             </div>
-            {(filtroRazonSocial || filtroEstado !== "todos") && (
-              <div className="flex items-end">
+            {(filtroRazonSocial || filtroFolio || filtroEstado !== "todos") && (
+              <div className="md:col-span-3 flex justify-end mt-1">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => {
                     setFiltroRazonSocial("");
+                    setFiltroFolio("");
                     setFiltroEstado("todos");
                     setCurrentPage(1);
                   }}
-                  className="text-gray-500 hover:text-gray-700"
+                  className="text-gray-500 hover:text-red-600 transition-colors"
                 >
-                  <X className="h-4 w-4 mr-1" />
-                  Limpiar filtros
+                  <X className="h-4 w-4 mr-1.5" />
+                  Limpiar filtros aplicados
                 </Button>
               </div>
             )}
-            <div className="ml-auto text-sm text-gray-500 dark:text-gray-400">
-              {ventasFiltradas.length} de {ventas.length} facturas
-            </div>
           </div>
         </div>
 
