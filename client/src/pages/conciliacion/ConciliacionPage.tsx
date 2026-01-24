@@ -62,6 +62,7 @@ interface Coincidencia {
     fecha: string;
     monto: number;
     folio: string | number;
+    estado?: string;
     documento_relacionado?: any;
 }
 
@@ -128,10 +129,18 @@ export default function ConciliacionPage() {
         if (!periodo) return;
         setLoading(true);
         try {
+            // Filter by date range for the month
+            const [year, month] = periodo.split('-');
+            const startDate = `${periodo}-01`;
+            const nextMonth = parseInt(month) === 12 ? 1 : parseInt(month) + 1;
+            const nextYear = parseInt(month) === 12 ? parseInt(year) + 1 : parseInt(year);
+            const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+
             const { data, error } = await supabase
                 .from("banco_movimientos")
                 .select("*")
-                .ilike("fecha", `${periodo}%`)
+                .gte("fecha", startDate)
+                .lt("fecha", endDate)
                 .order("fecha", { ascending: true }); // Orden cronológico
 
             if (error) throw error;
@@ -218,6 +227,47 @@ export default function ConciliacionPage() {
             // Helper to clean string for comparison
             const cleanStr = (val: any) => String(val || "").toLowerCase().trim().replace(/\s+/g, ' ');
 
+            const parseMoney = (val: any) => {
+                if (val === undefined || val === null || val === "") return 0;
+                if (typeof val === 'number') return val;
+                if (typeof val === 'string') {
+                    // Remove $ and any non-numeric chars except , . -
+                    let clean = val.replace(/[^0-9,.-]/g, '');
+
+                    // Detect decimal separator logic
+                    if (clean.includes(',')) {
+                        if (clean.includes('.')) {
+                            // Has both. Last one is decimal?
+                            if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
+                                // 1.234,56 -> remove dot, replace comma with dot
+                                clean = clean.replace(/\./g, '').replace(',', '.');
+                            } else {
+                                // 1,234.56 -> remove comma
+                                clean = clean.replace(/,/g, '');
+                            }
+                        } else {
+                            // Has only comma. Is it decimal or thousand? "1,000" vs "0,5"
+                            // In CL, comma is decimal.
+                            clean = clean.replace(',', '.');
+                        }
+                    } else {
+                        // Only dots? "1.000" -> usually 1000. 
+                        // But "10.5" -> 10.5.
+                        // If dot count > 1, certainly thousands separator.
+                        const dotCount = (clean.match(/\./g) || []).length;
+                        if (dotCount > 1) {
+                            clean = clean.replace(/\./g, '');
+                        } else if (dotCount === 1) {
+                            // Ambiguous: 1.000 could be 1k. 3.5 could be 3.5.
+                            // If we assume CL locale where DOT is thousands:
+                            clean = clean.replace(/\./g, '');
+                        }
+                    }
+                    return parseFloat(clean) || 0;
+                }
+                return 0;
+            };
+
             // 1. Scan for Headers and Balances
             for (let i = 0; i < Math.min(rows.length, 50); i++) {
                 const row = rows[i];
@@ -225,16 +275,54 @@ export default function ConciliacionPage() {
 
                 const rowStr = row.map(cleanStr).join(" ");
 
-                // Detect Balance (looking for "saldo anterior" or similar)
-                if ((rowStr.includes("saldo anterior") || rowStr.includes("saldo inicial")) &&
-                    (rowStr.includes("final") || rowStr.includes("actual") || rowStr.includes("contable"))) {
-                    // Look for numbers in the NEXT row usually
-                    const nextRow = rows[i + 1];
-                    if (nextRow) {
-                        const numbers = nextRow.filter(cell => typeof cell === 'number');
-                        if (numbers.length > 0) {
-                            saldoInicial = numbers[0];
-                            saldoFinal = numbers[numbers.length - 1];
+                // Detect Initial Balance
+                if (rowStr.includes("saldo anterior") || rowStr.includes("saldo inicial") || rowStr.includes("saldo apertura")) {
+                    const numbers = row.filter(cell => typeof cell === 'number' || (typeof cell === 'string' && cell.match(/\d/)));
+                    if (numbers.length > 0) {
+                        // Find the first value that looks like money
+                        for (const n of numbers) {
+                            const val = parseMoney(n);
+                            if (val !== 0) {
+                                saldoInicial = val;
+                                break;
+                            }
+                        }
+                    }
+                    // If not found in same row, try next row
+                    if (saldoInicial === 0 && rows[i + 1]) {
+                        const nextNumbers = rows[i + 1].filter(cell => typeof cell === 'number' || (typeof cell === 'string' && cell.match(/\d/)));
+                        for (const n of nextNumbers) {
+                            const val = parseMoney(n);
+                            if (val !== 0) {
+                                saldoInicial = val;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Detect Final Balance
+                if (rowStr.includes("saldo final") || rowStr.includes("saldo actual") || rowStr.includes("saldo contable")) {
+                    const numbers = row.filter(cell => typeof cell === 'number' || (typeof cell === 'string' && cell.match(/\d/)));
+                    if (numbers.length > 0) {
+                        // Find the last value that looks like money
+                        for (let k = numbers.length - 1; k >= 0; k--) {
+                            const val = parseMoney(numbers[k]);
+                            if (val !== 0) {
+                                saldoFinal = val;
+                                break;
+                            }
+                        }
+                    }
+                    // If not found in same row, try next row
+                    if (saldoFinal === 0 && rows[i + 1]) {
+                        const nextNumbers = rows[i + 1].filter(cell => typeof cell === 'number' || (typeof cell === 'string' && cell.match(/\d/)));
+                        for (let k = nextNumbers.length - 1; k >= 0; k--) {
+                            const val = parseMoney(nextNumbers[k]);
+                            if (val !== 0) {
+                                saldoFinal = val;
+                                break;
+                            }
                         }
                     }
                 }
@@ -326,46 +414,7 @@ export default function ConciliacionPage() {
 
                     const nDoc = row[docIdx]; // Use mapped index
 
-                    const parseMoney = (val: any) => {
-                        if (val === undefined || val === null || val === "") return 0;
-                        if (typeof val === 'number') return val;
-                        if (typeof val === 'string') {
-                            // Remove $ and any non-numeric chars except , . -
-                            let clean = val.replace(/[^0-9,.-]/g, '');
 
-                            // Detect decimal separator logic
-                            if (clean.includes(',')) {
-                                if (clean.includes('.')) {
-                                    // Has both. Last one is decimal?
-                                    if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
-                                        // 1.234,56 -> remove dot, replace comma with dot
-                                        clean = clean.replace(/\./g, '').replace(',', '.');
-                                    } else {
-                                        // 1,234.56 -> remove comma
-                                        clean = clean.replace(/,/g, '');
-                                    }
-                                } else {
-                                    // Has only comma. Is it decimal or thousand? "1,000" vs "0,5"
-                                    // In CL, comma is decimal.
-                                    clean = clean.replace(',', '.');
-                                }
-                            } else {
-                                // Only dots? "1.000" -> usually 1000. 
-                                // But "10.5" -> 10.5.
-                                // If dot count > 1, certainly thousands separator.
-                                const dotCount = (clean.match(/\./g) || []).length;
-                                if (dotCount > 1) {
-                                    clean = clean.replace(/\./g, '');
-                                } else if (dotCount === 1) {
-                                    // Ambiguous: 1.000 could be 1k. 3.5 could be 3.5.
-                                    // If we assume CL locale where DOT is thousands:
-                                    clean = clean.replace(/\./g, '');
-                                }
-                            }
-                            return parseFloat(clean) || 0;
-                        }
-                        return 0;
-                    };
 
                     const cargo = parseMoney(row[cargoIdx]);
                     const abono = parseMoney(row[abonoIdx]);
@@ -420,8 +469,9 @@ export default function ConciliacionPage() {
         // Calculate periodo_mes from first movement date
         let periodoMes = "Detectado";
         if (movs.length > 0 && movs[0].fecha) {
-            const fecha = new Date(movs[0].fecha);
-            periodoMes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+            // Split date string to avoid timezone shifts with new Date()
+            const [year, month] = movs[0].fecha.split('-');
+            periodoMes = `${year}-${month}`;
         }
 
         const { data: cartolaData, error: cartolaError } = await supabase
@@ -526,7 +576,8 @@ export default function ConciliacionPage() {
             const { data: ventasMatch, error } = await supabase
                 .from("ventas")
                 .select("*")
-                .gt("saldo", 0) // Only suggest invoices with pending balance
+                // Se quita el filtro estricto de saldo > 0 para permitir conciliar 
+                // facturas que ya fueron marcadas como pagadas administrativamente.
                 .gte("mnt_total", montoBuscado - tolerancia)
                 .lte("mnt_total", montoBuscado + tolerancia)
                 .limit(10);
@@ -542,6 +593,7 @@ export default function ConciliacionPage() {
                         fecha: v.fch_emis,
                         monto: v.mnt_total,
                         folio: v.folio,
+                        estado: v.estado_deuda || "Pendiente",
                         documento_relacionado: v
                     });
                 });
@@ -555,7 +607,7 @@ export default function ConciliacionPage() {
                 .select("*")
                 .gte("monto_total", montoBuscado - tolerancia)
                 .lte("monto_total", montoBuscado + tolerancia)
-                .eq("estado_pago", "Pendiente") // Only unpaid expenses
+                // Se quita el filtro estricto de "Pendiente" para permitir el flujo profesional
                 .limit(10);
 
             if (comprasMatch) {
@@ -567,6 +619,7 @@ export default function ConciliacionPage() {
                         fecha: c.fecha_emision,
                         monto: c.monto_total,
                         folio: c.folio,
+                        estado: c.estado_pago || "Pendiente",
                         documento_relacionado: c
                     });
                 });
@@ -595,33 +648,35 @@ export default function ConciliacionPage() {
             if (errMov) throw errMov;
 
             // 2. Update Related Record (Venta or Compra)
-            if (item.tipo === "venta") {
-                // Update Venta -> saldo = 0, estado_deuda = 'Pagada'
-                const { error: errVenta } = await supabase.from("ventas").update({
-                    estado_deuda: "Pagada",
-                    saldo: 0,
-                    fecha_abono: new Date().toISOString().split("T")[0],
-                    monto_abono: item.monto
-                }).eq("id", item.id);
+            if (item.estado !== "Pagada") {
+                if (item.tipo === "venta") {
+                    // Update Venta -> saldo = 0, estado_deuda = 'Pagada'
+                    const { error: errVenta } = await supabase.from("ventas").update({
+                        estado_deuda: "Pagada",
+                        saldo: 0,
+                        fecha_abono: new Date().toISOString().split("T")[0],
+                        monto_abono: item.monto
+                    }).eq("id", item.id);
 
-                if (errVenta) throw errVenta;
+                    if (errVenta) throw errVenta;
 
-                // Also record in 'abonos' table to keep history consistent with VentasPage
-                await supabase.from("abonos").insert({
-                    venta_id: item.id,
-                    monto_abono: item.monto,
-                    fecha_abono: new Date().toISOString().split("T")[0],
-                    tipo_abono: "Transferencia",
-                    detalle_abono: `Conciliación bancaria - Movimiento: ${selectedMovimiento.descripcion}`
-                });
-            } else {
-                // Update Compra -> estado_pago = 'Pagada', saldo = 0
-                const { error: errCompra } = await supabase.from("compras").update({
-                    estado_pago: "Pagada",
-                    saldo: 0
-                }).eq("id", item.id);
+                    // Also record in 'abonos' table to keep history consistent with VentasPage
+                    await supabase.from("abonos").insert({
+                        venta_id: item.id,
+                        monto_abono: item.monto,
+                        fecha_abono: new Date().toISOString().split("T")[0],
+                        tipo_abono: "Transferencia",
+                        detalle_abono: `Conciliación bancaria - Movimiento: ${selectedMovimiento.descripcion}`
+                    });
+                } else {
+                    // Update Compra -> estado_pago = 'Pagada', saldo = 0
+                    const { error: errCompra } = await supabase.from("compras").update({
+                        estado_pago: "Pagada",
+                        saldo: 0
+                    }).eq("id", item.id);
 
-                if (errCompra) throw errCompra;
+                    if (errCompra) throw errCompra;
+                }
             }
 
             // 3. UI Updates
@@ -884,6 +939,12 @@ export default function ConciliacionPage() {
                                                     <div className="flex items-center gap-2">
                                                         <Badge variant="secondary" className="uppercase text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-none">{item.tipo}</Badge>
                                                         <span className="font-bold text-sm text-gray-900 dark:text-gray-100">Folio {item.folio}</span>
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={`text-[10px] ${item.estado === 'Pagada' ? 'text-green-600 border-green-200 bg-green-50' : 'text-yellow-600 border-yellow-200 bg-yellow-50'}`}
+                                                        >
+                                                            {item.estado}
+                                                        </Badge>
                                                     </div>
                                                     <p className="text-sm text-gray-700 dark:text-gray-300">{item.entidad}</p>
                                                     <p className="text-xs text-gray-400 dark:text-gray-500">{item.fecha}</p>
