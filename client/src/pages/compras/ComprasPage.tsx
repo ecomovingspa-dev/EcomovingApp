@@ -77,6 +77,7 @@ export default function ComprasPage() {
 
     // Filtros
     const [filtroProveedor, setFiltroProveedor] = useState("");
+    const [filtroFolio, setFiltroFolio] = useState("");
     const [filtroEstado, setFiltroEstado] = useState<string>("todos");
 
     // Sincronización
@@ -200,12 +201,16 @@ export default function ComprasPage() {
                     .toLowerCase()
                     .includes(filtroProveedor.toLowerCase());
 
+            const matchFolio =
+                filtroFolio === "" ||
+                String(compra.folio || "").includes(filtroFolio);
+
             let matchEstado = true;
             if (filtroEstado !== "todos") {
                 matchEstado = compra.estado_pago === filtroEstado;
             }
 
-            return matchProveedor && matchEstado;
+            return matchProveedor && matchFolio && matchEstado;
         })
         .sort((a, b) => {
             return (new Date(b.fecha_emision || 0).getTime()) - (new Date(a.fecha_emision || 0).getTime());
@@ -548,6 +553,22 @@ export default function ComprasPage() {
                                         value={filtroProveedor}
                                         onChange={(e) => {
                                             setFiltroProveedor(e.target.value);
+                                            setCurrentPage(1);
+                                        }}
+                                        className="pl-8 h-9"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="w-32">
+                                <Label className="text-xs text-gray-500 dark:text-gray-400 mb-1 block">Folio</Label>
+                                <div className="relative">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                                    <Input
+                                        placeholder="N° Folio"
+                                        value={filtroFolio}
+                                        onChange={(e) => {
+                                            setFiltroFolio(e.target.value);
                                             setCurrentPage(1);
                                         }}
                                         className="pl-8 h-9"
