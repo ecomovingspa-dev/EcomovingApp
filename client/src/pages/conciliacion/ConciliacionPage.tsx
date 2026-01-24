@@ -142,52 +142,86 @@ export default function ConciliacionPage() {
             const sheet = workbook.Sheets[sheetName];
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
 
+            console.log("Total rows found:", rows.length);
+
             let saldoInicial = 0;
             let saldoFinal = 0;
             let movementsStartIndex = -1;
-            let cargoIdx = 10; // Default BCI
-            let abonoIdx = 12; // Default BCI
-            let saldoIdx = 14; // Default BCI
 
-            // 1. Scan for headers and balance
+            // Default indices (will be overwritten if headers are found)
+            let fechaIdx = 0;
+            let descIdxStart = 2; // Usually merge of cols
+            let docIdx = 7;
+            let cargoIdx = 10;
+            let abonoIdx = 12;
+            let saldoIdx = 14;
+
+            // Helper to clean string for comparison
+            const cleanStr = (val: any) => String(val || "").toLowerCase().trim().replace(/\s+/g, ' ');
+
+            // 1. Scan for Headers and Balances
             for (let i = 0; i < Math.min(rows.length, 50); i++) {
                 const row = rows[i];
-                if (!row) continue;
-                const rowStr = JSON.stringify(row).toLowerCase();
+                if (!row || row.length === 0) continue;
 
-                // Capture Saldo
-                if (rowStr.includes("saldo anterior") && rowStr.includes("saldo contable final")) {
-                    const summaryRow = rows[i + 1];
-                    if (summaryRow) {
-                        const numbers = summaryRow.filter(cell => typeof cell === 'number');
-                        if (numbers.length >= 2) {
+                const rowStr = row.map(cleanStr).join(" ");
+
+                // Detect Balance (looking for "saldo anterior" or similar)
+                if ((rowStr.includes("saldo anterior") || rowStr.includes("saldo inicial")) &&
+                    (rowStr.includes("final") || rowStr.includes("actual") || rowStr.includes("contable"))) {
+                    // Look for numbers in the NEXT row usually
+                    const nextRow = rows[i + 1];
+                    if (nextRow) {
+                        const numbers = nextRow.filter(cell => typeof cell === 'number');
+                        if (numbers.length > 0) {
                             saldoInicial = numbers[0];
                             saldoFinal = numbers[numbers.length - 1];
                         }
                     }
                 }
 
-                // Detect Headers
-                if ((rowStr.includes("cargos") && rowStr.includes("abonos")) || rowStr.includes("cheques y otros")) {
-                    // Try to identify specific columns in this row
-                    row.forEach((cell: any, idx: number) => {
-                        if (typeof cell === 'string') {
-                            const val = cell.toLowerCase().trim();
-                            if (val === 'cargos' || val.includes('cargos')) cargoIdx = idx;
-                            if (val === 'abonos' || val.includes('abonos')) abonoIdx = idx;
-                            if (val === 'saldo' || val.includes('saldo')) saldoIdx = idx;
-                        }
-                    });
+                // Detect Column Headers
+                // We look for a row that has date/fecha AND cargo/abono/monto/valor
+                if (rowStr.includes("fecha") && (rowStr.includes("cargo") || rowStr.includes("abono") || rowStr.includes("monto") || rowStr.includes("valor"))) {
+                    console.log("Header row found at index:", i);
                     movementsStartIndex = i + 1;
+
+                    // Map columns dynamically
+                    row.forEach((cell: any, idx: number) => {
+                        const val = cleanStr(cell);
+                        if (val.includes("fecha")) fechaIdx = idx;
+                        if (val.includes("descripcion") || val.includes("movimiento")) descIdxStart = idx; // heuristic
+                        if (val.includes("doc") || val.includes("num")) docIdx = idx;
+                        if (val === "cargos" || val === "cargo") cargoIdx = idx;
+                        if (val === "abonos" || val === "abono") abonoIdx = idx;
+                        if (val.includes("saldo") && !val.includes("anterior")) saldoIdx = idx;
+                    });
+                } else if (rowStr.includes("cheques") && rowStr.includes("otros") && rowStr.includes("cargos")) {
+                    // Fallback for BCI specific header line which might be "Cheques y otros cargos..."
+                    console.log("BCI Header detected via keywords at index:", i);
+                    movementsStartIndex = i + 1;
+                    // We can try to map if possible, otherwise rely on defaults.
+                    row.forEach((cell: any, idx: number) => {
+                        const val = cleanStr(cell);
+                        if (val.includes("cargos")) cargoIdx = idx;
+                        if (val.includes("abonos")) abonoIdx = idx;
+                        if (val.includes("saldo")) saldoIdx = idx;
+                    });
                 }
             }
 
-            // Ensure we have a start index
+            console.log("Indices determined:", { fechaIdx, docIdx, cargoIdx, abonoIdx, saldoIdx });
+
+            // If header not found but we want to try parsing anyway
             if (movementsStartIndex === -1) {
-                // Fallback: look for first date-like cell? Or just assume after some rows?
-                // Let's stick to what we had: if we didn't find headers, maybe the old check worked?
-                // The old check was: includes("Cheques y otros") -> start = i+1
-                // We covered that in the loop above.
+                // Try finding first row with a date at column 0.
+                for (let i = 0; i < rows.length; i++) {
+                    const cell0 = rows[i][0];
+                    if (cell0 && (typeof cell0 === 'number' || (typeof cell0 === 'string' && cell0.match(/\d{2}\/\d{2}\/\d{4}/)))) {
+                        movementsStartIndex = i;
+                        break;
+                    }
+                }
             }
 
             const parsedMovimientos: any[] = [];
@@ -196,8 +230,8 @@ export default function ConciliacionPage() {
                     const row = rows[i];
                     if (!row || row.length === 0) continue;
 
-                    const fechaRaw = row[0]; // A
-                    if (!fechaRaw && fechaRaw !== 0) continue;
+                    const fechaRaw = row[fechaIdx]; // Use mapped index
+                    if (!fechaRaw) continue;
 
                     // Parse Date
                     let fecha: string | null = null;
@@ -205,12 +239,12 @@ export default function ConciliacionPage() {
                         const date = XLSX.SSF.parse_date_code(fechaRaw);
                         fecha = new Date(date.y, date.m - 1, date.d).toISOString().split('T')[0];
                     } else if (typeof fechaRaw === 'string') {
-                        const parts = fechaRaw.split('/');
+                        // Try DD/MM/YYYY
+                        const parts = fechaRaw.trim().split('/');
                         if (parts.length === 3) {
-                            // Assume DD/MM/YYYY
                             fecha = `${parts[2]}-${parts[1]}-${parts[0]}`;
                         } else {
-                            // Try parsing standard date string
+                            // Try standard date parsing
                             const d = new Date(fechaRaw);
                             if (!isNaN(d.getTime())) {
                                 fecha = d.toISOString().split('T')[0];
@@ -218,27 +252,56 @@ export default function ConciliacionPage() {
                         }
                     }
 
-                    if (!fecha) continue;
+                    if (!fecha) continue; // Skip invalid rows
 
-                    // Description Parts (Columns C to G usually)
+                    // Description: combine columns from descIdxStart up to docIdx
                     const descParts = [];
-                    for (let k = 2; k <= 6; k++) {
+                    // Heuristic: take 3-4 columns after start or up to docIdx
+                    const limit = docIdx > descIdxStart ? docIdx : descIdxStart + 4;
+                    for (let k = descIdxStart; k < limit; k++) {
                         if (typeof row[k] === 'string') descParts.push(row[k]);
                     }
                     const finalDesc = descParts.join(" ") || "Sin descripción";
 
-                    const nDoc = row[7] || row[8];
+                    const nDoc = row[docIdx]; // Use mapped index
 
                     const parseMoney = (val: any) => {
+                        if (val === undefined || val === null || val === "") return 0;
                         if (typeof val === 'number') return val;
                         if (typeof val === 'string') {
-                            // Remove $ and dots (thousands separator in CL), replace semi/colon with dot if needed? 
-                            // CL Locale: 1.000,00 or 1.000 usually. Excel might give raw number 1000.
-                            // If it's a string "$ 1.000", parsing it:
-                            const clean = val.replace(/[^0-9,.-]/g, '');
-                            // If using comma for decimal
-                            const normalized = clean.replace(/\./g, '').replace(',', '.');
-                            return parseFloat(normalized) || 0;
+                            // Remove $ and any non-numeric chars except , . -
+                            let clean = val.replace(/[^0-9,.-]/g, '');
+
+                            // Detect decimal separator logic
+                            if (clean.includes(',')) {
+                                if (clean.includes('.')) {
+                                    // Has both. Last one is decimal?
+                                    if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
+                                        // 1.234,56 -> remove dot, replace comma with dot
+                                        clean = clean.replace(/\./g, '').replace(',', '.');
+                                    } else {
+                                        // 1,234.56 -> remove comma
+                                        clean = clean.replace(/,/g, '');
+                                    }
+                                } else {
+                                    // Has only comma. Is it decimal or thousand? "1,000" vs "0,5"
+                                    // In CL, comma is decimal.
+                                    clean = clean.replace(',', '.');
+                                }
+                            } else {
+                                // Only dots? "1.000" -> usually 1000. 
+                                // But "10.5" -> 10.5.
+                                // If dot count > 1, certainly thousands separator.
+                                const dotCount = (clean.match(/\./g) || []).length;
+                                if (dotCount > 1) {
+                                    clean = clean.replace(/\./g, '');
+                                } else if (dotCount === 1) {
+                                    // Ambiguous: 1.000 could be 1k. 3.5 could be 3.5.
+                                    // If we assume CL locale where DOT is thousands:
+                                    clean = clean.replace(/\./g, '');
+                                }
+                            }
+                            return parseFloat(clean) || 0;
                         }
                         return 0;
                     };
@@ -262,7 +325,7 @@ export default function ConciliacionPage() {
             if (parsedMovimientos.length > 0) {
                 await descomponerYGuardar(file.name, saldoInicial, saldoFinal, parsedMovimientos);
             } else {
-                alert("No se encontraron movimientos válidos. Verifica el formato.");
+                alert("No se encontraron movimientos válidos. Verifica que el archivo tenga columnas de Fecha, Cargo/Abono.");
             }
 
         } catch (e: any) {
@@ -273,6 +336,9 @@ export default function ConciliacionPage() {
             e.target.value = "";
         }
     };
+
+    // Unchanged part kept for context matching if needed, but I am replacing the whole function block.
+
 
     const descomponerYGuardar = async (fileName: string, sIni: number, sFin: number, movs: any[]) => {
         const { data: cartolaData, error: cartolaError } = await supabase
