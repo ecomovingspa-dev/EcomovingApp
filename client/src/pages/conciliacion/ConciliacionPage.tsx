@@ -241,8 +241,10 @@ export default function ConciliacionPage() {
                         if (val.includes("fecha")) fechaIdx = idx;
                         if (val.includes("descripcion") || val.includes("movimiento")) descIdxStart = idx; // heuristic
                         if (val.includes("doc") || val.includes("num")) docIdx = idx;
-                        if (val === "cargos" || val === "cargo") cargoIdx = idx;
-                        if (val === "abonos" || val === "abono") abonoIdx = idx;
+                        // Changed to includes() to catch "Cargos y Cheques", "Total Cargos", etc.
+                        if (val.includes("cargo")) cargoIdx = idx;
+                        // Changed to includes() to catch "Depósitos y Abonos", "Total Abonos", etc.
+                        if (val.includes("abono") || val.includes("deposito") || val.includes("depósito")) abonoIdx = idx;
                         if (val.includes("saldo") && !val.includes("anterior")) saldoIdx = idx;
                     });
                 } else if (rowStr.includes("cheques") && rowStr.includes("otros") && rowStr.includes("cargos")) {
@@ -259,7 +261,7 @@ export default function ConciliacionPage() {
                 }
             }
 
-            console.log("Indices determined:", { fechaIdx, docIdx, cargoIdx, abonoIdx, saldoIdx });
+            console.log("Indices determined:", { fechaIdx, descIdxStart, docIdx, cargoIdx, abonoIdx, saldoIdx });
 
             // If header not found but we want to try parsing anyway
             if (movementsStartIndex === -1) {
@@ -358,6 +360,15 @@ export default function ConciliacionPage() {
                     const cargo = parseMoney(row[cargoIdx]);
                     const abono = parseMoney(row[abonoIdx]);
                     const saldo = parseMoney(row[saldoIdx]);
+
+                    // Debug: log first few rows to verify parsing
+                    if (parsedMovimientos.length < 3) {
+                        console.log(`Row ${i}: Cargo=${cargo}, Abono=${abono}, Saldo=${saldo}`, {
+                            cargoRaw: row[cargoIdx],
+                            abonoRaw: row[abonoIdx],
+                            saldoRaw: row[saldoIdx]
+                        });
+                    }
 
                     parsedMovimientos.push({
                         fecha,
