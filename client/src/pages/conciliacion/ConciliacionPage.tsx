@@ -12,7 +12,11 @@ import {
     ArrowRightLeft,
     Search,
     PlusCircle,
-    Save
+    Save,
+    DollarSign,
+    Link,
+    Ban,
+    Check
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,13 +30,14 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Types
 interface BancoMovimiento {
-    id?: number;
+    id: number;
     cartola_id?: number;
-    fecha: string | null; // YYYY-MM-DD
+    fecha: string; // YYYY-MM-DD
     descripcion: string;
     numero_documento: string | null;
     cargos: number;
@@ -40,6 +45,7 @@ interface BancoMovimiento {
     saldo: number;
     estado: string; // 'pendiente', 'conciliado'
     tipo_conciliacion?: string;
+    conciliado_id?: number | null;
 }
 
 interface BancoCartola {
@@ -52,12 +58,29 @@ interface BancoCartola {
     periodo: string;
 }
 
+interface Coincidencia {
+    id: number;
+    tipo: 'venta' | 'compra';
+    entidad: string; // Cliente o Proveedor
+    fecha: string;
+    monto: number;
+    folio: string | number;
+    documento_relacionado?: any;
+}
+
 export default function ConciliacionPage() {
     const [cartolas, setCartolas] = useState<BancoCartola[]>([]);
     const [movimientos, setMovimientos] = useState<BancoMovimiento[]>([]);
     const [selectedCartola, setSelectedCartola] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+
+    // Reconciliation Dialog State
+    const [conciliarOpen, setConciliarOpen] = useState(false);
+    const [selectedMovimiento, setSelectedMovimiento] = useState<BancoMovimiento | null>(null);
+    const [coincidencias, setCoincidencias] = useState<Coincidencia[]>([]);
+    const [searchingMatch, setSearchingMatch] = useState(false);
+    const [matchTab, setMatchTab] = useState("sugerencias"); // sugerencias | manual
 
     useEffect(() => {
         cargarCartolas();
@@ -117,107 +140,37 @@ export default function ConciliacionPage() {
             const workbook = XLSX.read(data, { type: "array" });
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
-
-            // Convert sheet to array of arrays to handle custom layout
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
 
-            // 1. Extract Header Info (Based on BCI layout)
-            // Empresa: Row 2 (Index 2 in 0-based? Let's assume user image is accurate)
-            // Visual inspection:
-            // Row 1: Logo Bci
-            // Row 3: Empresa (Col C) | Ejecutivo (Col K)
-            // Row 4: N de cuenta (Col C) | Periodo (Col K)
-            // Row 5: Oficina
-            // Row 9: Periodo | Saldo Anterior | Total Cargos ...
-            // Row 10: Values for above
-
-            // Safety check: is it really BCI format?
-            // Let's implement robust searching for keywords just in case
             let saldoInicial = 0;
             let saldoFinal = 0;
-            let banco = "BCI"; // Default assumption
-            let periodo = "";
-
-            // Try to find "Saldo Anterior" and "Saldo Contable Final" logic
-            // Usually around row 9-10
-            // Let's assume fixed positions for now as per "como muestra la imagen"
-            // Row 10 (index 9) cols C (2) and I/M?
-
-            // Let's iterate looking for the summary row
-            let summaryRowIndex = -1;
             let movementsStartIndex = -1;
 
             for (let i = 0; i < rows.length; i++) {
                 const rowStr = JSON.stringify(rows[i]).toLowerCase();
                 if (rowStr.includes("saldo anterior") && rowStr.includes("saldo contable final")) {
-                    summaryRowIndex = i + 1; // data is next row
-                }
-                if (rowStr.includes("movimientos cuenta corriente")) {
-                    movementsStartIndex = i + 2; // header then data?
-                }
-                // If we find the specific header row for movements
-                if (rows[i] && rows[i].includes("Fecha") && rows[i].includes("Descripción") && rows[i].includes("Cargos y Cheques")) {
-                    // Wait, image says "Cheques y otros" and "Depósitos y Abono"
+                    // Try to capture Saldos if in the same row
+                    const summaryRow = rows[i + 1];
+                    if (summaryRow) {
+                        const numbers = summaryRow.filter(cell => typeof cell === 'number');
+                        if (numbers.length >= 2) {
+                            saldoInicial = numbers[0];
+                            saldoFinal = numbers[numbers.length - 1];
+                        }
+                    }
                 }
                 if (rows[i] && rows[i].some((cell: any) => typeof cell === 'string' && cell.includes("Cheques y otros"))) {
                     movementsStartIndex = i + 1;
                 }
             }
 
-            // Fallback extraction
-            if (summaryRowIndex !== -1 && rows[summaryRowIndex]) {
-                // BCI Image: Saldo Anterior is 2nd value? 
-                // Headers: Periodo | Saldo Anterior | Total Cargos... | Total Abonos... | Saldo Contable Final
-                // Data:    Range   | 23.347        | 1.617.981      | ...             | 390.040
-                // Let's try finding numbers in that row
-                const summaryRow = rows[summaryRowIndex];
-                // Simple heuristic: First Number is Saldo Anterior, Last Number is Saldo Final? 
-                // Or strictly by column index if predictable.
-                // Let's filter for numbers
-                const numbers = summaryRow.filter(cell => typeof cell === 'number');
-                if (numbers.length >= 2) {
-                    saldoInicial = numbers[0];
-                    saldoFinal = numbers[numbers.length - 1];
-                }
-            }
-
-            // 2. Extract Movements
             const parsedMovimientos: any[] = [];
-
             if (movementsStartIndex !== -1) {
                 for (let i = movementsStartIndex; i < rows.length; i++) {
                     const row = rows[i];
                     if (!row || row.length === 0) continue;
 
-                    // Stop if empty or total line
-                    const firstCell = row[0];
-                    if (!firstCell) continue;
-
-                    // Image Columns logic (0-indexed):
-                    // A(0): Fecha
-                    // B(1): Sucursal
-                    // F(5)?: Descripción (Merged?)
-                    // H(7)?: N Documento
-                    // K(10)?: Cheques y otros (Cargos)
-                    // M(12)?: Depósitos y Abono (Abonos)
-                    // O(14)?: Saldo diario
-
-                    // We need to be resilient to empty cells shifting indices if the array is sparse
-                    // Better to map by known headers if possible, but 'sheet_to_json' with header:1 gives sparse arrays usually.
-
-                    // Let's assume the array indices correspond roughly to Excel columns A=0, B=1 ...
-                    // A=0, B=1, C=2, D=3, E=4, F=5, G=6, H=7, I=8, J=9, K=10, L=11, M=12, N=13, O=14
-
                     const fechaRaw = row[0]; // A
-                    const descripcion = row[2] || row[3] || row[4] || row[5]; // Try to grab description, it spans multiple cols often
-                    const nDoc = row[7] || row[8]; // H/I ?
-
-                    // Values
-                    const cargoStr = row[10]; // K
-                    const abonoStr = row[12]; // M
-                    const saldoStr = row[14]; // O
-
-                    // If no date, skip
                     if (!fechaRaw) continue;
 
                     // Parse Date
@@ -226,26 +179,25 @@ export default function ConciliacionPage() {
                         const date = XLSX.SSF.parse_date_code(fechaRaw);
                         fecha = new Date(date.y, date.m - 1, date.d).toISOString().split('T')[0];
                     } else if (typeof fechaRaw === 'string') {
-                        // Try DD/MM/YYYY
                         const parts = fechaRaw.split('/');
                         if (parts.length === 3) {
                             fecha = `${parts[2]}-${parts[1]}-${parts[0]}`;
                         }
                     }
 
-                    if (!fecha) continue; // Invalid row
+                    if (!fecha) continue;
 
-                    const cargo = typeof cargoStr === 'number' ? cargoStr : 0;
-                    const abono = typeof abonoStr === 'number' ? abonoStr : 0;
-                    const saldo = typeof saldoStr === 'number' ? saldoStr : 0;
-
-                    // Description cleanup
-                    // Sometimes description is split in cols, we can join valid strings between col 2 and 7
+                    // Description Parts
                     const descParts = [];
                     for (let k = 2; k <= 6; k++) {
                         if (typeof row[k] === 'string') descParts.push(row[k]);
                     }
                     const finalDesc = descParts.join(" ") || "Sin descripción";
+
+                    const nDoc = row[7] || row[8];
+                    const cargo = typeof row[10] === 'number' ? row[10] : 0;
+                    const abono = typeof row[12] === 'number' ? row[12] : 0;
+                    const saldo = typeof row[14] === 'number' ? row[14] : 0;
 
                     parsedMovimientos.push({
                         fecha,
@@ -259,31 +211,28 @@ export default function ConciliacionPage() {
                 }
             }
 
-            // Save to Supabase
             if (parsedMovimientos.length > 0) {
                 await descomponerYGuardar(file.name, saldoInicial, saldoFinal, parsedMovimientos);
             } else {
                 alert("No se encontraron movimientos válidos. Verifica el formato.");
             }
 
-        } catch (e) {
+        } catch (e: any) {
             console.error("Error analyzing excel:", e);
-            alert("Error leyendo el archivo.");
+            alert("Error leyendo el archivo: " + e.message);
         } finally {
             setUploading(false);
-            // Reset input
             e.target.value = "";
         }
     };
 
     const descomponerYGuardar = async (fileName: string, sIni: number, sFin: number, movs: any[]) => {
-        // 1. Create Header
         const { data: cartolaData, error: cartolaError } = await supabase
             .from("banco_cartolas")
             .insert({
                 nombre_archivo: fileName,
-                banco: "BCI", // detected or default
-                periodo: "Detectado", // Could verify min/max date
+                banco: "BCI",
+                periodo: "Detectado",
                 saldo_inicial: sIni,
                 saldo_final: sFin
             })
@@ -295,7 +244,6 @@ export default function ConciliacionPage() {
             return;
         }
 
-        // 2. Create Movements
         const movimientosConId = movs.map(m => ({
             ...m,
             cartola_id: cartolaData.id
@@ -314,13 +262,143 @@ export default function ConciliacionPage() {
         }
     };
 
-    // Format helpers
+    // --- RECONCILIATION LOGIC ---
+    const handleConciliarClick = (mov: BancoMovimiento) => {
+        setSelectedMovimiento(mov);
+        setConciliarOpen(true);
+        buscarSugerencias(mov);
+    };
+
+    const buscarSugerencias = async (mov: BancoMovimiento) => {
+        setSearchingMatch(true);
+        setCoincidencias([]);
+
+        // Determine strict types:
+        // Abono (Ingreso) -> Probablemente una Venta
+        // Cargo (Egreso) -> Probablemente una Compra (Gasto)
+        const esAbono = mov.abonos > 0;
+        const montoBuscado = esAbono ? mov.abonos : mov.cargos;
+        const tolerancia = 2000; // Tolerancia en pesos (para redondeos)
+
+        const candidates: Coincidencia[] = [];
+
+        // 1. Search Sales (Ventas)
+        if (esAbono) {
+            // Buscar en tabla 'ventas' (que creamos anteriormente o asumimos)
+            // NOTA: Asumimos 'ventas' existe y tiene 'mnt_total', 'fch_emis'
+            const { data: ventasMatch, error } = await supabase
+                .from("ventas") // Make sure this table matches your schema
+                .select("*")
+                .gte("mnt_total", montoBuscado - tolerancia) // TODO: This might fail if mnt_total is numeric vs int discrepancy, but usually safe
+                .lte("mnt_total", montoBuscado + tolerancia)
+                //.eq("estado_deuda", "PE") // Only unpaid sales
+                .limit(10); // Check more
+
+            if (ventasMatch) {
+                ventasMatch.forEach((v: any) => {
+                    // Basic filter: date should not be AFTER movement (usually)
+                    // But sometimes payment is partial or weird. Let's just suggest.
+                    candidates.push({
+                        id: v.id,
+                        tipo: 'venta',
+                        entidad: v.rzn_soc_recep || "Desconocido",
+                        fecha: v.fch_emis,
+                        monto: v.mnt_total,
+                        folio: v.folio,
+                        documento_relacionado: v
+                    });
+                });
+            }
+        }
+
+        // 2. Search Compras (Expenses)
+        if (!esAbono) {
+            const { data: comprasMatch, error } = await supabase
+                .from("compras")
+                .select("*")
+                .gte("monto_total", montoBuscado - tolerancia)
+                .lte("monto_total", montoBuscado + tolerancia)
+                .eq("estado_pago", "Pendiente") // Only unpaid expenses
+                .limit(10);
+
+            if (comprasMatch) {
+                comprasMatch.forEach((c: any) => {
+                    candidates.push({
+                        id: c.id,
+                        tipo: 'compra',
+                        entidad: c.razon_social || "Desconocido",
+                        fecha: c.fecha_emision,
+                        monto: c.monto_total,
+                        folio: c.folio,
+                        documento_relacionado: c
+                    });
+                });
+            }
+        }
+
+        setCoincidencias(candidates);
+        setSearchingMatch(false);
+    };
+
+    const ejecutarConciliacion = async (item: Coincidencia) => {
+        if (!selectedMovimiento) return;
+        if (!confirm(`¿Estás seguro de conciliar este movimiento con ${item.tipo === 'venta' ? 'la Venta' : 'la Compra'} Folio ${item.folio}?`)) return;
+
+        try {
+            // 1. Update Banco Movimiento
+            const { error: errMov } = await supabase
+                .from("banco_movimientos")
+                .update({
+                    estado: "conciliado",
+                    tipo_conciliacion: item.tipo,
+                    conciliado_id: item.id
+                })
+                .eq("id", selectedMovimiento.id);
+
+            if (errMov) throw errMov;
+
+            // 2. Update Related Record (Venta or Compra)
+            if (item.tipo === "venta") {
+                // Update Venta -> estado_deuda = 'PA' (Pagada) ?
+                // Note: Maybe we should also record fecha_abono
+                await supabase.from("ventas").update({
+                    estado_deuda: "PA", // Asumiendo convención
+                    fecha_abono: new Date().toISOString().split("T")[0],
+                    monto_abono: item.monto
+                }).eq("id", item.id);
+            } else {
+                // Update Compra -> estado_pago = 'Pagada'
+                await supabase.from("compras").update({
+                    estado_pago: "Pagada",
+                    saldo: 0
+                }).eq("id", item.id);
+            }
+
+            // 3. UI Updates
+            setConciliarOpen(false);
+
+            // Update local list
+            setMovimientos(prev => prev.map(m =>
+                m.id === selectedMovimiento.id
+                    ? { ...m, estado: "conciliado", tipo_conciliacion: item.tipo, conciliado_id: item.id }
+                    : m
+            ));
+
+            setSelectedMovimiento(null);
+            alert("¡Conciliación exitosa!");
+
+        } catch (e: any) {
+            alert("Error al conciliar: " + e.message);
+        }
+    };
+
+
     const fmtMoney = (amount: number) => {
         return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(amount);
     };
 
     return (
-        <div className="space-y-6 pb-10">
+        <div className="space-y-6 pb-10 fade-in-up">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -333,7 +411,6 @@ export default function ConciliacionPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* Selector de Cartolas */}
                     <div className="relative w-64">
                         <select
                             className="w-full p-2.5 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
@@ -349,7 +426,6 @@ export default function ConciliacionPage() {
                         </select>
                     </div>
 
-                    {/* Upload Button */}
                     <div className="relative">
                         <input
                             type="file"
@@ -374,7 +450,6 @@ export default function ConciliacionPage() {
                 </div>
             </div>
 
-            {/* Resumen Periodo */}
             {selectedCartola && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {(() => {
@@ -422,7 +497,6 @@ export default function ConciliacionPage() {
                 </div>
             )}
 
-            {/* Tabla Movimientos */}
             <Card className="border-t-4 border-t-indigo-500 shadow-md">
                 <CardHeader className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
                     <CardTitle className="flex justify-between items-center text-lg">
@@ -459,7 +533,7 @@ export default function ConciliacionPage() {
                                 </TableRow>
                             ) : (
                                 movimientos.map((mov) => (
-                                    <TableRow key={mov.id}>
+                                    <TableRow key={mov.id} className={mov.estado === 'conciliado' ? 'bg-gray-50 opacity-75' : ''}>
                                         <TableCell className="font-medium whitespace-nowrap">{mov.fecha}</TableCell>
                                         <TableCell className="max-w-xs truncate" title={mov.descripcion}>{mov.descripcion}</TableCell>
                                         <TableCell>{mov.numero_documento || "-"}</TableCell>
@@ -474,15 +548,19 @@ export default function ConciliacionPage() {
                                         </TableCell>
                                         <TableCell className="text-center">
                                             {mov.estado === 'conciliado' ? (
-                                                <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200 border-none">OK</Badge>
+                                                <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200 border-none">
+                                                    <Check className="w-3 h-3 mr-1" /> Conciliado
+                                                </Badge>
                                             ) : (
                                                 <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50">Pendiente</Badge>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                <PlusCircle className="h-4 w-4 text-indigo-600" />
-                                            </Button>
+                                            {mov.estado !== 'conciliado' && (
+                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleConciliarClick(mov)}>
+                                                    <Link className="h-4 w-4 text-indigo-600" />
+                                                </Button>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -491,6 +569,89 @@ export default function ConciliacionPage() {
                     </Table>
                 </div>
             </Card>
+
+            {/* Dialog Conciliacion */}
+            <Dialog open={conciliarOpen} onOpenChange={setConciliarOpen}>
+                <DialogContent className="max-w-3xl">
+                    <DialogHeader>
+                        <DialogTitle>Conciliar Movimiento</DialogTitle>
+                        <DialogDescription>
+                            Busca una venta o gasto que coincida con este movimiento bancario.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {selectedMovimiento && (
+                        <div className="space-y-4">
+                            {/* Resumen del movimiento */}
+                            <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg flex justify-between items-center border border-gray-200 dark:border-gray-700">
+                                <div>
+                                    <h3 className="font-semibold text-sm text-gray-500">Movimiento Bancario</h3>
+                                    <p className="font-bold text-gray-900 dark:text-gray-100">{selectedMovimiento.descripcion}</p>
+                                    <p className="text-xs text-gray-400">{selectedMovimiento.fecha}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className={`text-xl font-bold ${selectedMovimiento.cargos > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                        {selectedMovimiento.cargos > 0 ? '-' : '+'}{fmtMoney(selectedMovimiento.cargos || selectedMovimiento.abonos)}
+                                    </p>
+                                    <Badge variant="outline">{selectedMovimiento.cargos > 0 ? 'Cargo / Gasto' : 'Abono / Ingreso'}</Badge>
+                                </div>
+                            </div>
+
+                            <Tabs defaultValue="sugerencias">
+                                <TabsList className="grid w-full grid-cols-2">
+                                    <TabsTrigger value="sugerencias">Sugerencias Inteligentes</TabsTrigger>
+                                    <TabsTrigger value="manual">Búsqueda Manual</TabsTrigger>
+                                </TabsList>
+
+                                <TabsContent value="sugerencias" className="space-y-2 pt-2">
+                                    {searchingMatch ? (
+                                        <div className="text-center py-6">
+                                            <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500" />
+                                            <p className="text-sm text-gray-500 mt-2">Buscando documentos relacionados...</p>
+                                        </div>
+                                    ) : coincidencias.length > 0 ? (
+                                        <div className="space-y-2">
+                                            <p className="text-xs text-gray-500 font-medium">Se encontraron posibles coincidencias por monto y estado.</p>
+                                            {coincidencias.map((item) => (
+                                                <div key={`${item.tipo}-${item.id}`} className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border-l-4 border-l-indigo-400">
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <Badge variant="secondary" className="uppercase text-[10px]">{item.tipo}</Badge>
+                                                            <span className="font-bold text-sm">Folio #{item.folio}</span>
+                                                        </div>
+                                                        <p className="text-sm text-gray-700 dark:text-gray-300">{item.entidad}</p>
+                                                        <p className="text-xs text-gray-400">{item.fecha}</p>
+                                                    </div>
+                                                    <div className="text-right flex items-center gap-3">
+                                                        <div className="font-bold">{fmtMoney(item.monto)}</div>
+                                                        <Button size="sm" variant="default" onClick={() => ejecutarConciliacion(item)}>
+                                                            Conciliar
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8 text-gray-500 border border-dashed rounded-md bg-gray-50/50">
+                                            <Search className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                                            <p>No se encontraron coincidencias automáticas.</p>
+                                            <p className="text-xs">Prueba la búsqueda manual.</p>
+                                        </div>
+                                    )}
+                                </TabsContent>
+
+                                <TabsContent value="manual">
+                                    <div className="py-4 text-center text-gray-500">
+                                        <AlertCircle className="h-8 w-8 mx-auto text-yellow-500 mb-2" />
+                                        <p>Funcionalidad de búsqueda manual en desarrollo.</p>
+                                        <p className="text-xs">Por ahora usa las sugerencias automáticas basasdas en el monto.</p>
+                                    </div>
+                                </TabsContent>
+                            </Tabs>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

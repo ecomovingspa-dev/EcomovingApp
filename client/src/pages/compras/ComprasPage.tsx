@@ -43,6 +43,14 @@ interface Compra {
     rut_proveedor: string | null;
     razon_social: string | null;
     monto_total: number;
+    // New Fields
+    monto_exento?: number;
+    monto_sin_credito?: number;
+    impuestos_especificos?: number;
+    codigo_sucursal?: string | null;
+    lista_referencias?: string | null;
+    iva_uso_comun?: number;
+    lista_nc: string | null;
     saldo: number;
     estado_pago: string; // 'Pendiente', 'Pagada', 'Vencida'
     created_at: string;
@@ -253,6 +261,8 @@ export default function ComprasPage() {
                 return;
             }
 
+            console.log("Primera fila detectada (Revisar nombres de columnas):", filas[0]);
+
             for (const fila of filas as any[]) {
                 try {
                     if (!fila.Folio || !fila.RUTProveedor) {
@@ -277,8 +287,17 @@ export default function ComprasPage() {
                         rut_proveedor: fila.RUTProveedor,
                         razon_social: fila.RznSoc,
                         monto_total: parseFloat(fila.MntTotal) || 0,
-                        resultado_neto: parseFloat(fila.MntNeto) || 0, // Si existe
-                        monto_iva: parseFloat(fila.MntIVA) || 0, // Si existe
+                        lista_nc: fila.ListaNC || null,
+                        monto_neto: parseFloat(fila.MntNeto) || 0,
+                        monto_iva: parseFloat(fila.MntIVA) || 0,
+                        // Extended Fields
+                        monto_exento: parseFloat(fila.MntExe) || 0,
+                        monto_sin_credito: parseFloat(fila.MntSinCred) || parseFloat(fila.MntIvaNoRec) || 0,
+                        impuestos_especificos: parseFloat(fila.OtroImp) || parseFloat(fila.Impuestos) || 0,
+                        codigo_sucursal: fila.CdgSIISucur || fila.Sucursal || null,
+                        lista_referencias: fila.ListaRef || null,
+                        iva_uso_comun: parseFloat(fila.IVAUsoComun) || parseFloat(fila.MntIVAUsoComun) || 0,
+
                         estado_contable: fila.EstadoContab,
                         saldo: parseFloat(fila.Saldo) || parseFloat(fila.MntTotal) || 0,
                         // Estado de pago inicial
@@ -309,7 +328,11 @@ export default function ComprasPage() {
 
         } catch (error: any) {
             console.error("Error procesando Excel:", error);
-            alert("Error al procesar archivo: " + error.message);
+            // Intenta mostrar más detalles del error si es de Supabase
+            const msg = error.message || "Error desconocido";
+            const details = error.details || "";
+            const hint = error.hint || "";
+            alert(`Error al procesar archivo: ${msg} ${details} ${hint}\n\nRevisa la consola (F12) para ver más detalles.`);
         } finally {
             setSincronizando(false);
         }
@@ -487,6 +510,7 @@ export default function ComprasPage() {
                                     <th className="px-6 py-3">Folio</th>
                                     <th className="px-6 py-3">Proveedor</th>
                                     <th className="px-6 py-3 text-right">Monto</th>
+                                    <th className="px-6 py-3 text-center">N.C.</th>
                                     <th className="px-6 py-3 text-right">Saldo</th>
                                     <th className="px-6 py-3 text-center">Estado</th>
                                     <th className="px-6 py-3 text-center">Acciones</th>
@@ -526,6 +550,9 @@ export default function ComprasPage() {
                                             </td>
                                             <td className="px-6 py-3 text-right font-medium text-gray-900 dark:text-gray-100">
                                                 ${compra.monto_total.toLocaleString()}
+                                            </td>
+                                            <td className="px-6 py-3 text-center text-xs text-red-500">
+                                                {compra.lista_nc || "-"}
                                             </td>
                                             <td className="px-6 py-3 text-right text-gray-500 dark:text-gray-400">
                                                 ${(compra.saldo || 0).toLocaleString()}
