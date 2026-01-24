@@ -654,12 +654,12 @@ export default function VentasPage() {
             />
             <Label
               htmlFor="sync-excel-input"
-              className={`cursor-pointer inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2 bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700 ${sincronizando ? 'opacity-70 cursor-wait' : ''}`}
+              className={`cursor-pointer inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 bg-green-50 text-green-700 border border-green-200 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800 ${sincronizando ? 'opacity-70 cursor-wait' : ''}`}
             >
               {sincronizando ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin text-white" />
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
-                <RefreshCw className="h-4 w-4 mr-2 text-white" />
+                <RefreshCw className="h-4 w-4 mr-2" />
               )}
               {sincronizando ? "Procesando..." : "Sincronizar Facturas"}
             </Label>
