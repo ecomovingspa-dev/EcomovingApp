@@ -649,7 +649,7 @@ export default function ComprasPage() {
                                                 ${(compra.saldo || 0).toLocaleString()}
                                             </td>
                                             <td className="px-6 py-3 text-center">
-                                                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(compra.estado_pago)}`}>
+                                                <span className={`inline-flex px-3 py-1 rounded-full text-sm font-bold ${getStatusColor(compra.estado_pago)}`}>
                                                     {compra.estado_pago}
                                                 </span>
                                             </td>
@@ -666,10 +666,10 @@ export default function ComprasPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="h-7 w-7 p-0 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                                            className="h-9 w-9 p-0 hover:bg-green-50 dark:hover:bg-green-900/20 shadow-sm border border-gray-100 dark:border-gray-700"
                                                             title="Registrar Pago"
                                                         >
-                                                            <Banknote className="h-3.5 w-3.5 text-green-600" />
+                                                            <Banknote className="h-5 w-5 text-green-600" />
                                                         </Button>
                                                     </PopoverTrigger>
                                                     <PopoverContent
