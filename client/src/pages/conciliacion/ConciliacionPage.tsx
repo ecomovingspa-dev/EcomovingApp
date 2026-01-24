@@ -73,7 +73,7 @@ interface Coincidencia {
 export default function ConciliacionPage() {
     const [cartolas, setCartolas] = useState<BancoCartola[]>([]);
     const [movimientos, setMovimientos] = useState<BancoMovimiento[]>([]);
-    const [selectedCartola, setSelectedCartola] = useState<number | null>(null);
+    const [selectedPeriod, setSelectedPeriod] = useState<string>("");
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [categorias, setCategorias] = useState<string[]>([]);
@@ -103,12 +103,12 @@ export default function ConciliacionPage() {
     }, []);
 
     useEffect(() => {
-        if (selectedCartola) {
-            cargarMovimientos(selectedCartola);
+        if (selectedPeriod) {
+            cargarMovimientos(selectedPeriod);
         } else {
             setMovimientos([]);
         }
-    }, [selectedCartola]);
+    }, [selectedPeriod]);
 
     const cargarCartolas = async () => {
         try {
@@ -118,22 +118,25 @@ export default function ConciliacionPage() {
                 .order("fecha_carga", { ascending: false });
 
             if (error) throw error;
-            setCartolas(data || []);
-            if (data && data.length > 0 && !selectedCartola) {
-                setSelectedCartola(data[0].id);
+            const cartolasData = data || [];
+            setCartolas(cartolasData);
+            if (cartolasData.length > 0 && !selectedPeriod) {
+                const latestPeriod = cartolasData[0].periodo_mes || "";
+                if (latestPeriod) setSelectedPeriod(latestPeriod);
             }
         } catch (error) {
             console.error("Error loading cartolas:", error);
         }
     };
 
-    const cargarMovimientos = async (cartolaId: number) => {
+    const cargarMovimientos = async (periodo: string) => {
+        if (!periodo) return;
         setLoading(true);
         try {
             const { data, error } = await supabase
                 .from("banco_movimientos")
                 .select("*")
-                .eq("cartola_id", cartolaId)
+                .ilike("fecha", `${periodo}%`)
                 .order("fecha", { ascending: true }); // Orden cronológico
 
             if (error) throw error;
@@ -504,7 +507,7 @@ export default function ConciliacionPage() {
             setUploadSummaryOpen(true);
 
             cargarCartolas();
-            setSelectedCartola(cartolaData.id);
+            setSelectedPeriod(periodoMes);
         }
     };
 
@@ -524,7 +527,7 @@ export default function ConciliacionPage() {
         // Cargo (Egreso) -> Probablemente una Compra (Gasto)
         const esAbono = mov.abonos > 0;
         const montoBuscado = esAbono ? mov.abonos : mov.cargos;
-        const tolerancia = 2000; // Tolerancia en pesos (para redondeos)
+        const tolerancia = 5; // Tolerancia en pesos (para redondeos) - Ahora ajustado a +/- $5
 
         const candidates: Coincidencia[] = [];
 
@@ -651,38 +654,33 @@ export default function ConciliacionPage() {
                         <ArrowRightLeft className="h-8 w-8 text-indigo-600" />
                         Conciliación Bancaria
                     </h1>
-                    <p className="text-gray-500 dark:text-gray-400 mt-1">
-                        Sube tu cartola y concilia movimientos con tus registros.
-                    </p>
                 </div>
 
                 <div className="flex items-center gap-2">
                     <div className="relative w-64">
                         <select
                             className="w-full p-2.5 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
-                            value={selectedCartola || ""}
-                            onChange={(e) => setSelectedCartola(Number(e.target.value))}
+                            value={selectedPeriod}
+                            onChange={(e) => setSelectedPeriod(e.target.value)}
                         >
-                            {cartolas.map(c => {
-                                let displayText = "";
-                                if (c.periodo_mes) {
-                                    // Format YYYY-MM to "Mes YYYY"
-                                    const [year, month] = c.periodo_mes.split('-');
+                            {Array.from(new Set(cartolas.map(c => c.periodo_mes)))
+                                .filter(Boolean)
+                                .sort()
+                                .reverse()
+                                .map(periodCode => {
+                                    if (!periodCode) return null;
+                                    const [year, month] = periodCode.split('-');
                                     const date = new Date(parseInt(year), parseInt(month) - 1);
-                                    const monthName = date.toLocaleString('es-CL', { month: 'long', year: 'numeric' });
-                                    displayText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-                                } else {
-                                    const date = new Date(c.fecha_carga);
-                                    const monthName = date.toLocaleString('es-CL', { month: 'long', year: 'numeric' });
-                                    displayText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-                                }
-                                return (
-                                    <option key={c.id} value={c.id}>
-                                        {displayText} - {c.nombre_archivo}
-                                    </option>
-                                );
-                            })}
-                            {!cartolas.length && <option value="">Sin cartolas</option>}
+                                    let displayText = date.toLocaleString('es-CL', { month: 'long', year: 'numeric' });
+                                    displayText = displayText.charAt(0).toUpperCase() + displayText.slice(1);
+
+                                    return (
+                                        <option key={periodCode} value={periodCode}>
+                                            {displayText}
+                                        </option>
+                                    );
+                                })}
+                            {!cartolas.some(c => c.periodo_mes) && <option value="">Sin períodos</option>}
                         </select>
                     </div>
 
@@ -710,10 +708,10 @@ export default function ConciliacionPage() {
                 </div>
             </div>
 
-            {selectedCartola && (
+            {selectedPeriod && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     {(() => {
-                        const c = cartolas.find(x => x.id === selectedCartola);
+                        const c = cartolas.find(x => x.periodo_mes === selectedPeriod);
                         if (!c) return null;
                         return (
                             <>
@@ -788,7 +786,7 @@ export default function ConciliacionPage() {
                             ) : movimientos.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={8} className="text-center py-10 text-gray-500">
-                                        {selectedCartola ? "Esta cartola no tiene movimientos" : "Sube una cartola para comenzar"}
+                                        {selectedPeriod ? "Este período no tiene movimientos" : "Sube una cartola para comenzar"}
                                     </TableCell>
                                 </TableRow>
                             ) : (
