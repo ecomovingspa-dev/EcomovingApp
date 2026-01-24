@@ -637,90 +637,146 @@ export default function ComprasPage() {
                                             </td>
                                             <td className="px-6 py-3 text-center">
                                                 {/* Boton Pagar (Popover) */}
-                                                <Dialog open={abonoOpen === compra.id} onOpenChange={(isOpen) => !isOpen && setAbonoOpen(null)}>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                                        onClick={() => openAbonoForm(compra)}
-                                                        title="Registrar Pago"
+                                                <Popover
+                                                    open={abonoOpen === compra.id}
+                                                    onOpenChange={(open) => {
+                                                        if (open) openAbonoForm(compra);
+                                                        else setAbonoOpen(null);
+                                                    }}
+                                                >
+                                                    <PopoverTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 w-7 p-0 hover:bg-green-50 dark:hover:bg-green-900/20"
+                                                            title="Registrar Pago"
+                                                        >
+                                                            <Banknote className="h-3.5 w-3.5 text-green-600" />
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent
+                                                        className="w-72 p-4 bg-white dark:bg-gray-800 dark:border-gray-700"
+                                                        align="end"
                                                     >
-                                                        <span className="sr-only">Pagar</span>
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-banknote"><rect width="20" height="12" x="2" y="6" rx="2" /><circle cx="12" cy="12" r="2" /><path d="M6 12h.01M18 12h.01" /></svg>
-                                                    </Button>
-                                                    <DialogContent className="sm:max-w-[425px]">
-                                                        <DialogHeader>
-                                                            <DialogTitle>Registrar Pago</DialogTitle>
-                                                            <DialogDescription>
-                                                                Ingresa los detalles del pago para la factura #{compra.folio}
-                                                            </DialogDescription>
-                                                        </DialogHeader>
-                                                        <div className="grid gap-4 py-4">
-                                                            <div className="grid grid-cols-4 items-center gap-4">
-                                                                <Label htmlFor="monto" className="text-right">
-                                                                    Monto
-                                                                </Label>
-                                                                <Input
-                                                                    id="monto"
-                                                                    type="number"
-                                                                    value={abonoForm.monto_abono}
-                                                                    onChange={(e) => setAbonoForm({ ...abonoForm, monto_abono: e.target.value })}
-                                                                    className="col-span-3"
-                                                                />
-                                                            </div>
-                                                            <div className="grid grid-cols-4 items-center gap-4">
-                                                                <Label htmlFor="fecha" className="text-right">
-                                                                    Fecha
-                                                                </Label>
-                                                                <Input
-                                                                    id="fecha"
-                                                                    type="date"
-                                                                    value={abonoForm.fecha_abono}
-                                                                    onChange={(e) => setAbonoForm({ ...abonoForm, fecha_abono: e.target.value })}
-                                                                    className="col-span-3"
-                                                                />
-                                                            </div>
-                                                            <div className="grid grid-cols-4 items-center gap-4">
-                                                                <Label htmlFor="tipo" className="text-right">
-                                                                    Medio
-                                                                </Label>
-                                                                <Select
-                                                                    value={abonoForm.tipo_abono}
-                                                                    onValueChange={(val) => setAbonoForm({ ...abonoForm, tipo_abono: val })}
+                                                        <div className="space-y-3">
+                                                            <div className="flex items-center justify-between">
+                                                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                                                                    Registrar Pago
+                                                                </h4>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className="h-6 w-6 p-0"
+                                                                    onClick={() => setAbonoOpen(null)}
                                                                 >
-                                                                    <SelectTrigger className="col-span-3">
-                                                                        <SelectValue placeholder="Seleccione medio" />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="transferencia">Transferencia</SelectItem>
-                                                                        <SelectItem value="efectivo">Efectivo</SelectItem>
-                                                                        <SelectItem value="cheque">Cheque</SelectItem>
-                                                                        <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
+                                                                    <X className="h-3.5 w-3.5" />
+                                                                </Button>
                                                             </div>
-                                                            <div className="grid grid-cols-4 items-center gap-4">
-                                                                <Label htmlFor="detalle" className="text-right">
-                                                                    Detalle
-                                                                </Label>
-                                                                <Input
-                                                                    id="detalle"
-                                                                    placeholder="N° Comprobante..."
-                                                                    value={abonoForm.detalle_abono}
-                                                                    onChange={(e) => setAbonoForm({ ...abonoForm, detalle_abono: e.target.value })}
-                                                                    className="col-span-3"
-                                                                />
+
+                                                            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-semibold">
+                                                                        Fecha
+                                                                    </Label>
+                                                                    <div className="relative">
+                                                                        <CalendarDaysIcon className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
+                                                                        <Input
+                                                                            type="date"
+                                                                            value={abonoForm.fecha_abono}
+                                                                            onChange={(e) =>
+                                                                                setAbonoForm((prev) => ({
+                                                                                    ...prev,
+                                                                                    fecha_abono: e.target.value,
+                                                                                }))
+                                                                            }
+                                                                            className="h-8 text-xs pl-7"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-semibold">
+                                                                        Tipo
+                                                                    </Label>
+                                                                    <Select
+                                                                        value={abonoForm.tipo_abono}
+                                                                        onValueChange={(val) =>
+                                                                            setAbonoForm((prev) => ({
+                                                                                ...prev,
+                                                                                tipo_abono: val,
+                                                                            }))
+                                                                        }
+                                                                    >
+                                                                        <SelectTrigger className="h-8 text-xs">
+                                                                            <SelectValue placeholder="Seleccionar..." />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="transferencia">
+                                                                                Transferencia
+                                                                            </SelectItem>
+                                                                            <SelectItem value="cheque">
+                                                                                Cheque
+                                                                            </SelectItem>
+                                                                            <SelectItem value="efectivo">
+                                                                                Efectivo
+                                                                            </SelectItem>
+                                                                            <SelectItem value="tarjeta">
+                                                                                Tarjeta
+                                                                            </SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-semibold">
+                                                                        Monto
+                                                                    </Label>
+                                                                    <div className="relative">
+                                                                        <DollarSign className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
+                                                                        <Input
+                                                                            type="number"
+                                                                            value={abonoForm.monto_abono}
+                                                                            onChange={(e) =>
+                                                                                setAbonoForm((prev) => ({
+                                                                                    ...prev,
+                                                                                    monto_abono: e.target.value,
+                                                                                }))
+                                                                            }
+                                                                            className="h-8 text-xs pl-7"
+                                                                            placeholder="0"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-semibold">
+                                                                        Detalle
+                                                                    </Label>
+                                                                    <div className="relative">
+                                                                        <Receipt className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
+                                                                        <Input
+                                                                            value={abonoForm.detalle_abono}
+                                                                            onChange={(e) =>
+                                                                                setAbonoForm((prev) => ({
+                                                                                    ...prev,
+                                                                                    detalle_abono: e.target.value,
+                                                                                }))
+                                                                            }
+                                                                            className="h-8 text-xs pl-7"
+                                                                            placeholder="Nota..."
+                                                                        />
+                                                                    </div>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                        <div className="flex justify-end gap-3">
-                                                            <Button variant="outline" onClick={() => setAbonoOpen(null)}>Cancelar</Button>
-                                                            <Button onClick={() => handleGuardarAbono(compra.id)} disabled={guardandoAbono}>
-                                                                {guardandoAbono && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                                Guardar Pago
+                                                            <Button
+                                                                size="sm"
+                                                                className="w-full h-8 text-xs bg-green-600 hover:bg-green-700"
+                                                                onClick={() => handleGuardarAbono(compra.id)}
+                                                                disabled={guardandoAbono}
+                                                            >
+                                                                <Save className="h-3 w-3 mr-1" />
+                                                                {guardandoAbono ? "Guardando..." : "Guardar"}
                                                             </Button>
                                                         </div>
-                                                    </DialogContent>
-                                                </Dialog>
+                                                    </PopoverContent>
+                                                </Popover>
                                             </td>
                                         </tr>
                                     ))
