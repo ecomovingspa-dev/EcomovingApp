@@ -786,66 +786,62 @@ export default function ConciliacionPage() {
         }
     };
 
-    const ejecutarPreconciliacionMasiva = async () => {
-        if (preconciliacionesEncontradas.length === 0) return;
+    const ejecutarConciliacionEspecifica = async (mov: BancoMovimiento, item: Coincidencia) => {
+        if (!confirm(`¿Conciliar este movimiento con ${item.tipo === 'venta' ? 'la Venta' : 'la Compra'} Folio ${item.folio}?`)) return;
 
         setLoading(true);
-        let exitosas = 0;
-        let errores = 0;
+        try {
+            // 1. Actualizar Movimiento Bancario
+            const { error: errMov } = await supabase
+                .from("banco_movimientos")
+                .update({
+                    estado: "conciliado",
+                    tipo_conciliacion: item.tipo,
+                    conciliado_id: item.id
+                })
+                .eq("id", mov.id);
 
-        for (const item of preconciliacionesEncontradas) {
-            try {
-                // 1. Actualizar Movimiento Bancario
-                const { error: errMov } = await supabase
-                    .from("banco_movimientos")
-                    .update({
-                        estado: "conciliado",
-                        tipo_conciliacion: item.match.tipo,
-                        conciliado_id: item.match.id
-                    })
-                    .eq("id", item.mov.id);
+            if (errMov) throw errMov;
 
-                if (errMov) throw errMov;
+            // 2. Actualizar Registro Relacionado (Venta o Compra)
+            if (item.estado !== "Pagada") {
+                if (item.tipo === "venta") {
+                    await supabase.from("ventas").update({
+                        estado_deuda: "Pagada",
+                        saldo: 0,
+                        fecha_abono: new Date().toISOString().split("T")[0],
+                        monto_abono: item.monto
+                    }).eq("id", item.id);
 
-                // 2. Actualizar Registro Relacionado (Venta o Compra)
-                if (item.match.estado !== "Pagada") {
-                    if (item.match.tipo === "venta") {
-                        await supabase.from("ventas").update({
-                            estado_deuda: "Pagada",
-                            saldo: 0,
-                            fecha_abono: new Date().toISOString().split("T")[0],
-                            monto_abono: item.match.monto
-                        }).eq("id", item.match.id);
-
-                        await supabase.from("abonos").insert({
-                            venta_id: item.match.id,
-                            monto_abono: item.match.monto,
-                            fecha_abono: new Date().toISOString().split("T")[0],
-                            tipo_abono: "Transferencia",
-                            detalle_abono: `Pre-conciliación automática - Movimiento: ${item.mov.descripcion}`
-                        });
-                    } else {
-                        await supabase.from("compras").update({
-                            estado_pago: "Pagada",
-                            saldo: 0
-                        }).eq("id", item.match.id);
-                    }
+                    await supabase.from("abonos").insert({
+                        venta_id: item.id,
+                        monto_abono: item.monto,
+                        fecha_abono: new Date().toISOString().split("T")[0],
+                        tipo_abono: "Transferencia",
+                        detalle_abono: `Conciliación - Movimiento: ${mov.descripcion}`
+                    });
+                } else {
+                    await supabase.from("compras").update({
+                        estado_pago: "Pagada",
+                        saldo: 0
+                    }).eq("id", item.id);
                 }
-                exitosas++;
-            } catch (e) {
-                console.error("Error conciliando item:", item, e);
-                errores++;
             }
+
+            // Actualizar estado local
+            setMovimientos(prev => prev.map(m =>
+                m.id === mov.id
+                    ? { ...m, estado: "conciliado", tipo_conciliacion: item.tipo, conciliado_id: item.id, preconciliado_match: null }
+                    : m
+            ));
+
+            alert("¡Conciliado exitosamente!");
+        } catch (e: any) {
+            console.error("Error conciliando:", e);
+            alert("Error: " + e.message);
+        } finally {
+            setLoading(false);
         }
-
-        setPreconciliacionOpen(false);
-        setLoading(false);
-
-        if (selectedPeriod) {
-            cargarMovimientos(selectedPeriod);
-        }
-
-        alert(`Proceso finalizado. Exitosas: ${exitosas}, Errores: ${errores}`);
     };
 
     const fmtMoney = (amount: number) => {
@@ -1059,9 +1055,20 @@ export default function ConciliacionPage() {
                                         </TableCell>
                                         <TableCell className="text-center">
                                             {mov.estado !== 'conciliado' && (
-                                                <div className="flex justify-center gap-1">
+                                                <div className="flex justify-center gap-2">
+                                                    {mov.preconciliado_match && (
+                                                        <Button
+                                                            variant="default"
+                                                            size="sm"
+                                                            className="h-8 bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 px-3 shadow-sm"
+                                                            onClick={() => ejecutarConciliacionEspecifica(mov, mov.preconciliado_match!)}
+                                                        >
+                                                            <Check className="h-3.5 w-3.5" />
+                                                            <span className="text-[10px] font-bold">CONCILIAR</span>
+                                                        </Button>
+                                                    )}
                                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleConciliarClick(mov)}>
-                                                        <Link className="h-4 w-4 text-indigo-600" />
+                                                        <Search className="h-4 w-4 text-indigo-600" />
                                                     </Button>
                                                 </div>
                                             )}
@@ -1274,14 +1281,14 @@ export default function ConciliacionPage() {
 
                     <DialogFooter className="gap-2">
                         <Button variant="ghost" onClick={() => setPreconciliacionOpen(false)}>
-                            Cancelar
+                            Cerrar
                         </Button>
                         <Button
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            onClick={ejecutarPreconciliacionMasiva}
+                            onClick={() => setPreconciliacionOpen(false)}
                             disabled={preconciliacionesEncontradas.length === 0}
                         >
-                            Confirmar {preconciliacionesEncontradas.length} Conciliaciones
+                            Aceptar Preconciliaciones
                         </Button>
                     </DialogFooter>
                 </DialogContent>
