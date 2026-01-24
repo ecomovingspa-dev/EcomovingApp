@@ -46,6 +46,7 @@ interface BancoMovimiento {
     estado: string; // 'pendiente', 'conciliado'
     tipo_conciliacion?: string;
     conciliado_id?: number | null;
+    tipo_gasto?: string | null;
 }
 
 interface BancoCartola {
@@ -56,6 +57,7 @@ interface BancoCartola {
     saldo_final: number;
     banco: string;
     periodo: string;
+    periodo_mes?: string;
 }
 
 interface Coincidencia {
@@ -74,6 +76,7 @@ export default function ConciliacionPage() {
     const [selectedCartola, setSelectedCartola] = useState<number | null>(null);
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [categorias, setCategorias] = useState<string[]>([]);
 
     // Reconciliation Dialog State
     const [conciliarOpen, setConciliarOpen] = useState(false);
@@ -84,6 +87,7 @@ export default function ConciliacionPage() {
 
     useEffect(() => {
         cargarCartolas();
+        cargarCategorias();
     }, []);
 
     useEffect(() => {
@@ -128,6 +132,51 @@ export default function ConciliacionPage() {
             setLoading(false);
         }
     };
+
+    const cargarCategorias = async () => {
+        try {
+            const { data, error } = await supabase
+                .from("banco_categorias_gasto")
+                .select("nombre")
+                .order("nombre", { ascending: true });
+
+            if (error) throw error;
+            setCategorias(data?.map(c => c.nombre) || []);
+        } catch (error) {
+            console.error("Error loading categorias:", error);
+        }
+    };
+
+    const handleTipoGastoChange = async (movimientoId: number, tipoGasto: string) => {
+        try {
+            // Update the database
+            const { error } = await supabase
+                .from("banco_movimientos")
+                .update({ tipo_gasto: tipoGasto || null })
+                .eq("id", movimientoId);
+
+            if (error) throw error;
+
+            // Update local state
+            setMovimientos(prev => prev.map(m =>
+                m.id === movimientoId ? { ...m, tipo_gasto: tipoGasto } : m
+            ));
+
+            // If it's a new category, add it to the list and database
+            if (tipoGasto && !categorias.includes(tipoGasto)) {
+                await supabase
+                    .from("banco_categorias_gasto")
+                    .insert({ nombre: tipoGasto });
+
+                setCategorias(prev => [...prev, tipoGasto].sort());
+            }
+        } catch (error) {
+            console.error("Error updating tipo_gasto:", error);
+            alert("Error al actualizar el tipo de gasto");
+        }
+    };
+
+
 
     // --- PARSING LOGIC SPECIFIC TO YOUR BCI EXCEL ---
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -341,12 +390,20 @@ export default function ConciliacionPage() {
 
 
     const descomponerYGuardar = async (fileName: string, sIni: number, sFin: number, movs: any[]) => {
+        // Calculate periodo_mes from first movement date
+        let periodoMes = "Detectado";
+        if (movs.length > 0 && movs[0].fecha) {
+            const fecha = new Date(movs[0].fecha);
+            periodoMes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+        }
+
         const { data: cartolaData, error: cartolaError } = await supabase
             .from("banco_cartolas")
             .insert({
                 nombre_archivo: fileName,
                 banco: "BCI",
                 periodo: "Detectado",
+                periodo_mes: periodoMes,
                 saldo_inicial: sIni,
                 saldo_final: sFin
             })
@@ -532,11 +589,21 @@ export default function ConciliacionPage() {
                             onChange={(e) => setSelectedCartola(Number(e.target.value))}
                         >
                             {cartolas.map(c => {
-                                const date = new Date(c.fecha_carga);
-                                const monthName = date.toLocaleString('es-CL', { month: 'long', year: 'numeric' });
+                                let displayText = "";
+                                if (c.periodo_mes) {
+                                    // Format YYYY-MM to "Mes YYYY"
+                                    const [year, month] = c.periodo_mes.split('-');
+                                    const date = new Date(parseInt(year), parseInt(month) - 1);
+                                    const monthName = date.toLocaleString('es-CL', { month: 'long', year: 'numeric' });
+                                    displayText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+                                } else {
+                                    const date = new Date(c.fecha_carga);
+                                    const monthName = date.toLocaleString('es-CL', { month: 'long', year: 'numeric' });
+                                    displayText = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+                                }
                                 return (
                                     <option key={c.id} value={c.id}>
-                                        {monthName.charAt(0).toUpperCase() + monthName.slice(1)} ({c.nombre_archivo})
+                                        {displayText} - {c.nombre_archivo}
                                     </option>
                                 );
                             })}
@@ -627,7 +694,7 @@ export default function ConciliacionPage() {
                             <TableRow>
                                 <TableHead>Fecha</TableHead>
                                 <TableHead>Descripción</TableHead>
-                                <TableHead>Documento</TableHead>
+                                <TableHead>Tipo de Gasto</TableHead>
                                 <TableHead className="text-right text-red-600">Cargos</TableHead>
                                 <TableHead className="text-right text-green-600">Abonos</TableHead>
                                 <TableHead className="text-right">Saldo</TableHead>
@@ -651,10 +718,21 @@ export default function ConciliacionPage() {
                                 </TableRow>
                             ) : (
                                 movimientos.map((mov) => (
-                                    <TableRow key={mov.id} className={mov.estado === 'conciliado' ? 'bg-gray-50 opacity-75' : ''}>
+                                    <TableRow key={mov.id} className={mov.estado === 'conciliado' ? 'bg-gray-50 dark:bg-gray-900/30 opacity-75' : ''}>
                                         <TableCell className="font-medium whitespace-nowrap">{mov.fecha}</TableCell>
                                         <TableCell className="max-w-xs truncate" title={mov.descripcion}>{mov.descripcion}</TableCell>
-                                        <TableCell>{mov.numero_documento || "-"}</TableCell>
+                                        <TableCell className="min-w-[180px]">
+                                            <select
+                                                className="w-full p-1.5 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                                                value={mov.tipo_gasto || ""}
+                                                onChange={(e) => handleTipoGastoChange(mov.id, e.target.value)}
+                                            >
+                                                <option value="">Sin categoría</option>
+                                                {categorias.map(cat => (
+                                                    <option key={cat} value={cat}>{cat}</option>
+                                                ))}
+                                            </select>
+                                        </TableCell>
                                         <TableCell className="text-right text-red-600 font-medium whitespace-nowrap">
                                             {mov.cargos ? fmtMoney(mov.cargos) : "-"}
                                         </TableCell>

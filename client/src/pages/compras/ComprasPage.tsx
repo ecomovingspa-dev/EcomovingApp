@@ -32,6 +32,19 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+    Banknote,
+    CalendarDays as CalendarDaysIcon,
+    DollarSign,
+    Receipt,
+    Save,
+    X,
+} from "lucide-react";
 
 // Tipos adaptados para Compras
 interface Compra {
