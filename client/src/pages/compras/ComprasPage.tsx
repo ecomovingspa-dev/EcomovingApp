@@ -71,6 +71,7 @@ export default function ComprasPage() {
     const [resultadoSync, setResultadoSync] = useState<any>(null);
     const [dialogResultadoOpen, setDialogResultadoOpen] = useState(false);
 
+
     useEffect(() => {
         cargarCompras();
     }, []);
@@ -231,7 +232,7 @@ export default function ComprasPage() {
 
     const parseFecha = (fecha: any): string | null => {
         if (!fecha) return null;
-        if (typeof fecha === "string") return fecha; // Asumiendo que ya viene bien o lo intentamos
+        if (typeof fecha === "string") return fecha;
         if (typeof fecha === "number") {
             const excelEpoch = new Date(1900, 0, 1);
             const days = fecha - 2;
@@ -261,12 +262,12 @@ export default function ComprasPage() {
                 return;
             }
 
-            console.log("Primera fila detectada (Revisar nombres de columnas):", filas[0]);
+            console.log("Primera fila detectada:", filas[0]);
 
             for (const fila of filas as any[]) {
                 try {
                     if (!fila.Folio || !fila.RUTProveedor) {
-                        continue; // Saltar filas inválidas
+                        continue;
                     }
 
                     // Verificar si ya existe
@@ -290,17 +291,14 @@ export default function ComprasPage() {
                         lista_nc: fila.ListaNC || null,
                         monto_neto: parseFloat(fila.MntNeto) || 0,
                         monto_iva: parseFloat(fila.MntIVA) || 0,
-                        // Extended Fields
                         monto_exento: parseFloat(fila.MntExe) || 0,
                         monto_sin_credito: parseFloat(fila.MntSinCred) || parseFloat(fila.MntIvaNoRec) || 0,
                         impuestos_especificos: parseFloat(fila.OtroImp) || parseFloat(fila.Impuestos) || 0,
                         codigo_sucursal: fila.CdgSIISucur || fila.Sucursal || null,
                         lista_referencias: fila.ListaRef || null,
                         iva_uso_comun: parseFloat(fila.IVAUsoComun) || parseFloat(fila.MntIVAUsoComun) || 0,
-
                         estado_contable: fila.EstadoContab,
                         saldo: parseFloat(fila.Saldo) || parseFloat(fila.MntTotal) || 0,
-                        // Estado de pago inicial
                         estado_pago: "Pendiente"
                     };
 
@@ -309,9 +307,7 @@ export default function ComprasPage() {
                         if (error) throw error;
                         resultado.nuevas++;
                     } else {
-                        // Podríamos actualizar, pero por ahora solo insertamos nuevas para evitar sobreescribir datos manuales
-                        // Opcional: Actualizar el saldo si viene en el excel
-                        resultado.actualizadas++; // Contamos como 'procesada'
+                        resultado.actualizadas++;
                     }
 
                 } catch (error: any) {
@@ -328,15 +324,79 @@ export default function ComprasPage() {
 
         } catch (error: any) {
             console.error("Error procesando Excel:", error);
-            // Intenta mostrar más detalles del error si es de Supabase
             const msg = error.message || "Error desconocido";
-            const details = error.details || "";
-            const hint = error.hint || "";
-            alert(`Error al procesar archivo: ${msg} ${details} ${hint}\n\nRevisa la consola (F12) para ver más detalles.`);
+            alert(`Error al procesar archivo: ${msg}`);
         } finally {
             setSincronizando(false);
         }
     };
+
+    // Estado Abono/Pago
+    const [abonoOpen, setAbonoOpen] = useState<number | null>(null);
+    const [guardandoAbono, setGuardandoAbono] = useState(false);
+    const [abonoForm, setAbonoForm] = useState({
+        fecha_abono: new Date().toISOString().split("T")[0],
+        tipo_abono: "",
+        detalle_abono: "",
+        monto_abono: "",
+    });
+
+    // Abrir formulario
+    const openAbonoForm = (compra: Compra) => {
+        setAbonoOpen(compra.id);
+        // Pre-fill amount with pending balance
+        setAbonoForm({
+            fecha_abono: new Date().toISOString().split("T")[0],
+            tipo_abono: "transferencia", // default
+            detalle_abono: "",
+            monto_abono: String(compra.saldo > 0 ? compra.saldo : 0),
+        });
+    };
+
+    const handleGuardarAbono = async (compraId: number) => {
+        try {
+            setGuardandoAbono(true);
+            const monto = parseFloat(abonoForm.monto_abono) || 0;
+            if (monto <= 0) {
+                alert("El monto debe ser mayor a 0");
+                return;
+            }
+
+            const compra = compras.find(c => c.id === compraId);
+            if (!compra) return;
+
+            // 1. Calcular nuevo saldo
+            const nuevoSaldo = Math.max(0, compra.saldo - monto);
+            const nuevoEstado = nuevoSaldo === 0 ? "Pagada" : "Pendiente"; // Simple logic
+
+            // 2. Actualizar Tabla compras
+            const { error } = await supabase
+                .from("compras")
+                .update({
+                    saldo: nuevoSaldo,
+                    estado_pago: nuevoEstado
+                })
+                .eq("id", compraId);
+
+            if (error) throw error; // Revert if fails
+
+            // 3. Crear Registro de Movimiento en 'banco_movimientos' ?
+            // Opcional: Si queremos registrar el egreso automáticamente en la conciliación.
+            // Por ahora solo actualizamos la compra como "pagada" parcialmente.
+
+            // Si funciona:
+            setAbonoOpen(null);
+            cargarCompras(); // Recargar datos
+            alert("Pago registrado correctamente");
+
+        } catch (error: any) {
+            console.error("Error guardando abono:", error);
+            alert("Error al guardar pago: " + error.message);
+        } finally {
+            setGuardandoAbono(false);
+        }
+    };
+
 
     return (
         <div className="space-y-6 pb-10 fade-in-up">
@@ -456,7 +516,7 @@ export default function ComprasPage() {
                     </Card>
                 </div>
 
-                {/* Tabla Compras */}
+                {/* Filters and Search */}
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex justify-between items-center">
                         <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
@@ -519,14 +579,14 @@ export default function ComprasPage() {
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                 {cargando ? (
                                     <tr>
-                                        <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                                        <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                                             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-pink-500" />
                                             <p>Cargando compras...</p>
                                         </td>
                                     </tr>
                                 ) : paginatedCompras.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                                        <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                                             No se encontraron documentos
                                         </td>
                                     </tr>
@@ -563,8 +623,91 @@ export default function ComprasPage() {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-3 text-center">
-                                                {/* Placeholder for future actions */}
-                                                <Button variant="ghost" size="sm" disabled>...</Button>
+                                                {/* Boton Pagar (Popover) */}
+                                                <Dialog open={abonoOpen === compra.id} onOpenChange={(isOpen) => !isOpen && setAbonoOpen(null)}>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                                        onClick={() => openAbonoForm(compra)}
+                                                        title="Registrar Pago"
+                                                    >
+                                                        <span className="sr-only">Pagar</span>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-banknote"><rect width="20" height="12" x="2" y="6" rx="2" /><circle cx="12" cy="12" r="2" /><path d="M6 12h.01M18 12h.01" /></svg>
+                                                    </Button>
+                                                    <DialogContent className="sm:max-w-[425px]">
+                                                        <DialogHeader>
+                                                            <DialogTitle>Registrar Pago</DialogTitle>
+                                                            <DialogDescription>
+                                                                Ingresa los detalles del pago para la factura #{compra.folio}
+                                                            </DialogDescription>
+                                                        </DialogHeader>
+                                                        <div className="grid gap-4 py-4">
+                                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                                <Label htmlFor="monto" className="text-right">
+                                                                    Monto
+                                                                </Label>
+                                                                <Input
+                                                                    id="monto"
+                                                                    type="number"
+                                                                    value={abonoForm.monto_abono}
+                                                                    onChange={(e) => setAbonoForm({ ...abonoForm, monto_abono: e.target.value })}
+                                                                    className="col-span-3"
+                                                                />
+                                                            </div>
+                                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                                <Label htmlFor="fecha" className="text-right">
+                                                                    Fecha
+                                                                </Label>
+                                                                <Input
+                                                                    id="fecha"
+                                                                    type="date"
+                                                                    value={abonoForm.fecha_abono}
+                                                                    onChange={(e) => setAbonoForm({ ...abonoForm, fecha_abono: e.target.value })}
+                                                                    className="col-span-3"
+                                                                />
+                                                            </div>
+                                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                                <Label htmlFor="tipo" className="text-right">
+                                                                    Medio
+                                                                </Label>
+                                                                <Select
+                                                                    value={abonoForm.tipo_abono}
+                                                                    onValueChange={(val) => setAbonoForm({ ...abonoForm, tipo_abono: val })}
+                                                                >
+                                                                    <SelectTrigger className="col-span-3">
+                                                                        <SelectValue placeholder="Seleccione medio" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="transferencia">Transferencia</SelectItem>
+                                                                        <SelectItem value="efectivo">Efectivo</SelectItem>
+                                                                        <SelectItem value="cheque">Cheque</SelectItem>
+                                                                        <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <div className="grid grid-cols-4 items-center gap-4">
+                                                                <Label htmlFor="detalle" className="text-right">
+                                                                    Detalle
+                                                                </Label>
+                                                                <Input
+                                                                    id="detalle"
+                                                                    placeholder="N° Comprobante..."
+                                                                    value={abonoForm.detalle_abono}
+                                                                    onChange={(e) => setAbonoForm({ ...abonoForm, detalle_abono: e.target.value })}
+                                                                    className="col-span-3"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex justify-end gap-3">
+                                                            <Button variant="outline" onClick={() => setAbonoOpen(null)}>Cancelar</Button>
+                                                            <Button onClick={() => handleGuardarAbono(compra.id)} disabled={guardandoAbono}>
+                                                                {guardandoAbono && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                                Guardar Pago
+                                                            </Button>
+                                                        </div>
+                                                    </DialogContent>
+                                                </Dialog>
                                             </td>
                                         </tr>
                                     ))
@@ -641,6 +784,6 @@ export default function ComprasPage() {
                     </div>
                 </DialogContent>
             </Dialog>
-        </div>
+        </div >
     );
 }
