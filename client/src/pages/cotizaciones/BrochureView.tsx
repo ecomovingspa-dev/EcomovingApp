@@ -1,7 +1,8 @@
-import { useRef } from "react";
+import { useRef, useEffect, useState } from "react";
+import { supabase } from "../../supabase";
 import type { Cotizacion } from "../../types";
 import { Button } from "@/components/ui/button";
-import { Download, Share2, ArrowLeft, MousePointer2, LayoutGrid, Layers, ChevronUp, ChevronDown, Move, ZoomIn } from "lucide-react";
+import { Download, Share2, ArrowLeft, MousePointer2, LayoutGrid, Layers, ChevronUp, ChevronDown, Move, ZoomIn, Copy, Type } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Rnd } from "react-rnd";
 
@@ -19,6 +20,9 @@ interface BrochureViewProps {
 interface BrochureItem {
     id: string | number;
     imagen?: string;
+    descripcion?: string;
+    type?: "image" | "text";
+    content?: string;
     fitMode?: "cover" | "contain";
     x?: number;
     y?: number;
@@ -50,8 +54,56 @@ export default function BrochureView({
 }: BrochureViewProps) {
     const navigate = useNavigate();
     const brochureRef = useRef<HTMLDivElement>(null);
+    const [injectedPages, setInjectedPages] = useState<any[]>([]);
+    const [loadingTemplates, setLoadingTemplates] = useState(false);
 
     const items = cotizacion.items || [];
+
+    useEffect(() => {
+        if (cotizacion.items && cotizacion.items.length > 0) {
+            loadMagicTemplates();
+        }
+    }, [cotizacion.id]);
+
+    const loadMagicTemplates = async () => {
+        try {
+            setLoadingTemplates(true);
+            const detectedCategories = new Set<string>();
+            const keywords = ["BOTELLA", "MUG", "BOLIGRAFO", "BOLSA", "TECNOLOGIA", "TEXTIL", "LIBRETA", "MOCHILA"];
+
+            items.forEach(item => {
+                const desc = item.descripcion.toUpperCase();
+                keywords.forEach(kw => {
+                    if (desc.includes(kw)) detectedCategories.add(kw);
+                });
+            });
+
+            if (detectedCategories.size === 0) return;
+
+            const { data: files } = await supabase.storage.from('imagenes-marketing').list('templates');
+            if (!files) return;
+
+            const matchingFiles = files.filter(f => {
+                const cat = f.name.split('_')[0].toUpperCase();
+                return detectedCategories.has(cat);
+            });
+
+            const templates = await Promise.all(matchingFiles.map(async (f) => {
+                const { data } = await supabase.storage.from('imagenes-marketing').download(`templates/${f.name}`);
+                if (data) {
+                    const text = await data.text();
+                    return JSON.parse(text);
+                }
+                return null;
+            }));
+
+            setInjectedPages(templates.filter(t => t !== null));
+        } catch (err) {
+            console.error("Error loading magic templates:", err);
+        } finally {
+            setLoadingTemplates(false);
+        }
+    };
 
     // Pagination Logic for Structural Mode
     const itemsPerPage = rows * cols;
@@ -119,9 +171,88 @@ export default function BrochureView({
             </div>
 
             <div ref={brochureRef} className="flex flex-col gap-16 items-center pb-32">
+                {/* 1. Injected Magic Pages */}
+                {injectedPages.map((template, tIdx) => {
+                    const color = BAR_COLORS[tIdx % BAR_COLORS.length];
+                    const isEven = tIdx % 2 === 0;
+
+                    return (
+                        <div
+                            key={`template-${tIdx}`}
+                            className="bg-white text-neutral-900 shadow-2xl overflow-hidden flex flex-row brochure-page print:shadow-none print:m-0 relative"
+                            style={{
+                                width: dimensions.width,
+                                height: dimensions.height,
+                                minHeight: dimensions.height,
+                            }}
+                        >
+                            {/* Branding Bar */}
+                            {isEven && (
+                                <div className={`w-16 md:w-28 ${color.bg} flex flex-col py-12 items-center justify-between relative overflow-hidden shrink-0 z-10`}>
+                                    <div className={`transform -rotate-90 whitespace-nowrap mt-32 ${color.text} font-black tracking-[0.4em] text-[20px] md:text-[24px] uppercase origin-center`}>
+                                        ECOMOWING
+                                    </div>
+                                    <div className={`w-1 h-32 mb-12 ${color.line}`}></div>
+                                </div>
+                            )}
+
+                            <div className="flex-1 relative overflow-hidden bg-white">
+                                {template.layoutMode === "structural" ? (
+                                    <div
+                                        className="grid h-full w-full"
+                                        style={{
+                                            gridTemplateColumns: `repeat(${template.cols}, 1fr)`,
+                                            gridTemplateRows: `repeat(${template.rows}, 1fr)`
+                                        }}
+                                    >
+                                        {template.items.map((item: any, iIdx: number) => (
+                                            <div key={iIdx} className={`relative overflow-hidden ${item.fitMode === 'contain' ? 'bg-white' : 'bg-neutral-50'}`}>
+                                                <img src={item.imagen} className={`w-full h-full ${item.fitMode === 'contain' ? 'object-contain p-4' : 'object-cover'}`} alt="" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="w-full h-full relative">
+                                        {template.items.map((item: any, iIdx: number) => (
+                                            <div
+                                                key={iIdx}
+                                                style={{
+                                                    position: 'absolute',
+                                                    left: item.x,
+                                                    top: item.y,
+                                                    width: item.w,
+                                                    height: item.h,
+                                                    zIndex: item.zIndex || 0
+                                                }}
+                                            >
+                                                <img
+                                                    src={item.imagen}
+                                                    className={`w-full h-full ${item.fitMode === 'contain' ? 'object-contain p-4' : 'object-cover'}`}
+                                                    style={{ transform: `scale(${item.scale || 1}) translate(${item.shiftX || 0}px, ${item.shiftY || 0}px)` }}
+                                                    alt=""
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {!isEven && (
+                                <div className={`w-16 md:w-28 ${color.bg} flex flex-col py-12 items-center justify-between relative overflow-hidden shrink-0 z-10`}>
+                                    <div className={`transform rotate-90 whitespace-nowrap mb-32 ${color.text} font-black tracking-[0.4em] text-[20px] md:text-[24px] uppercase origin-center`}>
+                                        ECOMOWING
+                                    </div>
+                                    <div className={`w-1 h-32 mt-12 ${color.line}`}></div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+
+                {/* 2. Quotation Item Pages */}
                 {pages.map((pageItems, pageIdx) => {
-                    const color = BAR_COLORS[pageIdx % BAR_COLORS.length];
-                    const isEven = pageIdx % 2 === 0;
+                    const color = BAR_COLORS[(pageIdx + injectedPages.length) % BAR_COLORS.length];
+                    const isEven = (pageIdx + injectedPages.length) % 2 === 0;
 
                     return (
                         <div
@@ -160,14 +291,23 @@ export default function BrochureView({
                                                     }`}
                                             >
                                                 {item.imagen && (
-                                                    <img
-                                                        src={item.imagen}
-                                                        alt=""
-                                                        className={`w-full h-full transition-all duration-[3s] ease-in-out ${item.fitMode === "contain"
-                                                            ? "object-contain p-6"
-                                                            : "object-cover group-hover:scale-105"
-                                                            }`}
-                                                    />
+                                                    <div className="absolute inset-0 flex flex-col">
+                                                        <div className="flex-1 overflow-hidden">
+                                                            <img
+                                                                src={item.imagen}
+                                                                alt=""
+                                                                className={`w-full h-full transition-all duration-[3s] ease-in-out ${item.fitMode === "contain"
+                                                                    ? "object-contain p-6"
+                                                                    : "object-cover group-hover:scale-105"
+                                                                    }`}
+                                                            />
+                                                        </div>
+                                                        <div className="bg-white/90 backdrop-blur-sm p-2 border-t border-neutral-100">
+                                                            <p className="text-[10px] font-bold text-neutral-800 line-clamp-2 uppercase leading-tight">
+                                                                {item.descripcion}
+                                                            </p>
+                                                        </div>
+                                                    </div>
                                                 )}
                                             </div>
                                         ))}
@@ -201,14 +341,22 @@ export default function BrochureView({
                                                 className="group"
                                             >
                                                 <div className={`w-full h-full border-2 border-transparent hover:border-amber-400 group-hover:shadow-xl transition-all cursor-move relative overflow-hidden ${item.fitMode === 'contain' ? 'bg-white' : ''}`}>
-                                                    <img
-                                                        src={item.imagen}
-                                                        alt=""
-                                                        className={`w-full h-full pointer-events-none transition-transform ${item.fitMode === 'contain' ? 'object-contain p-4' : 'object-cover'}`}
-                                                        style={{
-                                                            transform: `scale(${item.scale || 1}) translate(${item.shiftX || 0}px, ${item.shiftY || 0}px)`,
-                                                        }}
-                                                    />
+                                                    {item.type === 'text' ? (
+                                                        <div className="w-full h-full p-4 flex items-center justify-center bg-white/80 backdrop-blur-sm">
+                                                            <p className="text-sm font-bold text-neutral-800 text-center uppercase tracking-tight">
+                                                                {item.content}
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        <img
+                                                            src={item.imagen}
+                                                            alt=""
+                                                            className={`w-full h-full pointer-events-none transition-transform ${item.fitMode === 'contain' ? 'object-contain p-4' : 'object-cover'}`}
+                                                            style={{
+                                                                transform: `scale(${item.scale || 1}) translate(${item.shiftX || 0}px, ${item.shiftY || 0}px)`,
+                                                            }}
+                                                        />
+                                                    )}
 
                                                     {/* Pro Controls Overlay */}
                                                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-20 no-print">
@@ -225,6 +373,38 @@ export default function BrochureView({
                                                             title="Enviar al fondo"
                                                         >
                                                             <ChevronDown className="h-3.5 w-3.5 text-indigo-600" />
+                                                        </Button>
+                                                        <div className="h-px w-full bg-neutral-200 my-1"></div>
+                                                        <Button
+                                                            variant="secondary" size="icon" className="h-7 w-7 bg-white/90 shadow-sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const newItem = { ...item, id: Math.random().toString(36).substr(2, 9), x: (item.x || 0) + 20, y: (item.y || 0) + 20 };
+                                                                if (onUpdateItems) onUpdateItems([...pageItems, newItem]);
+                                                            }}
+                                                            title="Duplicar (Copy/Paste)"
+                                                        >
+                                                            <Copy className="h-3.5 w-3.5 text-blue-600" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="secondary" size="icon" className="h-7 w-7 bg-white/90 shadow-sm"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const newTextItem: BrochureItem = {
+                                                                    id: Math.random().toString(36).substr(2, 9),
+                                                                    type: 'text',
+                                                                    content: item.descripcion || 'Descripción del ítem',
+                                                                    x: (item.x || 0) + (item.w || 200) + 10,
+                                                                    y: (item.y || 0),
+                                                                    w: 150,
+                                                                    h: 50,
+                                                                    zIndex: (item.zIndex || 0) + 1,
+                                                                };
+                                                                if (onUpdateItems) onUpdateItems([...pageItems, newTextItem]);
+                                                            }}
+                                                            title="Añadir Etiqueta de Descripción"
+                                                        >
+                                                            <Type className="h-3.5 w-3.5 text-purple-600" />
                                                         </Button>
                                                         <div className="h-px w-full bg-neutral-200 my-1"></div>
                                                         <Button

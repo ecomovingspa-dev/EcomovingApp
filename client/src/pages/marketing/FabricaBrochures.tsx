@@ -10,7 +10,9 @@ import {
     Loader2,
     Sparkles,
     Maximize,
-    Minimize2
+    Minimize2,
+    Save,
+    Tags
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +44,10 @@ export default function FabricaBrochures() {
     const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
     const [pageSize, setPageSize] = useState<"a4" | "carta">("carta");
     const [searchTerm, setSearchTerm] = useState("");
+    const [categories, setCategories] = useState<string[]>(["BOTELLAS", "MUGS", "BOLIGRAFOS", "BOLSAS", "TECNOLOGIA", "TEXTIL"]);
+    const [currentCategory, setCurrentCategory] = useState("");
+    const [templateName, setTemplateName] = useState("");
+    const [saving, setSaving] = useState(false);
 
     // Brochure State (Temporary/Local only)
     const [brochureData, setBrochureData] = useState({
@@ -88,6 +94,48 @@ export default function FabricaBrochures() {
         }
     }, [activeBucket]);
 
+    const saveTemplate = async () => {
+        if (!currentCategory || !templateName || brochureData.items.length === 0) {
+            alert("Por favor completa: Categoría, Nombre y añade al menos una imagen.");
+            return;
+        }
+
+        try {
+            setSaving(true);
+            const fileName = `templates/${currentCategory.toUpperCase()}_${templateName.replace(/\s+/g, '_')}.json`;
+
+            const templateBlob = new Blob([JSON.stringify({
+                category: currentCategory.toUpperCase(),
+                name: templateName,
+                layoutMode,
+                rows,
+                cols,
+                orientation,
+                pageSize,
+                items: brochureData.items
+            }, null, 2)], { type: 'application/json' });
+
+            const { error } = await supabase.storage
+                .from('imagenes-marketing')
+                .upload(fileName, templateBlob, {
+                    contentType: 'application/json',
+                    upsert: true
+                });
+
+            if (error) throw error;
+
+            alert("✓ Plantilla guardada exitosamente en el Storage.");
+            if (!categories.includes(currentCategory.toUpperCase())) {
+                setCategories(prev => [...prev, currentCategory.toUpperCase()]);
+            }
+        } catch (err) {
+            console.error("Error guardando plantilla:", err);
+            alert("Error al guardar la plantilla.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const fetchStorageImages = async (bucketName: string) => {
         try {
             setLoading(true);
@@ -99,17 +147,28 @@ export default function FabricaBrochures() {
 
             if (error) throw error;
 
-            const formattedImages = files
-                .filter(file => file.name !== '.emptyFolderPlaceholder')
-                .map(file => ({
-                    name: file.name,
-                    url: supabase.storage.from(bucketName).getPublicUrl(file.name).data.publicUrl
-                }));
+            if (files) {
+                setImages(files
+                    .filter(f => f.name.match(/\.(jpg|jpeg|png|webp|gif)$/i))
+                    .map(f => ({
+                        name: f.name,
+                        url: supabase.storage.from(bucketName).getPublicUrl(f.name).data.publicUrl
+                    }))
+                );
 
-            setImages(formattedImages);
+                // Fetch categories from templates/ folder
+                const { data: templateFiles } = await supabase.storage.from('imagenes-marketing').list('templates');
+                if (templateFiles) {
+                    const foundCats = templateFiles
+                        .filter(f => f.name.includes('_'))
+                        .map(f => f.name.split('_')[0].toUpperCase());
+
+                    const uniqueCats = Array.from(new Set([...categories, ...foundCats]));
+                    setCategories(uniqueCats);
+                }
+            }
         } catch (err) {
-            console.error(`Error fetching images from ${bucketName}:`, err);
-            setImages([]);
+            console.error("Error cargando imágenes:", err);
         } finally {
             setLoading(false);
         }
@@ -277,6 +336,40 @@ export default function FabricaBrochures() {
                                         />
                                     </div>
                                 )}
+                                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
+
+                                {/* Template Manager */}
+                                <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-2 border border-blue-200 dark:border-blue-900/30 items-center px-2">
+                                    <div className="flex items-center gap-1.5 min-w-[120px]">
+                                        <Tags className="h-3 w-3 text-blue-500" />
+                                        <input
+                                            list="categories-list"
+                                            placeholder="CATEGORÍA"
+                                            value={currentCategory}
+                                            onChange={(e) => setCurrentCategory(e.target.value.toUpperCase())}
+                                            className="w-full h-7 bg-transparent border-none text-[10px] font-bold text-blue-600 placeholder:text-blue-300 focus:ring-0 uppercase"
+                                        />
+                                        <datalist id="categories-list">
+                                            {categories.map(c => <option key={c} value={c} />)}
+                                        </datalist>
+                                    </div>
+                                    <div className="h-4 w-px bg-blue-200 dark:bg-blue-800"></div>
+                                    <input
+                                        placeholder="NOMBRE DISEÑO"
+                                        value={templateName}
+                                        onChange={(e) => setTemplateName(e.target.value)}
+                                        className="w-32 h-7 bg-transparent border-none text-[10px] font-bold text-gray-600 dark:text-gray-300 placeholder:text-gray-400 focus:ring-0"
+                                    />
+                                    <Button
+                                        size="sm"
+                                        onClick={saveTemplate}
+                                        disabled={saving || brochureData.items.length === 0}
+                                        className="h-7 px-3 bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-bold rounded-md"
+                                    >
+                                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
+                                        GUARDAR
+                                    </Button>
+                                </div>
                                 <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
                                 <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700">
                                     <button

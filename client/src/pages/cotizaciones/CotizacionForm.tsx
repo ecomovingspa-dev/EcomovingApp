@@ -238,6 +238,13 @@ export default function CotizacionForm() {
     items: [],
   });
   const [showBrochure, setShowBrochure] = useState(false);
+  const [brochureConfig, setBrochureConfig] = useState({
+    rows: 2,
+    cols: 2,
+    layoutMode: "structural" as "structural" | "free",
+    orientation: "portrait" as "portrait" | "landscape",
+    pageSize: "carta" as "a4" | "carta"
+  });
 
   const calcularEstado = useMemo(() => {
     if (!cotizacion.id) return "borrador";
@@ -1026,6 +1033,11 @@ export default function CotizacionForm() {
       <BrochureView
         cotizacion={cotizacion}
         onBack={() => setShowBrochure(false)}
+        rows={brochureConfig.rows}
+        cols={brochureConfig.cols}
+        layoutMode={brochureConfig.layoutMode}
+        orientation={brochureConfig.orientation}
+        pageSize={brochureConfig.pageSize}
       />
     );
   }
