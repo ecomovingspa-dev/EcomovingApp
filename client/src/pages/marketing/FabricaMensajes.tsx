@@ -79,7 +79,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                 .maybeSingle();
 
             const nextNumber = (lastMsg?.nombre_envio || 0) + 1;
-            const fileName = `diseno_${nextNumber}_${Date.now()}.jpg`;
+            const fileName = `imagen_${nextNumber}.jpg`;
 
             // 2. Convertir Base64 a Blob para subirlo como archivo real
             const base64Data = imagenOriginal.split(',')[1];
