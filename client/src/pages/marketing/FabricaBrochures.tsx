@@ -27,7 +27,7 @@ interface BrochureItem {
 export default function FabricaBrochures() {
     const [images, setImages] = useState<{ name: string; url: string }[]>([]);
     const [buckets, setBuckets] = useState<string[]>([]);
-    const [activeBucket, setActiveBucket] = useState("productos");
+    const [activeBucket, setActiveBucket] = useState("imagenes-marketing");
     const [loading, setLoading] = useState(false);
     const [previewMode, setPreviewMode] = useState(false);
 
@@ -50,8 +50,13 @@ export default function FabricaBrochures() {
             if (!bError && allBuckets) {
                 const names = allBuckets.map(b => b.name);
                 setBuckets(names);
-                // Si 'productos' no existe, usar el primero disponible
-                if (!names.includes("productos") && names.length > 0) {
+
+                // Prioridad de selección inicial
+                if (names.includes("imagenes-marketing")) {
+                    setActiveBucket("imagenes-marketing");
+                } else if (names.includes("productos")) {
+                    setActiveBucket("productos");
+                } else if (names.length > 0) {
                     setActiveBucket(names[0]);
                 }
             }
