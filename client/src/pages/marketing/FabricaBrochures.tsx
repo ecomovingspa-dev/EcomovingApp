@@ -7,7 +7,8 @@ import {
     Layout,
     Image as ImageIcon,
     FileText,
-    Loader2
+    Loader2,
+    Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -204,13 +205,12 @@ export default function FabricaBrochures() {
             <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col shadow-sm overflow-hidden">
                 <header className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center">
-                            <Layout className="h-6 w-6" />
+                        <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-200/50">
+                            <Sparkles className="h-5 w-5" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Diseñador de Murales</h2>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Diseñador de Presentaciones</h2>
                             <div className="flex items-center gap-4 mt-1">
-                                <p className="text-sm text-gray-500">Crea composiciones visuales sin distracciones.</p>
                                 <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700">
                                     <button
                                         onClick={() => setLayoutMode("grid")}
