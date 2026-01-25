@@ -686,8 +686,11 @@ export default function OportunidadesPage() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">
                       ID
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[300px]">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[200px]">
                       Organismo
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[250px]">
+                      Nombre
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">
                       F. Cierre
@@ -747,6 +750,15 @@ export default function OportunidadesPage() {
                           title={op.organismo || ""}
                         >
                           {op.organismo || "-"}
+                        </td>
+                        <td
+                          className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado)
+                            ? "text-gray-500 dark:text-gray-400"
+                            : "text-gray-900 dark:text-gray-100"
+                            } whitespace-normal break-words leading-tight max-w-[300px]`}
+                          title={op.nombre || ""}
+                        >
+                          {op.nombre || "-"}
                         </td>
                         <td
                           className={`px-4 py-3 whitespace-nowrap text-sm ${estaDescartada(op.estado)

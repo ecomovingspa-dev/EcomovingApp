@@ -23,6 +23,7 @@ const ESTADOS = [
 ];
 
 interface OportunidadFormData {
+  nombre: string;
   fecha_cierre: string;
   organismo: string;
   monto_disponible: string;
@@ -42,6 +43,7 @@ export default function OportunidadForm() {
   }));
 
   const [form, setForm] = useState<OportunidadFormData>({
+    nombre: "",
     fecha_cierre: "",
     organismo: "",
     monto_disponible: "",
@@ -72,6 +74,7 @@ export default function OportunidadForm() {
 
       if (data) {
         setForm({
+          nombre: data.nombre || "",
           fecha_cierre: data.fecha_cierre || "",
           organismo: data.organismo || "",
           monto_disponible: data.monto_disponible?.toString() || "",
@@ -98,6 +101,7 @@ export default function OportunidadForm() {
       setGuardando(true);
 
       const datos = {
+        nombre: form.nombre || null,
         fecha_cierre: form.fecha_cierre || null,
         organismo: form.organismo || null,
         monto_disponible: form.monto_disponible
@@ -164,11 +168,10 @@ export default function OportunidadForm() {
 
       {mensaje && (
         <div
-          className={`p-4 rounded-lg font-medium border ${
-            mensaje.includes("Error")
+          className={`p-4 rounded-lg font-medium border ${mensaje.includes("Error")
               ? "bg-red-50 text-red-700 border-red-200"
               : "bg-green-50 text-green-700 border-green-200"
-          }`}
+            }`}
         >
           {mensaje}
         </div>
@@ -180,6 +183,17 @@ export default function OportunidadForm() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="nombre">Nombre de la Oportunidad</Label>
+              <Input
+                id="nombre"
+                value={form.nombre}
+                onChange={(e) => handleChange("nombre", e.target.value)}
+                placeholder="Ej: Licitación Mantención..."
+                data-testid="input-nombre"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="organismo">Organismo</Label>
