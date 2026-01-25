@@ -12,7 +12,8 @@ import {
     Maximize,
     Minimize2,
     Save,
-    Tags
+    Tags,
+    ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,9 @@ export default function FabricaBrochures() {
     const [activeBucket, setActiveBucket] = useState("imagenes-marketing");
     const [loading, setLoading] = useState(false);
     const [previewMode, setPreviewMode] = useState(false);
+    const [activeTab, setActiveTab] = useState<"storage" | "templates">("storage");
+    const [templates, setTemplates] = useState<{ name: string; category: string; fileName: string }[]>([]);
+    const [loadingTemplatesArea, setLoadingTemplatesArea] = useState(false);
     const [layoutMode, setLayoutMode] = useState<"structural" | "free">("structural");
     const [rows, setRows] = useState(2);
     const [cols, setCols] = useState(2);
@@ -156,7 +160,7 @@ export default function FabricaBrochures() {
                     }))
                 );
 
-                // Fetch categories from templates/ folder
+                // Fetch categories and templates list
                 const { data: templateFiles } = await supabase.storage.from('imagenes-marketing').list('templates');
                 if (templateFiles) {
                     const foundCats = templateFiles
@@ -165,6 +169,15 @@ export default function FabricaBrochures() {
 
                     const uniqueCats = Array.from(new Set([...categories, ...foundCats]));
                     setCategories(uniqueCats);
+
+                    setTemplates(templateFiles
+                        .filter(f => f.name.endsWith('.json'))
+                        .map(f => ({
+                            fileName: f.name,
+                            category: f.name.split('_')[0] || "GENERAL",
+                            name: f.name.split('_').slice(1).join(' ').replace('.json', '').replace(/_/g, ' ')
+                        }))
+                    );
                 }
             }
         } catch (err) {
@@ -172,6 +185,44 @@ export default function FabricaBrochures() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const loadTemplateFromFile = async (fileName: string) => {
+        try {
+            setLoadingTemplatesArea(true);
+            const { data, error } = await supabase.storage.from('imagenes-marketing').download(`templates/${fileName}`);
+            if (error) throw error;
+
+            const text = await data.text();
+            const template = JSON.parse(text);
+
+            setBrochureData(prev => ({
+                ...prev,
+                items: template.items || []
+            }));
+            setLayoutMode(template.layoutMode || "structural");
+            setRows(template.rows || 2);
+            setCols(template.cols || 2);
+            setOrientation(template.orientation || "portrait");
+            setPageSize(template.pageSize || "carta");
+            setCurrentCategory(template.category || "");
+            setTemplateName(template.name || "");
+
+            alert(`✓ Diseño "${template.name}" cargado.`);
+        } catch (err) {
+            console.error("Error cargando plantilla:", err);
+            alert("Error al cargar el diseño.");
+        } finally {
+            setLoadingTemplatesArea(false);
+        }
+    };
+
+    const addBranding = (type: 'logo' | 'logo-horiz') => {
+        const url = type === 'logo'
+            ? "https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo.png"
+            : "https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png";
+
+        addItem(url, type.toUpperCase());
     };
 
     const addItem = (imgUrl: string, name: string) => {
@@ -230,60 +281,122 @@ export default function FabricaBrochures() {
 
     return (
         <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-180px)] overflow-hidden">
-            {/* Sidebar: Storage Explorer (Reduced Width) */}
+            {/* Sidebar: Storage Explorer & Templates */}
             <div className="w-full lg:w-72 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden shadow-sm shrink-0">
-                <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-[10px] uppercase tracking-wider text-gray-500 flex items-center gap-2">
-                            <ImageIcon className="h-4 w-4" /> Media Storage
-                        </h3>
-                        <Button variant="ghost" size="sm" onClick={() => fetchStorageImages(activeBucket)} className="h-8 w-8 p-0">
-                            <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                        </Button>
-                    </div>
+                {/* Tabs Header */}
+                <div className="flex border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
+                    <button
+                        onClick={() => setActiveTab("storage")}
+                        className={`flex-1 py-3 text-[10px] font-bold transition-all ${activeTab === "storage" ? "text-indigo-600 border-b-2 border-indigo-600 bg-white dark:bg-gray-800" : "text-gray-400 hover:text-gray-600"}`}
+                    >
+                        IMÁGENES
+                    </button>
+                    <button
+                        onClick={() => setActiveTab("templates")}
+                        className={`flex-1 py-3 text-[10px] font-bold transition-all ${activeTab === "templates" ? "text-indigo-600 border-b-2 border-indigo-600 bg-white dark:bg-gray-800" : "text-gray-400 hover:text-gray-600"}`}
+                    >
+                        PLANTILLAS
+                    </button>
+                </div>
 
-                    <div className="flex flex-col gap-2">
-                        {buckets.length > 0 && (
-                            <select
-                                value={activeBucket}
-                                onChange={(e) => setActiveBucket(e.target.value)}
-                                className="w-full h-8 text-[10px] bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-lg outline-none px-2"
-                            >
-                                {buckets.map(b => (
-                                    <option key={b} value={b}>{b.toUpperCase()}</option>
+                {activeTab === "storage" ? (
+                    <div className="flex flex-col flex-1 overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 dark:border-gray-700 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-[10px] uppercase tracking-wider text-gray-500 flex items-center gap-2">
+                                    <ImageIcon className="h-4 w-4" /> Media Explorer
+                                </h3>
+                                <Button variant="ghost" size="sm" onClick={() => fetchStorageImages(activeBucket)} className="h-8 w-8 p-0">
+                                    <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                                </Button>
+                            </div>
+
+                            <div className="flex flex-col gap-2">
+                                <select
+                                    value={activeBucket}
+                                    onChange={(e) => setActiveBucket(e.target.value)}
+                                    className="w-full h-8 text-[10px] bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-lg outline-none px-2"
+                                >
+                                    {buckets.map(b => (
+                                        <option key={b} value={b}>{b.toUpperCase()}</option>
+                                    ))}
+                                </select>
+                                <div className="relative">
+                                    <Input
+                                        placeholder="Buscar..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="h-8 text-[10px] pl-8 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-lg"
+                                    />
+                                    <div className="absolute left-2.5 top-2 text-gray-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Branding Quick Access */}
+                            <div className="pt-2 flex gap-2">
+                                <Button
+                                    variant="outline" size="sm"
+                                    className="flex-1 h-8 text-[9px] font-bold border-indigo-100 dark:border-indigo-900/30 text-indigo-600"
+                                    onClick={() => addBranding('logo-horiz')}
+                                >
+                                    + LOGO HORIZONTAL
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-3 scrollbar-hide">
+                            <div className="grid grid-cols-2 gap-2">
+                                {filteredImages.map((img, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="group relative aspect-square bg-gray-50 dark:bg-gray-900/50 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:border-indigo-500 cursor-pointer transition-all shadow-sm"
+                                        onClick={() => addItem(img.url, img.name)}
+                                    >
+                                        <img src={img.url} alt={img.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                        <div className="absolute inset-0 bg-indigo-600/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all backdrop-blur-[1px]">
+                                            <Plus className="text-white h-5 w-5" />
+                                        </div>
+                                    </div>
                                 ))}
-                            </select>
-                        )}
-                        <div className="relative">
-                            <Input
-                                placeholder="Buscar..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="h-8 text-[10px] pl-8 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-lg"
-                            />
-                            <div className="absolute left-2.5 top-2 text-gray-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-3 scrollbar-hide">
-                    <div className="grid grid-cols-2 gap-2">
-                        {filteredImages.map((img, idx) => (
-                            <div
-                                key={idx}
-                                className="group relative aspect-square bg-gray-50 dark:bg-gray-900/50 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:border-indigo-500 cursor-pointer transition-all shadow-sm"
-                                onClick={() => addItem(img.url, img.name)}
-                            >
-                                <img src={img.url} alt={img.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                <div className="absolute inset-0 bg-indigo-600/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all backdrop-blur-[1px]">
-                                    <Plus className="text-white h-5 w-5" />
+                ) : (
+                    <div className="flex flex-col flex-1 overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-amber-50/30 dark:bg-amber-900/10">
+                            <h3 className="font-bold text-[10px] uppercase tracking-wider text-amber-600 flex items-center gap-2">
+                                <FileText className="h-4 w-4" /> Diseños Guardados
+                            </h3>
+                            <p className="text-[9px] text-gray-500 mt-1 uppercase">Carga una base para trabajar</p>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide">
+                            {templates.length === 0 ? (
+                                <div className="py-20 text-center opacity-20">
+                                    <Layout className="h-10 w-10 mx-auto mb-2" />
+                                    <p className="text-[10px] font-bold">Sin plantillas</p>
                                 </div>
-                            </div>
-                        ))}
+                            ) : (
+                                templates.map((t, idx) => (
+                                    <div
+                                        key={idx}
+                                        onClick={() => loadTemplateFromFile(t.fileName)}
+                                        className="p-3 bg-white dark:bg-gray-700/50 border border-gray-100 dark:border-gray-700 rounded-xl hover:border-amber-400 cursor-pointer transition-all group"
+                                    >
+                                        <div className="flex justify-between items-start">
+                                            <span className="text-[8px] font-bold px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 text-amber-700 rounded uppercase tracking-tighter">
+                                                {t.category}
+                                            </span>
+                                            <ArrowLeft className="h-3 w-3 text-gray-300 opacity-0 group-hover:opacity-100 -rotate-180" />
+                                        </div>
+                                        <h4 className="text-[10px] font-bold text-gray-700 dark:text-gray-200 mt-2 uppercase truncate">{t.name}</h4>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Main Canvas: Brochure Builder */}
