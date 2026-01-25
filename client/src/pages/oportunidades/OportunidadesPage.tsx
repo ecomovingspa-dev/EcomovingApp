@@ -795,63 +795,60 @@ export default function OportunidadesPage() {
                             }`}
                           onClick={() => setEditandoVendedor(op.id)}
                         >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1">
-                              {editandoVendedor === op.id ? (
-                                <Select
-                                  value={op.vendedor_id || "sin-asignar"}
-                                  onValueChange={(value) =>
-                                    actualizarVendedor(
-                                      op.id,
-                                      value === "sin-asignar" ? "" : value,
-                                    )
-                                  }
-                                  open={true}
-                                  onOpenChange={(open) =>
-                                    !open && setEditandoVendedor(null)
-                                  }
-                                >
-                                  <SelectTrigger className="h-8 w-full bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-                                    <SelectValue placeholder="Seleccionar" />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                                    <SelectItem value="sin-asignar">
-                                      Sin asignar
+                          <div className="flex-1">
+                            {editandoVendedor === op.id ? (
+                              <Select
+                                value={op.vendedor_id || "sin-asignar"}
+                                onValueChange={(value) =>
+                                  actualizarVendedor(
+                                    op.id,
+                                    value === "sin-asignar" ? "" : value,
+                                  )
+                                }
+                                open={true}
+                                onOpenChange={(open) =>
+                                  !open && setEditandoVendedor(null)
+                                }
+                              >
+                                <SelectTrigger className="h-8 w-full bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                                  <SelectValue placeholder="Seleccionar" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                                  <SelectItem value="sin-asignar">
+                                    Sin asignar
+                                  </SelectItem>
+                                  {vendedores.map((v) => (
+                                    <SelectItem key={v.id} value={v.id}>
+                                      {v.nombre}
                                     </SelectItem>
-                                    {vendedores.map((v) => (
-                                      <SelectItem key={v.id} value={v.id}>
-                                        {v.nombre}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <div className="flex items-center gap-2">
-                                  <span>{op.vendedor?.nombre || "-"}</span>
-                                  {!estaDescartada(op.estado) && (
-                                    <span className="text-[10px] text-blue-500 opacity-0 group-hover:opacity-100">
-                                      ✏️
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30 flex-shrink-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                eliminarOportunidad(op.id);
-                              }}
-                              title="Eliminar esta fila"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span>{op.vendedor?.nombre || "-"}</span>
+                                {!estaDescartada(op.estado) && (
+                                  <span className="text-[10px] text-blue-500 opacity-0 group-hover:opacity-100">
+                                    ✏️
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
-                          {/* Columna Acciones vacía */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              eliminarOportunidad(op.id);
+                            }}
+                            title="Eliminar esta fila"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </td>
                       </tr>
                     ))
