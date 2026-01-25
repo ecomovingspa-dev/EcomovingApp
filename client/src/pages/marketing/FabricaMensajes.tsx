@@ -183,7 +183,10 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                     upsert: true
                 });
 
-            if (uploadError) throw uploadError;
+            if (uploadError) {
+                console.error("DEBUG STORAGE ERROR:", uploadError);
+                throw new Error("STORAGE_ERROR: " + uploadError.message);
+            }
 
             // 4. Obtener la URL Pública real
             const { data: { publicUrl } } = supabase.storage
@@ -203,15 +206,15 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                     asunto: contenido.subject,
                     cuerpo_html: finalHtml,
                     cuerpo: `${contenido.part1}\n\n${contenido.part2}`,
-                    nombre_imagen: fileName,
+                    nombre_imag: fileName,
                     imagen_url: publicUrl,
                     estado: "en revisión",
                     activo: true
                 }]);
 
             if (error) {
-                console.error("DEBUG SUPABASE ERROR:", error);
-                throw error;
+                console.error("DEBUG DB ERROR:", error);
+                throw new Error("DB_ERROR: " + error.message);
             }
 
             setMensaje("✅ ¡Listo! Imagen guardada y vinculada correctamente.");
@@ -221,18 +224,22 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
             }, 2000);
         } catch (err: any) {
             console.error("ERROR DETALLADO:", err);
-            // Si el error es de tipo RLS, intentar dar más contexto
-            const extra = err.code === '42501' || err.message?.includes('security policy')
-                ? `\n\n(Supabase indica un bloqueo de seguridad en la tabla 'marketing'. Servidor: ${import.meta.env.VITE_SUPABASE_URL})`
-                : "";
-            setMensaje("❌ Error: " + err.message + extra);
+            let errorContext = "";
+            if (err.message?.includes("STORAGE_ERROR")) {
+                errorContext = "❌ Error al subir la IMAGEN (Storage). Revisa los permisos de la carpeta 'imagenes-marketing'.";
+            } else if (err.message?.includes("DB_ERROR")) {
+                errorContext = "❌ Error al grabar el REGISTRO (Tabla). Verifica las columnas.";
+            } else {
+                errorContext = "❌ Error: " + err.message;
+            }
+            setMensaje(errorContext + ` (Servidor: ${import.meta.env.VITE_SUPABASE_URL})`);
         } finally {
             setGuardando(false);
         }
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8">
+        <div className="max-w-[95%] mx-auto space-y-8">
             {/* Header Acción */}
             <div className="flex items-center justify-between bg-indigo-900/10 p-6 rounded-2xl border border-indigo-200 dark:border-indigo-900/50 shadow-sm">
                 <div className="flex items-center gap-4">
