@@ -26,6 +26,8 @@ interface BrochureItem {
 
 export default function FabricaBrochures() {
     const [images, setImages] = useState<{ name: string; url: string }[]>([]);
+    const [buckets, setBuckets] = useState<string[]>([]);
+    const [activeBucket, setActiveBucket] = useState("productos");
     const [loading, setLoading] = useState(false);
     const [previewMode, setPreviewMode] = useState(false);
 
@@ -37,14 +39,40 @@ export default function FabricaBrochures() {
     });
 
     useEffect(() => {
-        fetchStorageImages();
+        initStorage();
     }, []);
 
-    const fetchStorageImages = async () => {
+    const initStorage = async () => {
+        setLoading(true);
+        try {
+            // Listar todos los buckets disponibles
+            const { data: allBuckets, error: bError } = await supabase.storage.listBuckets();
+            if (!bError && allBuckets) {
+                const names = allBuckets.map(b => b.name);
+                setBuckets(names);
+                // Si 'productos' no existe, usar el primero disponible
+                if (!names.includes("productos") && names.length > 0) {
+                    setActiveBucket(names[0]);
+                }
+            }
+            await fetchStorageImages(activeBucket);
+        } catch (err) {
+            console.error("Error inicializando storage:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeBucket) {
+            fetchStorageImages(activeBucket);
+        }
+    }, [activeBucket]);
+
+    const fetchStorageImages = async (bucketName: string) => {
         try {
             setLoading(true);
-            // Intentamos listar de varios buckets comunes
-            const { data: files, error } = await supabase.storage.from('productos').list('', {
+            const { data: files, error } = await supabase.storage.from(bucketName).list('', {
                 limit: 100,
                 offset: 0,
                 sortBy: { column: 'name', order: 'desc' }
@@ -52,14 +80,17 @@ export default function FabricaBrochures() {
 
             if (error) throw error;
 
-            const formattedImages = files.map(file => ({
-                name: file.name,
-                url: supabase.storage.from('productos').getPublicUrl(file.name).data.publicUrl
-            }));
+            const formattedImages = files
+                .filter(file => file.name !== '.emptyFolderPlaceholder')
+                .map(file => ({
+                    name: file.name,
+                    url: supabase.storage.from(bucketName).getPublicUrl(file.name).data.publicUrl
+                }));
 
             setImages(formattedImages);
         } catch (err) {
-            console.error("Error fetching images:", err);
+            console.error(`Error fetching images from ${bucketName}:`, err);
+            setImages([]);
         } finally {
             setLoading(false);
         }
@@ -96,19 +127,36 @@ export default function FabricaBrochures() {
         <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
             {/* Sidebar: Storage Explorer */}
             <div className="w-full lg:w-80 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden shadow-sm">
-                <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 flex items-center justify-between">
-                    <h3 className="font-bold text-sm uppercase tracking-wider text-gray-500 flex items-center gap-2">
-                        <ImageIcon className="h-4 w-4" /> Media Storage
-                    </h3>
-                    <Button variant="ghost" size="sm" onClick={fetchStorageImages}>
-                        <Loader2 className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-                    </Button>
+                <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-sm uppercase tracking-wider text-gray-500 flex items-center gap-2">
+                            <ImageIcon className="h-4 w-4" /> Media Storage
+                        </h3>
+                        <Button variant="ghost" size="sm" onClick={() => fetchStorageImages(activeBucket)}>
+                            <Loader2 className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                        </Button>
+                    </div>
+
+                    {buckets.length > 0 && (
+                        <select
+                            value={activeBucket}
+                            onChange={(e) => setActiveBucket(e.target.value)}
+                            className="w-full h-8 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-md focus:ring-indigo-500"
+                        >
+                            {buckets.map(b => (
+                                <option key={b} value={b}>{b.toUpperCase()}</option>
+                            ))}
+                        </select>
+                    )}
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 lg:grid-cols-1 gap-3">
                     {images.length === 0 && !loading && (
-                        <div className="text-center py-8 text-gray-400 text-xs italic">
-                            No hay imágenes en el bucket 'productos'.
+                        <div className="text-center py-12 px-4">
+                            <ImageIcon className="h-12 w-12 text-gray-200 mx-auto mb-4" />
+                            <p className="text-gray-400 text-xs italic">
+                                No se encontraron imágenes en el bucket '{activeBucket}'.
+                            </p>
                         </div>
                     )}
                     {images.map((img, idx) => (
