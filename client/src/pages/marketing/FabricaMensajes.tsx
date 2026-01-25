@@ -209,7 +209,10 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                     activo: true
                 }]);
 
-            if (error) throw error;
+            if (error) {
+                console.error("DEBUG SUPABASE ERROR:", error);
+                throw error;
+            }
 
             setMensaje("✅ ¡Listo! Imagen guardada y vinculada correctamente.");
             setTimeout(() => {
@@ -225,7 +228,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-6xl mx-auto space-y-8">
             {/* Header Acción */}
             <div className="flex items-center justify-between bg-indigo-900/10 p-6 rounded-2xl border border-indigo-200 dark:border-indigo-900/50 shadow-sm">
                 <div className="flex items-center gap-4">
