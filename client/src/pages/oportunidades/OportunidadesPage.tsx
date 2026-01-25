@@ -544,21 +544,11 @@ export default function OportunidadesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          {seleccionados.size > 0 && (
-            <Button
-              variant="destructive"
-              onClick={eliminarSeleccionadas}
-              className="flex items-center gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              Eliminar {seleccionados.size}
-            </Button>
-          )}
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={limpiarVencidas}
             disabled={limpiando}
-            className="text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border-red-200 dark:border-red-900/50 flex items-center gap-2"
+            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/20 flex items-center gap-2"
           >
             {limpiando ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -569,9 +559,20 @@ export default function OportunidadesPage() {
           </Button>
 
           <Button
+            variant="ghost"
+            onClick={eliminarSeleccionadas}
+            disabled={seleccionados.size === 0}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 flex items-center gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Eliminar Seleccionadas {seleccionados.size > 0 && `(${seleccionados.size})`}
+          </Button>
+
+          <Button
+            variant="ghost"
             onClick={() => fileInputRef.current?.click()}
             disabled={procesando}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
+            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-900/20 flex items-center gap-2"
           >
             {procesando ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -803,64 +804,70 @@ export default function OportunidadesPage() {
                             }`}
                           onClick={() => setEditandoVendedor(op.id)}
                         >
-                          {editandoVendedor === op.id ? (
-                            <Select
-                              value={op.vendedor_id || "sin-asignar"}
-                              onValueChange={(value) =>
-                                actualizarVendedor(
-                                  op.id,
-                                  value === "sin-asignar" ? "" : value,
-                                )
-                              }
-                              open={true}
-                              onOpenChange={(open) =>
-                                !open && setEditandoVendedor(null)
-                              }
-                            >
-                              <SelectTrigger className="h-8 w-full bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-                                <SelectValue placeholder="Seleccionar" />
-                              </SelectTrigger>
-                              <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                                <SelectItem value="sin-asignar">
-                                  Sin asignar
-                                </SelectItem>
-                                {vendedores.map((v) => (
-                                  <SelectItem key={v.id} value={v.id}>
-                                    {v.nombre}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <div
-                              className={`flex items-center gap-2 ${estaDescartada(op.estado) ? "" : "text-gray-700 dark:text-gray-300"}`}
-                            >
-                              {op.vendedor?.nombre || "-"}
-                              <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100">
-                                ✏️
-                              </span>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex-1">
+                              {editandoVendedor === op.id ? (
+                                <Select
+                                  value={op.vendedor_id || "sin-asignar"}
+                                  onValueChange={(value) =>
+                                    actualizarVendedor(
+                                      op.id,
+                                      value === "sin-asignar" ? "" : value,
+                                    )
+                                  }
+                                  open={true}
+                                  onOpenChange={(open) =>
+                                    !open && setEditandoVendedor(null)
+                                  }
+                                >
+                                  <SelectTrigger className="h-8 w-full bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                                    <SelectValue placeholder="Seleccionar" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                                    <SelectItem value="sin-asignar">
+                                      Sin asignar
+                                    </SelectItem>
+                                    {vendedores.map((v) => (
+                                      <SelectItem key={v.id} value={v.id}>
+                                        {v.nombre}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span>{op.vendedor?.nombre || "-"}</span>
+                                  {!estaDescartada(op.estado) && (
+                                    <span className="text-[10px] text-blue-500 opacity-0 group-hover:opacity-100">
+                                      ✏️
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex justify-end gap-2">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-200 hover:bg-red-50 dark:hover:bg-red-900/50"
-                              onClick={() => eliminarOportunidad(op.id)}
-                              data-testid={`button-delete-oportunidad-${op.id}`}
+                              className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30 flex-shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                eliminarOportunidad(op.id);
+                              }}
+                              title="Eliminar esta fila"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                          {/* Columna Acciones vacía */}
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={10}
                         className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
                       >
                         No se encontraron oportunidades
@@ -904,8 +911,9 @@ export default function OportunidadesPage() {
               </div>
             )}
           </>
-        )}
-      </div>
-    </div>
+        )
+        }
+      </div >
+    </div >
   );
 }
