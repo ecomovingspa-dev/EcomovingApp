@@ -493,6 +493,7 @@ export default function OportunidadesPage() {
         day: "2-digit",
         hour: "2-digit",
         minute: "2-digit",
+        hour12: false,
       });
     } catch (e) {
       return fecha;
@@ -684,11 +685,11 @@ export default function OportunidadesPage() {
                         title="Seleccionar todo"
                       />
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">
-                      ID
-                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[200px]">
                       Organismo
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">
+                      ID
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[250px]">
                       Nombre
@@ -699,10 +700,7 @@ export default function OportunidadesPage() {
                     <th className="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
                       Monto
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-28">
-                      Estado
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
                       Clave
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">
@@ -732,6 +730,15 @@ export default function OportunidadesPage() {
                             className="cursor-pointer"
                           />
                         </td>
+                        <td
+                          className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado)
+                            ? "text-gray-500 dark:text-gray-400"
+                            : "text-gray-900 dark:text-gray-100"
+                            } whitespace-normal break-words leading-tight max-w-[400px]`}
+                          title={op.organismo || ""}
+                        >
+                          {op.organismo || "-"}
+                        </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div
                             className={`font-medium text-sm truncate max-w-[150px] ${estaDescartada(op.estado)
@@ -742,15 +749,6 @@ export default function OportunidadesPage() {
                           >
                             {op.id}
                           </div>
-                        </td>
-                        <td
-                          className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400"
-                            : "text-gray-900 dark:text-gray-100"
-                            } whitespace-normal break-words leading-tight max-w-[400px]`}
-                          title={op.organismo || ""}
-                        >
-                          {op.organismo || "-"}
                         </td>
                         <td
                           className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado)
@@ -779,13 +777,6 @@ export default function OportunidadesPage() {
                         >
                           {formatearMonto(op.monto_disponible)}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${getEstadoColor(op.estado)}`}
-                          >
-                            {op.estado || "Sin estado"}
-                          </span>
-                        </td>
                         <td
                           className={`px-4 py-3 text-xs italic ${estaDescartada(op.estado)
                             ? "text-gray-500 dark:text-gray-400"
@@ -793,7 +784,7 @@ export default function OportunidadesPage() {
                             }`}
                           title={op.clave || ""}
                         >
-                          <div className="whitespace-normal leading-tight min-w-[150px]">
+                          <div className="whitespace-normal leading-tight min-w-[120px]">
                             {op.clave || "-"}
                           </div>
                         </td>
@@ -867,7 +858,7 @@ export default function OportunidadesPage() {
                   ) : (
                     <tr>
                       <td
-                        colSpan={10}
+                        colSpan={9}
                         className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
                       >
                         No se encontraron oportunidades
