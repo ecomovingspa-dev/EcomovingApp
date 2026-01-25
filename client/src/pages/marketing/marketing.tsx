@@ -2,10 +2,11 @@ import { useState } from "react";
 import ContactosMarketing from "./ContactosMarketing";
 import ListaContenidos from "./ListaContenidos";
 import FabricaMensajes from "./FabricaMensajes";
-import { Users, Library, Sparkles } from "lucide-react";
+import FabricaBrochures from "./FabricaBrochures";
+import { Users, Library, Sparkles, Layout } from "lucide-react";
 
 export default function Marketing() {
-  const [tabActiva, setTabActiva] = useState<"monitor" | "biblioteca" | "fabrica">("monitor");
+  const [tabActiva, setTabActiva] = useState<"monitor" | "biblioteca" | "fabrica" | "brochures">("monitor");
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -33,7 +34,6 @@ export default function Marketing() {
             <Library className="h-4 w-4" />
             Tabla de Contenidos
           </button>
-
           <button
             onClick={() => setTabActiva("fabrica")}
             className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all ${tabActiva === "fabrica"
@@ -44,6 +44,17 @@ export default function Marketing() {
             <Sparkles className="h-4 w-4" />
             Fábrica de IA
           </button>
+
+          <button
+            onClick={() => setTabActiva("brochures")}
+            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all ${tabActiva === "brochures"
+              ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none"
+              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+              }`}
+          >
+            <Layout className="h-4 w-4" />
+            Fábrica de Brochures
+          </button>
         </div>
 
         {/* Tab Content */}
@@ -53,8 +64,9 @@ export default function Marketing() {
           {tabActiva === "fabrica" && (
             <FabricaMensajes onSave={() => setTabActiva("biblioteca")} />
           )}
+          {tabActiva === "brochures" && <FabricaBrochures />}
         </div>
       </div>
-    </div>
+    </div >
   );
 }
