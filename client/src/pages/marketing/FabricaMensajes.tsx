@@ -10,8 +10,19 @@ import {
     Loader2,
     CheckCircle2,
     AlertCircle,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Type,
+    Maximize,
+    Minimize,
+    Type as TypeIcon
 } from "lucide-react";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../../components/ui/select";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { optimizeImage } from "../../utils/image";
@@ -23,6 +34,12 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [guardando, setGuardando] = useState(false);
     const [mensaje, setMensaje] = useState("");
     const [contenido, setContenido] = useState<GeneratedContent | null>(null);
+    const [fitMode, setFitMode] = useState<"contain" | "cover">("contain");
+    const [textStyles, setTextStyles] = useState({
+        fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+        fontSize: "17px",
+        textAlign: "left"
+    });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,14 +133,14 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { margin: 0; padding: 0; background-color: #f4f7f9; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+    body { margin: 0; padding: 0; background-color: #f4f7f9; font-family: ${textStyles.fontFamily}; }
     .wrapper { width: 100%; table-layout: fixed; background-color: #f4f7f9; padding-bottom: 40px; padding-top: 40px; }
     .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-spacing: 0; color: #1a1a1b; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
     .header { padding: 40px 40px 20px; text-align: center; }
     .content { padding: 0 40px 40px; }
-    .title { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 24px; line-height: 1.2; letter-spacing: -0.02em; }
-    .text-p { font-size: 17px; line-height: 1.7; color: #4b5563; margin-bottom: 30px; white-space: pre-line; }
-    .product-image { width: 100%; max-width: 100%; height: auto; border-radius: 12px; display: block; margin: 30px 0; }
+    .title { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 24px; line-height: 1.2; letter-spacing: -0.02em; text-align: center; }
+    .text-p { font-size: ${textStyles.fontSize}; line-height: 1.7; color: #4b5563; margin-bottom: 30px; white-space: pre-line; text-align: ${textStyles.textAlign}; }
+    .product-image { width: 100%; max-width: 100%; height: auto; border-radius: 12px; display: block; margin: 30px 0; object-fit: ${fitMode}; ${fitMode === 'cover' ? 'height: 400px;' : ''} }
     .footer { background-color: #ffffff; padding: 30px 40px; text-align: center; border-top: 1px solid #f3f4f6; }
     .brand { color: #4f46e5; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; display: block; }
     .tagline { color: #9ca3af; font-size: 13px; margin-bottom: 20px; display: block; }
@@ -241,7 +258,33 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                 <div className="space-y-6">
                     <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm aspect-square flex flex-col items-center justify-center relative">
                         {imagenOriginal ? (
-                            <img src={imagenOriginal} className="w-full h-full object-contain p-4" alt="Vista previa" />
+                            <>
+                                <img
+                                    src={imagenOriginal}
+                                    className={`w-full h-full transition-all duration-300 ${fitMode === 'cover' ? 'object-cover' : 'object-contain p-4'}`}
+                                    alt="Vista previa"
+                                />
+                                <div className="absolute bottom-4 right-4 flex gap-2">
+                                    <Button
+                                        size="icon"
+                                        variant="secondary"
+                                        className="h-9 w-9 bg-white/90 backdrop-blur rounded-full shadow-lg border-none"
+                                        onClick={() => setFitMode(fitMode === 'cover' ? 'contain' : 'cover')}
+                                        title={fitMode === 'cover' ? "Ajustar al cuadro" : "Expandir a tope"}
+                                    >
+                                        {fitMode === 'cover' ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                                    </Button>
+                                    <Button
+                                        size="icon"
+                                        variant="secondary"
+                                        className="h-9 w-9 bg-white/90 backdrop-blur rounded-full shadow-lg border-none"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        title="Cambiar imagen"
+                                    >
+                                        <ImageIcon className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </>
                         ) : (
                             <div
                                 className="flex flex-col items-center gap-4 cursor-pointer p-12 w-full h-full justify-center"
@@ -285,9 +328,43 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
 
                             {/* Editor de Cuerpo (Partes) */}
                             <div className="space-y-4">
-                                <label className="text-xs font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Sparkles className="h-3 w-3" /> Contenido del Correo
-                                </label>
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
+                                        <Sparkles className="h-3 w-3" /> Contenido del Correo
+                                    </label>
+
+                                    {/* Barra de Formateo Simple */}
+                                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 p-1 rounded-lg border border-gray-100 dark:border-gray-800">
+                                        <Select
+                                            value={textStyles.fontFamily}
+                                            onValueChange={(v) => setTextStyles({ ...textStyles, fontFamily: v })}
+                                        >
+                                            <SelectTrigger className="h-7 w-28 text-[10px] bg-transparent border-none">
+                                                <SelectValue placeholder="Fuente" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="'Helvetica Neue', Helvetica, Arial, sans-serif">Sans-Serif</SelectItem>
+                                                <SelectItem value="Georgia, 'Times New Roman', serif">Serif</SelectItem>
+                                                <SelectItem value="'Courier New', Courier, monospace">Mono</SelectItem>
+                                                <SelectItem value="'Oswald', sans-serif">Moderno</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+
+                                        <Select
+                                            value={textStyles.fontSize}
+                                            onValueChange={(v) => setTextStyles({ ...textStyles, fontSize: v })}
+                                        >
+                                            <SelectTrigger className="h-7 w-20 text-[10px] bg-transparent border-none">
+                                                <SelectValue placeholder="Tamaño" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="14px">Pequeño</SelectItem>
+                                                <SelectItem value="17px">Normal</SelectItem>
+                                                <SelectItem value="21px">Grande</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
 
                                 <div className="space-y-3 p-4 border border-indigo-50 dark:border-indigo-900/30 rounded-xl bg-indigo-50/20 dark:bg-indigo-900/10">
                                     <textarea
