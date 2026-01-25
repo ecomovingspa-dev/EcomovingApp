@@ -8,9 +8,17 @@ interface BrochureViewProps {
     cotizacion: Partial<Cotizacion>;
     onBack?: () => void;
     layout?: "grid" | "collage";
+    orientation?: "portrait" | "landscape";
+    pageSize?: "a4" | "oficio";
 }
 
-export default function BrochureView({ cotizacion, onBack, layout = "grid" }: BrochureViewProps) {
+export default function BrochureView({
+    cotizacion,
+    onBack,
+    layout = "grid",
+    orientation = "landscape",
+    pageSize = "oficio"
+}: BrochureViewProps) {
     const navigate = useNavigate();
     const brochureRef = useRef<HTMLDivElement>(null);
 
@@ -40,7 +48,15 @@ export default function BrochureView({ cotizacion, onBack, layout = "grid" }: Br
             {/* Brochure Content */}
             <div
                 ref={brochureRef}
-                className="max-w-[297mm] mx-auto bg-white text-neutral-900 shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[210mm]"
+                className={`mx-auto bg-white text-neutral-900 shadow-2xl overflow-hidden flex ${orientation === "landscape" ? "flex-row" : "flex-col"} brochure-page`}
+                style={{
+                    width: orientation === "landscape"
+                        ? (pageSize === "oficio" ? "330mm" : "297mm")
+                        : (pageSize === "oficio" ? "216mm" : "210mm"),
+                    height: orientation === "landscape"
+                        ? (pageSize === "oficio" ? "216mm" : "210mm")
+                        : (pageSize === "oficio" ? "330mm" : "297mm")
+                }}
                 id="brochure-content"
             >
                 {/* Vertical Branding Bar */}
@@ -51,58 +67,63 @@ export default function BrochureView({ cotizacion, onBack, layout = "grid" }: Br
                     <div className="w-1 h-32 bg-[#2d4a22]/20 mb-12"></div>
                 </div>
 
-                {/* Main Content Area */}
-                <div className="flex-1 flex flex-col relative">
-                    {/* Artistic Header (Minimal) */}
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-[#b3d4a8]/5 rounded-full -mr-32 -mt-32 blur-3xl pointer-events-none"></div>
-
+                <div className="flex-1 flex flex-col relative overflow-hidden bg-white">
                     {/* Grid vs Collage Layout */}
                     {layout === "grid" ? (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-0 flex-1">
+                        <div className={`grid ${orientation === "landscape" ? "grid-cols-3" : "grid-cols-2"} gap-0 flex-1 h-full`}>
                             {items.map((item, idx) => (
-                                <div key={item.id || idx} className="group relative aspect-square overflow-hidden bg-neutral-100">
+                                <div key={item.id || idx} className="group relative overflow-hidden bg-neutral-50 shadow-inner">
                                     {item.imagen ? (
                                         <img
                                             src={item.imagen}
                                             alt=""
-                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[1.5s] ease-out"
+                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s] ease-out pointer-events-none"
                                         />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-neutral-200"></div>
+                                        <div className="w-full h-full bg-neutral-100 italic text-[10px] text-gray-300 flex items-center justify-center">Ecomoving</div>
                                     )}
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-6 grid-rows-4 gap-0 flex-1 min-h-[800px] artistic-collage">
-                            {items.slice(0, 6).map((item, idx) => {
-                                // Spans for seamless collage
-                                const spans = [
-                                    "col-span-4 row-span-4", // Gigante Izquierda
-                                    "col-span-2 row-span-2", // Arriba derecha
-                                    "col-span-1 row-span-1", // Mini 1
-                                    "col-span-1 row-span-1", // Mini 2
-                                    "col-span-2 row-span-1", // Pie horizontal
-                                ];
+                        <div className="grid grid-cols-12 grid-rows-12 gap-0 flex-1 h-full artistic-collage bg-neutral-900">
+                            {items.slice(0, 10).map((item, idx) => {
+                                // Intelligent spans based on count and orientation to fill 12x12
+                                let span = "";
+                                if (orientation === "landscape") {
+                                    const landscapeSpans = [
+                                        "col-span-8 row-span-8", // Principal (Most dominant)
+                                        "col-span-4 row-span-6", // Side 1
+                                        "col-span-4 row-span-6", // Side 2
+                                        "col-span-4 row-span-4", // Bottom 1
+                                        "col-span-4 row-span-4", // Bottom 2
+                                    ];
+                                    span = landscapeSpans[idx] || "col-span-2 row-span-2";
+                                } else {
+                                    const portraitSpans = [
+                                        "col-span-12 row-span-6", // Top Main
+                                        "col-span-6 row-span-4",  // Mid 1
+                                        "col-span-6 row-span-4",  // Mid 2
+                                        "col-span-4 row-span-2",  // Bottom 1
+                                        "col-span-4 row-span-2",  // Bottom 2
+                                        "col-span-4 row-span-2",  // Bottom 3
+                                    ];
+                                    span = portraitSpans[idx] || "col-span-4 row-span-4";
+                                }
 
                                 return (
                                     <div
                                         key={item.id || idx}
-                                        className={`group relative overflow-hidden bg-neutral-100 ${spans[idx] || 'col-span-2 row-span-1'}`}
+                                        className={`group relative overflow-hidden bg-neutral-800 ${span}`}
                                     >
                                         {item.imagen ? (
                                             <img
                                                 src={item.imagen}
                                                 alt=""
-                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[3s] ease-in-out"
+                                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[4s] ease-in-out"
                                             />
                                         ) : (
-                                            <div className="w-full h-full bg-neutral-200"></div>
-                                        )}
-
-                                        {/* Floating Badge for artistic touch but no text */}
-                                        {idx === 0 && (
-                                            <div className="absolute top-10 left-10 w-24 h-[1px] bg-white/40 z-10"></div>
+                                            <div className="w-full h-full flex items-center justify-center text-neutral-700 bg-neutral-900 italic text-[8px]">Muestra</div>
                                         )}
                                     </div>
                                 );
@@ -122,6 +143,10 @@ export default function BrochureView({ cotizacion, onBack, layout = "grid" }: Br
             </div>
 
             <style>{`
+        @page {
+          size: ${pageSize === "oficio" ? "216mm 330mm" : "auto"};
+          margin: 0;
+        }
         @media print {
           .no-print { display: none !important; }
           body { background: white !important; padding: 0 !important; }
@@ -131,6 +156,12 @@ export default function BrochureView({ cotizacion, onBack, layout = "grid" }: Br
             max-width: none !important;
             margin: 0 !important;
             height: 100vh !important;
+            border: none !important;
+          }
+          .brochure-page {
+            max-width: 100vw !important;
+            max-height: 100vh !important;
+            page-break-after: always;
           }
         }
       `}</style>
