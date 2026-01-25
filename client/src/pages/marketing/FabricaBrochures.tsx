@@ -223,18 +223,18 @@ export default function FabricaBrochures() {
                 layoutMode={layoutMode}
                 orientation={orientation}
                 pageSize={pageSize}
-                onUpdateItems={(items: BrochureItem[]) => setBrochureData(prev => ({ ...prev, items }))}
+                onUpdateItems={(items: any[]) => setBrochureData(prev => ({ ...prev, items }))}
             />
         );
     }
 
     return (
-        <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
-            {/* Sidebar: Storage Explorer */}
-            <div className="w-full lg:w-96 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden shadow-sm">
+        <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-180px)] overflow-hidden">
+            {/* Sidebar: Storage Explorer (Reduced Width) */}
+            <div className="w-full lg:w-72 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden shadow-sm shrink-0">
                 <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 space-y-4">
                     <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-sm uppercase tracking-wider text-gray-500 flex items-center gap-2">
+                        <h3 className="font-bold text-[10px] uppercase tracking-wider text-gray-500 flex items-center gap-2">
                             <ImageIcon className="h-4 w-4" /> Media Storage
                         </h3>
                         <Button variant="ghost" size="sm" onClick={() => fetchStorageImages(activeBucket)} className="h-8 w-8 p-0">
@@ -247,7 +247,7 @@ export default function FabricaBrochures() {
                             <select
                                 value={activeBucket}
                                 onChange={(e) => setActiveBucket(e.target.value)}
-                                className="w-full h-10 text-xs bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-indigo-500 transition-all outline-none px-3"
+                                className="w-full h-8 text-[10px] bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-lg outline-none px-2"
                             >
                                 {buckets.map(b => (
                                     <option key={b} value={b}>{b.toUpperCase()}</option>
@@ -256,31 +256,29 @@ export default function FabricaBrochures() {
                         )}
                         <div className="relative">
                             <Input
-                                placeholder="Buscar imagen..."
+                                placeholder="Buscar..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="h-10 text-xs pl-9 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl"
+                                className="h-8 text-[10px] pl-8 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-lg"
                             />
-                            <div className="absolute left-3 top-3 text-gray-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                            <div className="absolute left-2.5 top-2 text-gray-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
-                    <div className="grid grid-cols-2 gap-3">
+                <div className="flex-1 overflow-y-auto p-3 scrollbar-hide">
+                    <div className="grid grid-cols-2 gap-2">
                         {filteredImages.map((img, idx) => (
                             <div
                                 key={idx}
-                                className="group relative aspect-square bg-gray-50 dark:bg-gray-900/50 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:border-indigo-500 cursor-pointer transition-all shadow-sm"
+                                className="group relative aspect-square bg-gray-50 dark:bg-gray-900/50 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:border-indigo-500 cursor-pointer transition-all shadow-sm"
                                 onClick={() => addItem(img.url, img.name)}
                             >
                                 <img src={img.url} alt={img.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                                 <div className="absolute inset-0 bg-indigo-600/20 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all backdrop-blur-[1px]">
-                                    <div className="bg-white dark:bg-gray-800 p-2 rounded-full shadow-lg transform scale-0 group-hover:scale-100 transition-transform">
-                                        <Plus className="text-indigo-600 dark:text-indigo-400 h-5 w-5" />
-                                    </div>
+                                    <Plus className="text-white h-5 w-5" />
                                 </div>
                             </div>
                         ))}
@@ -289,173 +287,139 @@ export default function FabricaBrochures() {
             </div>
 
             {/* Main Canvas: Brochure Builder */}
-            <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col shadow-sm overflow-hidden">
-                <header className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-200/50">
-                            <Sparkles className="h-5 w-5" />
+            <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col shadow-sm overflow-hidden min-w-0">
+                <header className="p-4 border-b border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center border border-amber-200/50 shrink-0">
+                            <Sparkles className="h-4 w-4" />
                         </div>
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                Diseñador de Presentaciones
-                                <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest ${layoutMode === 'structural' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'}`}>
+                        <div className="min-w-0">
+                            <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 truncate">
+                                Diseñador
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full uppercase tracking-tighter ${layoutMode === 'structural' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'}`}>
                                     {layoutMode === 'structural' ? 'Estructural' : 'Libre'}
                                 </span>
                             </h2>
-                            <div className="flex items-center gap-4 mt-2">
-                                <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700">
-                                    <button
-                                        onClick={() => setLayoutMode("structural")}
-                                        className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${layoutMode === "structural" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400 hover:text-gray-600"}`}
-                                    >ESTRUCTURAL</button>
-                                    <button
-                                        onClick={() => setLayoutMode("free")}
-                                        className={`px-3 py-1.5 text-[10px] font-bold rounded-md transition-all ${layoutMode === "free" ? "bg-white dark:bg-gray-800 shadow-sm text-amber-600" : "text-gray-400 hover:text-gray-600"}`}
-                                    >LIENZO LIBRE</button>
-                                </div>
-
-                                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
-
-                                {layoutMode === "structural" && (
-                                    <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-2 border border-gray-200 dark:border-gray-700 items-center px-2 animate-in slide-in-from-left-2 duration-300">
-                                        <span className="text-[9px] font-bold text-gray-400 uppercase ml-1">Grilla:</span>
-                                        <input
-                                            type="number"
-                                            min="1" max="6"
-                                            value={rows}
-                                            onChange={(e) => setRows(Math.max(1, parseInt(e.target.value) || 1))}
-                                            className="w-10 h-7 bg-white dark:bg-gray-800 border-none rounded text-xs font-bold text-center focus:ring-1 focus:ring-indigo-500"
-                                        />
-                                        <span className="text-[10px] text-gray-400">×</span>
-                                        <input
-                                            type="number"
-                                            min="1" max="6"
-                                            value={cols}
-                                            onChange={(e) => setCols(Math.max(1, parseInt(e.target.value) || 1))}
-                                            className="w-10 h-7 bg-white dark:bg-gray-800 border-none rounded text-xs font-bold text-center focus:ring-1 focus:ring-indigo-500"
-                                        />
-                                    </div>
-                                )}
-                                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
-
-                                {/* Template Manager */}
-                                <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-2 border border-blue-200 dark:border-blue-900/30 items-center px-2">
-                                    <div className="flex items-center gap-1.5 min-w-[120px]">
-                                        <Tags className="h-3 w-3 text-blue-500" />
-                                        <input
-                                            list="categories-list"
-                                            placeholder="CATEGORÍA"
-                                            value={currentCategory}
-                                            onChange={(e) => setCurrentCategory(e.target.value.toUpperCase())}
-                                            className="w-full h-7 bg-transparent border-none text-[10px] font-bold text-blue-600 placeholder:text-blue-300 focus:ring-0 uppercase"
-                                        />
-                                        <datalist id="categories-list">
-                                            {categories.map(c => <option key={c} value={c} />)}
-                                        </datalist>
-                                    </div>
-                                    <div className="h-4 w-px bg-blue-200 dark:bg-blue-800"></div>
-                                    <input
-                                        placeholder="NOMBRE DISEÑO"
-                                        value={templateName}
-                                        onChange={(e) => setTemplateName(e.target.value)}
-                                        className="w-32 h-7 bg-transparent border-none text-[10px] font-bold text-gray-600 dark:text-gray-300 placeholder:text-gray-400 focus:ring-0"
-                                    />
-                                    <Button
-                                        size="sm"
-                                        onClick={saveTemplate}
-                                        disabled={saving || brochureData.items.length === 0}
-                                        className="h-7 px-3 bg-blue-600 hover:bg-blue-700 text-white text-[9px] font-bold rounded-md"
-                                    >
-                                        {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 mr-1" />}
-                                        GUARDAR
-                                    </Button>
-                                </div>
-                                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
-                                <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700">
-                                    <button
-                                        onClick={() => setOrientation("portrait")}
-                                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${orientation === "portrait" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
-                                    >VERTICAL</button>
-                                    <button
-                                        onClick={() => setOrientation("landscape")}
-                                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${orientation === "landscape" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
-                                    >HORIZONTAL</button>
-                                </div>
-                                <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700">
-                                    <button
-                                        onClick={() => setPageSize("carta")}
-                                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${pageSize === "carta" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
-                                    >CARTA</button>
-                                    <button
-                                        onClick={() => setPageSize("a4")}
-                                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${pageSize === "a4" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
-                                    >A4</button>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* 1. Layout & Grid */}
+                        <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700 items-center">
+                            <button
+                                onClick={() => setLayoutMode("structural")}
+                                className={`px-2.5 py-1 text-[9px] font-bold rounded-md transition-all ${layoutMode === "structural" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400 hover:text-gray-600"}`}
+                            >GRILLA</button>
+                            <button
+                                onClick={() => setLayoutMode("free")}
+                                className={`px-2.5 py-1 text-[9px] font-bold rounded-md transition-all ${layoutMode === "free" ? "bg-white dark:bg-gray-800 shadow-sm text-amber-600" : "text-gray-400 hover:text-gray-600"}`}
+                            >LIBRE</button>
+
+                            {layoutMode === "structural" && (
+                                <>
+                                    <div className="h-3 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                                    <input
+                                        type="number" min="1" max="6" value={rows}
+                                        onChange={(e) => setRows(Math.max(1, parseInt(e.target.value) || 1))}
+                                        className="w-7 h-5 bg-transparent border-none text-[9px] font-bold text-center focus:ring-0 appearance-none"
+                                    />
+                                    <span className="text-[9px] text-gray-400 font-bold px-0.5">×</span>
+                                    <input
+                                        type="number" min="1" max="6" value={cols}
+                                        onChange={(e) => setCols(Math.max(1, parseInt(e.target.value) || 1))}
+                                        className="w-7 h-5 bg-transparent border-none text-[9px] font-bold text-center focus:ring-0 appearance-none"
+                                    />
+                                </>
+                            )}
+                        </div>
+
+                        {/* 2. Orientation & Size */}
+                        <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700 items-center">
+                            <button
+                                onClick={() => setOrientation(orientation === "portrait" ? "landscape" : "portrait")}
+                                className="px-2.5 py-1 text-[9px] font-bold rounded-md transition-all text-indigo-600 bg-white dark:bg-gray-800 shadow-sm"
+                            >
+                                {orientation === "portrait" ? "VERTICAL" : "HORIZ"}
+                            </button>
+                            <div className="h-3 w-px bg-gray-300 dark:bg-gray-600 mx-1"></div>
+                            <button
+                                onClick={() => setPageSize(pageSize === "carta" ? "a4" : "carta")}
+                                className="px-2.5 py-1 text-[9px] font-bold rounded-md transition-all text-neutral-600 dark:text-neutral-300"
+                            >
+                                {pageSize.toUpperCase()}
+                            </button>
+                        </div>
+
+                        {/* 3. Template Manager */}
+                        <div className="flex bg-blue-50/50 dark:bg-blue-900/10 p-1 rounded-lg gap-2 border border-blue-100 dark:border-blue-900/30 items-center px-2">
+                            <input
+                                list="categories-list" placeholder="CAT" value={currentCategory}
+                                onChange={(e) => setCurrentCategory(e.target.value.toUpperCase())}
+                                className="w-16 h-6 bg-transparent border-none text-[9px] font-bold text-blue-600 uppercase focus:ring-0 placeholder:text-blue-300"
+                            />
+                            <div className="h-3 w-px bg-blue-200 dark:bg-blue-800"></div>
+                            <input
+                                placeholder="NOMBRE" value={templateName}
+                                onChange={(e) => setTemplateName(e.target.value)}
+                                className="w-24 h-6 bg-transparent border-none text-[9px] font-bold text-gray-600 dark:text-gray-300 focus:ring-0 placeholder:text-gray-400"
+                            />
+                            <Button
+                                size="sm" onClick={saveTemplate}
+                                disabled={saving || brochureData.items.length === 0}
+                                className="h-6 px-3 bg-blue-600 hover:bg-blue-700 text-white text-[8px] font-bold rounded shadow-sm"
+                            >
+                                {saving ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Save className="h-2.5 w-2.5 mr-1" />}
+                                GUARDAR
+                            </Button>
+                        </div>
+
                         <Button
-                            variant="outline"
-                            className="gap-2 h-11 px-5 rounded-xl border-gray-200 dark:border-gray-700"
-                            disabled={brochureData.items.length === 0}
                             onClick={() => setPreviewMode(true)}
-                        >
-                            <FileText className="h-4 w-4 text-indigo-500" /> Vista previa
-                        </Button>
-                        <Button
-                            className="bg-black text-white hover:bg-gray-800 gap-2 h-11 px-5 rounded-xl transition-all active:scale-95"
                             disabled={brochureData.items.length === 0}
-                            onClick={() => window.print()}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 px-4 text-[10px] font-bold rounded-lg shadow-lg shadow-indigo-200 dark:shadow-none transition-all hover:scale-105 ml-2"
                         >
-                            <Download className="h-4 w-4" /> Exportar Mural
+                            Vista Previa
                         </Button>
                     </div>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-8 bg-gray-50/30 dark:bg-gray-900/10">
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                        {brochureData.items.length === 0 && (
-                            <div className="col-span-full py-40 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-[3rem] flex flex-col items-center justify-center text-gray-400 space-y-4">
-                                <ImageIcon className="h-12 w-12 opacity-10" />
-                                <p className="text-sm font-medium">Selecciona imágenes para armar tu composición</p>
-                            </div>
-                        )}
-                        {brochureData.items.map((item, idx) => (
-                            <div key={item.id} className="group relative bg-white dark:bg-gray-900 p-2 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-xl">
-                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all z-10 flex gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        size="icon"
-                                        className="h-9 w-9 rounded-full shadow-lg bg-white/90 dark:bg-gray-800/90 text-indigo-600"
-                                        onClick={() => toggleFitMode(item.id)}
-                                        title={item.fitMode === "cover" ? "Ajustar al marco" : "Expandir imagen"}
-                                    >
-                                        {item.fitMode === "cover" ? <Minimize2 className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                                    </Button>
-                                    <Button
-                                        variant="destructive"
-                                        size="icon"
-                                        className="h-9 w-9 rounded-full shadow-lg"
-                                        onClick={() => removeItem(item.id)}
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </div>
+                <div className="flex-1 overflow-y-auto p-4 bg-gray-50/30 dark:bg-gray-900/10 scrollbar-hide">
+                    {brochureData.items.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-4 opacity-30">
+                            <Layout className="h-12 w-12" />
+                            <p className="text-sm font-medium uppercase tracking-widest">Lienzo Vacío</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3">
+                            {brochureData.items.map((item) => (
+                                <div
+                                    key={item.id}
+                                    className="group relative aspect-[4/5] bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden transition-all hover:shadow-md hover:border-indigo-500/50"
+                                >
+                                    <img src={item.imagen} className={`w-full h-full transition-transform duration-700 group-hover:scale-105 ${item.fitMode === 'contain' ? 'object-contain p-4' : 'object-cover'}`} alt="" />
 
-                                <div className={`aspect-square rounded-[1.8rem] overflow-hidden border border-gray-50 dark:border-gray-800 ${item.fitMode === "contain" ? "bg-neutral-50 dark:bg-neutral-900" : ""}`}>
-                                    <img
-                                        src={item.imagen}
-                                        alt=""
-                                        className={`w-full h-full transition-all duration-700 ${item.fitMode === "contain" ? "object-contain p-4" : "object-cover group-hover:scale-105"}`}
-                                    />
+                                    <div className="absolute top-2 right-2 flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-all scale-90 translate-x-2 group-hover:translate-x-0">
+                                        <Button variant="secondary" size="icon" className="h-7 w-7 rounded-lg bg-white/95 shadow-sm border border-gray-100" onClick={() => toggleFitMode(item.id)}>
+                                            {item.fitMode === 'cover' ? <Maximize className="h-3.5 w-3.5 text-blue-600" /> : <Minimize2 className="h-3.5 w-3.5 text-blue-600" />}
+                                        </Button>
+                                        <Button variant="destructive" size="icon" className="h-7 w-7 rounded-lg bg-rose-500 shadow-sm text-white" onClick={() => removeItem(item.id)}>
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+
+                                    <div className="absolute bottom-0 inset-x-0 p-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border-t border-gray-100 dark:border-gray-700 translate-y-full group-hover:translate-y-0 transition-transform">
+                                        <p className="text-[9px] font-bold text-gray-700 dark:text-gray-300 truncate uppercase tracking-tighter">{item.descripcion}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
+
+            <datalist id="categories-list">
+                {categories.map(c => <option key={c} value={c} />)}
+            </datalist>
         </div>
     );
 }
