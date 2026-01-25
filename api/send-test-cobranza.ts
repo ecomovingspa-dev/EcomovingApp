@@ -66,38 +66,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; color: #334155; }
-    .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; }
-    .header { background-color: #1e293b; padding: 30px; text-align: center; }
-    .header h1 { margin: 0; color: #ffffff; font-size: 20px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
-    .header p { margin: 5px 0 0 0; color: #94a3b8; font-size: 13px; }
+    body { margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; color: #334155; -webkit-font-smoothing: antialiased; }
+    .container { max-width: 600px; margin: 40px auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+    .header { background-color: #0f172a; padding: 40px 30px; text-align: left; border-bottom: 4px solid #3b82f6; }
+    .header h1 { margin: 0; color: #ffffff; font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; }
+    .header p { margin: 4px 0 0 0; color: #94a3b8; font-size: 12px; font-weight: 500; }
     .content { padding: 40px; }
     .mode-test { background-color: #f0fdf4; border: 1px dashed #22c55e; color: #15803d; padding: 12px; font-size: 12px; text-align: center; margin-bottom: 25px; border-radius: 4px; }
-    .greeting { font-size: 16px; font-weight: 600; color: #1e293b; margin-bottom: 20px; }
-    .message { font-size: 15px; line-height: 1.6; color: #475569; margin-bottom: 30px; }
-    .info-grid { background-color: #f8fafc; border: 1px solid #f1f5f9; border-radius: 8px; padding: 25px; margin-bottom: 30px; }
-    .info-item { margin-bottom: 15px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; }
-    .info-item:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
-    .label { font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px; display: block; }
-    .value { font-size: 16px; color: #1e293b; font-weight: 500; }
-    .value-bold { font-size: 20px; color: #0f172a; font-weight: 700; }
-    .status-box { margin-top: 15px; padding: 12px 15px; border-radius: 6px; display: inline-block; }
-    .status-vencido { background-color: #fff7ed; border-left: 4px solid #f97316; color: #9a3412; }
-    .status-vencido .label { color: #c2410c; }
-    .bank-details { background-color: #f1f5f9; border-radius: 8px; padding: 25px; border: 1px solid #e2e8f0; }
-    .bank-title { font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 15px; text-transform: uppercase; border-bottom: 2px solid #334155; display: inline-block; }
-    .bank-item { font-size: 14px; margin-bottom: 8px; color: #334155; }
-    .footer { padding: 30px 40px; border-top: 1px solid #e2e8f0; font-size: 14px; }
-    .closing { margin-bottom: 1px; color: #475569; }
-    .signature { font-weight: 700; color: #1e293b; font-size: 16px; }
-    .legal { background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; }
+    .greeting { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 20px; }
+    .message { font-size: 14px; line-height: 1.7; color: #475569; margin-bottom: 30px; }
+    
+    .info-block { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 25px; margin-bottom: 25px; }
+    .info-title { font-size: 11px; font-weight: 800; color: #0f172a; margin-bottom: 18px; text-transform: uppercase; letter-spacing: 1px; display: block; border-left: 3px solid #3b82f6; padding-left: 12px; }
+    .info-item { font-size: 13px; margin-bottom: 10px; color: #475569; display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; }
+    .info-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .info-item strong { color: #0f172a; font-weight: 700; }
+    
+    .footer { padding: 30px 40px; background-color: #f8fafc; border-top: 1px solid #e2e8f0; }
+    .signature { font-weight: 700; color: #0f172a; font-size: 14px; margin-bottom: 4px; }
+    .company { color: #64748b; font-size: 12px; }
+    .legal-notice { padding: 20px 40px; text-align: center; font-size: 11px; color: #94a3b8; line-height: 1.5; }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1>Departamento de Cobranzas</h1>
-      <p>Ecomoving SpA</p>
+      <h1>Estado de Cuenta (Prueba)</h1>
+      <p>Ecomoving SpA &bull; Departamento de Cobranzas</p>
     </div>
     
     <div class="content">
@@ -109,41 +104,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ${introMsg}
       </div>
       
-      <div class="info-grid">
-        <div class="info-item">
-          <span class="label">Documento</span>
-          <span class="value">Factura Electrónica N° ${mockFactura.folio}</span>
+      <div class="info-block">
+        <span class="info-title">Resumen del Documento</span>
+        <div class="info-item"><span>N° de Factura:</span> <strong>${mockFactura.folio}</strong></div>
+        <div class="info-item"><span>Fecha de Emisión:</span> <strong>${mockFactura.fechaEmision}</strong></div>
+        <div class="info-item"><span>Fecha de Vencimiento:</span> <strong style="${mockFactura.diasAtraso > 0 ? 'color: #ef4444;' : ''}">${mockFactura.fechaVencimiento}</strong></div>
+        <div class="info-item" style="margin-top: 15px; padding-top: 12px; border-top: 2px solid #e2e8f0; border-bottom: none;">
+          <span>Monto Pendiente:</span> <strong style="font-size: 18px;">${mockFactura.montoTotal}</strong>
         </div>
-        <div style="display: table; width: 100%;">
-          <div style="display: table-cell; width: 50%;">
-            <span class="label">Fecha Emisión</span>
-            <span class="value">${mockFactura.fechaEmision}</span>
-          </div>
-          <div style="display: table-cell; width: 50%;">
-            <span class="label">Fecha Vencimiento</span>
-            <span class="value" style="${mockFactura.diasAtraso > 0 ? 'color: #dc2626; font-weight: 600;' : ''}">${mockFactura.fechaVencimiento}</span>
-          </div>
-        </div>
-        <div class="info-item" style="margin-top: 15px; border-bottom: none; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-          <span class="label">Monto Total Pendiente</span>
-          <span class="value-bold">${mockFactura.montoTotal}</span>
-        </div>
-        
         ${mockFactura.diasAtraso > 0 ? `
-        <div class="status-box status-vencido">
-          <span class="label">Situación</span>
-          <span class="value" style="font-weight: 700;">Vencida hace ${mockFactura.diasAtraso} días</span>
+        <div class="info-item" style="margin-top: 10px; border-bottom: none; padding-bottom: 0;">
+          <span style="color: #9a3412;">Situación actual:</span> <strong style="color: #9a3412; background-color: #fff7ed; padding: 2px 8px; border-radius: 4px;">Atraso de ${mockFactura.diasAtraso} días</strong>
         </div>
         ` : ''}
       </div>
       
-      <div class="bank-details">
-        <div class="bank-title">Información de Pago</div>
-        <div class="bank-item"><strong>Banco:</strong> BCI</div>
-        <div class="bank-item"><strong>Tipo de Cuenta:</strong> Cuenta Corriente</div>
-        <div class="bank-item"><strong>N° de Cuenta:</strong> 13750780</div>
-        <div class="bank-item"><strong>RUT:</strong> 76.812.285-K</div>
-        <div class="bank-item"><strong>Email Comprobante:</strong> cobranza@ecomoving.cl</div>
+      <div class="info-block">
+        <span class="info-title">Instrucciones de Pago</span>
+        <div class="info-item"><span>Banco:</span> <strong>BCI</strong></div>
+        <div class="info-item"><span>Tipo de Cuenta:</span> <strong>Cuenta Corriente</strong></div>
+        <div class="info-item"><span>N° de Cuenta:</span> <strong>13750780</strong></div>
+        <div class="info-item"><span>RUT:</span> <strong>76.812.285-K</strong></div>
+        <div class="info-item" style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e2e8f0; border-bottom: none; font-size: 12px;">
+          <span>Email Comprobante:</span> <strong>cobranza@ecomoving.cl</strong>
+        </div>
       </div>
       
       <div class="message" style="margin-top: 30px; margin-bottom: 0;">
@@ -152,19 +136,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     </div>
     
     <div class="footer">
-      <div class="closing">Atentamente,</div>
       <div class="signature">Departamento de Cobranzas</div>
-      <div style="color: #64748b; font-size: 13px;">Ecomoving SpA</div>
+      <div class="company">Ecomoving SpA</div>
     </div>
     
-    <div class="legal">
+    <div class="legal-notice">
       Este es un mensaje institucional automático de PRUEBA.<br>
-      Generado por el sistema administrativo de Ecomoving.
+      Generado por el sistema de gestión Ecomoving App.
     </div>
   </div>
 </body>
 </html>`;
-
     // 4. Enviar vía Brevo
     const emailPayload = {
       sender: { name: "Ecomoving Cobranza (Test)", email: "cobranza@ecomoving.cl" },
