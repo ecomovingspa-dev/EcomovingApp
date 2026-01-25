@@ -8,7 +8,9 @@ import {
     Image as ImageIcon,
     FileText,
     Loader2,
-    Sparkles
+    Sparkles,
+    Maximize,
+    Minimize2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +23,7 @@ interface BrochureItem {
     cantidad: number;
     margen: number;
     subcostos: any[];
+    fitMode?: "cover" | "contain";
 }
 
 export default function FabricaBrochures() {
@@ -113,7 +116,8 @@ export default function FabricaBrochures() {
             imagen: imgUrl,
             cantidad: 1,
             margen: 18,
-            subcostos: [{ valor: 0 }]
+            subcostos: [{ valor: 0 }],
+            fitMode: "cover"
         };
 
         setBrochureData(prev => ({
@@ -126,6 +130,17 @@ export default function FabricaBrochures() {
         setBrochureData(prev => ({
             ...prev,
             items: prev.items.filter(i => i.id !== id)
+        }));
+    };
+
+    const toggleFitMode = (id: string) => {
+        setBrochureData(prev => ({
+            ...prev,
+            items: prev.items.map(item =>
+                item.id === id
+                    ? { ...item, fitMode: item.fitMode === "cover" ? "contain" : "cover" }
+                    : item
+            )
         }));
     };
 
@@ -274,20 +289,33 @@ export default function FabricaBrochures() {
                             </div>
                         )}
                         {brochureData.items.map((item, idx) => (
-                            <div key={item.id} className="group relative bg-white dark:bg-gray-900 p-2 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm">
-                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <div key={item.id} className="group relative bg-white dark:bg-gray-900 p-2 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm transition-all hover:shadow-xl">
+                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all z-10 flex gap-2">
+                                    <Button
+                                        variant="secondary"
+                                        size="icon"
+                                        className="h-9 w-9 rounded-full shadow-lg bg-white/90 dark:bg-gray-800/90 text-indigo-600"
+                                        onClick={() => toggleFitMode(item.id)}
+                                        title={item.fitMode === "cover" ? "Ajustar al marco" : "Expandir imagen"}
+                                    >
+                                        {item.fitMode === "cover" ? <Minimize2 className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                                    </Button>
                                     <Button
                                         variant="destructive"
                                         size="icon"
-                                        className="h-10 w-10 rounded-full shadow-2xl"
+                                        className="h-9 w-9 rounded-full shadow-lg"
                                         onClick={() => removeItem(item.id)}
                                     >
-                                        <Trash2 className="h-5 w-5" />
+                                        <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
 
-                                <div className="aspect-square rounded-[1.8rem] overflow-hidden border border-gray-50 dark:border-gray-800">
-                                    <img src={item.imagen} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-700" />
+                                <div className={`aspect-square rounded-[1.8rem] overflow-hidden border border-gray-50 dark:border-gray-800 ${item.fitMode === "contain" ? "bg-neutral-50 dark:bg-neutral-900" : ""}`}>
+                                    <img
+                                        src={item.imagen}
+                                        alt=""
+                                        className={`w-full h-full transition-all duration-700 ${item.fitMode === "contain" ? "object-contain p-4" : "object-cover group-hover:scale-105"}`}
+                                    />
                                 </div>
                             </div>
                         ))}

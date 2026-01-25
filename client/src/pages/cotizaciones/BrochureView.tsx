@@ -12,6 +12,12 @@ interface BrochureViewProps {
     pageSize?: "a4" | "carta";
 }
 
+interface BrochureItem {
+    id: string;
+    imagen: string;
+    fitMode?: "cover" | "contain";
+}
+
 const BAR_COLORS = [
     { bg: "bg-[#b3d4a8]", text: "text-[#2d4a22]", line: "bg-[#2d4a22]/20" }, // Green
     { bg: "bg-indigo-200", text: "text-indigo-900", line: "bg-indigo-900/20" }, // Indigo
@@ -107,13 +113,16 @@ export default function BrochureView({
                             <div className="flex-1 overflow-hidden bg-white relative">
                                 {layout === "grid" ? (
                                     <div className={`grid ${orientation === "landscape" ? "grid-cols-3 grid-rows-2" : "grid-cols-2 grid-rows-3"} gap-0 h-full w-full`}>
-                                        {pageItems.map((item, idx) => (
-                                            <div key={item.id || idx} className="relative overflow-hidden bg-neutral-50 group">
+                                        {pageItems.map((item: any, idx) => (
+                                            <div key={item.id || idx} className={`relative overflow-hidden group ${item.fitMode === "contain" ? "bg-white" : "bg-neutral-50"}`}>
                                                 {item.imagen && (
                                                     <img
                                                         src={item.imagen}
                                                         alt=""
-                                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[3s] ease-in-out"
+                                                        className={`w-full h-full transition-all duration-[3s] ease-in-out ${item.fitMode === "contain"
+                                                            ? "object-contain p-6"
+                                                            : "object-cover group-hover:scale-105"
+                                                            }`}
                                                     />
                                                 )}
                                             </div>
@@ -121,7 +130,7 @@ export default function BrochureView({
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-12 grid-rows-12 gap-0 h-full w-full bg-neutral-900">
-                                        {pageItems.map((item, idx) => {
+                                        {pageItems.map((item: any, idx) => {
                                             // Dynamic Spans to fill 12x12
                                             let span = "";
                                             const count = pageItems.length;
@@ -147,12 +156,15 @@ export default function BrochureView({
                                             }
 
                                             return (
-                                                <div key={item.id || idx} className={`relative overflow-hidden group ${span}`}>
+                                                <div key={item.id || idx} className={`relative overflow-hidden group ${span} ${item.fitMode === "contain" ? "bg-white" : "bg-neutral-900"}`}>
                                                     {item.imagen && (
                                                         <img
                                                             src={item.imagen}
                                                             alt=""
-                                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[4s] ease-out"
+                                                            className={`w-full h-full transition-all duration-[4s] ${item.fitMode === "contain"
+                                                                ? "object-contain p-10"
+                                                                : "object-cover group-hover:scale-110"
+                                                                }`}
                                                         />
                                                     )}
                                                 </div>
