@@ -19,21 +19,17 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
-    Loader2,
-    Save,
-    Wand2,
-    AlertTriangle,
     CheckCircle2,
     AlertOctagon,
+    AlertTriangle,
     Info,
     Clock,
     ChevronRight,
     LayoutDashboard,
     Mail,
-    Zap,
     Trash2,
     PlusCircle,
-    Sparkles,
+    Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +55,6 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
     const [reglas, setReglas] = useState<ReglaCobranza[]>([]);
     const [cargando, setCargando] = useState(false);
     const [guardando, setGuardando] = useState(false);
-    const [optimizing, setOptimizing] = useState<string | null>(null); // Field being optimized
     const [selectedReglaId, setSelectedReglaId] = useState<number | null>(null);
 
     useEffect(() => {
@@ -96,59 +91,6 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
         setReglas((prev) =>
             prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
         );
-    };
-
-    const handleMejorarTexto = async (field: 'asunto_template' | 'mensaje_intro' | 'mensaje_cierre') => {
-        if (!selectedRegla) return;
-
-        const textoActual = selectedRegla[field];
-        if (!textoActual || textoActual.length < 5) {
-            alert("El texto es muy corto para ser mejorado.");
-            return;
-        }
-
-        setOptimizing(field);
-        try {
-            const res = await fetch('/api/edita-texto-cobranza', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    text: textoActual,
-                    type: field === 'asunto_template' ? 'asunto' : field === 'mensaje_intro' ? 'intro' : 'cierre',
-                    context: `Regla de cobranza: ${selectedRegla.etiqueta} (Urgencia: ${selectedRegla.urgencia})`
-                })
-            });
-
-            if (!res.ok) throw new Error("Error en la API de IA");
-
-            const data = await res.json();
-            if (data.improvedText) {
-                handleUpdateRegla(selectedRegla.id, field, data.improvedText);
-                return data.improvedText;
-            }
-        } catch (error) {
-            console.error("Error mejorando texto:", error);
-            alert("No se pudo mejorar el texto. Verifica tu conexión o intenta más tarde.");
-        } finally {
-            setOptimizing(null);
-        }
-        return null;
-    };
-
-    const handleMejorarTodoIA = async () => {
-        if (!selectedRegla) return;
-        setOptimizing('all');
-        try {
-            const fields: ('asunto_template' | 'mensaje_intro' | 'mensaje_cierre')[] = ['asunto_template', 'mensaje_intro', 'mensaje_cierre'];
-            for (const field of fields) {
-                await handleMejorarTexto(field);
-            }
-            alert("✅ Se han mejorado todos los textos del correo.");
-        } catch (error) {
-            console.error("Error mejorando todo:", error);
-        } finally {
-            setOptimizing(null);
-        }
     };
 
     const handleCrearRegla = async () => {
@@ -240,7 +182,7 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
             case "media": return <Clock className="h-4 w-4 text-yellow-400" />;
             case "alta": return <AlertTriangle className="h-4 w-4 text-orange-400" />;
             case "critica": return <AlertOctagon className="h-4 w-4 text-red-500" />;
-            default: return <CheckCircle2 className="h-4 w-4 text-gray-400" />;
+            default: return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
         }
     };
 
@@ -251,7 +193,7 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                 {/* SIDEBAR */}
                 <div className="w-full md:w-64 bg-gray-50 dark:bg-[#161b22] border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 flex flex-col">
                     <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center gap-3">
-                        <div className="h-8 w-8 bg-purple-600 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-900/20">
+                        <div className="h-8 w-8 bg-slate-900 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg shadow-slate-900/20">
                             <LayoutDashboard className="h-5 w-5 text-white" />
                         </div>
                         <div>
@@ -262,7 +204,7 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                             variant="ghost"
                             size="icon"
                             onClick={handleCrearRegla}
-                            className="ml-auto h-7 w-7 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                            className="ml-auto h-7 w-7 text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800/50"
                         >
                             <PlusCircle className="h-4 w-4" />
                         </Button>
@@ -276,9 +218,9 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                                 key={regla.id}
                                 onClick={() => setSelectedReglaId(regla.id)}
                                 className={cn(
-                                    "w-full text-left px-3 py-3 rounded-md text-xs font-medium transition-all flex items-center justify-between group outline-none focus:ring-2 focus:ring-purple-500/20",
+                                    "w-full text-left px-3 py-3 rounded-md text-xs font-medium transition-all flex items-center justify-between group outline-none focus:ring-2 focus:ring-slate-500/20",
                                     selectedReglaId === regla.id
-                                        ? "bg-white dark:bg-[#1f2937] text-purple-600 dark:text-purple-400 shadow-sm border border-gray-200 dark:border-gray-700 select-none"
+                                        ? "bg-white dark:bg-[#1f2937] text-slate-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700 select-none"
                                         : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-200"
                                 )}
                             >
@@ -298,13 +240,6 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                             </button>
                         ))}
                     </div>
-
-                    <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#161b22]">
-                        <div className="flex items-center gap-2 justify-center opacity-40">
-                            <Zap className="h-3 w-3" />
-                            <span className="text-[10px] font-medium">Powered by Gemini AI</span>
-                        </div>
-                    </div>
                 </div>
 
                 {/* MAIN CONTENT */}
@@ -318,7 +253,7 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                                         <Input
                                             value={selectedRegla.etiqueta}
                                             onChange={(e) => handleUpdateRegla(selectedRegla.id, "etiqueta", e.target.value)}
-                                            className="h-9 font-bold text-lg bg-transparent border-none focus-visible:ring-1 focus-visible:ring-purple-500/30 p-0"
+                                            className="h-9 font-bold text-lg bg-transparent border-none focus-visible:ring-1 focus-visible:ring-slate-500/30 p-0"
                                         />
                                         <div className="flex items-center gap-3">
                                             <Select
@@ -347,16 +282,6 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                                         </div>
                                     </div>
                                 </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleMejorarTodoIA}
-                                    disabled={optimizing === 'all'}
-                                    className="gap-2 h-9 text-xs font-semibold text-purple-600 border-purple-200 dark:border-purple-800 dark:bg-purple-900/10 hover:bg-purple-50 dark:hover:bg-purple-900/20 shadow-sm"
-                                >
-                                    {optimizing === 'all' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
-                                    <span className="hidden sm:inline">Mejorar todo con IA</span>
-                                </Button>
                             </div>
 
                             {/* Form Content Scrollable */}
@@ -404,201 +329,166 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
 
                                         <div className="space-y-6">
                                             <div className="space-y-2">
-                                                <div className="flex justify-between items-center">
-                                                    <div className="flex items-center gap-2">
-                                                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Asunto</Label>
-                                                        <Badge variant="outline" className="text-[9px] h-4 py-0 bg-gray-50 dark:bg-gray-800/50 text-gray-400 font-normal border-gray-200 dark:border-gray-700">
-                                                            Soportas: {"{folio}"}, {"{dias}"}
-                                                        </Badge>
-                                                    </div>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-6 px-2 text-[10px] text-purple-600 gap-1 hover:bg-purple-50"
-                                                        onClick={() => handleMejorarTexto('asunto_template')}
-                                                        disabled={!!optimizing}
-                                                    >
-                                                        {optimizing === 'asunto_template' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                                        Mejorar
-                                                    </Button>
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Asunto</Label>
+                                                    <Badge variant="outline" className="text-[9px] h-4 py-0 bg-gray-50 dark:bg-gray-800/50 text-gray-400 font-normal border-gray-200 dark:border-gray-700">
+                                                        Variables: {"{folio}"}, {"{dias}"}
+                                                    </Badge>
                                                 </div>
                                                 <Input
-                                                    className="bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 text-sm h-10 shadow-sm"
+                                                    className="bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 text-sm h-10 shadow-sm focus:border-slate-400 focus:ring-slate-400/20"
                                                     value={selectedRegla.asunto_template}
                                                     onChange={(e) => handleUpdateRegla(selectedRegla.id, "asunto_template", e.target.value)}
                                                 />
                                             </div>
 
-                                            <div className="space-y-6">
-                                                {/* Introducción */}
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between items-center">
-                                                        <div className="flex items-center gap-2">
-                                                            <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Parte 1: Introducción</Label>
-                                                            <Badge variant="outline" className="text-[9px] h-4 py-0 bg-gray-50 dark:bg-gray-800/50 text-gray-400 font-normal border-gray-200 dark:border-gray-700">
-                                                                Soportas: {"{folio}"}, {"{cliente}"}, {"{monto}"}
-                                                            </Badge>
+                                            <div className="space-y-2">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Parte 1: Introducción</Label>
+                                                    <Badge variant="outline" className="text-[9px] h-4 py-0 bg-gray-50 dark:bg-gray-800/50 text-gray-400 font-normal border-gray-200 dark:border-gray-700">
+                                                        Variables: {"{folio}"}, {"{cliente}"}, {"{monto}"}, {"{dias}"}
+                                                    </Badge>
+                                                </div>
+                                                <Textarea
+                                                    className="min-h-[120px] bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 resize-none text-sm leading-relaxed p-3 shadow-sm focus:border-slate-400 focus:ring-slate-400/20"
+                                                    placeholder="Escribe el saludo y el motivo del contacto..."
+                                                    value={selectedRegla.mensaje_intro}
+                                                    onChange={(e) => handleUpdateRegla(selectedRegla.id, "mensaje_intro", e.target.value)}
+                                                />
+                                            </div>
+
+                                            {/* PREVIEW BLOCK (AUTOMATIC CONTENT) */}
+                                            <div className="relative py-4">
+                                                <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                                    <div className="w-full border-t border-dashed border-gray-200 dark:border-gray-800"></div>
+                                                </div>
+                                                <div className="relative flex justify-center">
+                                                    <span className="bg-gray-50 dark:bg-[#0f1117] px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Contenido Automático</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white dark:bg-[#0f172a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm">
+                                                <div className="bg-[#0f172a] p-6 text-left border-b-4 border-blue-500">
+                                                    <p className="text-[10px] text-gray-400 uppercase tracking-[0.15em] font-bold">Estado de Cuenta</p>
+                                                    <p className="text-[9px] text-gray-500 font-medium mt-1 italic">Ecomoving SpA • Cobranzas</p>
+                                                </div>
+                                                <div className="p-6 space-y-6">
+                                                    {/* Bloque Resumen Documento */}
+                                                    <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-lg p-5">
+                                                        <div className="border-l-4 border-blue-500 pl-3 mb-4">
+                                                            <p className="text-[10px] text-slate-800 dark:text-slate-200 font-black uppercase tracking-wider">Resumen del Documento</p>
                                                         </div>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-6 px-2 text-[10px] text-purple-600 gap-1 hover:bg-purple-50"
-                                                            onClick={() => handleMejorarTexto('mensaje_intro')}
-                                                            disabled={!!optimizing}
-                                                        >
-                                                            {optimizing === 'mensaje_intro' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                                            Mejorar con IA
-                                                        </Button>
-                                                    </div>
-                                                    <Textarea
-                                                        className="min-h-[120px] bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 resize-none text-sm leading-relaxed p-3 shadow-sm focus:ring-1 focus:ring-purple-500"
-                                                        placeholder="Escribe el saludo y el motivo del contacto..."
-                                                        value={selectedRegla.mensaje_intro}
-                                                        onChange={(e) => handleUpdateRegla(selectedRegla.id, "mensaje_intro", e.target.value)}
-                                                    />
-                                                </div>
-
-                                                {/* BLOQUE INTERMEDIO (AUTOMÁTICO) */}
-                                                <div className="relative py-4">
-                                                    <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                                        <div className="w-full border-t border-dashed border-gray-200 dark:border-gray-800"></div>
-                                                    </div>
-                                                    <div className="relative flex justify-center">
-                                                        <span className="bg-gray-50 dark:bg-[#0f1117] px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Contenido Automático</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="bg-white dark:bg-[#0f172a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden shadow-sm">
-                                                    <div className="bg-[#0f172a] p-6 text-left border-b-4 border-blue-500">
-                                                        <p className="text-[10px] text-gray-400 uppercase tracking-[0.15em] font-bold">Estado de Cuenta</p>
-                                                        <p className="text-[9px] text-gray-500 font-medium mt-1 italic">Ecomoving SpA • Cobranzas</p>
-                                                    </div>
-                                                    <div className="p-6 space-y-6">
-                                                        {/* Bloque Resumen Documento */}
-                                                        <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-800 rounded-lg p-5">
-                                                            <div className="border-l-4 border-blue-500 pl-3 mb-4">
-                                                                <p className="text-[10px] text-slate-800 dark:text-slate-200 font-black uppercase tracking-wider">Resumen del Documento</p>
+                                                        <div className="text-xs text-gray-600 dark:text-gray-400 space-y-2">
+                                                            <div className="flex justify-between border-b border-gray-100 dark:border-gray-900 pb-2">
+                                                                <span>N° de Factura:</span>
+                                                                <span className="font-bold text-slate-900 dark:text-slate-200">{selectedRegla.id}</span>
                                                             </div>
-                                                            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-2">
-                                                                <div className="flex justify-between border-b border-gray-100 dark:border-gray-900 pb-2">
-                                                                    <span>N° de Factura:</span>
-                                                                    <span className="font-bold text-slate-900 dark:text-slate-200">{selectedRegla.id}</span>
-                                                                </div>
-                                                                <div className="flex justify-between border-b border-gray-100 dark:border-gray-900 pb-2 pt-1">
-                                                                    <span>Emisión:</span>
-                                                                    <span className="font-bold text-slate-900 dark:text-slate-200">DD-MM-AAAA</span>
-                                                                </div>
-                                                                <div className="flex justify-between border-b border-gray-100 dark:border-gray-900 pb-2 pt-1">
-                                                                    <span>Vencimiento:</span>
-                                                                    <span className="font-bold text-red-500">DD-MM-AAAA</span>
-                                                                </div>
-                                                                <div className="flex justify-between pt-3">
-                                                                    <span className="font-medium">Monto Pendiente:</span>
-                                                                    <span className="text-lg font-black text-slate-900 dark:text-white">$ X.XXX.XXX</span>
-                                                                </div>
-                                                                <div className="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-gray-800">
-                                                                    <div className="flex justify-between items-center text-[10px]">
-                                                                        <span className="text-orange-600 dark:text-orange-400 font-bold uppercase">Situación:</span>
-                                                                        <span className="bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-bold italic">Atraso de X días</span>
-                                                                    </div>
+                                                            <div className="flex justify-between border-b border-gray-100 dark:border-gray-900 pb-2 pt-1">
+                                                                <span>Emisión:</span>
+                                                                <span className="font-bold text-slate-900 dark:text-slate-200">DD-MM-AAAA</span>
+                                                            </div>
+                                                            <div className="flex justify-between border-b border-gray-100 dark:border-gray-900 pb-2 pt-1">
+                                                                <span>Vencimiento:</span>
+                                                                <span className="font-bold text-red-500">DD-MM-AAAA</span>
+                                                            </div>
+                                                            <div className="flex justify-between pt-3">
+                                                                <span className="font-medium">Monto Pendiente:</span>
+                                                                <span className="text-lg font-black text-slate-900 dark:text-white">$ X.XXX.XXX</span>
+                                                            </div>
+                                                            <div className="mt-2 pt-2 border-t border-dashed border-gray-200 dark:border-gray-800">
+                                                                <div className="flex justify-between items-center text-[10px]">
+                                                                    <span className="text-orange-600 dark:text-orange-400 font-bold uppercase">Situación:</span>
+                                                                    <span className="bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-bold italic">Atraso de X días</span>
                                                                 </div>
                                                             </div>
                                                         </div>
+                                                    </div>
 
-                                                        {/* Bloque Instrucciones de Pago */}
-                                                        <div className="bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-lg p-5">
-                                                            <div className="border-l-4 border-slate-800 dark:border-slate-400 pl-3 mb-4">
-                                                                <p className="text-[10px] text-slate-800 dark:text-slate-200 font-black uppercase tracking-wider">Instrucciones de Pago</p>
-                                                            </div>
-                                                            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-2">
-                                                                <div className="flex justify-between"><span>Banco:</span> <span className="font-bold text-slate-900 dark:text-slate-200">BCI</span></div>
-                                                                <div className="flex justify-between"><span>Cuenta:</span> <span className="font-bold text-slate-900 dark:text-slate-200">13750780</span></div>
-                                                                <div className="flex justify-between border-t border-dashed border-slate-200 dark:border-slate-800 pt-2"><span>RUT:</span> <span className="font-bold text-slate-900 dark:text-slate-200">76.812.285-K</span></div>
-                                                            </div>
+                                                    {/* Bloque Instrucciones de Pago */}
+                                                    <div className="bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800 rounded-lg p-5">
+                                                        <div className="border-l-4 border-slate-800 dark:border-slate-400 pl-3 mb-4">
+                                                            <p className="text-[10px] text-slate-800 dark:text-slate-200 font-black uppercase tracking-wider">Instrucciones de Pago</p>
+                                                        </div>
+                                                        <div className="text-xs text-gray-600 dark:text-gray-400 space-y-2">
+                                                            <div className="flex justify-between"><span>Banco:</span> <span className="font-bold text-slate-900 dark:text-slate-200">BCI</span></div>
+                                                            <div className="flex justify-between"><span>Cuenta:</span> <span className="font-bold text-slate-900 dark:text-slate-200">13750780</span></div>
+                                                            <div className="flex justify-between border-t border-dashed border-slate-200 dark:border-slate-800 pt-2"><span>RUT:</span> <span className="font-bold text-slate-900 dark:text-slate-200">76.812.285-K</span></div>
                                                         </div>
                                                     </div>
                                                 </div>
+                                            </div>
 
-                                                <div className="relative py-4">
-                                                    <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                                                        <div className="w-full border-t border-dashed border-gray-200 dark:border-gray-800"></div>
-                                                    </div>
-                                                    <div className="relative flex justify-center">
-                                                        <span className="bg-gray-50 dark:bg-[#0f1117] px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Fin de Contenido Automático</span>
-                                                    </div>
+                                            <div className="relative py-4">
+                                                <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                                                    <div className="w-full border-t border-dashed border-gray-200 dark:border-gray-800"></div>
                                                 </div>
+                                                <div className="relative flex justify-center">
+                                                    <span className="bg-gray-50 dark:bg-[#0f1117] px-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">Fin de Contenido Automático</span>
+                                                </div>
+                                            </div>
 
-                                                {/* Cierre */}
-                                                <div className="space-y-2">
-                                                    <div className="flex justify-between items-center">
-                                                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Parte 2: Cierre</Label>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-6 px-2 text-[10px] text-purple-600 gap-1 hover:bg-purple-50"
-                                                            onClick={() => handleMejorarTexto('mensaje_cierre')}
-                                                            disabled={!!optimizing}
-                                                        >
-                                                            {optimizing === 'mensaje_cierre' ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                                                            Mejorar con IA
-                                                        </Button>
-                                                    </div>
-                                                    <Textarea
-                                                        className="min-h-[120px] bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 resize-none text-sm leading-relaxed p-3 shadow-sm focus:ring-1 focus:ring-purple-500"
-                                                        placeholder="Escribe la despedida y llamado a la acción..."
-                                                        value={selectedRegla.mensaje_cierre}
-                                                        onChange={(e) => handleUpdateRegla(selectedRegla.id, "mensaje_cierre", e.target.value)}
-                                                    />
-                                                </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Parte 2: Cierre</Label>
+                                                <Textarea
+                                                    className="min-h-[120px] bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 resize-none text-sm leading-relaxed p-3 shadow-sm focus:border-slate-400 focus:ring-slate-400/20"
+                                                    placeholder="Escribe la despedida y llamado a la acción..."
+                                                    value={selectedRegla.mensaje_cierre}
+                                                    onChange={(e) => handleUpdateRegla(selectedRegla.id, "mensaje_cierre", e.target.value)}
+                                                />
                                             </div>
                                         </div>
                                     </div>
-
                                 </div>
                             </div>
 
                             {/* Footer Actions */}
-                            <div className="p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#0f1117] flex justify-between items-center gap-3 z-10">
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-xs h-9 border-dashed border-gray-300 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800"
-                                        onClick={async () => {
-                                            const email = window.prompt("Ingresa el correo para enviar la prueba:", "mario@ecomoving.cl");
-                                            if (email && email.includes("@")) {
-                                                try {
-                                                    // Assuming the API is deployed at /api/send-test-cobranza
-                                                    // For local dev, we might need full URL, but relative usually works with Vite proxy or Vercel
-                                                    const res = await fetch('/api/send-test-cobranza', {
-                                                        method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
-                                                        body: JSON.stringify({ email, ruleId: selectedRegla.id })
-                                                    });
-                                                    if (res.ok) alert("✅ Correo de prueba enviado a " + email);
-                                                    else alert("❌ Error enviando prueba");
-                                                } catch (e) {
-                                                    alert("Error de conexión");
-                                                }
+                            <div className="p-5 border-t border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-[#0f1117]/50 backdrop-blur-md flex justify-between items-center gap-4">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-10 px-4 text-xs font-bold border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-all active:scale-95"
+                                    onClick={async () => {
+                                        const email = window.prompt("Ingresa el correo para enviar la prueba:", "mario@ecomoving.cl");
+                                        if (email && email.includes("@")) {
+                                            try {
+                                                const res = await fetch('/api/send-test-cobranza', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ email, ruleId: selectedRegla.id })
+                                                });
+                                                if (res.ok) alert("✅ Correo de prueba enviado a " + email);
+                                                else alert("❌ Error enviando prueba");
+                                            } catch (e) {
+                                                alert("Error de conexión");
                                             }
-                                        }}
-                                    >
-                                        <Mail className="h-3.5 w-3.5 mr-2" />
-                                        Enviar Prueba
-                                    </Button>
-                                </div>
+                                        }
+                                    }}
+                                >
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Enviar Prueba
+                                </Button>
 
-                                <div className="flex items-center gap-2">
-                                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                <div className="flex items-center gap-3">
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => onOpenChange(false)}
+                                        className="h-10 px-6 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all active:scale-95"
+                                    >
                                         Cancelar
                                     </Button>
                                     <Button
                                         onClick={() => guardarCambios(selectedRegla)}
                                         disabled={guardando}
-                                        className="bg-purple-600 hover:bg-purple-700 text-white min-w-[140px] shadow-lg shadow-purple-900/20"
+                                        className="h-10 px-8 text-xs font-bold bg-[#0f172a] hover:bg-[#1e293b] text-white border border-slate-800 shadow-xl shadow-slate-900/10 transition-all active:scale-95 disabled:opacity-50"
                                     >
-                                        {guardando ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                                        Guardar Cambios
+                                        {guardando ? (
+                                            <>
+                                                <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                                                Guardando...
+                                            </>
+                                        ) : (
+                                            "Guardar Cambios"
+                                        )}
                                     </Button>
                                 </div>
                             </div>

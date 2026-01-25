@@ -129,7 +129,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           }
         }
 
-        // Gemini Logic Check
+        // Lógica de control de envío
         let enviar = false;
         const ultimoTipoAviso = factura.ultimo_tipo_aviso;
 

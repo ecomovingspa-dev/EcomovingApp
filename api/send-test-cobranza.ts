@@ -52,12 +52,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const introMsg = regla.mensaje_intro.replace('{dias}', String(mockFactura.diasAtraso));
     const cierreMsg = regla.mensaje_cierre.replace('{dias}', String(mockFactura.diasAtraso));
 
-    const bloqueDiasVencidos = mockFactura.diasAtraso > 0 && regla.dias_min > 0 ? `
-        <div style="background-color: #fff3cd; padding: 12px; border-radius: 4px; border-left: 4px solid #ffc107;">
-        <p style="margin: 0 0 4px 0; font-size: 13px; color: #856404; font-weight: 600;">Días de Vencimiento</p>
-        <p style="margin: 0; font-size: 20px; color: #856404; font-weight: 700;">${mockFactura.diasAtraso} días</p>
-        </div>
-    ` : '';
 
     const htmlContent = `
 <!DOCTYPE html>
