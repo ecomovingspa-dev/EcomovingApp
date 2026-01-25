@@ -258,11 +258,15 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                                             Vista Previa del Email
                                         </DialogTitle>
                                     </DialogHeader>
-                                    <div className="flex-1 overflow-y-auto p-4 flex justify-center">
-                                        <div
-                                            className="w-full max-w-[600px] bg-white shadow-lg rounded-xl overflow-hidden"
-                                            dangerouslySetInnerHTML={{ __html: generarHtmlFinal() }}
-                                        />
+                                    <div className="flex-1 bg-gray-100 p-4 md:p-8 overflow-y-auto flex justify-center">
+                                        <div className="w-full max-w-[600px] bg-white shadow-2xl rounded-sm overflow-hidden h-fit">
+                                            <iframe
+                                                title="Email Preview"
+                                                srcDoc={generarHtmlFinal()}
+                                                className="w-full min-h-[800px] border-none"
+                                                style={{ height: 'auto', minHeight: '800px' }}
+                                            />
+                                        </div>
                                     </div>
                                     <div className="p-4 bg-white border-t flex justify-end gap-3">
                                         <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Cerrar</Button>
