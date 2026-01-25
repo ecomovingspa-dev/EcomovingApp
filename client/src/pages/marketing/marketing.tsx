@@ -12,48 +12,53 @@ export default function Marketing() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto p-6">
         {/* Tab Navigation */}
-        <div className="flex gap-1 mb-8 bg-white dark:bg-gray-800 p-1 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 w-fit">
+        <div className="flex w-full max-w-4xl mx-auto gap-2 mb-8 bg-white/50 dark:bg-gray-800/50 p-1.5 rounded-2xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-md">
           <button
             onClick={() => setTabActiva("monitor")}
-            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all ${tabActiva === "monitor"
-              ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none"
-              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "monitor"
+              ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/30 shadow-sm"
+              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent"
               }`}
           >
             <Users className="h-4 w-4" />
-            Monitor de Contactos
+            <span className="hidden sm:inline">Monitor de Contactos</span>
+            <span className="sm:hidden">Monitor</span>
           </button>
 
           <button
             onClick={() => setTabActiva("biblioteca")}
-            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all ${tabActiva === "biblioteca"
-              ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none"
-              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "biblioteca"
+              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/30 shadow-sm"
+              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent"
               }`}
           >
             <Library className="h-4 w-4" />
-            Tabla de Contenidos
+            <span className="hidden sm:inline">Tabla de Contenidos</span>
+            <span className="sm:hidden">Biblioteca</span>
           </button>
+
           <button
             onClick={() => setTabActiva("fabrica")}
-            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all ${tabActiva === "fabrica"
-              ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none"
-              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "fabrica"
+              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/30 shadow-sm"
+              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent"
               }`}
           >
             <Sparkles className="h-4 w-4" />
-            Fábrica de IA
+            <span className="hidden sm:inline">Fábrica de IA</span>
+            <span className="sm:hidden">IA</span>
           </button>
 
           <button
             onClick={() => setTabActiva("brochures")}
-            className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-medium transition-all ${tabActiva === "brochures"
-              ? "bg-indigo-600 text-white shadow-md shadow-indigo-200 dark:shadow-none"
-              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "brochures"
+              ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/30 shadow-sm"
+              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent"
               }`}
           >
             <Layout className="h-4 w-4" />
-            Fábrica de Brochures
+            <span className="hidden sm:inline">Fábrica de Brochures</span>
+            <span className="sm:hidden">Brochures</span>
           </button>
         </div>
 

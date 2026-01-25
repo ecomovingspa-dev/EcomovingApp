@@ -10,7 +10,8 @@ import {
     Loader2,
     AlertCircle,
     Image as ImageIcon,
-    Send
+    Send,
+    Edit3
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
@@ -189,13 +190,13 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                         <table className="w-full text-left border-collapse">
                             <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                                 <tr>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20">#</th>
+                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20 text-center">ID</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/4">Asunto</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Archivo</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-48">URL Supabase</th>
+                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-64">Imagen Supabase (URL)</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contenido</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center w-24">HTML</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-24">Acciones</th>
+                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center w-24">Vista</th>
+                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-36">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
@@ -221,32 +222,33 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                                 <span className="text-xs text-gray-400">-</span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-4">
+                                        <td className="px-4 py-4 min-w-[240px]">
                                             {editandoUrl === msg.id ? (
-                                                <div className="flex items-center gap-1.5">
-                                                    <input
-                                                        type="text"
+                                                <div className="flex flex-col gap-2 animate-in slide-in-from-top-1">
+                                                    <textarea
                                                         value={urlTemporal}
                                                         onChange={(e) => setUrlTemporal(e.target.value)}
-                                                        placeholder="https://..."
-                                                        className="flex-1 px-2 py-1.5 text-sm border border-indigo-300 dark:border-indigo-700 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                        placeholder="Pega la URL pública de Supabase..."
+                                                        className="w-full px-3 py-2 text-[11px] font-mono border border-indigo-300 dark:border-indigo-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 outline-none h-20 resize-none shadow-inner"
                                                         autoFocus
                                                     />
-                                                    <button
-                                                        onClick={() => guardarUrl(msg.id)}
-                                                        className="px-2 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-medium transition-colors"
-                                                    >
-                                                        ✓
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            setEditandoUrl(null);
-                                                            setUrlTemporal("");
-                                                        }}
-                                                        className="px-2 py-1.5 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-sm transition-colors"
-                                                    >
-                                                        ✕
-                                                    </button>
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => guardarUrl(msg.id)}
+                                                            className="flex-1 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-xs font-bold transition-all shadow-sm active:scale-95"
+                                                        >
+                                                            Guardar URL
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                setEditandoUrl(null);
+                                                                setUrlTemporal("");
+                                                            }}
+                                                            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-xs font-bold transition-all"
+                                                        >
+                                                            X
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             ) : (
                                                 <button
@@ -254,13 +256,18 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                                         setEditandoUrl(msg.id);
                                                         setUrlTemporal(msg.imagen_url || "");
                                                     }}
-                                                    className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 underline decoration-dotted transition-colors truncate max-w-full block"
+                                                    className="group relative w-full h-12 flex items-center px-3 bg-gray-50/50 dark:bg-gray-900/40 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl text-left transition-all hover:border-indigo-400/50 hover:bg-indigo-50/30 overflow-hidden"
                                                 >
-                                                    {msg.imagen_url ? (
-                                                        <span className="truncate">{msg.imagen_url}</span>
-                                                    ) : (
-                                                        <span className="text-gray-400">+ Agregar URL</span>
-                                                    )}
+                                                    <div className="truncate w-full pr-6">
+                                                        {msg.imagen_url ? (
+                                                            <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400">{msg.imagen_url}</span>
+                                                        ) : (
+                                                            <span className="text-[10px] text-gray-400 flex items-center gap-2">
+                                                                <Plus className="h-3 w-3" /> Configurar Imagen
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <Edit3 className="absolute right-3 h-3 w-3 text-gray-300 group-hover:text-indigo-400 transition-colors" />
                                                 </button>
                                             )}
                                         </td>
@@ -279,23 +286,24 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                             </button>
                                         </td>
                                         <td className="px-4 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-1">
+                                            <div className="flex items-center justify-end gap-2">
                                                 <Button
                                                     variant="ghost"
-                                                    size="sm"
+                                                    size="icon"
                                                     onClick={() => pruebaEnvio(msg)}
-                                                    className="h-8 w-8 p-0 text-gray-400 hover:text-emerald-500 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                                                    title="Probar HTML Final"
+                                                    className="h-10 w-10 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border border-transparent hover:border-emerald-200 dark:hover:border-emerald-800 transition-all active:scale-90"
+                                                    title="Enviar correo de prueba"
                                                 >
-                                                    <Send className="h-4 w-4" />
+                                                    <Send className="h-5 w-5" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
-                                                    size="sm"
+                                                    size="icon"
                                                     onClick={() => eliminarMensaje(msg.id)}
-                                                    className="h-8 w-8 p-0 text-gray-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                    className="h-10 w-10 text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-200 dark:hover:border-red-800 transition-all active:scale-90"
+                                                    title="Eliminar de la secuencia"
                                                 >
-                                                    <Trash2 className="h-4 w-4" />
+                                                    <Trash2 className="h-5 w-5" />
                                                 </Button>
                                             </div>
                                         </td>
