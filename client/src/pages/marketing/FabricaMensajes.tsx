@@ -27,6 +27,13 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { optimizeImage } from "../../utils/image";
 import { generateMarketingContent, GeneratedContent } from "../../lib/gemini";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "../../components/ui/dialog";
 
 export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [imagenOriginal, setImagenOriginal] = useState<string | null>(null);
@@ -34,6 +41,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [guardando, setGuardando] = useState(false);
     const [mensaje, setMensaje] = useState("");
     const [contenido, setContenido] = useState<GeneratedContent | null>(null);
+    const [previewOpen, setPreviewOpen] = useState(false);
     const [fitMode, setFitMode] = useState<"contain" | "cover">("contain");
     const [textStyles, setTextStyles] = useState({
         fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
@@ -78,6 +86,65 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         } finally {
             setProcesando(false);
         }
+    };
+
+    const generarHtmlFinal = () => {
+        if (!contenido || !imagenOriginal) return "";
+
+        // Simular la URL pública para la vista previa si no se ha subido aún
+        const displayUrl = imagenOriginal;
+
+        return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin: 0; padding: 0; background-color: #f4f7f9; font-family: ${textStyles.fontFamily}; }
+    .wrapper { width: 100%; table-layout: fixed; background-color: #f4f7f9; padding-bottom: 20px; padding-top: 20px; }
+    .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-spacing: 0; color: #1a1a1b; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    .header { padding: 40px 40px 20px; text-align: center; }
+    .content { padding: 0 40px 40px; }
+    .title { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 24px; line-height: 1.2; letter-spacing: -0.02em; text-align: center; }
+    .text-p { font-size: ${textStyles.fontSize}; line-height: 1.7; color: #4b5563; margin-bottom: 30px; white-space: pre-line; text-align: ${textStyles.textAlign}; }
+    .product-image { width: 100%; max-width: 100%; height: auto; border-radius: 12px; display: block; margin: 30px 0; object-fit: ${fitMode}; ${fitMode === 'cover' ? 'height: 400px;' : ''} }
+    .footer { background-color: #ffffff; padding: 30px 40px; text-align: center; border-top: 1px solid #f3f4f6; }
+    .brand { color: #4f46e5; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; display: block; }
+    .tagline { color: #9ca3af; font-size: 13px; margin-bottom: 20px; display: block; }
+    .legal { font-size: 11px; color: #d1d5db; line-height: 1.5; }
+    a { color: #4f46e5; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <table class="main">
+      <tr>
+        <td class="header">
+          <span class="brand">Ecomoving</span>
+          <h1 class="title">${contenido.subject}</h1>
+        </td>
+      </tr>
+      <tr>
+        <td class="content">
+          <p class="text-p">${contenido.part1}</p>
+          <img src="${displayUrl}" class="product-image" alt="Producto Ecomoving" />
+          <p class="text-p">${contenido.part2}</p>
+        </td>
+      </tr>
+      <tr>
+        <td class="footer">
+          <span class="tagline">Regalos Corporativos con Impacto Sustentable</span>
+          <div class="legal">
+            Recibiste este mensaje porque eres parte de nuestra red de contactos preferenciales.<br>
+            <strong>Ecomoving SpA</strong> • Santiago, Chile
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</body>
+</html>`.trim();
     };
 
     const guardarMensaje = async () => {
@@ -125,58 +192,8 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
 
             setMensaje("💾 Guardando en biblioteca...");
 
-            // 5. Reconstruir el HTML con diseño PREMIUM (Adiós efecto Excel)
-            const finalHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { margin: 0; padding: 0; background-color: #f4f7f9; font-family: ${textStyles.fontFamily}; }
-    .wrapper { width: 100%; table-layout: fixed; background-color: #f4f7f9; padding-bottom: 40px; padding-top: 40px; }
-    .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-spacing: 0; color: #1a1a1b; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-    .header { padding: 40px 40px 20px; text-align: center; }
-    .content { padding: 0 40px 40px; }
-    .title { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 24px; line-height: 1.2; letter-spacing: -0.02em; text-align: center; }
-    .text-p { font-size: ${textStyles.fontSize}; line-height: 1.7; color: #4b5563; margin-bottom: 30px; white-space: pre-line; text-align: ${textStyles.textAlign}; }
-    .product-image { width: 100%; max-width: 100%; height: auto; border-radius: 12px; display: block; margin: 30px 0; object-fit: ${fitMode}; ${fitMode === 'cover' ? 'height: 400px;' : ''} }
-    .footer { background-color: #ffffff; padding: 30px 40px; text-align: center; border-top: 1px solid #f3f4f6; }
-    .brand { color: #4f46e5; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; display: block; }
-    .tagline { color: #9ca3af; font-size: 13px; margin-bottom: 20px; display: block; }
-    .legal { font-size: 11px; color: #d1d5db; line-height: 1.5; }
-    a { color: #4f46e5; text-decoration: none; font-weight: 600; }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <table class="main">
-      <tr>
-        <td class="header">
-          <span class="brand">Ecomoving</span>
-          <h1 class="title">${contenido.subject}</h1>
-        </td>
-      </tr>
-      <tr>
-        <td class="content">
-          <p class="text-p">${contenido.part1}</p>
-          <img src="${publicUrl}" class="product-image" alt="Producto Ecomoving" />
-          <p class="text-p">${contenido.part2}</p>
-        </td>
-      </tr>
-      <tr>
-        <td class="footer">
-          <span class="tagline">Regalos Corporativos con Impacto Sustentable</span>
-          <div class="legal">
-            Recibiste este mensaje porque eres parte de nuestra red de contactos preferenciales.<br>
-            <strong>Ecomoving SpA</strong> • Santiago, Chile
-          </div>
-        </td>
-      </tr>
-    </table>
-  </div>
-</body>
-</html>`.trim();
+            // 5. Reconstruir el HTML real con la URL pública
+            const finalHtml = generarHtmlFinal().replace(imagenOriginal, publicUrl);
 
             // 6. Insertar en la tabla con la URL Pública e ID secuencial
             const { error } = await supabase
@@ -223,14 +240,46 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
 
                 <div className="flex gap-3">
                     {contenido && (
-                        <Button
-                            onClick={guardarMensaje}
-                            disabled={guardando}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
-                        >
-                            {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            Guardar en Biblioteca
-                        </Button>
+                        <>
+                            <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+                                <DialogTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className="text-gray-600 border-gray-200"
+                                    >
+                                        <Eye className="h-4 w-4 mr-2" />
+                                        Previsualizar
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-3xl h-[85vh] p-0 overflow-hidden bg-gray-50 flex flex-col">
+                                    <DialogHeader className="p-4 border-b bg-white">
+                                        <DialogTitle className="flex items-center gap-2">
+                                            <Eye className="h-5 w-5 text-indigo-600" />
+                                            Vista Previa del Email
+                                        </DialogTitle>
+                                    </DialogHeader>
+                                    <div className="flex-1 overflow-y-auto p-4 flex justify-center">
+                                        <div
+                                            className="w-full max-w-[600px] bg-white shadow-lg rounded-xl overflow-hidden"
+                                            dangerouslySetInnerHTML={{ __html: generarHtmlFinal() }}
+                                        />
+                                    </div>
+                                    <div className="p-4 bg-white border-t flex justify-end gap-3">
+                                        <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Cerrar</Button>
+                                        <Button onClick={() => { setPreviewOpen(false); guardarMensaje(); }}>Guardar Ahora</Button>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+
+                            <Button
+                                onClick={guardarMensaje}
+                                disabled={guardando}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
+                            >
+                                {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                Guardar en Biblioteca
+                            </Button>
+                        </>
                     )}
                     <Button
                         variant="outline"
