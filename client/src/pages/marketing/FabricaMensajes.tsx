@@ -40,6 +40,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [images, setImages] = useState<{ name: string; url: string }[]>([]);
     const [loadingStorage, setLoadingStorage] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
+    const [activeTab, setActiveTab] = useState<"images" | "templates">("images");
     const [activeImage, setActiveImage] = useState<{ name: string; url: string } | null>(null);
 
     // States for Content Generation
@@ -217,76 +218,103 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         <div className="max-w-[95%] mx-auto space-y-6">
             <div className="flex flex-col lg:flex-row gap-6 h-[85vh]">
 
-                {/* EXPLORADOR DE MEDIOS (IZQUIERDA) */}
-                <div className="w-full lg:w-72 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col shadow-sm">
-                    <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <ImageIcon className="h-4 w-4 text-indigo-500" />
-                                Galeria Ecomoving
+                {/* EXPLORADOR DE MEDIOS (IZQUIERDA) - Estilo Brochures */}
+                <div className="w-full lg:w-80 bg-[#1e293b]/50 backdrop-blur-xl rounded-2xl border border-white/5 flex flex-col shadow-2xl overflow-hidden">
+
+                    {/* Tabs Estilo Brochures */}
+                    <div className="flex border-b border-white/5 p-1 bg-black/20">
+                        <button
+                            onClick={() => setActiveTab("images")}
+                            className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'images' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                            IMÁGENES
+                        </button>
+                        <button
+                            onClick={() => setActiveTab("templates")}
+                            className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all ${activeTab === 'templates' ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' : 'text-gray-500 hover:text-gray-300'}`}
+                        >
+                            PLANTILLAS
+                        </button>
+                    </div>
+
+                    <div className="p-4 flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                <ImageIcon className="h-3 w-3" />
+                                Media Explorer
                             </h3>
-                            <Button variant="ghost" size="icon" onClick={fetchStorageImages} className="h-8 w-8">
-                                <RefreshCw className={`h-3.3 w-3.5 ${loadingStorage ? 'animate-spin' : ''}`} />
-                            </Button>
-                        </div>
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                            <Input
-                                placeholder="Buscar imagen..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 h-9 text-xs bg-gray-50/50"
+                            <RefreshCw
+                                onClick={fetchStorageImages}
+                                className={`h-3 w-3 text-gray-500 cursor-pointer hover:text-white transition-colors ${loadingStorage ? 'animate-spin' : ''}`}
                             />
                         </div>
+
+                        <div className="relative group">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-500 group-focus-within:text-indigo-400 transition-colors" />
+                            <Input
+                                placeholder="Buscar..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9 h-10 text-xs bg-black/20 border-white/5 focus:border-indigo-500/50 focus:ring-indigo-500/20 text-white placeholder:text-gray-600 rounded-xl"
+                            />
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            onClick={() => window.open(`https://supabase.com/dashboard/project/${import.meta.env.VITE_SUPABASE_URL.split('//')[1].split('.')[0]}/storage/buckets/imagenes-marketing`, '_blank')}
+                            className="w-full h-10 border-dashed border-white/10 bg-white/5 hover:bg-white/10 text-indigo-400 text-[10px] font-bold gap-2 rounded-xl"
+                        >
+                            + CARGAR IMAGEN
+                        </Button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 lg:grid-cols-1 gap-3 scrollbar-thin">
-                        {loadingStorage ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                                <Loader2 className="h-6 w-6 animate-spin mb-2" />
-                                <span className="text-xs">Cargando...</span>
-                            </div>
-                        ) : filteredImages.length > 0 ? (
-                            filteredImages.map((img) => (
-                                <div
-                                    key={img.name}
-                                    onClick={() => {
-                                        setActiveImage(img);
-                                        setContenido(null);
-                                    }}
-                                    className={`group relative aspect-square lg:aspect-video rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${activeImage?.name === img.name
-                                            ? 'border-indigo-500 ring-2 ring-indigo-500/20'
-                                            : 'border-transparent hover:border-gray-200'
-                                        }`}
-                                >
-                                    <img src={img.url} className="w-full h-full object-cover" alt={img.name} />
-                                    <div className="absolute inset-x-0 bottom-0 bg-black/60 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <p className="text-[10px] text-white truncate font-medium">{img.name}</p>
+                    <div className="flex-1 overflow-y-auto p-4 pt-0 scrollbar-thin">
+                        {activeTab === 'images' ? (
+                            <div className="grid grid-cols-2 gap-3">
+                                {loadingStorage ? (
+                                    <div className="col-span-2 flex flex-col items-center justify-center py-20 text-gray-600">
+                                        <Loader2 className="h-6 w-6 animate-spin mb-2" />
+                                        <span className="text-[10px] uppercase font-bold tracking-tighter">Sincronizando...</span>
                                     </div>
-                                    {activeImage?.name === img.name && (
-                                        <div className="absolute top-2 right-2 bg-indigo-500 text-white p-1 rounded-full shadow-lg">
-                                            <CheckCircle2 className="h-3 w-3" />
+                                ) : filteredImages.length > 0 ? (
+                                    filteredImages.map((img) => (
+                                        <div
+                                            key={img.name}
+                                            onClick={() => {
+                                                setActiveImage(img);
+                                                setContenido(null);
+                                            }}
+                                            className={`group relative aspect-square rounded-xl overflow-hidden border-2 cursor-pointer transition-all duration-300 ${activeImage?.name === img.name
+                                                    ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)] scale-95'
+                                                    : 'border-transparent hover:border-white/10'
+                                                }`}
+                                        >
+                                            <img src={img.url} className="w-full h-full object-cover" alt={img.name} />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                                                <p className="text-[8px] text-white truncate font-bold uppercase tracking-tighter">{img.name}</p>
+                                            </div>
+                                            {activeImage?.name === img.name && (
+                                                <div className="absolute inset-0 bg-indigo-500/10 flex items-center justify-center">
+                                                    <div className="bg-indigo-500 text-white p-1 rounded-full shadow-xl scale-110">
+                                                        <CheckCircle2 className="h-3 w-3" />
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-                            ))
+                                    ))
+                                ) : (
+                                    <div className="col-span-2 text-center py-12 text-gray-600">
+                                        <p className="text-xs">No hay imágenes</p>
+                                    </div>
+                                )}
+                            </div>
                         ) : (
-                            <div className="text-center py-12 text-gray-400">
-                                <p className="text-xs">No hay imágenes</p>
+                            <div className="flex flex-col items-center justify-center py-20 text-gray-600 text-center gap-2">
+                                <Sparkles className="h-8 w-8 opacity-20" />
+                                <span className="text-[10px] uppercase font-bold tracking-widest opacity-50">Explorador de Plantillas</span>
+                                <p className="text-[8px] text-gray-500 px-4 italic">Las plantillas guardadas aparecerán aquí próximamente.</p>
                             </div>
                         )}
-                    </div>
-
-                    <div className="p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50">
-                        <a
-                            href={`https://supabase.com/dashboard/project/${import.meta.env.VITE_SUPABASE_URL.split('//')[1].split('.')[0]}/storage/buckets/imagenes-marketing`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="w-full flex items-center justify-center gap-2 text-[11px] font-bold text-indigo-600 py-2 border border-dashed border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors"
-                        >
-                            <ExternalLink className="h-3 w-3" />
-                            Gestionar en Supabase
-                        </a>
                     </div>
                 </div>
 
@@ -474,7 +502,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
 
                                                 <div className="h-16 bg-gray-100/50 rounded-lg flex items-center justify-center text-gray-400 text-[9px] border border-dashed border-gray-200">
                                                     <ImageIcon className="h-4 w-4 mr-2 opacity-30" />
-                                                    <span>LA IMAGEN [{activeImage.name}]</span>
+                                                    <span>LA IMAGEN [{activeImage?.name}]</span>
                                                 </div>
 
                                                 <textarea
