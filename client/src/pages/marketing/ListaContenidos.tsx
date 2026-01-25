@@ -193,7 +193,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20 text-center">ID</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/4">Asunto</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Archivo</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-64">Imagen Supabase (URL)</th>
+                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-52">Imagen Supabase (URL)</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contenido</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center w-24">Vista</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-36">Acciones</th>
@@ -222,7 +222,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                                 <span className="text-xs text-gray-400">-</span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-4 min-w-[240px]">
+                                        <td className="px-4 py-4 min-w-[192px]">
                                             {editandoUrl === msg.id ? (
                                                 <div className="flex flex-col gap-2 animate-in slide-in-from-top-1">
                                                     <textarea
