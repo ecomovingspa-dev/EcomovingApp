@@ -14,7 +14,10 @@ import {
     Type,
     Maximize,
     Minimize,
-    Type as TypeIcon
+    Type as TypeIcon,
+    Download,
+    ExternalLink,
+    Database
 } from "lucide-react";
 import {
     Select,
@@ -238,6 +241,55 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         }
     };
 
+    const descargarImagen = () => {
+        if (!imagenOriginal) return;
+        const link = document.createElement("a");
+        link.href = imagenOriginal;
+        link.download = `imagen_producto_${Date.now()}.jpg`;
+        link.click();
+    };
+
+    const guardarSoloTexto = async () => {
+        if (!contenido) return;
+        try {
+            setGuardando(true);
+            setMensaje("💾 Guardando solo texto en la tabla...");
+
+            const { data: lastMsg } = await supabase
+                .from("marketing")
+                .select("nombre_envio")
+                .order("nombre_envio", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            const nextNumber = (lastMsg?.nombre_envio || 0) + 1;
+            const finalHtml = generarHtmlFinal().replace(imagenOriginal || "", "URL_MANUAL_AQUI");
+
+            const { error } = await supabase
+                .from("marketing")
+                .insert([{
+                    nombre_envio: nextNumber,
+                    asunto: contenido.subject,
+                    cuerpo_html: finalHtml,
+                    cuerpo: `${contenido.part1}\n\n${contenido.part2}`,
+                    estado: "en revisión",
+                    activo: true
+                }]);
+
+            if (error) throw error;
+
+            setMensaje("✅ Texto guardado. Deberás subir la imagen manualmente a Supabase.");
+            setTimeout(() => {
+                setMensaje("");
+                onSave();
+            }, 3000);
+        } catch (err: any) {
+            setMensaje("❌ Error al guardar texto: " + err.message);
+        } finally {
+            setGuardando(false);
+        }
+    };
+
     return (
         <div className="max-w-[95%] mx-auto space-y-8">
             {/* Header Acción */}
@@ -293,14 +345,41 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                                 </DialogContent>
                             </Dialog>
 
-                            <Button
-                                onClick={guardarMensaje}
-                                disabled={guardando}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
-                            >
-                                {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                Guardar en Biblioteca
-                            </Button>
+                            <div className="flex flex-col gap-1">
+                                <Button
+                                    onClick={guardarMensaje}
+                                    disabled={guardando}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 h-10"
+                                >
+                                    {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                    Guardar Completo
+                                </Button>
+                                <button
+                                    onClick={guardarSoloTexto}
+                                    className="text-[10px] text-emerald-600 hover:underline flex items-center gap-1 justify-center"
+                                >
+                                    <Database className="h-3 w-3" /> Solo Guardar Texto
+                                </button>
+                            </div>
+
+                            <div className="flex flex-col gap-1">
+                                <Button
+                                    onClick={descargarImagen}
+                                    variant="outline"
+                                    className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 flex items-center gap-2 h-10"
+                                >
+                                    <Download className="h-4 w-4" />
+                                    Descargar Imagen
+                                </Button>
+                                <a
+                                    href={`https://supabase.com/dashboard/project/${import.meta.env.VITE_SUPABASE_URL.split('//')[1].split('.')[0]}/storage/buckets/imagenes-marketing`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[10px] text-amber-600 hover:underline flex items-center gap-1 justify-center whitespace-nowrap"
+                                >
+                                    <ExternalLink className="h-3 w-3" /> Subir a Supabase
+                                </a>
+                            </div>
                         </>
                     )}
                     <Button
