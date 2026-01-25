@@ -56,6 +56,7 @@ export default function BrochureView({
     const brochureRef = useRef<HTMLDivElement>(null);
     const [injectedPages, setInjectedPages] = useState<any[]>([]);
     const [loadingTemplates, setLoadingTemplates] = useState(false);
+    const [activeItemId, setActiveItemId] = useState<string | number | null>(null);
 
     const items = cotizacion.items || [];
 
@@ -92,7 +93,10 @@ export default function BrochureView({
                 const { data } = await supabase.storage.from('imagenes-marketing').download(`templates/${f.name}`);
                 if (data) {
                     const text = await data.text();
-                    return JSON.parse(text);
+                    const templateData = JSON.parse(text);
+                    // Ensure unique IDs for items in injected pages to avoid collisions with cotizacion items
+                    templateData.items = templateData.items.map((it: any) => ({ ...it, id: it.id || Math.random().toString(36).substr(2, 9), isInjected: true }));
+                    return templateData;
                 }
                 return null;
             }));
@@ -129,12 +133,66 @@ export default function BrochureView({
     };
 
     const handleUpdateItem = (id: string | number, updates: any) => {
-        if (!onUpdateItems) return;
-        const newItems = items.map(item =>
-            item.id.toString() === id.toString() ? { ...item, ...updates } : item
-        );
-        onUpdateItems(newItems);
+        // 1. Try updating standard quotation items
+        const itemInQuotation = items.find(it => it.id.toString() === id.toString());
+        if (itemInQuotation && onUpdateItems) {
+            const newItems = items.map(item =>
+                item.id.toString() === id.toString() ? { ...item, ...updates } : item
+            );
+            onUpdateItems(newItems);
+            return;
+        }
+
+        // 2. Try updating items in injected pages (local state)
+        let foundInInjected = false;
+        const newInjectedPages = injectedPages.map(page => {
+            if (page.items.find((it: any) => it.id.toString() === id.toString())) {
+                foundInInjected = true;
+                return {
+                    ...page,
+                    items: page.items.map((it: any) =>
+                        it.id.toString() === id.toString() ? { ...it, ...updates } : it
+                    )
+                };
+            }
+            return page;
+        });
+
+        if (foundInInjected) {
+            setInjectedPages(newInjectedPages);
+        }
     };
+
+    // Keyboard movement listener
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!activeItemId) return;
+
+            // Don't move if typing in an input
+            if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+            const step = e.shiftKey ? 10 : 1;
+            const item = [...items, ...injectedPages.flatMap(p => p.items)].find(it => it.id.toString() === activeItemId.toString());
+
+            if (!item) return;
+
+            if (e.key === 'ArrowUp') { e.preventDefault(); handleUpdateItem(activeItemId, { y: (item.y || 0) - step }); }
+            if (e.key === 'ArrowDown') { e.preventDefault(); handleUpdateItem(activeItemId, { y: (item.y || 0) + step }); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); handleUpdateItem(activeItemId, { x: (item.x || 0) - step }); }
+            if (e.key === 'ArrowRight') { e.preventDefault(); handleUpdateItem(activeItemId, { x: (item.x || 0) + step }); }
+            if (e.key === 'Delete') {
+                if (window.confirm('¿Eliminar este elemento del diseño?')) {
+                    // Filter out from whichever list it belongs to
+                    if (onUpdateItems) onUpdateItems(items.filter(it => it.id !== activeItemId));
+                    setInjectedPages(injectedPages.map(p => ({ ...p, items: p.items.filter((it: any) => it.id !== activeItemId) })));
+                    setActiveItemId(null);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [activeItemId, items, injectedPages]);
 
     return (
         <div className="min-h-screen bg-neutral-900 text-white p-8 font-sans overflow-y-auto">
@@ -214,24 +272,47 @@ export default function BrochureView({
                                 ) : (
                                     <div className="w-full h-full relative">
                                         {template.items.map((item: any, iIdx: number) => (
-                                            <div
-                                                key={iIdx}
-                                                style={{
-                                                    position: 'absolute',
-                                                    left: item.x,
-                                                    top: item.y,
-                                                    width: item.w,
-                                                    height: item.h,
-                                                    zIndex: item.zIndex || 0
-                                                }}
+                                            <Rnd
+                                                key={item.id || iIdx}
+                                                size={{ width: item.w || 200, height: item.h || 200 }}
+                                                position={{ x: item.x || 50, y: item.y || 50 }}
+                                                style={{ zIndex: item.zIndex || 0 }}
+                                                bounds="parent"
+                                                onDragStop={(e, d) => handleUpdateItem(item.id, { x: d.x, y: d.y })}
+                                                onResizeStop={(e, dir, ref, delta, pos) => handleUpdateItem(item.id, { w: ref.offsetWidth, h: ref.offsetHeight, ...pos })}
+                                                onDragStart={() => setActiveItemId(item.id)}
+                                                className="group"
                                             >
-                                                <img
-                                                    src={item.imagen}
-                                                    className={`w-full h-full ${item.fitMode === 'contain' ? 'object-contain p-4' : 'object-cover'}`}
-                                                    style={{ transform: `scale(${item.scale || 1}) translate(${item.shiftX || 0}px, ${item.shiftY || 0}px)` }}
-                                                    alt=""
-                                                />
-                                            </div>
+                                                <div
+                                                    onClick={(e) => { e.stopPropagation(); setActiveItemId(item.id); }}
+                                                    className={`w-full h-full border-2 ${activeItemId?.toString() === item.id.toString() ? 'border-amber-500 shadow-lg' : 'border-transparent'} hover:border-amber-400 group-hover:shadow-md transition-all cursor-move relative overflow-hidden bg-white`}
+                                                >
+                                                    <img
+                                                        src={item.imagen}
+                                                        className={`w-full h-full pointer-events-none transition-transform ${item.fitMode === 'contain' ? 'object-contain p-4' : 'object-cover'}`}
+                                                        style={{ transform: `scale(${item.scale || 1}) translate(${item.shiftX || 0}px, ${item.shiftY || 0}px)` }}
+                                                        alt=""
+                                                    />
+
+                                                    {/* Injected controls for z-index too */}
+                                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-20 no-print">
+                                                        <Button
+                                                            variant="secondary" size="icon" className="h-7 w-7 bg-white/90 shadow-sm"
+                                                            onClick={(e) => { e.stopPropagation(); handleUpdateItem(item.id, { zIndex: (item.zIndex || 0) + 10 }); }}
+                                                            title="Traer al frente"
+                                                        >
+                                                            <ChevronUp className="h-3.5 w-3.5 text-indigo-600" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="secondary" size="icon" className="h-7 w-7 bg-white/90 shadow-sm"
+                                                            onClick={(e) => { e.stopPropagation(); handleUpdateItem(item.id, { zIndex: Math.max(0, (item.zIndex || 0) - 10) }); }}
+                                                            title="Enviar al fondo"
+                                                        >
+                                                            <ChevronDown className="h-3.5 w-3.5 text-indigo-600" />
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </Rnd>
                                         ))}
                                     </div>
                                 )}
@@ -330,6 +411,7 @@ export default function BrochureView({
                                                 position={{ x: item.x || 50, y: item.y || 50 }}
                                                 style={{ zIndex: item.zIndex || 0 }}
                                                 bounds="parent"
+                                                onDragStart={() => setActiveItemId(item.id)}
                                                 onDragStop={(e, d) => handleUpdateItem(item.id, { x: d.x, y: d.y })}
                                                 onResizeStop={(e, direction, ref, delta, position) => {
                                                     handleUpdateItem(item.id, {
@@ -340,7 +422,10 @@ export default function BrochureView({
                                                 }}
                                                 className="group"
                                             >
-                                                <div className={`w-full h-full border-2 border-transparent hover:border-amber-400 group-hover:shadow-xl transition-all cursor-move relative overflow-hidden ${item.fitMode === 'contain' ? 'bg-white' : ''}`}>
+                                                <div
+                                                    onClick={(e) => { e.stopPropagation(); setActiveItemId(item.id); }}
+                                                    className={`w-full h-full border-2 ${activeItemId?.toString() === item.id.toString() ? 'border-amber-500 shadow-xl' : 'border-transparent'} hover:border-amber-400 group-hover:shadow-md transition-all cursor-move relative overflow-hidden ${item.fitMode === 'contain' ? 'bg-white' : ''}`}
+                                                >
                                                     {item.type === 'text' ? (
                                                         <div className="w-full h-full p-4 flex items-center justify-center bg-white/80 backdrop-blur-sm">
                                                             <p className="text-sm font-bold text-neutral-800 text-center uppercase tracking-tight">
