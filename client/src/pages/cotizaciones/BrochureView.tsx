@@ -7,9 +7,10 @@ import { useNavigate } from "react-router-dom";
 interface BrochureViewProps {
     cotizacion: Partial<Cotizacion>;
     onBack?: () => void;
+    layout?: "grid" | "collage";
 }
 
-export default function BrochureView({ cotizacion, onBack }: BrochureViewProps) {
+export default function BrochureView({ cotizacion, onBack, layout = "grid" }: BrochureViewProps) {
     const navigate = useNavigate();
     const brochureRef = useRef<HTMLDivElement>(null);
 
@@ -81,37 +82,94 @@ export default function BrochureView({ cotizacion, onBack }: BrochureViewProps) 
                         </div>
                     </header>
 
-                    {/* Grid Layout (Premium Canva Style) */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-8 flex-1">
-                        {items.map((item, idx) => (
-                            <div key={item.id || idx} className="group flex flex-col h-full bg-neutral-50 p-4 rounded-2xl transition-all hover:bg-white hover:shadow-xl hover:-translate-y-1">
-                                <div className="aspect-[4/3] bg-white rounded-xl overflow-hidden mb-6 shadow-sm">
-                                    {item.imagen ? (
-                                        <img
-                                            src={item.imagen}
-                                            alt={item.descripcion}
-                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center bg-neutral-100 text-neutral-300 italic text-sm">
-                                            Muestra de Producto
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="mt-auto">
-                                    <h3 className="font-bold text-neutral-700 line-clamp-2 text-base mb-2 leading-tight group-hover:text-[#2d4a22] transition-colors">
-                                        {item.descripcion}
-                                    </h3>
-                                    <div className="flex justify-between items-center">
-                                        <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Valor Ref.</span>
-                                        <div className="text-[#2d4a22] font-black text-xl">
-                                            $ {Math.round(item.cantidad > 0 ? (item.subcostos?.reduce((a, b) => a + b.valor, 0) || 0) / (1 - (item.margen || 18) / 100) : 0).toLocaleString()}
+                    {/* Grid vs Collage Layout */}
+                    {layout === "grid" ? (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-8 flex-1">
+                            {items.map((item, idx) => (
+                                <div key={item.id || idx} className="group flex flex-col h-full bg-neutral-50 p-4 rounded-2xl transition-all hover:bg-white hover:shadow-xl hover:-translate-y-1">
+                                    <div className="aspect-[4/3] bg-white rounded-xl overflow-hidden mb-6 shadow-sm">
+                                        {item.imagen ? (
+                                            <img
+                                                src={item.imagen}
+                                                alt={item.descripcion}
+                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-neutral-100 text-neutral-300 italic text-sm">
+                                                Muestra de Producto
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="mt-auto">
+                                        <h3 className="font-bold text-neutral-700 line-clamp-2 text-base mb-2 leading-tight group-hover:text-[#2d4a22] transition-colors">
+                                            {item.descripcion}
+                                        </h3>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest">Valor Ref.</span>
+                                            <div className="text-[#2d4a22] font-black text-xl">
+                                                $ {Math.round(item.cantidad > 0 ? (item.subcostos?.reduce((a, b) => a + b.valor, 0) || 0) / (1 - (item.margen || 18) / 100) : 0).toLocaleString()}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-6 grid-rows-4 gap-4 flex-1 min-h-[600px] artistic-collage">
+                            {items.slice(0, 6).map((item, idx) => {
+                                // Definimos spans específicos para crear el efecto collage
+                                const spans = [
+                                    "col-span-4 row-span-3", // Principal
+                                    "col-span-2 row-span-2", // Arriba derecha
+                                    "col-span-2 row-span-1", // Abajo derecha
+                                    "col-span-2 row-span-1", // Pie p1
+                                    "col-span-2 row-span-1", // Pie p2
+                                    "col-span-2 row-span-1",
+                                ];
+
+                                return (
+                                    <div
+                                        key={item.id || idx}
+                                        className={`group relative overflow-hidden rounded-[2.5rem] bg-neutral-100 shadow-md hover:shadow-2xl transition-all duration-500 ${spans[idx] || 'col-span-2 row-span-1'} ${idx % 2 === 0 ? 'hover:rotate-1' : 'hover:-rotate-1'}`}
+                                    >
+                                        {item.imagen ? (
+                                            <img
+                                                src={item.imagen}
+                                                alt={item.descripcion}
+                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s] ease-out"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center bg-neutral-200 text-neutral-400 italic text-xs">
+                                                Eco-Product
+                                            </div>
+                                        )}
+
+                                        {/* Collage Info Overlay - Magazine Style */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-[#2d4a22]/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 p-8 flex flex-col justify-end">
+                                            <div className="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                                                <p className="text-[#b3d4a8] font-black text-[10px] uppercase tracking-[0.3em] mb-2">Producto Seleccionado</p>
+                                                <p className="text-white font-black text-2xl mb-1 leading-tight tracking-tighter">{item.descripcion}</p>
+                                                <div className="w-12 h-1 bg-white/30 rounded-full mt-4"></div>
+                                            </div>
+                                        </div>
+
+                                        {/* Artistic Badge for large item */}
+                                        {idx === 0 && (
+                                            <div className="absolute top-10 right-10 bg-[#b3d4a8] text-[#2d4a22] px-8 py-5 rounded-[2rem] shadow-2xl transform -rotate-2 z-10 border-4 border-white/20 backdrop-blur-sm">
+                                                <div className="text-[10px] font-black uppercase tracking-[0.4em] mb-1 opacity-70">Concepto</div>
+                                                <div className="text-3xl font-black tracking-tighter leading-none">PREMIUM</div>
+                                            </div>
+                                        )}
+
+                                        {/* Floating index number */}
+                                        <div className="absolute top-6 left-6 w-10 h-10 rounded-full bg-white/10 backdrop-blur border border-white/20 flex items-center justify-center text-white text-xs font-black">
+                                            0{idx + 1}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     <footer className="mt-20 pt-10 border-t border-neutral-100 flex justify-between items-end text-[10px] text-neutral-400 font-bold uppercase tracking-[0.2em] relative z-10">
                         <div>

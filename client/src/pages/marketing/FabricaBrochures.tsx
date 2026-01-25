@@ -28,6 +28,7 @@ export default function FabricaBrochures() {
     const [activeBucket, setActiveBucket] = useState("imagenes-marketing");
     const [loading, setLoading] = useState(false);
     const [previewMode, setPreviewMode] = useState(false);
+    const [layoutMode, setLayoutMode] = useState<"grid" | "collage">("grid");
     const [searchTerm, setSearchTerm] = useState("");
 
     // Brochure State
@@ -126,7 +127,13 @@ export default function FabricaBrochures() {
     };
 
     if (previewMode) {
-        return <BrochureView cotizacion={brochureData as any} onBack={() => setPreviewMode(false)} />;
+        return (
+            <BrochureView
+                cotizacion={brochureData as any}
+                onBack={() => setPreviewMode(false)}
+                layout={layoutMode}
+            />
+        );
     }
 
     return (
@@ -209,7 +216,23 @@ export default function FabricaBrochures() {
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Fábrica de Brochures</h2>
-                            <p className="text-sm text-gray-500">Arraste imágenes para diseñar su presentación profesional.</p>
+                            <div className="flex items-center gap-4 mt-1">
+                                <p className="text-sm text-gray-500">Diseña presentaciones profesionales.</p>
+                                <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700">
+                                    <button
+                                        onClick={() => setLayoutMode("grid")}
+                                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${layoutMode === "grid" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400 hover:text-gray-600"}`}
+                                    >
+                                        GRILLA
+                                    </button>
+                                    <button
+                                        onClick={() => setLayoutMode("collage")}
+                                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${layoutMode === "collage" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400 hover:text-gray-600"}`}
+                                    >
+                                        COLLAGE
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
