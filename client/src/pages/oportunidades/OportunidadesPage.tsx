@@ -685,11 +685,11 @@ export default function OportunidadesPage() {
                         title="Seleccionar todo"
                       />
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[200px]">
-                      Organismo
-                    </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">
                       ID
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[200px]">
+                      Organismo
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[250px]">
                       Nombre
@@ -730,15 +730,6 @@ export default function OportunidadesPage() {
                             className="cursor-pointer"
                           />
                         </td>
-                        <td
-                          className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400"
-                            : "text-gray-900 dark:text-gray-100"
-                            } whitespace-normal break-words leading-tight max-w-[400px]`}
-                          title={op.organismo || ""}
-                        >
-                          {op.organismo || "-"}
-                        </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div
                             className={`font-medium text-sm truncate max-w-[150px] ${estaDescartada(op.estado)
@@ -749,6 +740,15 @@ export default function OportunidadesPage() {
                           >
                             {op.id}
                           </div>
+                        </td>
+                        <td
+                          className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado)
+                            ? "text-gray-500 dark:text-gray-400"
+                            : "text-gray-900 dark:text-gray-100"
+                            } whitespace-normal break-words leading-tight max-w-[400px]`}
+                          title={op.organismo || ""}
+                        >
+                          {op.organismo || "-"}
                         </td>
                         <td
                           className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado)
