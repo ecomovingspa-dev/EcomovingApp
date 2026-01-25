@@ -220,15 +220,19 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                 onSave();
             }, 2000);
         } catch (err: any) {
-            console.error(err);
-            setMensaje("❌ Error: " + err.message);
+            console.error("ERROR DETALLADO:", err);
+            // Si el error es de tipo RLS, intentar dar más contexto
+            const extra = err.code === '42501' || err.message?.includes('security policy')
+                ? `\n\n(Supabase indica un bloqueo de seguridad en la tabla 'marketing'. Servidor: ${import.meta.env.VITE_SUPABASE_URL})`
+                : "";
+            setMensaje("❌ Error: " + err.message + extra);
         } finally {
             setGuardando(false);
         }
     };
 
     return (
-        <div className="max-w-6xl mx-auto space-y-8">
+        <div className="max-w-7xl mx-auto space-y-8">
             {/* Header Acción */}
             <div className="flex items-center justify-between bg-indigo-900/10 p-6 rounded-2xl border border-indigo-200 dark:border-indigo-900/50 shadow-sm">
                 <div className="flex items-center gap-4">
@@ -272,7 +276,12 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                                         </div>
                                     </div>
                                     <div className="p-4 bg-white border-t flex justify-end gap-3">
-                                        <Button onClick={() => setPreviewOpen(false)}>Cerrar Vista Previa</Button>
+                                        <Button
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                            onClick={() => setPreviewOpen(false)}
+                                        >
+                                            Volver al Editor
+                                        </Button>
                                     </div>
                                 </DialogContent>
                             </Dialog>
