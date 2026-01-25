@@ -269,8 +269,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                                         </div>
                                     </div>
                                     <div className="p-4 bg-white border-t flex justify-end gap-3">
-                                        <Button variant="ghost" onClick={() => setPreviewOpen(false)}>Cerrar</Button>
-                                        <Button onClick={() => { setPreviewOpen(false); guardarMensaje(); }}>Guardar Ahora</Button>
+                                        <Button onClick={() => setPreviewOpen(false)}>Cerrar Vista Previa</Button>
                                     </div>
                                 </DialogContent>
                             </Dialog>
