@@ -49,26 +49,28 @@ export default function Layout() {
           "bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-screen sticky top-0 transition-all duration-300 flex flex-col z-40",
           isCollapsed ? "w-16" : "w-64",
         )}
+        onMouseEnter={() => setIsCollapsed(false)}
+        onMouseLeave={() => setIsCollapsed(true)}
       >
         {/* Header Logo */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100 dark:border-gray-700">
-          {!isCollapsed && (
-            <span className="text-xl font-bold text-gray-900 dark:text-white truncate">
-              Ecomoving
-            </span>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="ml-auto text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            {isCollapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
+        <div className="h-16 flex items-center px-4 border-b border-gray-100 dark:border-gray-700">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <img
+              src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png"
+              alt="Ecomoving Logo"
+              className={cn(
+                "h-8 transition-all duration-300 object-contain",
+                isCollapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+              )}
+            />
+            {isCollapsed && (
+              <img
+                src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo.png"
+                alt="Ecomoving Logo Icon"
+                className="h-8 w-8 object-contain animate-in fade-in zoom-in duration-300"
+              />
             )}
-          </Button>
+          </div>
         </div>
 
         {/* Navigation */}
