@@ -35,13 +35,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  // 2. Filtro Días Laborales (Lunes a Viernes)
-  const diaSemana = new Date().getDay(); // 0 = Domingo, 6 = Sábado
-  if (diaSemana === 0 || diaSemana === 6) {
-    return res.status(200).json({
-      message: 'Fin de semana detectado. Flujo detenido.',
-      dayIndex: diaSemana
-    });
+  // 2. Filtro de Días Laborales y Feriados (Cumplimiento Legal Chile)
+  try {
+    // Obtener fecha actual en zona horaria de Chile
+    const fechaChileStr = new Date().toLocaleString("en-US", { timeZone: "America/Santiago" });
+    const fechaChile = new Date(fechaChileStr);
+    const diaSemana = fechaChile.getDay(); // 0 = Domingo, 6 = Sábado
+    const fechaFormateada = fechaChile.toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // A. Validar Fin de Semana
+    if (diaSemana === 0 || diaSemana === 6) {
+      return res.status(200).json({
+        message: 'Fin de semana en Chile. Cobranza suspendida por ley.',
+        fecha: fechaFormateada
+      });
+    }
+
+    // B. Validar Feriados Nacionales (API Pública de Feriados)
+    const year = fechaChile.getFullYear();
+    const { data: feriados } = await axios.get(`https://apis.digital.gob.cl/fl/feriados/${year}`);
+
+    const esFeriado = feriados.some((f: any) => f.fecha === fechaFormateada);
+
+    if (esFeriado) {
+      return res.status(200).json({
+        message: 'Día festivo en Chile. Cobranza suspendida por ley.',
+        fecha: fechaFormateada
+      });
+    }
+
+    console.log(`✅ Día laboral detectado en Chile (${fechaFormateada}). Continuando flujo...`);
+  } catch (error) {
+    console.error('Error al verificar feriados, continuando por seguridad (solo fin de semana chequeado):', error);
+    // Si la API de feriados falla, al menos ya validamos el fin de semana arriba
   }
 
   try {
@@ -248,9 +274,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 </body>
 </html>`;
         // --- ENVIAR CORREO (BREVO) ---
-        const ccList = [];
+        const ccList: { email: string }[] = [];
+
+        // Soporte para múltiples correos de vendedor (separados por coma)
         if (correoVendedor && correoVendedor.includes('@')) {
-          ccList.push({ email: correoVendedor });
+          const correos = correoVendedor.split(',').map((c: string) => c.trim().toLowerCase());
+          correos.forEach((email: string) => {
+            if (email.includes('@')) {
+              ccList.push({ email });
+            }
+          });
         }
 
         const emailPayload = {

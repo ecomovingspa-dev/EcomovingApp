@@ -55,6 +55,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { BotonExportarPDF } from "./CotizacionPDF";
+import BrochureView from "./BrochureView";
 
 const AutoResizeTextarea = ({
   value,
@@ -236,6 +237,7 @@ export default function CotizacionForm() {
     id_mercado_publico: "",
     items: [],
   });
+  const [showBrochure, setShowBrochure] = useState(false);
 
   const calcularEstado = useMemo(() => {
     if (!cotizacion.id) return "borrador";
@@ -761,9 +763,9 @@ export default function CotizacionForm() {
           celular: "",
           telefono: "",
           estado: "activo",
-          etapa_envio: "",
-          ultimo_envio: "",
-          proximo_envio: "",
+          etapa_envio: null,
+          ultimo_envio: null,
+          proximo_envio: null,
           error_log: "",
         });
         setMensaje("✅ Contacto creado exitosamente");
@@ -1019,6 +1021,15 @@ export default function CotizacionForm() {
     );
   }
 
+  if (showBrochure) {
+    return (
+      <BrochureView
+        cotizacion={cotizacion}
+        onBack={() => setShowBrochure(false)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] dark:bg-gray-900">
       <div className="sticky top-0 z-50 bg-white/90 dark:bg-gray-800/90 backdrop-blur-xl border-b border-slate-200 dark:border-gray-700 shadow-sm">
@@ -1105,6 +1116,15 @@ export default function CotizacionForm() {
                     <Copy className="h-4 w-4" />
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowBrochure(true)}
+                  className="h-9 gap-2 border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-800 text-blue-600 dark:text-blue-400"
+                >
+                  <FileText className="h-4 w-4" />
+                  Presentación
+                </Button>
                 <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1"></div>
                 <Button
                   variant="ghost"

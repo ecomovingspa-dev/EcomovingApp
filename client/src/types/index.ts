@@ -88,6 +88,9 @@ export interface Cotizacion {
   // Relaciones (solo para lectura en frontend, no se guardan en Supabase directamente)
   cuenta?: Cuenta;
   contacto?: Contacto;
+  // Aliases para compatibilidad con código legado
+  cuentas?: any;
+  contactos?: any;
 }
 
 // Tipos para Ventas (Facturas desde XML o Excel)
