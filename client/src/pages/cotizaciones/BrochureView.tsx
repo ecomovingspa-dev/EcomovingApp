@@ -7,15 +7,10 @@ import { useNavigate } from "react-router-dom";
 interface BrochureViewProps {
     cotizacion: Partial<Cotizacion>;
     onBack?: () => void;
-    layout?: "grid" | "collage";
+    rows: number;
+    cols: number;
     orientation?: "portrait" | "landscape";
     pageSize?: "a4" | "carta";
-}
-
-interface BrochureItem {
-    id: string;
-    imagen: string;
-    fitMode?: "cover" | "contain";
 }
 
 const BAR_COLORS = [
@@ -29,7 +24,8 @@ const BAR_COLORS = [
 export default function BrochureView({
     cotizacion,
     onBack,
-    layout = "grid",
+    rows = 2,
+    cols = 2,
     orientation = "portrait",
     pageSize = "carta"
 }: BrochureViewProps) {
@@ -38,20 +34,13 @@ export default function BrochureView({
 
     const items = cotizacion.items || [];
 
-    // Uniform Pagination Logic
-    const maxPerPage = layout === "grid" ? 6 : 5;
-    const numPages = Math.ceil(items.length / maxPerPage);
+    // Matrix Pagination Logic
+    const itemsPerPage = rows * cols;
+    const numPages = Math.ceil(items.length / itemsPerPage);
     const pages = [];
 
-    if (numPages > 0) {
-        let itemsLeft = items.length;
-        let offset = 0;
-        for (let i = 0; i < numPages; i++) {
-            const size = Math.ceil(itemsLeft / (numPages - i));
-            pages.push(items.slice(offset, offset + size));
-            offset += size;
-            itemsLeft -= size;
-        }
+    for (let i = 0; i < items.length; i += itemsPerPage) {
+        pages.push(items.slice(i, i + itemsPerPage));
     }
 
     const dimensions = {
@@ -109,69 +98,39 @@ export default function BrochureView({
                                 </div>
                             )}
 
-                            {/* Images Area */}
+                            {/* Matrix Images Area */}
                             <div className="flex-1 overflow-hidden bg-white relative">
-                                {layout === "grid" ? (
-                                    <div className={`grid ${orientation === "landscape" ? "grid-cols-3 grid-rows-2" : "grid-cols-2 grid-rows-3"} gap-0 h-full w-full`}>
-                                        {pageItems.map((item: any, idx) => (
-                                            <div key={item.id || idx} className={`relative overflow-hidden group ${item.fitMode === "contain" ? "bg-white" : "bg-neutral-50"}`}>
-                                                {item.imagen && (
-                                                    <img
-                                                        src={item.imagen}
-                                                        alt=""
-                                                        className={`w-full h-full transition-all duration-[3s] ease-in-out ${item.fitMode === "contain"
+                                <div
+                                    className="grid h-full w-full gap-0"
+                                    style={{
+                                        gridTemplateColumns: `repeat(${cols}, 1fr)`,
+                                        gridTemplateRows: `repeat(${rows}, 1fr)`
+                                    }}
+                                >
+                                    {pageItems.map((item: any, idx) => (
+                                        <div
+                                            key={item.id || idx}
+                                            className={`relative overflow-hidden group border-[0.5px] border-neutral-100 ${item.fitMode === "contain" ? "bg-white" : "bg-neutral-50"
+                                                }`}
+                                        >
+                                            {item.imagen && (
+                                                <img
+                                                    src={item.imagen}
+                                                    alt=""
+                                                    className={`w-full h-full transition-all duration-[3s] ease-in-out ${item.fitMode === "contain"
                                                             ? "object-contain p-6"
                                                             : "object-cover group-hover:scale-105"
-                                                            }`}
-                                                    />
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-12 grid-rows-12 gap-0 h-full w-full bg-neutral-900">
-                                        {pageItems.map((item: any, idx) => {
-                                            // Dynamic Spans to fill 12x12
-                                            let span = "";
-                                            const count = pageItems.length;
+                                                        }`}
+                                                />
+                                            )}
+                                        </div>
+                                    ))}
 
-                                            if (orientation === "landscape") {
-                                                const landscapeSpans = [
-                                                    "col-span-8 row-span-12", // Big Left
-                                                    "col-span-4 row-span-6",  // Top Right
-                                                    "col-span-4 row-span-3",  // Bottom Right 1
-                                                    "col-span-2 row-span-3",  // Bottom Right 2
-                                                    "col-span-2 row-span-3",  // Bottom Right 3
-                                                ];
-                                                span = landscapeSpans[idx] || "col-span-4 row-span-4";
-                                            } else {
-                                                const portraitSpans = [
-                                                    "col-span-12 row-span-7", // Top Large
-                                                    "col-span-6 row-span-5",  // Mid Left
-                                                    "col-span-6 row-span-2",  // Mid Right Top
-                                                    "col-span-3 row-span-3",  // Bottom Row 1
-                                                    "col-span-3 row-span-3",  // Bottom Row 2
-                                                ];
-                                                span = portraitSpans[idx] || "col-span-6 row-span-4";
-                                            }
-
-                                            return (
-                                                <div key={item.id || idx} className={`relative overflow-hidden group ${span} ${item.fitMode === "contain" ? "bg-white" : "bg-neutral-900"}`}>
-                                                    {item.imagen && (
-                                                        <img
-                                                            src={item.imagen}
-                                                            alt=""
-                                                            className={`w-full h-full transition-all duration-[4s] ${item.fitMode === "contain"
-                                                                ? "object-contain p-10"
-                                                                : "object-cover group-hover:scale-110"
-                                                                }`}
-                                                        />
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                                    {/* Fill empty slots in the matrix if any */}
+                                    {Array.from({ length: Math.max(0, itemsPerPage - pageItems.length) }).map((_, i) => (
+                                        <div key={`empty-${i}`} className="bg-neutral-50 border-[0.5px] border-neutral-100"></div>
+                                    ))}
+                                </div>
                             </div>
 
                             {/* Branding Bar (Right Case) */}

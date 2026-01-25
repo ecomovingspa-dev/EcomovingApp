@@ -32,7 +32,8 @@ export default function FabricaBrochures() {
     const [activeBucket, setActiveBucket] = useState("imagenes-marketing");
     const [loading, setLoading] = useState(false);
     const [previewMode, setPreviewMode] = useState(false);
-    const [layoutMode, setLayoutMode] = useState<"grid" | "collage">("collage");
+    const [rows, setRows] = useState(2);
+    const [cols, setCols] = useState(2);
     const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
     const [pageSize, setPageSize] = useState<"a4" | "carta">("carta");
     const [searchTerm, setSearchTerm] = useState("");
@@ -149,7 +150,8 @@ export default function FabricaBrochures() {
             <BrochureView
                 cotizacion={brochureData as any}
                 onBack={() => setPreviewMode(false)}
-                layout={layoutMode}
+                rows={rows}
+                cols={cols}
                 orientation={orientation}
                 pageSize={pageSize}
             />
@@ -224,17 +226,28 @@ export default function FabricaBrochures() {
                             <Sparkles className="h-5 w-5" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Diseñador de Presentaciones</h2>
-                            <div className="flex items-center gap-4 mt-1">
-                                <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700">
-                                    <button
-                                        onClick={() => setLayoutMode("grid")}
-                                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${layoutMode === "grid" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
-                                    >GRILLA</button>
-                                    <button
-                                        onClick={() => setLayoutMode("collage")}
-                                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${layoutMode === "collage" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
-                                    >COLLAGE</button>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                Diseñador de Presentaciones
+                                <span className="text-[10px] bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 px-2 py-0.5 rounded-full uppercase tracking-widest">Estructural</span>
+                            </h2>
+                            <div className="flex items-center gap-4 mt-2">
+                                <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-2 border border-gray-200 dark:border-gray-700 items-center px-2">
+                                    <span className="text-[9px] font-bold text-gray-400 uppercase ml-1">Grilla:</span>
+                                    <input
+                                        type="number"
+                                        min="1" max="6"
+                                        value={rows}
+                                        onChange={(e) => setRows(Math.max(1, parseInt(e.target.value) || 1))}
+                                        className="w-10 h-7 bg-white dark:bg-gray-800 border-none rounded text-xs font-bold text-center focus:ring-1 focus:ring-indigo-500"
+                                    />
+                                    <span className="text-[10px] text-gray-400">×</span>
+                                    <input
+                                        type="number"
+                                        min="1" max="6"
+                                        value={cols}
+                                        onChange={(e) => setCols(Math.max(1, parseInt(e.target.value) || 1))}
+                                        className="w-10 h-7 bg-white dark:bg-gray-800 border-none rounded text-xs font-bold text-center focus:ring-1 focus:ring-indigo-500"
+                                    />
                                 </div>
                                 <div className="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
                                 <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700">
