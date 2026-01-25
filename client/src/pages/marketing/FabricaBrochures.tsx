@@ -29,8 +29,8 @@ export default function FabricaBrochures() {
     const [loading, setLoading] = useState(false);
     const [previewMode, setPreviewMode] = useState(false);
     const [layoutMode, setLayoutMode] = useState<"grid" | "collage">("collage");
-    const [orientation, setOrientation] = useState<"portrait" | "landscape">("landscape");
-    const [pageSize, setPageSize] = useState<"a4" | "oficio">("oficio");
+    const [orientation, setOrientation] = useState<"portrait" | "landscape">("portrait");
+    const [pageSize, setPageSize] = useState<"a4" | "carta">("carta");
     const [searchTerm, setSearchTerm] = useState("");
 
     // Brochure State (Temporary/Local only)
@@ -225,21 +225,21 @@ export default function FabricaBrochures() {
                                 <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700">
                                     <button
                                         onClick={() => setOrientation("portrait")}
-                                        className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${orientation === "portrait" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
-                                    >PORTRAIT</button>
+                                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${orientation === "portrait" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
+                                    >VERTICAL</button>
                                     <button
                                         onClick={() => setOrientation("landscape")}
-                                        className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${orientation === "landscape" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
-                                    >LANDSCAPE</button>
+                                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${orientation === "landscape" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
+                                    >HORIZONTAL</button>
                                 </div>
                                 <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700">
                                     <button
-                                        onClick={() => setPageSize("oficio")}
-                                        className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${pageSize === "oficio" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
-                                    >OFICIO</button>
+                                        onClick={() => setPageSize("carta")}
+                                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${pageSize === "carta" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
+                                    >CARTA</button>
                                     <button
                                         onClick={() => setPageSize("a4")}
-                                        className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${pageSize === "a4" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
+                                        className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${pageSize === "a4" ? "bg-white dark:bg-gray-800 shadow-sm text-indigo-600" : "text-gray-400"}`}
                                     >A4</button>
                                 </div>
                             </div>
