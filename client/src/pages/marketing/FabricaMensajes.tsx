@@ -1,8 +1,7 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../supabase";
 import {
     Sparkles,
-    Upload,
     Save,
     Trash2,
     Eye,
@@ -14,21 +13,12 @@ import {
     Type,
     Maximize,
     Minimize,
-    Type as TypeIcon,
-    Download,
+    Search,
     ExternalLink,
-    Database
+    RefreshCw
 } from "lucide-react";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "../../components/ui/select";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
-import { optimizeImage } from "../../utils/image";
 import { generateMarketingContent, GeneratedContent } from "../../lib/gemini";
 import {
     Dialog,
@@ -37,9 +27,22 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "../../components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../../components/ui/select";
 
 export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
-    const [imagenOriginal, setImagenOriginal] = useState<string | null>(null);
+    // States for Storage Explorer
+    const [images, setImages] = useState<{ name: string; url: string }[]>([]);
+    const [loadingStorage, setLoadingStorage] = useState(false);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [activeImage, setActiveImage] = useState<{ name: string; url: string } | null>(null);
+
+    // States for Content Generation
     const [procesando, setProcesando] = useState(false);
     const [guardando, setGuardando] = useState(false);
     const [mensaje, setMensaje] = useState("");
@@ -51,35 +54,49 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         fontSize: "17px",
         textAlign: "left"
     });
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+    useEffect(() => {
+        fetchStorageImages();
+    }, []);
 
+    const fetchStorageImages = async () => {
         try {
-            setProcesando(true);
-            const reader = new FileReader();
-            reader.onload = async (event) => {
-                const base64 = event.target?.result as string;
-                const optimized = await optimizeImage(base64);
-                setImagenOriginal(optimized);
-                setProcesando(false);
-            };
-            reader.readAsDataURL(file);
+            setLoadingStorage(true);
+            const { data: files, error } = await supabase.storage.from('imagenes-marketing').list('', {
+                limit: 100,
+                offset: 0,
+                sortBy: { column: 'name', order: 'desc' }
+            });
+
+            if (error) throw error;
+
+            if (files) {
+                const formatted = files
+                    .filter(f => f.name !== '.emptyFolderPlaceholder' && !f.name.endsWith('.json'))
+                    .map(f => ({
+                        name: f.name,
+                        url: supabase.storage.from('imagenes-marketing').getPublicUrl(f.name).data.publicUrl
+                    }));
+                setImages(formatted);
+            }
         } catch (err) {
-            console.error(err);
-            setMensaje("Error al procesar la imagen");
-            setProcesando(false);
+            console.error("Error cargando imagenes:", err);
+            setMensaje("❌ Error al conectar con Storage");
+        } finally {
+            setLoadingStorage(false);
         }
     };
 
+    const filteredImages = images.filter(img =>
+        img.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     const generarConIA = async () => {
-        if (!imagenOriginal) return;
+        if (!activeImage) return;
         try {
             setProcesando(true);
             setMensaje("🤖 Gemini está analizando tu producto...");
-            const result = await generateMarketingContent(imagenOriginal);
+            const result = await generateMarketingContent(activeImage.url);
             setContenido(result);
             setMensaje("✨ ¡Contenido generado con éxito!");
             setTimeout(() => setMensaje(""), 3000);
@@ -92,10 +109,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     };
 
     const generarHtmlFinal = () => {
-        if (!contenido || !imagenOriginal) return "";
-
-        // Simular la URL pública para la vista previa si no se ha subido aún
-        const displayUrl = imagenOriginal;
+        if (!contenido || !activeImage) return "";
 
         return `
 <!DOCTYPE html>
@@ -131,7 +145,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
       <tr>
         <td class="content">
           <p class="text-p">${contenido.part1}</p>
-          <img src="${displayUrl}" class="product-image" alt="Producto Ecomoving" />
+          <img src="${activeImage.url}" class="product-image" alt="Producto Ecomoving" />
           <p class="text-p">${contenido.part2}</p>
         </td>
       </tr>
@@ -151,13 +165,13 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     };
 
     const guardarMensaje = async () => {
-        if (!contenido || !imagenOriginal) return;
+        if (!contenido || !activeImage) return;
 
         try {
             setGuardando(true);
-            setMensaje("📤 Subiendo imagen a la nube...");
+            setMensaje("💾 Guardando en biblioteca...");
 
-            // 1. Obtener el último nombre_envio para generar el siguiente número
+            // Obtenemos el numero correlativo
             const { data: lastMsg } = await supabase
                 .from("marketing")
                 .select("nombre_envio")
@@ -166,42 +180,8 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                 .maybeSingle();
 
             const nextNumber = (lastMsg?.nombre_envio || 0) + 1;
-            const fileName = `imagen_${nextNumber}.jpg`;
+            const finalHtml = generarHtmlFinal();
 
-            // 2. Convertir Base64 a Blob para subirlo como archivo real
-            const base64Data = imagenOriginal.split(',')[1];
-            const byteCharacters = atob(base64Data);
-            const byteNumbers = new Array(byteCharacters.length);
-            for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-            }
-            const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: 'image/jpeg' });
-
-            // 3. Subir al Bucket 'imagenes-marketing'
-            const { error: uploadError } = await supabase.storage
-                .from('imagenes-marketing')
-                .upload(fileName, blob, {
-                    contentType: 'image/jpeg',
-                    upsert: true
-                });
-
-            if (uploadError) {
-                console.error("DEBUG STORAGE ERROR:", uploadError);
-                throw new Error("STORAGE_ERROR: " + uploadError.message);
-            }
-
-            // 4. Obtener la URL Pública real
-            const { data: { publicUrl } } = supabase.storage
-                .from('imagenes-marketing')
-                .getPublicUrl(fileName);
-
-            setMensaje("💾 Guardando en biblioteca...");
-
-            // 5. Reconstruir el HTML real con la URL pública
-            const finalHtml = generarHtmlFinal().replace(imagenOriginal, publicUrl);
-
-            // 6. Insertar en la tabla con la URL Pública e ID secuencial
             const { error } = await supabase
                 .from("marketing")
                 .insert([{
@@ -209,369 +189,328 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                     asunto: contenido.subject,
                     cuerpo_html: finalHtml,
                     cuerpo: `${contenido.part1}\n\n${contenido.part2}`,
-                    nombre_imag: fileName,
-                    imagen_url: publicUrl,
+                    nombre_imag: activeImage.name,
+                    imagen_url: activeImage.url,
                     estado: "en revisión",
                     activo: true
                 }]);
 
             if (error) {
                 console.error("DEBUG DB ERROR:", error);
-                throw new Error("DB_ERROR: " + error.message);
+                throw error;
             }
 
-            setMensaje("✅ ¡Listo! Imagen guardada y vinculada correctamente.");
+            setMensaje("✅ ¡Listo! Mensaje guardado correctamente.");
             setTimeout(() => {
                 setMensaje("");
                 onSave();
             }, 2000);
         } catch (err: any) {
             console.error("ERROR DETALLADO:", err);
-            let errorContext = "";
-            if (err.message?.includes("STORAGE_ERROR")) {
-                errorContext = "❌ Error al subir la IMAGEN (Storage). Revisa los permisos de la carpeta 'imagenes-marketing'.";
-            } else if (err.message?.includes("DB_ERROR")) {
-                errorContext = "❌ Error al grabar el REGISTRO (Tabla). Verifica las columnas.";
-            } else {
-                errorContext = "❌ Error: " + err.message;
-            }
-            setMensaje(errorContext + ` (Servidor: ${import.meta.env.VITE_SUPABASE_URL})`);
-        } finally {
-            setGuardando(false);
-        }
-    };
-
-    const descargarImagen = () => {
-        if (!imagenOriginal) return;
-        const link = document.createElement("a");
-        link.href = imagenOriginal;
-        link.download = `imagen_producto_${Date.now()}.jpg`;
-        link.click();
-    };
-
-    const guardarSoloTexto = async () => {
-        if (!contenido) return;
-        try {
-            setGuardando(true);
-            setMensaje("💾 Guardando solo texto en la tabla...");
-
-            const { data: lastMsg } = await supabase
-                .from("marketing")
-                .select("nombre_envio")
-                .order("nombre_envio", { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            const nextNumber = (lastMsg?.nombre_envio || 0) + 1;
-            const finalHtml = generarHtmlFinal().replace(imagenOriginal || "", "URL_MANUAL_AQUI");
-
-            const { error } = await supabase
-                .from("marketing")
-                .insert([{
-                    nombre_envio: nextNumber,
-                    asunto: contenido.subject,
-                    cuerpo_html: finalHtml,
-                    cuerpo: `${contenido.part1}\n\n${contenido.part2}`,
-                    estado: "en revisión",
-                    activo: true
-                }]);
-
-            if (error) throw error;
-
-            setMensaje("✅ Texto guardado. Deberás subir la imagen manualmente a Supabase.");
-            setTimeout(() => {
-                setMensaje("");
-                onSave();
-            }, 3000);
-        } catch (err: any) {
-            setMensaje("❌ Error al guardar texto: " + err.message);
+            setMensaje("❌ Error al guardar: " + err.message);
         } finally {
             setGuardando(false);
         }
     };
 
     return (
-        <div className="max-w-[95%] mx-auto space-y-8">
-            {/* Header Acción */}
-            <div className="flex items-center justify-between bg-indigo-900/10 p-6 rounded-2xl border border-indigo-200 dark:border-indigo-900/50 shadow-sm">
-                <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-                        <Sparkles className="h-6 w-6" />
+        <div className="max-w-[95%] mx-auto space-y-6">
+            <div className="flex flex-col lg:flex-row gap-6 h-[85vh]">
+
+                {/* EXPLORADOR DE MEDIOS (IZQUIERDA) */}
+                <div className="w-full lg:w-72 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col shadow-sm">
+                    <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <ImageIcon className="h-4 w-4 text-indigo-500" />
+                                Galeria Ecomoving
+                            </h3>
+                            <Button variant="ghost" size="icon" onClick={fetchStorageImages} className="h-8 w-8">
+                                <RefreshCw className={`h-3.3 w-3.5 ${loadingStorage ? 'animate-spin' : ''}`} />
+                            </Button>
+                        </div>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+                            <Input
+                                placeholder="Buscar imagen..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9 h-9 text-xs bg-gray-50/50"
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-xl font-bold text-gray-900 dark:text-white italic">Fábrica de Contenido IA</h2>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Transforma una foto en un email profesional en segundos.</p>
+
+                    <div className="flex-1 overflow-y-auto p-3 grid grid-cols-2 lg:grid-cols-1 gap-3 scrollbar-thin">
+                        {loadingStorage ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                                <Loader2 className="h-6 w-6 animate-spin mb-2" />
+                                <span className="text-xs">Cargando...</span>
+                            </div>
+                        ) : filteredImages.length > 0 ? (
+                            filteredImages.map((img) => (
+                                <div
+                                    key={img.name}
+                                    onClick={() => {
+                                        setActiveImage(img);
+                                        setContenido(null);
+                                    }}
+                                    className={`group relative aspect-square lg:aspect-video rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${activeImage?.name === img.name
+                                            ? 'border-indigo-500 ring-2 ring-indigo-500/20'
+                                            : 'border-transparent hover:border-gray-200'
+                                        }`}
+                                >
+                                    <img src={img.url} className="w-full h-full object-cover" alt={img.name} />
+                                    <div className="absolute inset-x-0 bottom-0 bg-black/60 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <p className="text-[10px] text-white truncate font-medium">{img.name}</p>
+                                    </div>
+                                    {activeImage?.name === img.name && (
+                                        <div className="absolute top-2 right-2 bg-indigo-500 text-white p-1 rounded-full shadow-lg">
+                                            <CheckCircle2 className="h-3 w-3" />
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-12 text-gray-400">
+                                <p className="text-xs">No hay imágenes</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50">
+                        <a
+                            href={`https://supabase.com/dashboard/project/${import.meta.env.VITE_SUPABASE_URL.split('//')[1].split('.')[0]}/storage/buckets/imagenes-marketing`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="w-full flex items-center justify-center gap-2 text-[11px] font-bold text-indigo-600 py-2 border border-dashed border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors"
+                        >
+                            <ExternalLink className="h-3 w-3" />
+                            Gestionar en Supabase
+                        </a>
                     </div>
                 </div>
 
-                <div className="flex gap-3">
-                    {contenido && (
-                        <>
-                            <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-                                <DialogTrigger asChild>
+                {/* AREA CENTRAL Y PANEL DE EDICIÓN */}
+                <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+
+                    {/* Header Acciones */}
+                    <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
+                                <Sparkles className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Diseñador de Campañas IA</h2>
+                                <p className="text-[10px] text-gray-500">Selecciona una imagen y genera tu correo.</p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                            {contenido && (
+                                <>
+                                    <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+                                        <DialogTrigger asChild>
+                                            <Button variant="outline" size="sm" className="h-9 px-4">
+                                                <Eye className="h-4 w-4 mr-2" />
+                                                Vista Previa
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="max-w-3xl h-[85vh] p-0 overflow-hidden bg-gray-50 flex flex-col">
+                                            <DialogHeader className="p-4 border-b bg-white">
+                                                <DialogTitle className="flex items-center gap-2">
+                                                    <Eye className="h-5 w-5 text-indigo-600" />
+                                                    Vista Previa del Email
+                                                </DialogTitle>
+                                            </DialogHeader>
+                                            <div className="flex-1 bg-gray-100 p-4 md:p-8 overflow-y-auto flex justify-center">
+                                                <div className="w-full max-w-[600px] bg-white shadow-2xl rounded-sm overflow-hidden h-fit">
+                                                    <iframe
+                                                        title="Email Preview"
+                                                        srcDoc={generarHtmlFinal()}
+                                                        className="w-full min-h-[800px] border-none"
+                                                        style={{ height: 'auto', minHeight: '800px' }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="p-4 bg-white border-t flex justify-end">
+                                                <Button
+                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                                                    onClick={() => setPreviewOpen(false)}
+                                                >
+                                                    Cerrar
+                                                </Button>
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+
                                     <Button
-                                        variant="outline"
-                                        className="text-gray-600 border-gray-200"
+                                        onClick={guardarMensaje}
+                                        disabled={guardando}
+                                        size="sm"
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 px-4"
                                     >
-                                        <Eye className="h-4 w-4 mr-2" />
-                                        Previsualizar
+                                        {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                                        Guardar en Biblioteca
                                     </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-3xl h-[85vh] p-0 overflow-hidden bg-gray-50 flex flex-col">
-                                    <DialogHeader className="p-4 border-b bg-white">
-                                        <DialogTitle className="flex items-center gap-2">
-                                            <Eye className="h-5 w-5 text-indigo-600" />
-                                            Vista Previa del Email
-                                        </DialogTitle>
-                                    </DialogHeader>
-                                    <div className="flex-1 bg-gray-100 p-4 md:p-8 overflow-y-auto flex justify-center">
-                                        <div className="w-full max-w-[600px] bg-white shadow-2xl rounded-sm overflow-hidden h-fit">
-                                            <iframe
-                                                title="Email Preview"
-                                                srcDoc={generarHtmlFinal()}
-                                                className="w-full min-h-[800px] border-none"
-                                                style={{ height: 'auto', minHeight: '800px' }}
+                                </>
+                            )}
+                            {activeImage && !contenido && (
+                                <Button
+                                    onClick={generarConIA}
+                                    disabled={procesando}
+                                    size="sm"
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white h-9 px-4 shadow-lg shadow-indigo-200"
+                                >
+                                    {procesando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                                    Generar Contenido con IA
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+
+                    {mensaje && (
+                        <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 flex items-center gap-2 border border-indigo-100 dark:border-indigo-800 animate-in fade-in slide-in-from-top-1 text-xs font-medium">
+                            {mensaje.includes("❌") ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                            {mensaje}
+                        </div>
+                    )}
+
+                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
+
+                        {/* Previsualizador Central */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center relative overflow-hidden shadow-sm">
+                            {activeImage ? (
+                                <>
+                                    <img
+                                        src={activeImage.url}
+                                        className={`w-full h-full transition-all duration-300 ${fitMode === 'cover' ? 'object-cover' : 'object-contain p-8'}`}
+                                        alt="Producto seleccionado"
+                                    />
+                                    <div className="absolute bottom-4 right-4 flex gap-2">
+                                        <Button
+                                            size="icon"
+                                            variant="secondary"
+                                            className="h-9 w-9 bg-white/90 backdrop-blur rounded-full shadow-lg border-none"
+                                            onClick={() => setFitMode(fitMode === 'cover' ? 'contain' : 'cover')}
+                                            title={fitMode === 'cover' ? "Ajustar al cuadro" : "Expandir a tope"}
+                                        >
+                                            {fitMode === 'cover' ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+                                        </Button>
+                                    </div>
+                                    <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] text-white font-bold border border-white/10">
+                                        {activeImage.name}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex flex-col items-center gap-4 p-12 text-center">
+                                    <div className="h-16 w-16 rounded-full bg-gray-50 flex items-center justify-center">
+                                        <ImageIcon className="h-8 w-8 text-gray-300" />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-gray-400">Selecciona una imagen de la galería</p>
+                                        <p className="text-[10px] text-gray-400 mt-1">Sube tus fotos a Supabase y aparecerán aquí automáticamente.</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Panel de Editor Editable */}
+                        <div className="flex flex-col gap-4 overflow-hidden">
+                            {contenido ? (
+                                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-full shadow-sm animate-in zoom-in-95">
+                                    <div className="flex-1 overflow-y-auto pr-2 space-y-6 scrollbar-thin">
+
+                                        {/* Editor Asunto */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
+                                                <Edit3 className="h-3 w-3" /> Asunto del Email
+                                            </label>
+                                            <Input
+                                                value={contenido.subject}
+                                                onChange={(e) => setContenido({ ...contenido, subject: e.target.value })}
+                                                className="bg-gray-50/50 dark:bg-gray-900 border-gray-100 dark:border-gray-800 font-bold"
+                                            />
+                                        </div>
+
+                                        {/* Editor de Cuerpo */}
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
+                                                    <Sparkles className="h-3 w-3" /> Cuerpo del Mensaje
+                                                </label>
+
+                                                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-100">
+                                                    <Select value={textStyles.fontFamily} onValueChange={(v) => setTextStyles({ ...textStyles, fontFamily: v })}>
+                                                        <SelectTrigger className="h-7 w-28 text-[9px] bg-white border-gray-100">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="'Helvetica Neue', Helvetica, Arial, sans-serif">Sans-Serif</SelectItem>
+                                                            <SelectItem value="Georgia, serif">Elegante Serif</SelectItem>
+                                                            <SelectItem value="'Courier New', monospace">Técnica Mono</SelectItem>
+                                                            <SelectItem value="'Oswald', sans-serif">Moderno</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+
+                                                    <Select value={textStyles.fontSize} onValueChange={(v) => setTextStyles({ ...textStyles, fontSize: v })}>
+                                                        <SelectTrigger className="h-7 w-20 text-[9px] bg-white border-gray-100">
+                                                            <SelectValue />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="14px">Pequeño</SelectItem>
+                                                            <SelectItem value="17px">Normal</SelectItem>
+                                                            <SelectItem value="21px">Grande</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-3 p-4 border border-indigo-50 rounded-xl bg-indigo-50/20">
+                                                <textarea
+                                                    value={contenido.part1}
+                                                    onChange={(e) => setContenido({ ...contenido, part1: e.target.value })}
+                                                    className="w-full bg-transparent border-none text-sm text-gray-700 italic resize-none focus:ring-0 p-0 min-h-[80px] scrollbar-hide"
+                                                />
+
+                                                <div className="h-16 bg-gray-100/50 rounded-lg flex items-center justify-center text-gray-400 text-[9px] border border-dashed border-gray-200">
+                                                    <ImageIcon className="h-4 w-4 mr-2 opacity-30" />
+                                                    <span>LA IMAGEN [{activeImage.name}]</span>
+                                                </div>
+
+                                                <textarea
+                                                    value={contenido.part2}
+                                                    onChange={(e) => setContenido({ ...contenido, part2: e.target.value })}
+                                                    className="w-full bg-transparent border-none text-sm text-gray-700 resize-none focus:ring-0 p-0 min-h-[100px] scrollbar-hide"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Redes Sociales Caption */}
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-2">
+                                                <ImageIcon className="h-3 w-3" /> Social Caption
+                                            </label>
+                                            <textarea
+                                                value={contenido.social}
+                                                onChange={(e) => setContenido({ ...contenido, social: e.target.value })}
+                                                className="w-full p-3 bg-emerald-50/30 border border-emerald-100 rounded-lg text-xs text-gray-600 min-h-[60px] focus:ring-1 focus:ring-emerald-200"
                                             />
                                         </div>
                                     </div>
-                                    <div className="p-4 bg-white border-t flex justify-end gap-3">
-                                        <Button
-                                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                                            onClick={() => setPreviewOpen(false)}
-                                        >
-                                            Volver al Editor
-                                        </Button>
+
+                                    <div className="pt-4 border-t border-gray-100 text-center">
+                                        <p className="text-[9px] text-gray-400 italic">Puedes editar los textos a tu gusto antes de guardar.</p>
                                     </div>
-                                </DialogContent>
-                            </Dialog>
-
-                            <div className="flex flex-col gap-1">
-                                <Button
-                                    onClick={guardarMensaje}
-                                    disabled={guardando}
-                                    className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 h-10"
-                                >
-                                    {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                    Guardar Completo
-                                </Button>
-                                <button
-                                    onClick={guardarSoloTexto}
-                                    className="text-[10px] text-emerald-600 hover:underline flex items-center gap-1 justify-center"
-                                >
-                                    <Database className="h-3 w-3" /> Solo Guardar Texto
-                                </button>
-                            </div>
-
-                            <div className="flex flex-col gap-1">
-                                <Button
-                                    onClick={descargarImagen}
-                                    variant="outline"
-                                    className="border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 flex items-center gap-2 h-10"
-                                >
-                                    <Download className="h-4 w-4" />
-                                    Descargar Imagen
-                                </Button>
-                                <a
-                                    href={`https://supabase.com/dashboard/project/${import.meta.env.VITE_SUPABASE_URL.split('//')[1].split('.')[0]}/storage/buckets/imagenes-marketing`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-[10px] text-amber-600 hover:underline flex items-center gap-1 justify-center whitespace-nowrap"
-                                >
-                                    <ExternalLink className="h-3 w-3" /> Subir a Supabase
-                                </a>
-                            </div>
-                        </>
-                    )}
-                    <Button
-                        variant="outline"
-                        onClick={() => {
-                            setImagenOriginal(null);
-                            setContenido(null);
-                        }}
-                        className="text-gray-500 border-gray-200 dark:border-gray-700"
-                    >
-                        Limpiar
-                    </Button>
-                </div>
-            </div>
-
-            {mensaje && (
-                <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 flex items-center gap-2 border border-blue-100 dark:border-blue-800 animate-in fade-in slide-in-from-top-2">
-                    {mensaje.includes("❌") ? <AlertCircle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}
-                    {mensaje}
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-                {/* Columna Izquierda: Imagen y Control */}
-                <div className="space-y-6">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm aspect-square flex flex-col items-center justify-center relative">
-                        {imagenOriginal ? (
-                            <>
-                                <img
-                                    src={imagenOriginal}
-                                    className={`w-full h-full transition-all duration-300 ${fitMode === 'cover' ? 'object-cover' : 'object-contain p-4'}`}
-                                    alt="Vista previa"
-                                />
-                                <div className="absolute bottom-4 right-4 flex gap-2">
-                                    <Button
-                                        size="icon"
-                                        variant="secondary"
-                                        className="h-9 w-9 bg-white/90 backdrop-blur rounded-full shadow-lg border-none"
-                                        onClick={() => setFitMode(fitMode === 'cover' ? 'contain' : 'cover')}
-                                        title={fitMode === 'cover' ? "Ajustar al cuadro" : "Expandir a tope"}
-                                    >
-                                        {fitMode === 'cover' ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                                    </Button>
-                                    <Button
-                                        size="icon"
-                                        variant="secondary"
-                                        className="h-9 w-9 bg-white/90 backdrop-blur rounded-full shadow-lg border-none"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        title="Cambiar imagen"
-                                    >
-                                        <ImageIcon className="h-4 w-4" />
-                                    </Button>
                                 </div>
-                            </>
-                        ) : (
-                            <div
-                                className="flex flex-col items-center gap-4 cursor-pointer p-12 w-full h-full justify-center"
-                                onClick={() => fileInputRef.current?.click()}
-                            >
-                                <div className="h-20 w-20 rounded-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                                    <Upload className="h-8 w-8 text-gray-400" />
+                            ) : (
+                                <div className="bg-gray-50/50 dark:bg-gray-900 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col items-center justify-center p-12 text-center h-full">
+                                    <Sparkles className="h-12 w-12 text-indigo-200 mb-4" />
+                                    <h4 className="font-bold text-gray-400">Contenido Generado por IA</h4>
+                                    <p className="text-[10px] text-gray-400 mt-2 max-w-[200px]">Pincha el botón de arriba para que Gemini escriba tu campaña basada en la imagen seleccionada.</p>
                                 </div>
-                                <div className="text-center">
-                                    <p className="font-semibold text-gray-700 dark:text-gray-300">Cargar Foto de Producto</p>
-                                    <p className="text-xs text-gray-500">Formato JPG, PNG (máx 5MB)</p>
-                                </div>
-                            </div>
-                        )}
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            className="hidden"
-                            accept="image/*"
-                            onChange={handleFileUpload}
-                        />
+                            )}
+                        </div>
                     </div>
-                </div>
-
-                {/* Columna Derecha: Resultado Editable */}
-                <div className="space-y-6">
-                    {contenido ? (
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-5 shadow-sm h-full animate-in zoom-in-95 duration-300 overflow-y-auto max-h-[650px] scrollbar-thin">
-
-                            {/* Editor de Asunto */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
-                                    <Edit3 className="h-3 w-3" /> Asunto del Email
-                                </label>
-                                <Input
-                                    value={contenido.subject}
-                                    onChange={(e) => setContenido({ ...contenido, subject: e.target.value })}
-                                    className="bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-800 font-medium"
-                                />
-                            </div>
-
-                            {/* Editor de Cuerpo (Partes) */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
-                                        <Sparkles className="h-3 w-3" /> Contenido del Correo
-                                    </label>
-
-                                    {/* Barra de Formateo Simple */}
-                                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 p-1 rounded-lg border border-gray-100 dark:border-gray-800">
-                                        <Select
-                                            value={textStyles.fontFamily}
-                                            onValueChange={(v) => setTextStyles({ ...textStyles, fontFamily: v })}
-                                        >
-                                            <SelectTrigger className="h-7 w-28 text-[10px] bg-transparent border-none">
-                                                <SelectValue placeholder="Fuente" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="'Helvetica Neue', Helvetica, Arial, sans-serif">Sans-Serif</SelectItem>
-                                                <SelectItem value="Georgia, 'Times New Roman', serif">Serif</SelectItem>
-                                                <SelectItem value="'Courier New', Courier, monospace">Mono</SelectItem>
-                                                <SelectItem value="'Oswald', sans-serif">Moderno</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-
-                                        <Select
-                                            value={textStyles.fontSize}
-                                            onValueChange={(v) => setTextStyles({ ...textStyles, fontSize: v })}
-                                        >
-                                            <SelectTrigger className="h-7 w-20 text-[10px] bg-transparent border-none">
-                                                <SelectValue placeholder="Tamaño" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="14px">Pequeño</SelectItem>
-                                                <SelectItem value="17px">Normal</SelectItem>
-                                                <SelectItem value="21px">Grande</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3 p-4 border border-indigo-50 dark:border-indigo-900/30 rounded-xl bg-indigo-50/20 dark:bg-indigo-900/10">
-                                    <textarea
-                                        value={contenido.part1}
-                                        onChange={(e) => setContenido({ ...contenido, part1: e.target.value })}
-                                        className="w-full bg-transparent border-none text-sm text-gray-700 dark:text-gray-300 italic resize-none focus:ring-0 p-0 min-h-[80px]"
-                                        placeholder="Introducción..."
-                                    />
-
-                                    <div className="h-24 bg-gray-200/50 dark:bg-gray-700/50 rounded-lg flex flex-col items-center justify-center text-gray-400 text-[10px] border border-dashed border-gray-300 dark:border-gray-600">
-                                        <ImageIcon className="h-5 w-5 mb-1 opacity-20" />
-                                        <span>[ LA IMAGEN SE INSERTARÁ AQUÍ ]</span>
-                                    </div>
-
-                                    <textarea
-                                        value={contenido.part2}
-                                        onChange={(e) => setContenido({ ...contenido, part2: e.target.value })}
-                                        className="w-full bg-transparent border-none text-sm text-gray-700 dark:text-gray-300 resize-none focus:ring-0 p-0 min-h-[100px]"
-                                        placeholder="Cierre y Llamado a la acción..."
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Editor de Redes Sociales */}
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-2">
-                                    <ImageIcon className="h-3 w-3" /> Caption Redes Sociales
-                                </label>
-                                <textarea
-                                    value={contenido.social}
-                                    onChange={(e) => setContenido({ ...contenido, social: e.target.value })}
-                                    className="w-full p-3 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/50 rounded-lg text-sm text-gray-600 dark:text-gray-400 min-h-[80px] focus:ring-indigo-500/20"
-                                />
-                            </div>
-
-                            <p className="text-[10px] text-gray-400 italic text-center pt-2">
-                                Puedes editar cualquier campo antes de guardar en la biblioteca.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 h-full flex flex-col items-center justify-center">
-                            <Button
-                                className="h-14 bg-indigo-600 hover:bg-indigo-700 text-white text-lg font-bold flex items-center justify-center gap-3 shadow-lg shadow-indigo-200 dark:shadow-none transition-transform active:scale-95"
-                                disabled={!imagenOriginal || procesando}
-                                onClick={generarConIA}
-                            >
-                                {procesando ? (
-                                    <Loader2 className="h-6 w-6 animate-spin" />
-                                ) : (
-                                    <>
-                                        <Edit3 className="h-6 w-6" />
-                                        Generar Contenido IA
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    )}
                 </div>
 
             </div>
