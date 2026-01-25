@@ -28,13 +28,13 @@ export default function FabricaBrochures() {
     const [activeBucket, setActiveBucket] = useState("imagenes-marketing");
     const [loading, setLoading] = useState(false);
     const [previewMode, setPreviewMode] = useState(false);
-    const [layoutMode, setLayoutMode] = useState<"grid" | "collage">("grid");
+    const [layoutMode, setLayoutMode] = useState<"grid" | "collage">("collage");
     const [searchTerm, setSearchTerm] = useState("");
 
-    // Brochure State
+    // Brochure State (Temporary/Local only)
     const [brochureData, setBrochureData] = useState({
-        numero_cotizacion: "B-2026",
-        cuenta: { cliente: "CLIENTE PREMIUM" },
+        numero_cotizacion: "LIVE-BROCHURE",
+        cuenta: { cliente: "" },
         items: [] as BrochureItem[]
     });
 
@@ -110,7 +110,7 @@ export default function FabricaBrochures() {
             imagen: imgUrl,
             cantidad: 1,
             margen: 18,
-            subcostos: [{ valor: 10000 }]
+            subcostos: [{ valor: 0 }]
         };
 
         setBrochureData(prev => ({
@@ -177,14 +177,6 @@ export default function FabricaBrochures() {
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 scrollbar-hide">
-                    {filteredImages.length === 0 && !loading && (
-                        <div className="text-center py-12 px-4">
-                            <ImageIcon className="h-10 w-10 text-gray-200 mx-auto mb-3" />
-                            <p className="text-gray-400 text-xs italic">
-                                {searchTerm ? "No se encontraron coincidencias" : "No hay imágenes disponibles"}
-                            </p>
-                        </div>
-                    )}
                     <div className="grid grid-cols-2 gap-3">
                         {filteredImages.map((img, idx) => (
                             <div
@@ -198,9 +190,6 @@ export default function FabricaBrochures() {
                                         <Plus className="text-indigo-600 dark:text-indigo-400 h-5 w-5" />
                                     </div>
                                 </div>
-                                <div className="absolute bottom-0 inset-x-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
-                                    <p className="text-[10px] text-white truncate font-medium">{img.name}</p>
-                                </div>
                             </div>
                         ))}
                     </div>
@@ -211,13 +200,13 @@ export default function FabricaBrochures() {
             <div className="flex-1 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col shadow-sm overflow-hidden">
                 <header className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-green-100 dark:bg-green-900/30 text-green-600 flex items-center justify-center">
+                        <div className="h-12 w-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 flex items-center justify-center">
                             <Layout className="h-6 w-6" />
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Fábrica de Brochures</h2>
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Diseñador de Murales</h2>
                             <div className="flex items-center gap-4 mt-1">
-                                <p className="text-sm text-gray-500">Diseña presentaciones profesionales.</p>
+                                <p className="text-sm text-gray-500">Crea composiciones visuales sin distracciones.</p>
                                 <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg gap-1 border border-gray-200 dark:border-gray-700">
                                     <button
                                         onClick={() => setLayoutMode("grid")}
@@ -243,56 +232,29 @@ export default function FabricaBrochures() {
                             disabled={brochureData.items.length === 0}
                             onClick={() => setPreviewMode(true)}
                         >
-                            <FileText className="h-4 w-4 text-indigo-500" /> Vista Previa
+                            <FileText className="h-4 w-4 text-indigo-500" /> Vista previa
                         </Button>
                         <Button
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 h-11 px-5 rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95"
+                            className="bg-black text-white hover:bg-gray-800 gap-2 h-11 px-5 rounded-xl transition-all active:scale-95"
                             disabled={brochureData.items.length === 0}
+                            onClick={() => window.print()}
                         >
-                            <Download className="h-4 w-4" /> Exportar
+                            <Download className="h-4 w-4" /> Exportar Mural
                         </Button>
                     </div>
                 </header>
 
-                <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-gray-50/30 dark:bg-gray-900/10">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest pl-1">Título de la Campaña</label>
-                            <Input
-                                value={brochureData.numero_cotizacion}
-                                onChange={(e) => setBrochureData(prev => ({ ...prev, numero_cotizacion: e.target.value }))}
-                                className="bg-white dark:bg-gray-800 h-12 rounded-xl border-gray-200 dark:border-gray-700 shadow-sm"
-                                placeholder="Ej: Colección Verano 2026"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] uppercase font-black text-gray-400 tracking-widest pl-1">Nombre del Cliente</label>
-                            <Input
-                                value={brochureData.cuenta.cliente}
-                                onChange={(e) => setBrochureData(prev => ({ ...prev, cuenta: { cliente: e.target.value } }))}
-                                className="bg-white dark:bg-gray-800 h-12 rounded-xl border-gray-200 dark:border-gray-700 shadow-sm"
-                                placeholder="Ej: Empresa de Logística SpA"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-gray-200 dark:bg-gray-700"></div>
-
+                <div className="flex-1 overflow-y-auto p-8 bg-gray-50/30 dark:bg-gray-900/10">
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
                         {brochureData.items.length === 0 && (
-                            <div className="col-span-full py-32 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-[2rem] flex flex-col items-center justify-center text-gray-400 space-y-4">
-                                <div className="h-20 w-20 rounded-full bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                                    <ImageIcon className="h-10 w-10 opacity-20" />
-                                </div>
-                                <div className="text-center">
-                                    <p className="font-bold text-gray-500">Mesa de trabajo vacía</p>
-                                    <p className="text-xs">Selecciona imágenes del storage lateral para comenzar</p>
-                                </div>
+                            <div className="col-span-full py-40 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-[3rem] flex flex-col items-center justify-center text-gray-400 space-y-4">
+                                <ImageIcon className="h-12 w-12 opacity-10" />
+                                <p className="text-sm font-medium">Selecciona imágenes para armar tu composición</p>
                             </div>
                         )}
                         {brochureData.items.map((item, idx) => (
-                            <div key={item.id} className="group relative bg-white dark:bg-gray-900 p-5 rounded-[2rem] border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all animate-in zoom-in-95">
-                                <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <div key={item.id} className="group relative bg-white dark:bg-gray-900 p-2 rounded-[2rem] border border-gray-100 dark:border-gray-700 shadow-sm">
+                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                                     <Button
                                         variant="destructive"
                                         size="icon"
@@ -303,24 +265,8 @@ export default function FabricaBrochures() {
                                     </Button>
                                 </div>
 
-                                <div className="aspect-[4/3] rounded-2xl overflow-hidden mb-5 border border-gray-100 dark:border-gray-800">
+                                <div className="aspect-square rounded-[1.8rem] overflow-hidden border border-gray-50 dark:border-gray-800">
                                     <img src={item.imagen} alt="" className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-700" />
-                                </div>
-
-                                <Input
-                                    value={item.descripcion}
-                                    onChange={(e) => {
-                                        const newItems = [...brochureData.items];
-                                        newItems[idx].descripcion = e.target.value;
-                                        setBrochureData(prev => ({ ...prev, items: newItems }));
-                                    }}
-                                    className="border-transparent bg-transparent focus:bg-gray-50 dark:focus:bg-gray-800 text-base font-bold p-0 px-3 h-10 rounded-lg mb-2"
-                                    placeholder="Descripción del producto..."
-                                />
-
-                                <div className="flex items-center justify-between px-3">
-                                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Página {idx + 1}</span>
-                                    <div className="h-1.5 w-1.5 rounded-full bg-indigo-500"></div>
                                 </div>
                             </div>
                         ))}
