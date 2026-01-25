@@ -99,17 +99,30 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         if (!activeImage) return;
         try {
             setProcesando(true);
-            setMensaje("🤖 Gemini está analizando tu producto con un tono " + tono + "...");
+            setMensaje("🤖 Gemini está analizando tu producto en tono " + tono + "...");
 
-            const promptTono = `
-                Usa un tono ${tono}. 
-                ${tono === 'creativo' ? 'Sé audaz, usa metáforas y despierta la imaginación.' : ''}
-                ${tono === 'elegante' ? 'Usa un lenguaje refinado, sofisticado y minimalista.' : ''}
-                ${tono === 'agresivo' ? 'Enfócate mucho en la urgencia, beneficios directos y el retorno de inversión.' : ''}
-                ${tono === 'profesional' ? 'Mantén la compostura, usa datos realistas y genera confianza.' : ''}
+            // Re-adjuntamos las instrucciones de formato junto con el tono para que la IA no las pierda
+            const promptMaestro = `
+Analiza el producto en la imagen y genera una copia de marketing profesional en ESPAÑOL usando un TONO ${tono.toUpperCase()}.
+
+${tono === 'creativo' ? 'Instrucciones de tono: Sé audaz, usa metáforas y despierta la imaginación del cliente.' : ''}
+${tono === 'elegante' ? 'Instrucciones de tono: Usa un lenguaje refinado, sofisticado, minimalista y exclusivo.' : ''}
+${tono === 'agresivo' ? 'Instrucciones de tono: Enfócate mucho en la urgencia, beneficios directos, ganchos comerciales potentes y cierre rápido.' : ''}
+${tono === 'profesional' ? 'Instrucciones de tono: Mantén un lenguaje equilibrado, corporativo, basado en la confianza y calidad.' : ''}
+
+Formatea tu respuesta exactamente de esta manera (sin usar Markdown ni asteriscos en las etiquetas):
+SUBJECT: [Un asunto corto y enganchador]
+PART1: [Párrafo introductorio de 2-3 líneas]
+PART2: [Párrafo de cierre o llamado a la acción de 2-3 líneas]
+SOCIAL: [Caption sugerido para redes sociales con emojis]
+
+Reglas:
+- No inventes precios.
+- Si hay texto en la imagen, úsalo a tu favor.
+- Responde solo con las etiquetas mencionadas.
             `;
 
-            const result = await generateMarketingContent(activeImage.url, promptTono);
+            const result = await generateMarketingContent(activeImage.url, promptMaestro);
             setContenido(result);
             setMensaje("✨ ¡Contenido generado con éxito!");
             setTimeout(() => setMensaje(""), 3000);
