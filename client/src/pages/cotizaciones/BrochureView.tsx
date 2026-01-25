@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import type { Cotizacion } from "../../types";
 import { Button } from "@/components/ui/button";
-import { Download, Share2, ArrowLeft, MousePointer2, LayoutGrid } from "lucide-react";
+import { Download, Share2, ArrowLeft, MousePointer2, LayoutGrid, Layers, ChevronUp, ChevronDown, Move, ZoomIn } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Rnd } from "react-rnd";
 
@@ -14,6 +14,20 @@ interface BrochureViewProps {
     orientation?: "portrait" | "landscape";
     pageSize?: "a4" | "carta";
     onUpdateItems?: (items: any[]) => void;
+}
+
+interface BrochureItem {
+    id: string | number;
+    imagen?: string;
+    fitMode?: "cover" | "contain";
+    x?: number;
+    y?: number;
+    w?: number;
+    h?: number;
+    zIndex?: number;
+    scale?: number;
+    shiftX?: number;
+    shiftY?: number;
 }
 
 const BAR_COLORS = [
@@ -55,11 +69,11 @@ export default function BrochureView({
 
     const dimensions = {
         width: orientation === "landscape"
-            ? (pageSize === "carta" ? "279mm" : "297mm")
-            : (pageSize === "carta" ? "216mm" : "210mm"),
+            ? (pageSize === "carta" ? "270mm" : "297mm")
+            : (pageSize === "carta" ? "210mm" : "210mm"),
         height: orientation === "landscape"
-            ? (pageSize === "carta" ? "216mm" : "210mm")
-            : (pageSize === "carta" ? "279mm" : "297mm")
+            ? (pageSize === "carta" ? "210mm" : "210mm")
+            : (pageSize === "carta" ? "270mm" : "297mm")
     };
 
     const handleUpdateItem = (id: string | number, updates: any) => {
@@ -169,34 +183,79 @@ export default function BrochureView({
                                         <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
                                             style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
 
-                                        {pageItems.map((item: any) => (
+                                        {(pageItems as BrochureItem[]).map((item: BrochureItem) => (
                                             <Rnd
                                                 key={item.id}
-                                                default={{
-                                                    x: item.x || 50,
-                                                    y: item.y || 50,
-                                                    width: item.w || 200,
-                                                    height: item.h || 200,
-                                                }}
+                                                size={{ width: item.w || 200, height: item.h || 200 }}
+                                                position={{ x: item.x || 50, y: item.y || 50 }}
+                                                style={{ zIndex: item.zIndex || 0 }}
                                                 bounds="parent"
                                                 onDragStop={(e, d) => handleUpdateItem(item.id, { x: d.x, y: d.y })}
                                                 onResizeStop={(e, direction, ref, delta, position) => {
                                                     handleUpdateItem(item.id, {
-                                                        width: ref.offsetWidth,
-                                                        height: ref.offsetHeight,
+                                                        w: ref.offsetWidth,
+                                                        h: ref.offsetHeight,
                                                         ...position,
                                                     });
                                                 }}
                                                 className="group"
                                             >
-                                                <div className={`w-full h-full border-2 border-transparent hover:border-amber-400 transition-colors shadow-sm cursor-move relative overflow-hidden ${item.fitMode === 'contain' ? 'bg-white' : ''}`}>
+                                                <div className={`w-full h-full border-2 border-transparent hover:border-amber-400 group-hover:shadow-xl transition-all cursor-move relative overflow-hidden ${item.fitMode === 'contain' ? 'bg-white' : ''}`}>
                                                     <img
                                                         src={item.imagen}
                                                         alt=""
-                                                        className={`w-full h-full pointer-events-none ${item.fitMode === 'contain' ? 'object-contain p-4' : 'object-cover'}`}
+                                                        className={`w-full h-full pointer-events-none transition-transform ${item.fitMode === 'contain' ? 'object-contain p-4' : 'object-cover'}`}
+                                                        style={{
+                                                            transform: `scale(${item.scale || 1}) translate(${item.shiftX || 0}px, ${item.shiftY || 0}px)`,
+                                                        }}
                                                     />
-                                                    {/* Control Overlay (Visible on Hover in Editor) */}
-                                                    <div className="absolute inset-0 bg-transparent group-hover:bg-amber-500/5 transition-all"></div>
+
+                                                    {/* Pro Controls Overlay */}
+                                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 z-20 no-print">
+                                                        <Button
+                                                            variant="secondary" size="icon" className="h-7 w-7 bg-white/90 shadow-sm"
+                                                            onClick={(e) => { e.stopPropagation(); handleUpdateItem(item.id, { zIndex: (item.zIndex || 0) + 10 }); }}
+                                                            title="Traer al frente"
+                                                        >
+                                                            <ChevronUp className="h-3.5 w-3.5 text-indigo-600" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="secondary" size="icon" className="h-7 w-7 bg-white/90 shadow-sm"
+                                                            onClick={(e) => { e.stopPropagation(); handleUpdateItem(item.id, { zIndex: Math.max(0, (item.zIndex || 0) - 10) }); }}
+                                                            title="Enviar al fondo"
+                                                        >
+                                                            <ChevronDown className="h-3.5 w-3.5 text-indigo-600" />
+                                                        </Button>
+                                                        <div className="h-px w-full bg-neutral-200 my-1"></div>
+                                                        <Button
+                                                            variant="secondary" size="icon" className="h-7 w-7 bg-white/90 shadow-sm"
+                                                            onClick={(e) => { e.stopPropagation(); handleUpdateItem(item.id, { scale: (item.scale || 1) + 0.1 }); }}
+                                                            title="Aumentar Zoom / Recorte"
+                                                        >
+                                                            <ZoomIn className="h-3.5 w-3.5 text-amber-600" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="secondary" size="icon" className="h-7 w-7 bg-white/90 shadow-sm"
+                                                            onClick={(e) => { e.stopPropagation(); handleUpdateItem(item.id, { scale: Math.max(1, (item.scale || 1) - 0.1) }); }}
+                                                            title="Reducir Zoom"
+                                                        >
+                                                            <div className="text-[10px] font-bold text-amber-600">-</div>
+                                                        </Button>
+                                                    </div>
+
+                                                    {/* Pan Controls (Visual Hint) */}
+                                                    {item.scale && item.scale > 1 && (
+                                                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity no-print">
+                                                            <div className="flex bg-black/60 backdrop-blur-md rounded-lg p-1 border border-white/20 gap-1 items-center">
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-white p-0 hover:bg-white/10" onClick={() => handleUpdateItem(item.id, { shiftX: (item.shiftX || 0) - 10 })}><ArrowLeft className="h-3 w-3" /></Button>
+                                                                <div className="flex flex-col gap-1">
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-white p-0 hover:bg-white/10" onClick={() => handleUpdateItem(item.id, { shiftY: (item.shiftY || 0) - 10 })}><ChevronUp className="h-3 w-3" /></Button>
+                                                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-white p-0 hover:bg-white/10" onClick={() => handleUpdateItem(item.id, { shiftY: (item.shiftY || 0) + 10 })}><ChevronDown className="h-3 w-3" /></Button>
+                                                                </div>
+                                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-white p-0 hover:bg-white/10" onClick={() => handleUpdateItem(item.id, { shiftX: (item.shiftX || 0) + 10 })}><div className="rotate-180"><ArrowLeft className="h-3 w-3" /></div></Button>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </Rnd>
                                         ))}
