@@ -55,6 +55,9 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         fontSize: "17px",
         textAlign: "left"
     });
+    const [tono, setTono] = useState("profesional");
+    const [subiendoImagen, setSubiendoImagen] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         fetchStorageImages();
@@ -96,8 +99,17 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         if (!activeImage) return;
         try {
             setProcesando(true);
-            setMensaje("🤖 Gemini está analizando tu producto...");
-            const result = await generateMarketingContent(activeImage.url);
+            setMensaje("🤖 Gemini está analizando tu producto con un tono " + tono + "...");
+
+            const promptTono = `
+                Usa un tono ${tono}. 
+                ${tono === 'creativo' ? 'Sé audaz, usa metáforas y despierta la imaginación.' : ''}
+                ${tono === 'elegante' ? 'Usa un lenguaje refinado, sofisticado y minimalista.' : ''}
+                ${tono === 'agresivo' ? 'Enfócate mucho en la urgencia, beneficios directos y el retorno de inversión.' : ''}
+                ${tono === 'profesional' ? 'Mantén la compostura, usa datos realistas y genera confianza.' : ''}
+            `;
+
+            const result = await generateMarketingContent(activeImage.url, promptTono);
             setContenido(result);
             setMensaje("✨ ¡Contenido generado con éxito!");
             setTimeout(() => setMensaje(""), 3000);
@@ -106,6 +118,41 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
             setMensaje("❌ Error de IA: " + err.message);
         } finally {
             setProcesando(false);
+        }
+    };
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            setSubiendoImagen(true);
+            setMensaje("📤 Subiendo imagen a Supabase...");
+
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('imagenes-marketing')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            setMensaje("✅ Imagen subida con éxito");
+            fetchStorageImages();
+
+            const publicUrl = supabase.storage.from('imagenes-marketing').getPublicUrl(filePath).data.publicUrl;
+            setActiveImage({ name: file.name, url: publicUrl });
+            setContenido(null);
+
+            setTimeout(() => setMensaje(""), 3000);
+        } catch (err: any) {
+            console.error("Error al subir:", err);
+            setMensaje("❌ Error al subir: " + err.message);
+        } finally {
+            setSubiendoImagen(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -216,7 +263,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
 
     return (
         <div className="max-w-[95%] mx-auto space-y-6">
-            <div className="flex flex-col lg:flex-row gap-6 h-[85vh]">
+            <div className="flex flex-col lg:flex-row gap-6 h-[88vh]">
 
                 {/* EXPLORADOR DE MEDIOS (IZQUIERDA) - Estilo Brochures */}
                 <div className="w-full lg:w-80 bg-[#1e293b]/50 backdrop-blur-xl rounded-2xl border border-white/5 flex flex-col shadow-2xl overflow-hidden">
@@ -259,12 +306,20 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                             />
                         </div>
 
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileUpload}
+                            className="hidden"
+                            accept="image/*"
+                        />
                         <Button
                             variant="outline"
-                            onClick={() => window.open(`https://supabase.com/dashboard/project/${import.meta.env.VITE_SUPABASE_URL.split('//')[1].split('.')[0]}/storage/buckets/imagenes-marketing`, '_blank')}
-                            className="w-full h-10 border-dashed border-white/10 bg-white/5 hover:bg-white/10 text-indigo-400 text-[10px] font-bold gap-2 rounded-xl"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={subiendoImagen}
+                            className="w-full h-10 border-dashed border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-400 text-[10px] font-bold gap-2 rounded-xl transition-all"
                         >
-                            + CARGAR IMAGEN
+                            {subiendoImagen ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>+ CARGAR IMAGEN</span>}
                         </Button>
                     </div>
 
@@ -285,8 +340,8 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                                                 setContenido(null);
                                             }}
                                             className={`group relative aspect-square rounded-xl overflow-hidden border-2 cursor-pointer transition-all duration-300 ${activeImage?.name === img.name
-                                                    ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)] scale-95'
-                                                    : 'border-transparent hover:border-white/10'
+                                                ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)] scale-95'
+                                                : 'border-transparent hover:border-white/10'
                                                 }`}
                                         >
                                             <img src={img.url} className="w-full h-full object-cover" alt={img.name} />
@@ -383,15 +438,29 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                                 </>
                             )}
                             {activeImage && !contenido && (
-                                <Button
-                                    onClick={generarConIA}
-                                    disabled={procesando}
-                                    size="sm"
-                                    className="bg-indigo-600 hover:bg-indigo-700 text-white h-9 px-4 shadow-lg shadow-indigo-200"
-                                >
-                                    {procesando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                                    Generar Contenido con IA
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Select value={tono} onValueChange={setTono}>
+                                        <SelectTrigger className="h-9 w-32 text-xs bg-white dark:bg-gray-800">
+                                            <SelectValue placeholder="Tono" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="profesional">🎩 Profesional</SelectItem>
+                                            <SelectItem value="creativo">🎨 Creativo</SelectItem>
+                                            <SelectItem value="elegante">💎 Elegante</SelectItem>
+                                            <SelectItem value="agresivo">🚀 Comercial</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Button
+                                        onClick={generarConIA}
+                                        disabled={procesando}
+                                        size="sm"
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white h-9 px-4 shadow-lg shadow-indigo-200"
+                                    >
+                                        {procesando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                                        Generar Contenido con IA
+                                    </Button>
+                                </div>
                             )}
                         </div>
                     </div>

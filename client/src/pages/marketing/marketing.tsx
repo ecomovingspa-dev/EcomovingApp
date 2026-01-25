@@ -10,9 +10,9 @@ export default function Marketing() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="max-w-7xl mx-auto p-6 pt-2">
         {/* Tab Navigation */}
-        <div className="flex w-full max-w-4xl mx-auto gap-2 mb-8 bg-white/50 dark:bg-gray-800/50 p-1.5 rounded-2xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-md">
+        <div className="flex w-full max-w-4xl mx-auto gap-2 mb-4 bg-white/50 dark:bg-gray-800/50 p-1.5 rounded-2xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-md">
           <button
             onClick={() => setTabActiva("monitor")}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "monitor"
