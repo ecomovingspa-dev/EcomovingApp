@@ -68,8 +68,9 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
 
         try {
             setGuardando(true);
+            setMensaje("📤 Subiendo imagen a la nube...");
 
-            // Obtener el último nombre_envio para generar el siguiente número
+            // 1. Obtener el último nombre_envio para generar el siguiente número
             const { data: lastMsg } = await supabase
                 .from("marketing")
                 .select("nombre_envio")
@@ -77,31 +78,101 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                 .limit(1)
                 .maybeSingle();
 
-            // Generar siguiente número secuencial
             const nextNumber = (lastMsg?.nombre_envio || 0) + 1;
+            const fileName = `diseno_${nextNumber}_${Date.now()}.jpg`;
 
+            // 2. Convertir Base64 a Blob para subirlo como archivo real
+            const base64Data = imagenOriginal.split(',')[1];
+            const byteCharacters = atob(base64Data);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: 'image/jpeg' });
+
+            // 3. Subir al Bucket 'imagenes-marketing'
+            const { error: uploadError } = await supabase.storage
+                .from('imagenes-marketing')
+                .upload(fileName, blob, {
+                    contentType: 'image/jpeg',
+                    upsert: true
+                });
+
+            if (uploadError) throw uploadError;
+
+            // 4. Obtener la URL Pública real
+            const { data: { publicUrl } } = supabase.storage
+                .from('imagenes-marketing')
+                .getPublicUrl(fileName);
+
+            setMensaje("💾 Guardando en biblioteca...");
+
+            // 5. Reconstruir el HTML con los textos editados y la URL real
+            const finalHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    .email-container { max-width: 600px; margin: 0 auto; font-family: 'Segoe UI', Arial, sans-serif; background-color: #ffffff; }
+    .content-padding { padding: 40px 20px; }
+    .footer { background-color: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }
+  </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f3f4f6;">
+  <div class="email-container">
+    <div class="content-padding">
+      <h1 style="color: #111827; font-size: 24px; font-weight: bold; margin-bottom: 24px; text-align: center;">${contenido.subject}</h1>
+      
+      <p style="font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 30px; white-space: pre-line;">
+        ${contenido.part1}
+      </p>
+
+      <div style="text-align: center; margin-bottom: 30px;">
+        <img src="${publicUrl}" style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);" alt="${contenido.subject}" />
+      </div>
+
+      <p style="font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 32px; white-space: pre-line;">
+        ${contenido.part2}
+      </p>
+    </div>
+    
+    <div class="footer">
+      <p style="margin: 0 0 8px 0;"><strong>Ecomoving SpA</strong></p>
+      <p style="margin: 0 0 16px 0;">Regalos Corporativos con Impacto Sustentable</p>
+      <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 16px;">
+        <p style="margin: 0;">Recibiste este correo porque estás en nuestra lista de contactos preferenciales.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`.trim();
+
+            // 6. Insertar en la tabla con la URL Pública e ID secuencial
             const { error } = await supabase
                 .from("marketing")
                 .insert([{
                     nombre_envio: nextNumber,
                     asunto: contenido.subject,
-                    cuerpo_html: contenido.html.replace("IMAGE_PLACEHOLDER", imagenOriginal),
+                    cuerpo_html: finalHtml,
                     cuerpo: `${contenido.part1}\n\n${contenido.part2}`,
-                    nombre_imagen: `imagen_${nextNumber}.jpg`,
+                    nombre_imagen: fileName,
+                    imagen_url: publicUrl,
                     estado: "en revisión",
-                    activo: false
+                    activo: true
                 }]);
 
             if (error) throw error;
 
-            setMensaje("✅ Mensaje guardado en la biblioteca");
+            setMensaje("✅ ¡Listo! Imagen guardada y vinculada correctamente.");
             setTimeout(() => {
                 setMensaje("");
                 onSave();
             }, 2000);
         } catch (err: any) {
             console.error(err);
-            setMensaje("Error al guardar: " + err.message);
+            setMensaje("❌ Error: " + err.message);
         } finally {
             setGuardando(false);
         }
@@ -183,37 +254,66 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                     </div>
                 </div>
 
-                {/* Columna Derecha: Resultado */}
+                {/* Columna Derecha: Resultado Editable */}
                 <div className="space-y-6">
                     {contenido ? (
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-4 shadow-sm h-full animate-in zoom-in-95 duration-300 overflow-y-auto max-h-[600px]">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Asunto del Email</label>
-                                <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-lg text-gray-900 dark:text-gray-100 font-medium border border-gray-100 dark:border-gray-800">
-                                    {contenido.subject}
-                                </div>
-                            </div>
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 space-y-5 shadow-sm h-full animate-in zoom-in-95 duration-300 overflow-y-auto max-h-[650px] scrollbar-thin">
 
+                            {/* Editor de Asunto */}
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Contenido Sugerido</label>
-                                <div className="space-y-4 p-4 border border-indigo-50 dark:border-indigo-900/30 rounded-xl bg-indigo-50/20 dark:bg-indigo-900/10">
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 italic">{contenido.part1}</p>
-                                    <div className="h-20 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-gray-400 text-xs">
-                                        [ Imagen del Producto ]
-                                    </div>
-                                    <p className="text-sm text-gray-700 dark:text-gray-300">{contenido.part2}</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                    <ImageIcon className="h-3 w-3" />
-                                    Caption Redes Sociales
+                                <label className="text-xs font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Edit3 className="h-3 w-3" /> Asunto del Email
                                 </label>
-                                <div className="p-3 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/50 rounded-lg text-sm text-gray-600 dark:text-gray-400">
-                                    {contenido.social}
+                                <Input
+                                    value={contenido.subject}
+                                    onChange={(e) => setContenido({ ...contenido, subject: e.target.value })}
+                                    className="bg-gray-50 dark:bg-gray-900 border-gray-100 dark:border-gray-800 font-medium"
+                                />
+                            </div>
+
+                            {/* Editor de Cuerpo (Partes) */}
+                            <div className="space-y-4">
+                                <label className="text-xs font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
+                                    <Sparkles className="h-3 w-3" /> Contenido del Correo
+                                </label>
+
+                                <div className="space-y-3 p-4 border border-indigo-50 dark:border-indigo-900/30 rounded-xl bg-indigo-50/20 dark:bg-indigo-900/10">
+                                    <textarea
+                                        value={contenido.part1}
+                                        onChange={(e) => setContenido({ ...contenido, part1: e.target.value })}
+                                        className="w-full bg-transparent border-none text-sm text-gray-700 dark:text-gray-300 italic resize-none focus:ring-0 p-0 min-h-[80px]"
+                                        placeholder="Introducción..."
+                                    />
+
+                                    <div className="h-24 bg-gray-200/50 dark:bg-gray-700/50 rounded-lg flex flex-col items-center justify-center text-gray-400 text-[10px] border border-dashed border-gray-300 dark:border-gray-600">
+                                        <ImageIcon className="h-5 w-5 mb-1 opacity-20" />
+                                        <span>[ LA IMAGEN SE INSERTARÁ AQUÍ ]</span>
+                                    </div>
+
+                                    <textarea
+                                        value={contenido.part2}
+                                        onChange={(e) => setContenido({ ...contenido, part2: e.target.value })}
+                                        className="w-full bg-transparent border-none text-sm text-gray-700 dark:text-gray-300 resize-none focus:ring-0 p-0 min-h-[100px]"
+                                        placeholder="Cierre y Llamado a la acción..."
+                                    />
                                 </div>
                             </div>
+
+                            {/* Editor de Redes Sociales */}
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-2">
+                                    <ImageIcon className="h-3 w-3" /> Caption Redes Sociales
+                                </label>
+                                <textarea
+                                    value={contenido.social}
+                                    onChange={(e) => setContenido({ ...contenido, social: e.target.value })}
+                                    className="w-full p-3 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/50 rounded-lg text-sm text-gray-600 dark:text-gray-400 min-h-[80px] focus:ring-indigo-500/20"
+                                />
+                            </div>
+
+                            <p className="text-[10px] text-gray-400 italic text-center pt-2">
+                                Puedes editar cualquier campo antes de guardar en la biblioteca.
+                            </p>
                         </div>
                     ) : (
                         <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 h-full flex flex-col items-center justify-center">
