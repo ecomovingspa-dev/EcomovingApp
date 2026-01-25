@@ -108,43 +108,55 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
 
             setMensaje("💾 Guardando en biblioteca...");
 
-            // 5. Reconstruir el HTML con los textos editados y la URL real
+            // 5. Reconstruir el HTML con diseño PREMIUM (Adiós efecto Excel)
             const finalHtml = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    .email-container { max-width: 600px; margin: 0 auto; font-family: 'Segoe UI', Arial, sans-serif; background-color: #ffffff; }
-    .content-padding { padding: 40px 20px; }
-    .footer { background-color: #f9fafb; padding: 20px; text-align: center; color: #6b7280; font-size: 12px; }
+    body { margin: 0; padding: 0; background-color: #f4f7f9; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+    .wrapper { width: 100%; table-layout: fixed; background-color: #f4f7f9; padding-bottom: 40px; padding-top: 40px; }
+    .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-spacing: 0; color: #1a1a1b; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    .header { padding: 40px 40px 20px; text-align: center; }
+    .content { padding: 0 40px 40px; }
+    .title { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 24px; line-height: 1.2; letter-spacing: -0.02em; }
+    .text-p { font-size: 17px; line-height: 1.7; color: #4b5563; margin-bottom: 30px; white-space: pre-line; }
+    .product-image { width: 100%; max-width: 100%; height: auto; border-radius: 12px; display: block; margin: 30px 0; }
+    .footer { background-color: #ffffff; padding: 30px 40px; text-align: center; border-top: 1px solid #f3f4f6; }
+    .brand { color: #4f46e5; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; display: block; }
+    .tagline { color: #9ca3af; font-size: 13px; margin-bottom: 20px; display: block; }
+    .legal { font-size: 11px; color: #d1d5db; line-height: 1.5; }
+    a { color: #4f46e5; text-decoration: none; font-weight: 600; }
   </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f3f4f6;">
-  <div class="email-container">
-    <div class="content-padding">
-      <h1 style="color: #111827; font-size: 24px; font-weight: bold; margin-bottom: 24px; text-align: center;">${contenido.subject}</h1>
-      
-      <p style="font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 30px; white-space: pre-line;">
-        ${contenido.part1}
-      </p>
-
-      <div style="text-align: center; margin-bottom: 30px;">
-        <img src="${publicUrl}" style="max-width: 100%; height: auto; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);" alt="${contenido.subject}" />
-      </div>
-
-      <p style="font-size: 16px; line-height: 1.6; color: #374151; margin-bottom: 32px; white-space: pre-line;">
-        ${contenido.part2}
-      </p>
-    </div>
-    
-    <div class="footer">
-      <p style="margin: 0 0 8px 0;"><strong>Ecomoving SpA</strong></p>
-      <p style="margin: 0 0 16px 0;">Regalos Corporativos con Impacto Sustentable</p>
-      <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 16px;">
-        <p style="margin: 0;">Recibiste este correo porque estás en nuestra lista de contactos preferenciales.</p>
-      </div>
-    </div>
+<body>
+  <div class="wrapper">
+    <table class="main">
+      <tr>
+        <td class="header">
+          <span class="brand">Ecomoving</span>
+          <h1 class="title">${contenido.subject}</h1>
+        </td>
+      </tr>
+      <tr>
+        <td class="content">
+          <p class="text-p">${contenido.part1}</p>
+          <img src="${publicUrl}" class="product-image" alt="Producto Ecomoving" />
+          <p class="text-p">${contenido.part2}</p>
+        </td>
+      </tr>
+      <tr>
+        <td class="footer">
+          <span class="tagline">Regalos Corporativos con Impacto Sustentable</span>
+          <div class="legal">
+            Recibiste este mensaje porque eres parte de nuestra red de contactos preferenciales.<br>
+            <strong>Ecomoving SpA</strong> • Santiago, Chile
+          </div>
+        </td>
+      </tr>
+    </table>
   </div>
 </body>
 </html>`.trim();
