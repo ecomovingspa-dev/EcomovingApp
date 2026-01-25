@@ -2,9 +2,11 @@ import { useRef, useEffect, useState } from "react";
 import { supabase } from "../../supabase";
 import type { Cotizacion } from "../../types";
 import { Button } from "@/components/ui/button";
-import { Download, Share2, ArrowLeft, MousePointer2, LayoutGrid, Layers, ChevronUp, ChevronDown, Move, ZoomIn, Copy, Type } from "lucide-react";
+import { Download, Share2, ArrowLeft, MousePointer2, LayoutGrid, Layers, ChevronUp, ChevronDown, Move, ZoomIn, Copy, Type, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Rnd } from "react-rnd";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 interface BrochureViewProps {
     cotizacion: Partial<Cotizacion>;
@@ -57,6 +59,7 @@ export default function BrochureView({
     const [injectedPages, setInjectedPages] = useState<any[]>([]);
     const [loadingTemplates, setLoadingTemplates] = useState(false);
     const [activeItemId, setActiveItemId] = useState<string | number | null>(null);
+    const [exporting, setExporting] = useState(false);
 
     const items = cotizacion.items || [];
 
@@ -194,6 +197,53 @@ export default function BrochureView({
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [activeItemId, items, injectedPages]);
 
+    const generarPDF = async () => {
+        if (!brochureRef.current) return;
+
+        try {
+            setExporting(true);
+            const orientation_pdf = orientation === "landscape" ? "l" : "p";
+            const unit = "mm";
+            const format = pageSize === "carta" ? "letter" : "a4";
+
+            const pdf = new jsPDF(orientation_pdf, unit, format);
+            const pageElements = brochureRef.current.querySelectorAll('.brochure-page');
+
+            for (let i = 0; i < pageElements.length; i++) {
+                const element = pageElements[i] as HTMLElement;
+
+                // Hide controls during capture
+                const controls = element.querySelectorAll('.no-print');
+                controls.forEach(c => (c as HTMLElement).style.display = 'none');
+
+                const canvas = await html2canvas(element, {
+                    scale: 2, // Higher quality
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: "#ffffff"
+                });
+
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+
+                if (i > 0) pdf.addPage(format, orientation_pdf);
+                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+
+                // Restore controls
+                controls.forEach(c => (c as HTMLElement).style.display = '');
+            }
+
+            const fileName = `Brochure_${cotizacion.numero_cotizacion || 'Ecomoving'}.pdf`;
+            pdf.save(fileName);
+        } catch (err) {
+            console.error("Error generando PDF:", err);
+            alert("Error al generar el PDF.");
+        } finally {
+            setExporting(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-neutral-900 text-white p-8 font-sans overflow-y-auto">
             {/* Controls */}
@@ -222,8 +272,16 @@ export default function BrochureView({
                     <Button variant="outline" className="text-white border-neutral-700 hover:bg-neutral-800 font-bold">
                         <Share2 className="mr-2 h-4 w-4" /> Compartir
                     </Button>
-                    <Button onClick={() => window.print()} className="bg-white text-black hover:bg-gray-200 font-bold">
-                        <Download className="mr-2 h-4 w-4" /> Exportar Mural ({pages.length} {pages.length === 1 ? 'Pág' : 'Págs'})
+                    <Button
+                        onClick={generarPDF}
+                        disabled={exporting}
+                        className="bg-white text-black hover:bg-gray-200 font-bold"
+                    >
+                        {exporting ? (
+                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generando...</>
+                        ) : (
+                            <><Download className="mr-2 h-4 w-4" /> Exportar Mural ({pages.length + injectedPages.length} {pages.length + injectedPages.length === 1 ? 'Pág' : 'Págs'})</>
+                        )}
                     </Button>
                 </div>
             </div>
@@ -247,8 +305,12 @@ export default function BrochureView({
                             {/* Branding Bar */}
                             {isEven && (
                                 <div className={`w-16 md:w-28 ${color.bg} flex flex-col py-12 items-center justify-between relative overflow-hidden shrink-0 z-10`}>
-                                    <div className={`transform -rotate-90 whitespace-nowrap mt-32 ${color.text} font-black tracking-[0.4em] text-[20px] md:text-[24px] uppercase origin-center`}>
-                                        ECOMOWING
+                                    <div className="transform -rotate-90 w-48 h-12 flex items-center justify-center mt-32 origin-center">
+                                        <img
+                                            src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png"
+                                            className="max-w-full max-h-full object-contain filter brightness-0 invert opacity-80"
+                                            alt="Ecomoving"
+                                        />
                                     </div>
                                     <div className={`w-1 h-32 mb-12 ${color.line}`}></div>
                                 </div>
@@ -320,8 +382,12 @@ export default function BrochureView({
 
                             {!isEven && (
                                 <div className={`w-16 md:w-28 ${color.bg} flex flex-col py-12 items-center justify-between relative overflow-hidden shrink-0 z-10`}>
-                                    <div className={`transform rotate-90 whitespace-nowrap mb-32 ${color.text} font-black tracking-[0.4em] text-[20px] md:text-[24px] uppercase origin-center`}>
-                                        ECOMOWING
+                                    <div className="transform rotate-90 w-48 h-12 flex items-center justify-center mb-32 origin-center">
+                                        <img
+                                            src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png"
+                                            className="max-w-full max-h-full object-contain filter brightness-0 invert opacity-80"
+                                            alt="Ecomoving"
+                                        />
                                     </div>
                                     <div className={`w-1 h-32 mt-12 ${color.line}`}></div>
                                 </div>
@@ -348,8 +414,12 @@ export default function BrochureView({
                             {/* Branding Bar (Left Case) */}
                             {isEven && (
                                 <div className={`w-16 md:w-28 ${color.bg} flex flex-col py-12 items-center justify-between relative overflow-hidden shrink-0 transition-colors duration-1000 z-10`}>
-                                    <div className={`transform -rotate-90 whitespace-nowrap mt-32 ${color.text} font-black tracking-[0.4em] text-[20px] md:text-[24px] uppercase origin-center`}>
-                                        ECOMOWING
+                                    <div className="transform -rotate-90 w-48 h-12 flex items-center justify-center mt-32 origin-center">
+                                        <img
+                                            src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png"
+                                            className="max-w-full max-h-full object-contain filter brightness-0 invert opacity-80"
+                                            alt="Ecomoving"
+                                        />
                                     </div>
                                     <div className={`w-1 h-32 mb-12 ${color.line}`}></div>
                                 </div>
@@ -531,8 +601,12 @@ export default function BrochureView({
                             {/* Branding Bar (Right Case) */}
                             {!isEven && (
                                 <div className={`w-16 md:w-28 ${color.bg} flex flex-col py-12 items-center justify-between relative overflow-hidden shrink-0 transition-colors duration-1000 z-10`}>
-                                    <div className={`transform rotate-90 whitespace-nowrap mb-32 ${color.text} font-black tracking-[0.4em] text-[20px] md:text-[24px] uppercase origin-center`}>
-                                        ECOMOWING
+                                    <div className="transform rotate-90 w-48 h-12 flex items-center justify-center mb-32 origin-center">
+                                        <img
+                                            src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png"
+                                            className="max-w-full max-h-full object-contain filter brightness-0 invert opacity-80"
+                                            alt="Ecomoving"
+                                        />
                                     </div>
                                     <div className={`w-1 h-32 mt-12 ${color.line}`}></div>
                                 </div>
