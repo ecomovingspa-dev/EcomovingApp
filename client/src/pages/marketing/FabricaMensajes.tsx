@@ -53,7 +53,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [textStyles, setTextStyles] = useState({
         fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
         fontSize: "17px",
-        textAlign: "left"
+        textAlign: "center"
     });
     const [tono, setTono] = useState("profesional");
     const [subiendoImagen, setSubiendoImagen] = useState(false);
@@ -187,7 +187,7 @@ Reglas CRÍTICAS:
     .header { padding: 40px 40px 20px; text-align: center; }
     .content { padding: 0 40px 40px; }
     .title { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 24px; line-height: 1.2; letter-spacing: -0.02em; text-align: center; }
-    .text-p { font-size: ${textStyles.fontSize}; line-height: 1.7; color: #4b5563; margin-bottom: 30px; white-space: pre-line; text-align: ${textStyles.textAlign}; }
+    .text-p { font-size: ${textStyles.fontSize}; line-height: 1.7; color: #4b5563; margin-bottom: 30px; white-space: pre-line; text-align: center; }
     .product-image { width: 100%; max-width: 480px; height: auto; border-radius: 12px; display: block; margin: 35px auto; object-fit: ${fitMode}; ${fitMode === 'cover' ? 'height: 400px;' : ''} }
     .footer { background-color: #ffffff; padding: 30px 40px; text-align: center; border-top: 1px solid #f3f4f6; }
     .logo-container { text-align: center; margin-bottom: 25px; }
@@ -209,9 +209,9 @@ Reglas CRÍTICAS:
       </tr>
       <tr>
         <td class="content" style="text-align: center;">
-          <p class="text-p">${contenido.part1}</p>
+          <p class="text-p" style="text-align: center;">${contenido.part1}</p>
           <img src="${activeImage.url}" class="product-image" alt="Producto Ecomoving" />
-          <p class="text-p">${contenido.part2}</p>
+          <p class="text-p" style="text-align: center;">${contenido.part2}</p>
         </td>
       </tr>
       <tr>
