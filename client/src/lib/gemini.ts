@@ -15,13 +15,56 @@ export interface GeneratedContent {
 }
 
 /**
- * Genera contenido de marketing basado en una imagen (base64)
+ * Genera contenido de marketing basado en una imagen (URL o base64)
  */
 export const generateMarketingContent = async (
-  base64Image: string,
+  imageSource: string,
   prompt: string = ""
 ): Promise<GeneratedContent> => {
   if (!API_KEY) throw new Error("VITE_GEMINI_API_KEY no está configurada.");
+
+  let base64Data = "";
+
+  console.log("DEBUG IA: Procesando imagen ->", imageSource.substring(0, 100));
+
+  try {
+    // Usamos una regex más robusta para detectar URLs de Supabase o externas
+    const isUrl = /^https?:\/\//i.test(imageSource);
+
+    if (isUrl) {
+      console.log("DEBUG IA: Detectada URL, convirtiendo...");
+      const response = await fetch(imageSource, { mode: 'cors' });
+      const blob = await response.blob();
+
+      base64Data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          // El split es vital para que Gemini reciba solo la data purificada
+          const pureBase64 = result.split(',')[1];
+          if (!pureBase64) {
+            reject(new Error("No se pudo extraer la base64 del blob"));
+            return;
+          }
+          resolve(pureBase64);
+        };
+        reader.onerror = () => reject(new Error("Error al leer el blob de la imagen"));
+        reader.readAsDataURL(blob);
+      });
+    } else {
+      console.log("DEBUG IA: Detectada Base64 o data local");
+      base64Data = imageSource.split(',')[1] || imageSource;
+    }
+
+    // VALIDACIÓN CRÍTICA: Si base64Data sigue siendo una URL, algo salió mal
+    if (base64Data.startsWith('http')) {
+      throw new Error("La conversión de imagen falló. Gemini no acepta URLs directas.");
+    }
+
+  } catch (err: any) {
+    console.error("Error crítico procesando imagen para Gemini:", err);
+    throw new Error("Error visual: No pudimos preparar la imagen para la IA. Detalle: " + err.message);
+  }
 
   const defaultPrompt = `Analiza el producto en la imagen y genera copia de marketing profesional en ESPAÑOL.
 Formatea tu respuesta exactamente de esta manera (sin usar Markdown ni asteriscos en las etiquetas):
@@ -36,9 +79,6 @@ Reglas:
 - No menciones especificaciones técnicas a menos que sean visibles.`;
 
   const finalPrompt = prompt || defaultPrompt;
-
-  // Limpiar el prefijo data:image/...;base64,
-  const base64Data = base64Image.split(',')[1] || base64Image;
 
   const response = await fetch(`${BASE_URL}/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
     method: "POST",
