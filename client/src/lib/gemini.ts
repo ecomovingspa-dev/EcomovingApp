@@ -194,11 +194,16 @@ export const askGeminiAboutImage = async (
       let base64Data = "";
 
       if (isUrl) {
-        const response = await fetch(imageSource, { mode: 'cors' });
+        console.log("DEBUG CHAT IA: Convirtiendo URL ->", imageSource);
+        const response = await fetch(imageSource);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const blob = await response.blob();
         base64Data = await new Promise((resolve, reject) => {
           const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            resolve(result.split(',')[1]);
+          };
           reader.onerror = reject;
           reader.readAsDataURL(blob);
         });
@@ -206,12 +211,15 @@ export const askGeminiAboutImage = async (
         base64Data = imageSource.split(',')[1] || imageSource;
       }
 
-      inlineData = {
-        mime_type: "image/jpeg",
-        data: base64Data
-      };
+      if (base64Data) {
+        inlineData = {
+          mime_type: "image/jpeg",
+          data: base64Data
+        };
+      }
     } catch (err) {
       console.error("Error procesando imagen para chat:", err);
+      // Don't throw here, allow chat to continue without image if necessary or let the API handle the missing part
     }
   }
 
