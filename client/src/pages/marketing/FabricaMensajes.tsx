@@ -250,7 +250,7 @@ Reglas:
                     asunto: contenido.subject,
                     cuerpo_html: finalHtml,
                     cuerpo: `${contenido.part1}\n\n${contenido.part2}`,
-                    nombre_imag: activeImage.name,
+                    nombre_imagen: activeImage.name,
                     imagen_url: activeImage.url,
                     estado: "en revisión",
                     activo: true
@@ -406,14 +406,14 @@ Reglas:
                                 <>
                                     <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
                                         <DialogTrigger asChild>
-                                            <Button variant="outline" size="sm" className="h-9 px-4">
+                                            <Button variant="outline" size="sm" className="h-9 px-4 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
                                                 <Eye className="h-4 w-4 mr-2" />
                                                 Vista Previa
                                             </Button>
                                         </DialogTrigger>
-                                        <DialogContent className="max-w-3xl h-[85vh] p-0 overflow-hidden bg-gray-50 flex flex-col">
-                                            <DialogHeader className="p-4 border-b bg-white">
-                                                <DialogTitle className="flex items-center gap-2">
+                                        <DialogContent className="max-w-3xl h-[85vh] p-0 overflow-hidden bg-gray-50 dark:bg-gray-950 flex flex-col border-gray-200 dark:border-gray-800">
+                                            <DialogHeader className="p-4 border-b bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+                                                <DialogTitle className="flex items-center gap-2 dark:text-white">
                                                     <Eye className="h-5 w-5 text-indigo-600" />
                                                     Vista Previa del Email
                                                 </DialogTitle>
@@ -428,7 +428,7 @@ Reglas:
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="p-4 bg-white border-t flex justify-end">
+                                            <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-end">
                                                 <Button
                                                     className="bg-indigo-600 hover:bg-indigo-700 text-white"
                                                     onClick={() => setPreviewOpen(false)}
@@ -500,7 +500,7 @@ Reglas:
                                         <Button
                                             size="icon"
                                             variant="secondary"
-                                            className="h-9 w-9 bg-white/90 backdrop-blur rounded-full shadow-lg border-none"
+                                            className="h-9 w-9 bg-gray-900/80 dark:bg-gray-800/90 backdrop-blur rounded-full shadow-lg border-none text-white hover:bg-black dark:hover:bg-gray-700"
                                             onClick={() => setFitMode(fitMode === 'cover' ? 'contain' : 'cover')}
                                             title={fitMode === 'cover' ? "Ajustar al cuadro" : "Expandir a tope"}
                                         >
@@ -549,12 +549,12 @@ Reglas:
                                                     <Sparkles className="h-3 w-3" /> Cuerpo del Mensaje
                                                 </label>
 
-                                                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-lg border border-gray-100">
+                                                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/50 p-1 rounded-lg border border-gray-100 dark:border-gray-800">
                                                     <Select value={textStyles.fontFamily} onValueChange={(v) => setTextStyles({ ...textStyles, fontFamily: v })}>
-                                                        <SelectTrigger className="h-7 w-28 text-[9px] bg-white border-gray-100">
+                                                        <SelectTrigger className="h-7 w-28 text-[9px] bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700">
                                                             <SelectValue />
                                                         </SelectTrigger>
-                                                        <SelectContent>
+                                                        <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                                                             <SelectItem value="'Helvetica Neue', Helvetica, Arial, sans-serif">Sans-Serif</SelectItem>
                                                             <SelectItem value="Georgia, serif">Elegante Serif</SelectItem>
                                                             <SelectItem value="'Courier New', monospace">Técnica Mono</SelectItem>
@@ -563,10 +563,10 @@ Reglas:
                                                     </Select>
 
                                                     <Select value={textStyles.fontSize} onValueChange={(v) => setTextStyles({ ...textStyles, fontSize: v })}>
-                                                        <SelectTrigger className="h-7 w-20 text-[9px] bg-white border-gray-100">
+                                                        <SelectTrigger className="h-7 w-20 text-[9px] bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700">
                                                             <SelectValue />
                                                         </SelectTrigger>
-                                                        <SelectContent>
+                                                        <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                                                             <SelectItem value="14px">Pequeño</SelectItem>
                                                             <SelectItem value="17px">Normal</SelectItem>
                                                             <SelectItem value="21px">Grande</SelectItem>
@@ -575,14 +575,14 @@ Reglas:
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-3 p-4 border border-indigo-50 rounded-xl bg-indigo-50/20">
+                                            <div className="space-y-3 p-4 border border-indigo-50 dark:border-indigo-900/30 rounded-xl bg-indigo-50/20 dark:bg-indigo-900/10">
                                                 <textarea
                                                     value={contenido.part1}
                                                     onChange={(e) => setContenido({ ...contenido, part1: e.target.value })}
-                                                    className="w-full bg-transparent border-none text-sm text-gray-700 italic resize-none focus:ring-0 p-0 min-h-[80px] scrollbar-hide"
+                                                    className="w-full bg-transparent border-none text-sm text-gray-700 dark:text-gray-300 italic resize-none focus:ring-0 p-0 min-h-[80px] scrollbar-hide"
                                                 />
 
-                                                <div className="h-16 bg-gray-100/50 rounded-lg flex items-center justify-center text-gray-400 text-[9px] border border-dashed border-gray-200">
+                                                <div className="h-16 bg-gray-100/50 dark:bg-gray-900/50 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-500 text-[9px] border border-dashed border-gray-200 dark:border-gray-700">
                                                     <ImageIcon className="h-4 w-4 mr-2 opacity-30" />
                                                     <span>LA IMAGEN [{activeImage?.name}]</span>
                                                 </div>
@@ -590,7 +590,7 @@ Reglas:
                                                 <textarea
                                                     value={contenido.part2}
                                                     onChange={(e) => setContenido({ ...contenido, part2: e.target.value })}
-                                                    className="w-full bg-transparent border-none text-sm text-gray-700 resize-none focus:ring-0 p-0 min-h-[100px] scrollbar-hide"
+                                                    className="w-full bg-transparent border-none text-sm text-gray-700 dark:text-gray-300 resize-none focus:ring-0 p-0 min-h-[100px] scrollbar-hide"
                                                 />
                                             </div>
                                         </div>
@@ -603,13 +603,13 @@ Reglas:
                                             <textarea
                                                 value={contenido.social}
                                                 onChange={(e) => setContenido({ ...contenido, social: e.target.value })}
-                                                className="w-full p-3 bg-emerald-50/30 border border-emerald-100 rounded-lg text-xs text-gray-600 min-h-[60px] focus:ring-1 focus:ring-emerald-200"
+                                                className="w-full p-3 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-lg text-xs text-gray-600 dark:text-gray-400 min-h-[60px] focus:ring-1 focus:ring-emerald-200 outline-none"
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="pt-4 border-t border-gray-100 text-center">
-                                        <p className="text-[9px] text-gray-400 italic">Puedes editar los textos a tu gusto antes de guardar.</p>
+                                    <div className="pt-4 border-t border-gray-100 dark:border-gray-800 text-center">
+                                        <p className="text-[9px] text-gray-400 dark:text-gray-500 italic">Puedes editar los textos a tu gusto antes de guardar.</p>
                                     </div>
                                 </div>
                             ) : (
