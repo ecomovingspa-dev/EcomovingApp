@@ -157,7 +157,8 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                 </div>
                 <Button
                     onClick={onNew}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2"
+                    variant="outline"
+                    className="border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2"
                 >
                     <Plus className="h-4 w-4" />
                     Nuevo Mensaje (IA)
@@ -193,7 +194,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20 text-center">ID</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/4">Asunto</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Archivo</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Imagen Supabase (URL)</th>
+                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-64">Imagen Supabase (URL)</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contenido</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center w-24">Vista</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-36">Acciones</th>
@@ -208,7 +209,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                             </span>
                                         </td>
                                         <td className="px-4 py-4">
-                                            <p className="text-sm text-gray-900 dark:text-gray-100 font-medium">
+                                            <p className="text-sm text-gray-600 dark:text-gray-400">
                                                 {msg.asunto}
                                             </p>
                                         </td>
@@ -222,7 +223,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                                 <span className="text-xs text-gray-400">-</span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-4 min-w-[120px]">
+                                        <td className="px-4 py-4 min-w-[240px]">
                                             {editandoUrl === msg.id ? (
                                                 <div className="flex flex-col gap-2 animate-in slide-in-from-top-1">
                                                     <textarea
