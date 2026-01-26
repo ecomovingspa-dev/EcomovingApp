@@ -192,7 +192,7 @@ Reglas CRÍTICAS:
     .footer { background-color: #ffffff; padding: 30px 40px; text-align: center; border-top: 1px solid #f3f4f6; }
     .logo-container { text-align: center; margin-bottom: 25px; }
     .brand-logo { width: 231px; height: auto; display: inline-block; }
-    .legal { font-size: 11px; color: #4b5563; line-height: 1.5; font-weight: 400; }
+    .legal { font-size: 13px; color: #4b5563; line-height: 1.5; font-weight: 400; }
     a { color: #4f46e5; text-decoration: none; font-weight: 600; }
   </style>
 </head>
@@ -218,7 +218,8 @@ Reglas CRÍTICAS:
         <td class="footer">
           <div class="legal">
             Recibiste este mensaje porque eres parte de nuestra red de contactos preferenciales.<br>
-            <strong>Ecomoving SpA</strong> • Santiago, Chile
+            <strong>Ecomoving SpA</strong> • Santiago, Chile<br><br>
+            <span style="font-weight: 600;">www.ecomoving.cl - +56 9 7958 7293 / +56 9 9392 46386</span>
           </div>
         </td>
       </tr>
