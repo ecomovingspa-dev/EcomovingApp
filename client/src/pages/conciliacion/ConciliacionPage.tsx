@@ -11,8 +11,12 @@ import {
     ArrowRightLeft,
     Search,
     Link,
-    Check
+    Check,
+    Mic,
+    MicOff,
+    Sparkles
 } from "lucide-react";
+import { askGeminiAboutImage } from "../../lib/gemini";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,6 +100,117 @@ export default function ConciliacionPage() {
     const [preconciliacionOpen, setPreconciliacionOpen] = useState(false);
     const [preconciliacionesEncontradas, setPreconciliacionesEncontradas] = useState<{ mov: BancoMovimiento; match: Coincidencia }[]>([]);
     const [isPreconciliating, setIsPreconciliating] = useState(false);
+
+    // --- VOICE AGENT STATE ---
+    const [isListening, setIsListening] = useState(false);
+    const [agentText, setAgentText] = useState("");
+    const [agentResponse, setAgentResponse] = useState("");
+    const [agentProcessing, setAgentProcessing] = useState(false);
+
+    const speak = (text: string) => {
+        const SpeechSynthesis = (window as any).speechSynthesis;
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'es-CL';
+        SpeechSynthesis.speak(utterance);
+    };
+
+    const toggleVoiceAgent = () => {
+        if (isListening) {
+            stopListening();
+        } else {
+            startListening();
+        }
+    };
+
+    const startListening = () => {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Tu navegador no soporta reconocimiento de voz.");
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = 'es-CL';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+            setIsListening(true);
+            setAgentResponse("Te escucho, Mario...");
+        };
+
+        recognition.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            setAgentText(transcript);
+            processAgentCommand(transcript);
+        };
+
+        recognition.onerror = (event: any) => {
+            console.error(event.error);
+            setIsListening(false);
+        };
+
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        recognition.start();
+    };
+
+    const stopListening = () => {
+        setIsListening(false);
+    };
+
+    const processAgentCommand = async (command: string) => {
+        setAgentProcessing(true);
+        try {
+            const resumeMovimientos = movimientos
+                .filter(m => m.estado === 'pendiente')
+                .slice(0, 10)
+                .map(m => `ID: ${m.id}, Desc: ${m.descripcion}, Monto: ${m.cargos || m.abonos}`)
+                .join(" | ");
+
+            const systemPrompt = `
+Eres el Agente de Conciliación de Ecomoving. Tu misión es ayudar a Mario a gestionar la cartola bancaria.
+MOVIMIENTOS PENDIENTES ACTUALES: ${resumeMovimientos}
+CATEGORÍAS DISPONIBLES: ${categorias.join(", ")}
+
+INSTRUCCIÓN DEL USUARIO: "${command}"
+
+Responde EXCLUSIVAMENTE en formato JSON plano (sin markdown):
+{
+  "intent": "categorize" | "reconcile" | "info" | "unknown",
+  "target_id": number,
+  "value": "nombre de categoria",
+  "message": "Mensaje corto de voz para Mario"
+}
+
+Ejemplos:
+- "Ponle categoría Mugs al movimiento 5": {"intent": "categorize", "target_id": 5, "value": "MUGS", "message": "Listo Mario, clasificado como MUGS."}
+- "¿Qué movimientos tengo?": {"intent": "info", "message": "Tienes ${movimientos.filter(m => m.estado === 'pendiente').length} movimientos pendientes."}
+`;
+
+            const responseText = await askGeminiAboutImage(null, systemPrompt);
+            const cleanJson = responseText.replace(/```json|```/g, "").trim();
+            const action = JSON.parse(cleanJson);
+
+            setAgentResponse(action.message);
+            speak(action.message);
+
+            if (action.intent === "categorize" && action.target_id && action.value) {
+                await handleTipoGastoChange(action.target_id, action.value);
+            } else if (action.intent === "reconcile" && action.target_id) {
+                const mov = movimientos.find(m => m.id === action.target_id);
+                if (mov) handleConciliarClick(mov);
+            }
+
+        } catch (error) {
+            console.error("Error Agente:", error);
+            setAgentResponse("Perdona Mario, hubo un problema.");
+        } finally {
+            setAgentProcessing(false);
+        }
+    };
 
     useEffect(() => {
         cargarCartolas();
@@ -1295,6 +1410,39 @@ export default function ConciliacionPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* FLOATING VOICE AGENT UI */}
+            <div className="fixed bottom-8 right-8 z-[100] flex flex-col items-end gap-3">
+                {agentResponse && (
+                    <div className="bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-900 p-4 rounded-2xl shadow-2xl max-w-[280px] animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Sparkles className="h-4 w-4 text-indigo-500" />
+                            <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Ecomoving Agent</span>
+                        </div>
+                        <p className="text-sm text-slate-700 dark:text-slate-200 font-medium">{agentResponse}</p>
+                        {agentProcessing && (
+                            <div className="mt-2 flex gap-1">
+                                <div className="h-1 w-1 bg-indigo-500 rounded-full animate-bounce" />
+                                <div className="h-1 w-1 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+                                <div className="h-1 w-1 bg-indigo-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                <button
+                    onClick={toggleVoiceAgent}
+                    className={`h-16 w-16 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${isListening
+                        ? 'bg-red-500 animate-pulse text-white'
+                        : 'bg-indigo-600 text-white'
+                        }`}
+                >
+                    {isListening ? <MicOff className="h-7 w-7" /> : <Mic className="h-7 w-7" />}
+                    {isListening && (
+                        <div className="absolute inset-0 rounded-full border-4 border-red-400 animate-ping opacity-25" />
+                    )}
+                </button>
+            </div>
         </div>
     );
 }
