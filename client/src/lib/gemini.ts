@@ -176,3 +176,64 @@ Reglas:
     html
   };
 };
+
+/**
+ * Chat flexible con la IA sobre una imagen
+ */
+export const askGeminiAboutImage = async (
+  imageSource: string | null,
+  userMessage: string
+): Promise<string> => {
+  if (!API_KEY) throw new Error("VITE_GEMINI_API_KEY no está configurada.");
+
+  let inlineData = null;
+
+  if (imageSource) {
+    try {
+      const isUrl = /^https?:\/\//i.test(imageSource);
+      let base64Data = "";
+
+      if (isUrl) {
+        const response = await fetch(imageSource, { mode: 'cors' });
+        const blob = await response.blob();
+        base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        base64Data = imageSource.split(',')[1] || imageSource;
+      }
+
+      inlineData = {
+        mime_type: "image/jpeg",
+        data: base64Data
+      };
+    } catch (err) {
+      console.error("Error procesando imagen para chat:", err);
+    }
+  }
+
+  const parts: any[] = [{ text: userMessage }];
+  if (inlineData) {
+    parts.push({ inline_data: inlineData });
+  }
+
+  const response = await fetch(`${BASE_URL}/${MODEL_NAME}:generateContent?key=${API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1024,
+      }
+    })
+  });
+
+  if (!response.ok) throw new Error("Error en la comunicación con Gemini");
+
+  const result = await response.json();
+  return result.candidates?.[0]?.content?.parts?.[0]?.text || "No recibí respuesta de la IA.";
+};
