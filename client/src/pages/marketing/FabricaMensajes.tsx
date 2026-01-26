@@ -188,10 +188,10 @@ Reglas CRÍTICAS:
     .content { padding: 0 40px 40px; }
     .title { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 24px; line-height: 1.2; letter-spacing: -0.02em; text-align: center; }
     .text-p { font-size: ${textStyles.fontSize}; line-height: 1.7; color: #4b5563; margin-bottom: 30px; white-space: pre-line; text-align: ${textStyles.textAlign}; }
-    .product-image { width: 100%; max-width: 100%; height: auto; border-radius: 12px; display: block; margin: 30px auto; object-fit: ${fitMode}; ${fitMode === 'cover' ? 'height: 400px;' : ''} }
+    .product-image { width: 100%; max-width: 480px; height: auto; border-radius: 12px; display: block; margin: 35px auto; object-fit: ${fitMode}; ${fitMode === 'cover' ? 'height: 400px;' : ''} }
     .footer { background-color: #ffffff; padding: 30px 40px; text-align: center; border-top: 1px solid #f3f4f6; }
-    .logo-container { text-align: center; margin-bottom: 20px; }
-    .brand-logo { height: 45px; width: auto; display: inline-block; }
+    .logo-container { text-align: center; margin-bottom: 25px; }
+    .brand-logo { width: 140px; height: auto; display: inline-block; }
     .legal { font-size: 11px; color: #d1d5db; line-height: 1.5; }
     a { color: #4f46e5; text-decoration: none; font-weight: 600; }
   </style>
@@ -202,13 +202,13 @@ Reglas CRÍTICAS:
       <tr>
         <td class="header">
           <div class="logo-container">
-            <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" class="brand-logo" alt="Ecomoving" />
+            <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" width="140" class="brand-logo" alt="Ecomoving" />
           </div>
           <h1 class="title">${contenido.subject}</h1>
         </td>
       </tr>
       <tr>
-        <td class="content">
+        <td class="content" style="text-align: center;">
           <p class="text-p">${contenido.part1}</p>
           <img src="${activeImage.url}" class="product-image" alt="Producto Ecomoving" />
           <p class="text-p">${contenido.part2}</p>
