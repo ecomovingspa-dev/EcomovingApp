@@ -111,14 +111,16 @@ ${tono === 'agresivo' ? 'Instrucciones de tono: Enfócate mucho en la urgencia, 
 ${tono === 'profesional' ? 'Instrucciones de tono: Mantén un lenguaje equilibrado, corporativo, basado en la confianza y calidad.' : ''}
 
 Formatea tu respuesta exactamente de esta manera (sin usar Markdown ni asteriscos en las etiquetas):
-SUBJECT: [Un asunto corto y enganchador]
+SUBJECT: [Un asunto corto y enganchador, SIN mencionar marcas específicas]
 PART1: [Párrafo introductorio de 2-3 líneas]
 PART2: [Párrafo de cierre o llamado a la acción de 2-3 líneas]
 SOCIAL: [Caption sugerido para redes sociales con emojis]
 
-Reglas:
+Reglas CRÍTICAS:
+- NO menciones ninguna MARCA, NOMBRE o LOGO que aparezca en el producto de la imagen (ej: si dice BACH, no digas BACH).
+- Los logos en la imagen pertenecen a clientes previos; tu objetivo es vender el PRODUCTO (ej: la mochila, el set, la botella), no la marca que lleva impresa.
+- Céntrate en la calidad del producto, su utilidad y el impacto de los regalos corporativos sustentables de Ecomoving.
 - No inventes precios.
-- Si hay texto en la imagen, úsalo a tu favor.
 - Responde solo con las etiquetas mencionadas.
             `;
 
