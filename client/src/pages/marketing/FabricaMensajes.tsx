@@ -186,10 +186,10 @@ Reglas:
     .content { padding: 0 40px 40px; }
     .title { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 24px; line-height: 1.2; letter-spacing: -0.02em; text-align: center; }
     .text-p { font-size: ${textStyles.fontSize}; line-height: 1.7; color: #4b5563; margin-bottom: 30px; white-space: pre-line; text-align: ${textStyles.textAlign}; }
-    .product-image { width: 100%; max-width: 100%; height: auto; border-radius: 12px; display: block; margin: 30px 0; object-fit: ${fitMode}; ${fitMode === 'cover' ? 'height: 400px;' : ''} }
+    .product-image { width: 100%; max-width: 100%; height: auto; border-radius: 12px; display: block; margin: 30px auto; object-fit: ${fitMode}; ${fitMode === 'cover' ? 'height: 400px;' : ''} }
     .footer { background-color: #ffffff; padding: 30px 40px; text-align: center; border-top: 1px solid #f3f4f6; }
-    .brand { color: #4f46e5; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; display: block; }
-    .tagline { color: #9ca3af; font-size: 13px; margin-bottom: 20px; display: block; }
+    .logo-container { text-align: center; margin-bottom: 20px; }
+    .brand-logo { height: 45px; width: auto; display: inline-block; }
     .legal { font-size: 11px; color: #d1d5db; line-height: 1.5; }
     a { color: #4f46e5; text-decoration: none; font-weight: 600; }
   </style>
@@ -199,7 +199,9 @@ Reglas:
     <table class="main">
       <tr>
         <td class="header">
-          <span class="brand">Ecomoving</span>
+          <div class="logo-container">
+            <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" class="brand-logo" alt="Ecomoving" />
+          </div>
           <h1 class="title">${contenido.subject}</h1>
         </td>
       </tr>
@@ -212,7 +214,6 @@ Reglas:
       </tr>
       <tr>
         <td class="footer">
-          <span class="tagline">Regalos Corporativos con Impacto Sustentable</span>
           <div class="legal">
             Recibiste este mensaje porque eres parte de nuestra red de contactos preferenciales.<br>
             <strong>Ecomoving SpA</strong> • Santiago, Chile
@@ -275,11 +276,11 @@ Reglas:
     };
 
     return (
-        <div className="max-w-[95%] mx-auto space-y-6">
-            <div className="flex flex-col lg:flex-row gap-6 h-[88vh]">
+        <div className="w-full space-y-4">
+            <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-160px)] min-h-[600px] overflow-hidden">
 
-                {/* EXPLORADOR DE MEDIOS (IZQUIERDA) - Estilo Brochures */}
-                <div className="w-full lg:w-80 bg-[#1e293b]/50 backdrop-blur-xl rounded-2xl border border-white/5 flex flex-col shadow-2xl overflow-hidden">
+                {/* COLUMNA 1: EXPLORADOR DE MEDIOS (IZQUIERDA) */}
+                <div className="w-full lg:w-72 bg-white/40 dark:bg-[#1e293b]/50 backdrop-blur-xl rounded-2xl border border-gray-200 dark:border-white/5 flex flex-col shadow-xl overflow-hidden">
 
                     {/* Tabs Estilo Brochures */}
                     <div className="flex border-b border-white/5 p-1 bg-black/20">
@@ -330,7 +331,7 @@ Reglas:
                             variant="outline"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={subiendoImagen}
-                            className="w-full h-10 border-dashed border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 text-indigo-400 text-[10px] font-bold gap-2 rounded-xl transition-all"
+                            className="w-full h-10 border-dashed border-indigo-500/30 bg-indigo-50/5 hover:bg-indigo-50/10 text-indigo-400 text-[10px] font-bold gap-2 rounded-xl transition-all"
                         >
                             {subiendoImagen ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>+ CARGAR IMAGEN</span>}
                         </Button>
@@ -338,11 +339,11 @@ Reglas:
 
                     <div className="flex-1 overflow-y-auto p-4 pt-0 scrollbar-thin">
                         {activeTab === 'images' ? (
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-2">
                                 {loadingStorage ? (
-                                    <div className="col-span-2 flex flex-col items-center justify-center py-20 text-gray-600">
+                                    <div className="col-span-2 flex flex-col items-center justify-center py-20 text-gray-400">
                                         <Loader2 className="h-6 w-6 animate-spin mb-2" />
-                                        <span className="text-[10px] uppercase font-bold tracking-tighter">Sincronizando...</span>
+                                        <span className="text-[10px] uppercase font-bold">Cargando...</span>
                                     </div>
                                 ) : filteredImages.length > 0 ? (
                                     filteredImages.map((img) => (
@@ -353,17 +354,17 @@ Reglas:
                                                 setContenido(null);
                                             }}
                                             className={`group relative aspect-square rounded-xl overflow-hidden border-2 cursor-pointer transition-all duration-300 ${activeImage?.name === img.name
-                                                ? 'border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)] scale-95'
-                                                : 'border-transparent hover:border-white/10'
+                                                ? 'border-indigo-500 shadow-lg scale-[0.98]'
+                                                : 'border-transparent hover:border-gray-300 dark:hover:border-white/10'
                                                 }`}
                                         >
                                             <img src={img.url} className="w-full h-full object-cover" alt={img.name} />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                                                <p className="text-[8px] text-white truncate font-bold uppercase tracking-tighter">{img.name}</p>
+                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 text-center">
+                                                <p className="text-[8px] text-white font-bold uppercase truncate w-full">{img.name}</p>
                                             </div>
                                             {activeImage?.name === img.name && (
-                                                <div className="absolute inset-0 bg-indigo-500/10 flex items-center justify-center">
-                                                    <div className="bg-indigo-500 text-white p-1 rounded-full shadow-xl scale-110">
+                                                <div className="absolute top-1 right-1">
+                                                    <div className="bg-indigo-500 text-white p-0.5 rounded-full shadow-lg">
                                                         <CheckCircle2 className="h-3 w-3" />
                                                     </div>
                                                 </div>
@@ -371,259 +372,250 @@ Reglas:
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="col-span-2 text-center py-12 text-gray-600">
+                                    <div className="col-span-2 text-center py-12 text-gray-400">
                                         <p className="text-xs">No hay imágenes</p>
                                     </div>
                                 )}
                             </div>
                         ) : (
-                            <div className="flex flex-col items-center justify-center py-20 text-gray-600 text-center gap-2">
+                            <div className="flex flex-col items-center justify-center py-20 text-gray-400 text-center gap-2">
                                 <Sparkles className="h-8 w-8 opacity-20" />
-                                <span className="text-[10px] uppercase font-bold tracking-widest opacity-50">Explorador de Plantillas</span>
-                                <p className="text-[8px] text-gray-500 px-4 italic">Las plantillas guardadas aparecerán aquí próximamente.</p>
+                                <span className="text-[10px] uppercase font-bold opacity-50">Plantillas</span>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* AREA CENTRAL Y PANEL DE EDICIÓN */}
-                <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+                {/* COLUMNA 2: VISTA PREVIA Y CONTROLES IA (CENTRO) */}
+                <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col overflow-hidden h-full relative">
 
-                    {/* Header Acciones */}
-                    <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-                                <Sparkles className="h-5 w-5" />
+                        {/* Status Bar / Mensajes */}
+                        {mensaje && (
+                            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-full bg-white dark:bg-gray-800 shadow-2xl border border-gray-100 dark:border-gray-700 flex items-center gap-2 animate-in fade-in zoom-in slide-in-from-top-4 duration-300">
+                                {mensaje.includes("❌") ? <AlertCircle className="h-4 w-4 text-red-500" /> : <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{mensaje}</span>
                             </div>
-                            <div>
-                                <h2 className="text-sm font-bold text-gray-900 dark:text-white">Diseñador de Campañas IA</h2>
-                                <p className="text-[10px] text-gray-500">Selecciona una imagen y genera tu correo.</p>
-                            </div>
-                        </div>
+                        )}
 
-                        <div className="flex gap-2">
-                            {contenido && (
-                                <>
-                                    <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-                                        <DialogTrigger asChild>
-                                            <Button variant="outline" size="sm" className="h-9 px-4 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300">
-                                                <Eye className="h-4 w-4 mr-2" />
-                                                Vista Previa
-                                            </Button>
-                                        </DialogTrigger>
-                                        <DialogContent className="max-w-3xl h-[85vh] p-0 overflow-hidden bg-gray-50 dark:bg-gray-950 flex flex-col border-gray-200 dark:border-gray-800">
-                                            <DialogHeader className="p-4 border-b bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
-                                                <DialogTitle className="flex items-center gap-2 dark:text-white">
-                                                    <Eye className="h-5 w-5 text-indigo-600" />
-                                                    Vista Previa del Email
-                                                </DialogTitle>
-                                            </DialogHeader>
-                                            <div className="flex-1 bg-gray-100 p-4 md:p-8 overflow-y-auto flex justify-center">
-                                                <div className="w-full max-w-[600px] bg-white shadow-2xl rounded-sm overflow-hidden h-fit">
-                                                    <iframe
-                                                        title="Email Preview"
-                                                        srcDoc={generarHtmlFinal()}
-                                                        className="w-full min-h-[800px] border-none"
-                                                        style={{ height: 'auto', minHeight: '800px' }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-end">
-                                                <Button
-                                                    className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                                                    onClick={() => setPreviewOpen(false)}
-                                                >
-                                                    Cerrar
-                                                </Button>
-                                            </div>
-                                        </DialogContent>
-                                    </Dialog>
-
-                                    <Button
-                                        onClick={guardarMensaje}
-                                        disabled={guardando}
-                                        size="sm"
-                                        className="bg-emerald-600 hover:bg-emerald-700 text-white h-9 px-4"
-                                    >
-                                        {guardando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                                        Guardar en Biblioteca
-                                    </Button>
-                                </>
-                            )}
-                            {activeImage && !contenido && (
-                                <div className="flex items-center gap-2">
-                                    <Select value={tono} onValueChange={setTono}>
-                                        <SelectTrigger className="h-9 w-32 text-xs bg-white dark:bg-gray-800">
-                                            <SelectValue placeholder="Tono" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="profesional">🎩 Profesional</SelectItem>
-                                            <SelectItem value="creativo">🎨 Creativo</SelectItem>
-                                            <SelectItem value="elegante">💎 Elegante</SelectItem>
-                                            <SelectItem value="agresivo">🚀 Comercial</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-
-                                    <Button
-                                        onClick={generarConIA}
-                                        disabled={procesando}
-                                        size="sm"
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-white h-9 px-4 shadow-lg shadow-indigo-200"
-                                    >
-                                        {procesando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                                        Generar Contenido con IA
-                                    </Button>
+                        {/* Controles de Generación Superior */}
+                        <div className="p-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/50">
+                            <div className="flex items-center gap-2">
+                                <div className="h-8 w-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+                                    <Sparkles className="h-4 w-4" />
                                 </div>
-                            )}
+                                <h2 className="text-xs font-bold text-gray-900 dark:text-white">Generador IA</h2>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <Select value={tono} onValueChange={setTono}>
+                                    <SelectTrigger className="h-8 w-28 text-[10px] bg-white dark:bg-gray-800">
+                                        <SelectValue placeholder="Tono" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="profesional">🎩 Profesional</SelectItem>
+                                        <SelectItem value="creativo">🎨 Creativo</SelectItem>
+                                        <SelectItem value="elegante">💎 Elegante</SelectItem>
+                                        <SelectItem value="agresivo">🚀 Comercial</SelectItem>
+                                    </SelectContent>
+                                </Select>
+
+                                <Button
+                                    onClick={generarConIA}
+                                    disabled={procesando || !activeImage}
+                                    size="sm"
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 px-3 text-[10px] font-bold shadow-sm"
+                                >
+                                    {procesando ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />}
+                                    GENERAR
+                                </Button>
+                            </div>
                         </div>
-                    </div>
 
-                    {mensaje && (
-                        <div className="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 flex items-center gap-2 border border-indigo-100 dark:border-indigo-800 animate-in fade-in slide-in-from-top-1 text-xs font-medium">
-                            {mensaje.includes("❌") ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
-                            {mensaje}
-                        </div>
-                    )}
-
-                    <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
-
-                        {/* Previsualizador Central */}
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center relative overflow-hidden shadow-sm">
+                        {/* Area de Imagen */}
+                        <div className="flex-1 relative flex items-center justify-center bg-gray-50 dark:bg-gray-900/30 min-h-0">
                             {activeImage ? (
                                 <>
                                     <img
                                         src={activeImage.url}
-                                        className={`w-full h-full transition-all duration-300 ${fitMode === 'cover' ? 'object-cover' : 'object-contain p-8'}`}
+                                        className={`w-full h-full transition-all duration-300 ${fitMode === 'cover' ? 'object-cover' : 'object-contain p-6'}`}
                                         alt="Producto seleccionado"
                                     />
-                                    <div className="absolute bottom-4 right-4 flex gap-2">
+                                    <div className="absolute bottom-3 right-3 flex gap-2">
                                         <Button
                                             size="icon"
                                             variant="secondary"
-                                            className="h-9 w-9 bg-gray-900/80 dark:bg-gray-800/90 backdrop-blur rounded-full shadow-lg border-none text-white hover:bg-black dark:hover:bg-gray-700"
+                                            className="h-8 w-8 bg-white/80 dark:bg-gray-800/80 backdrop-blur rounded-full shadow-md border-none text-gray-700 dark:text-white hover:bg-white dark:hover:bg-gray-700"
                                             onClick={() => setFitMode(fitMode === 'cover' ? 'contain' : 'cover')}
-                                            title={fitMode === 'cover' ? "Ajustar al cuadro" : "Expandir a tope"}
                                         >
                                             {fitMode === 'cover' ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
                                         </Button>
                                     </div>
-                                    <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] text-white font-bold border border-white/10">
+                                    <div className="absolute top-3 left-3 bg-black/50 backdrop-blur-md px-2 py-1 rounded-md text-[9px] text-white font-medium border border-white/10 truncate max-w-[200px]">
                                         {activeImage.name}
                                     </div>
                                 </>
                             ) : (
-                                <div className="flex flex-col items-center gap-4 p-12 text-center">
-                                    <div className="h-16 w-16 rounded-full bg-gray-50 flex items-center justify-center">
-                                        <ImageIcon className="h-8 w-8 text-gray-300" />
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-gray-400">Selecciona una imagen de la galería</p>
-                                        <p className="text-[10px] text-gray-400 mt-1">Sube tus fotos a Supabase y aparecerán aquí automáticamente.</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Panel de Editor Editable */}
-                        <div className="flex flex-col gap-4 overflow-hidden">
-                            {contenido ? (
-                                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 flex flex-col h-full shadow-sm animate-in zoom-in-95">
-                                    <div className="flex-1 overflow-y-auto pr-2 space-y-6 scrollbar-thin">
-
-                                        {/* Editor Asunto */}
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
-                                                <Edit3 className="h-3 w-3" /> Asunto del Email
-                                            </label>
-                                            <Input
-                                                value={contenido.subject}
-                                                onChange={(e) => setContenido({ ...contenido, subject: e.target.value })}
-                                                className="bg-gray-50/50 dark:bg-gray-900 border-gray-100 dark:border-gray-800 font-bold"
-                                            />
-                                        </div>
-
-                                        {/* Editor de Cuerpo */}
-                                        <div className="space-y-4">
-                                            <div className="flex items-center justify-between">
-                                                <label className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
-                                                    <Sparkles className="h-3 w-3" /> Cuerpo del Mensaje
-                                                </label>
-
-                                                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900/50 p-1 rounded-lg border border-gray-100 dark:border-gray-800">
-                                                    <Select value={textStyles.fontFamily} onValueChange={(v) => setTextStyles({ ...textStyles, fontFamily: v })}>
-                                                        <SelectTrigger className="h-7 w-28 text-[9px] bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                                                            <SelectItem value="'Helvetica Neue', Helvetica, Arial, sans-serif">Sans-Serif</SelectItem>
-                                                            <SelectItem value="Georgia, serif">Elegante Serif</SelectItem>
-                                                            <SelectItem value="'Courier New', monospace">Técnica Mono</SelectItem>
-                                                            <SelectItem value="'Oswald', sans-serif">Moderno</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-
-                                                    <Select value={textStyles.fontSize} onValueChange={(v) => setTextStyles({ ...textStyles, fontSize: v })}>
-                                                        <SelectTrigger className="h-7 w-20 text-[9px] bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
-                                                            <SelectItem value="14px">Pequeño</SelectItem>
-                                                            <SelectItem value="17px">Normal</SelectItem>
-                                                            <SelectItem value="21px">Grande</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                            </div>
-
-                                            <div className="space-y-3 p-4 border border-indigo-50 dark:border-indigo-900/30 rounded-xl bg-indigo-50/20 dark:bg-indigo-900/10">
-                                                <textarea
-                                                    value={contenido.part1}
-                                                    onChange={(e) => setContenido({ ...contenido, part1: e.target.value })}
-                                                    className="w-full bg-transparent border-none text-sm text-gray-700 dark:text-gray-300 italic resize-none focus:ring-0 p-0 min-h-[80px] scrollbar-hide"
-                                                />
-
-                                                <div className="h-16 bg-gray-100/50 dark:bg-gray-900/50 rounded-lg flex items-center justify-center text-gray-400 dark:text-gray-500 text-[9px] border border-dashed border-gray-200 dark:border-gray-700">
-                                                    <ImageIcon className="h-4 w-4 mr-2 opacity-30" />
-                                                    <span>LA IMAGEN [{activeImage?.name}]</span>
-                                                </div>
-
-                                                <textarea
-                                                    value={contenido.part2}
-                                                    onChange={(e) => setContenido({ ...contenido, part2: e.target.value })}
-                                                    className="w-full bg-transparent border-none text-sm text-gray-700 dark:text-gray-300 resize-none focus:ring-0 p-0 min-h-[100px] scrollbar-hide"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* Redes Sociales Caption */}
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-2">
-                                                <ImageIcon className="h-3 w-3" /> Social Caption
-                                            </label>
-                                            <textarea
-                                                value={contenido.social}
-                                                onChange={(e) => setContenido({ ...contenido, social: e.target.value })}
-                                                className="w-full p-3 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-lg text-xs text-gray-600 dark:text-gray-400 min-h-[60px] focus:ring-1 focus:ring-emerald-200 outline-none"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="pt-4 border-t border-gray-100 dark:border-gray-800 text-center">
-                                        <p className="text-[9px] text-gray-400 dark:text-gray-500 italic">Puedes editar los textos a tu gusto antes de guardar.</p>
-                                    </div>
-                                </div>
-                            ) : (
-                                <div className="bg-gray-50/50 dark:bg-gray-900 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col items-center justify-center p-12 text-center h-full">
-                                    <Sparkles className="h-12 w-12 text-indigo-200 mb-4" />
-                                    <h4 className="font-bold text-gray-400">Contenido Generado por IA</h4>
-                                    <p className="text-[10px] text-gray-400 mt-2 max-w-[200px]">Pincha el botón de arriba para que Gemini escriba tu campaña basada en la imagen seleccionada.</p>
+                                <div className="flex flex-col items-center gap-3 p-8 text-center opacity-40">
+                                    <ImageIcon className="h-10 w-10 text-gray-400" />
+                                    <p className="text-xs font-medium text-gray-500">Selecciona una imagen para comenzar</p>
                                 </div>
                             )}
                         </div>
                     </div>
                 </div>
 
+                {/* COLUMNA 3: PANEL DE EDITOR Y ACCIONES (DERECHA) */}
+                <div className="w-full lg:w-[420px] flex flex-col gap-4 overflow-hidden">
+                    {contenido ? (
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col h-full shadow-xl animate-in slide-in-from-right-4 duration-300 overflow-hidden">
+
+                            {/* Cabecera Editor */}
+                            <div className="p-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/50">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-8 w-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
+                                        <Save className="h-4 w-4" />
+                                    </div>
+                                    <h2 className="text-xs font-bold text-gray-900 dark:text-white">Editor</h2>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 px-3 text-[10px] font-bold dark:bg-gray-800"
+                                        onClick={() => setPreviewOpen(true)}
+                                    >
+                                        <Eye className="h-3 w-3 mr-1" /> VISTA PREVIA
+                                    </Button>
+                                    <Button
+                                        onClick={guardarMensaje}
+                                        disabled={guardando}
+                                        size="sm"
+                                        className="bg-emerald-600 hover:bg-emerald-700 text-white h-8 px-3 text-[10px] font-bold"
+                                    >
+                                        {guardando ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Save className="h-3 w-3 mr-1" />}
+                                        GUARDAR
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* Contenido del Editor */}
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+
+                                {/* Asunto */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                        <Edit3 className="h-3 w-3 text-indigo-500" /> Asunto del Email
+                                    </label>
+                                    <Input
+                                        value={contenido.subject}
+                                        onChange={(e) => setContenido({ ...contenido, subject: e.target.value })}
+                                        className="bg-gray-50 dark:bg-gray-900/50 border-gray-100 dark:border-gray-700 text-sm font-bold h-9"
+                                    />
+                                </div>
+
+                                {/* Formato de Texto */}
+                                <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-100 dark:border-gray-700">
+                                    <Select value={textStyles.fontFamily} onValueChange={(v) => setTextStyles({ ...textStyles, fontFamily: v })}>
+                                        <SelectTrigger className="h-7 flex-1 text-[10px] bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="'Helvetica Neue', Helvetica, Arial, sans-serif">Sans-Serif</SelectItem>
+                                            <SelectItem value="Georgia, serif">Serif Elegante</SelectItem>
+                                            <SelectItem value="'Oswald', sans-serif">Moderno</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Select value={textStyles.fontSize} onValueChange={(v) => setTextStyles({ ...textStyles, fontSize: v })}>
+                                        <SelectTrigger className="h-7 w-20 text-[10px] bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="14px">P</SelectItem>
+                                            <SelectItem value="17px">M</SelectItem>
+                                            <SelectItem value="21px">G</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Cuerpo Email */}
+                                <div className="space-y-3 p-3 border border-indigo-50 dark:border-indigo-900/20 rounded-xl bg-indigo-50/10 dark:bg-indigo-900/5">
+                                    <textarea
+                                        value={contenido.part1}
+                                        onChange={(e) => setContenido({ ...contenido, part1: e.target.value })}
+                                        className="w-full bg-transparent border-none text-[13px] leading-relaxed text-gray-600 dark:text-gray-300 italic resize-none focus:ring-0 p-0 min-h-[70px]"
+                                        placeholder="Párrafo 1..."
+                                    />
+
+                                    <div className="py-2 px-3 bg-white/50 dark:bg-black/20 rounded border border-dashed border-gray-200 dark:border-gray-700 flex items-center justify-center gap-2 text-[10px] text-gray-400">
+                                        <ImageIcon className="h-3 w-3 opacity-50" />
+                                        <span>POSICIÓN DE IMAGEN</span>
+                                    </div>
+
+                                    <textarea
+                                        value={contenido.part2}
+                                        onChange={(e) => setContenido({ ...contenido, part2: e.target.value })}
+                                        className="w-full bg-transparent border-none text-[13px] leading-relaxed text-gray-700 dark:text-gray-200 resize-none focus:ring-0 p-0 min-h-[80px]"
+                                        placeholder="Párrafo 2..."
+                                    />
+                                </div>
+
+                                {/* Social Caption */}
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                                        <ImageIcon className="h-3 w-3 text-emerald-500" /> Social Caption
+                                    </label>
+                                    <textarea
+                                        value={contenido.social}
+                                        onChange={(e) => setContenido({ ...contenido, social: e.target.value })}
+                                        className="w-full p-3 bg-emerald-50/20 dark:bg-emerald-900/5 border border-emerald-100 dark:border-emerald-900/20 rounded-xl text-xs text-gray-600 dark:text-gray-400 min-h-[60px] focus:ring-1 focus:ring-emerald-200 outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="p-3 border-t border-gray-100 dark:border-gray-800 text-center">
+                                <p className="text-[10px] text-gray-400 italic">Revisa y ajusta los textos antes de guardar.</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-gray-50/50 dark:bg-gray-900/50 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col items-center justify-center p-8 text-center h-full opacity-60">
+                            <Sparkles className="h-10 w-10 text-indigo-300 mb-4" />
+                            <h4 className="text-sm font-bold text-gray-400">Panel de Edición</h4>
+                            <p className="text-[10px] text-gray-400 mt-2 max-w-[200px]">El contenido generado por la IA aparecerá aquí.</p>
+                        </div>
+                    )}
+                </div>
             </div>
+
+            {/* MODAL DE VISTA PREVIA (DASHBOARD STYLE) */}
+            <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+                <DialogContent className="max-w-4xl h-[90vh] p-0 overflow-hidden bg-gray-100 dark:bg-gray-950 flex flex-col border-none shadow-2xl">
+                    <DialogHeader className="p-4 border-b bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 flex flex-row items-center justify-between space-y-0">
+                        <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white text-base">
+                            <Eye className="h-5 w-5 text-indigo-600" />
+                            Vista Previa del Email
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="flex-1 bg-gray-200/50 dark:bg-black/40 p-4 md:p-8 overflow-y-auto flex justify-center">
+                        <div className="w-full max-w-[600px] bg-white shadow-2xl rounded-lg overflow-hidden h-fit">
+                            <iframe
+                                title="Email Preview"
+                                srcDoc={generarHtmlFinal()}
+                                className="w-full min-h-[700px] border-none"
+                            />
+                        </div>
+                    </div>
+                    <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
+                        <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+                            Cerrar
+                        </Button>
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={guardarMensaje}>
+                            <Save className="h-4 w-4 mr-2" /> Guardar Ahora
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
