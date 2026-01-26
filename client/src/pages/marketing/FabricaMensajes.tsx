@@ -187,11 +187,11 @@ Reglas CRÍTICAS:
     .header { padding: 40px 40px 20px; text-align: center; }
     .content { padding: 0 40px 40px; }
     .title { font-size: 28px; font-weight: 800; color: #111827; margin-bottom: 24px; line-height: 1.2; letter-spacing: -0.02em; text-align: center; }
-    .text-p { font-size: ${textStyles.fontSize}; line-height: 1.7; color: #4b5563; margin-bottom: 30px; white-space: pre-line; text-align: center; }
+    .text-p { font-size: ${textStyles.fontSize}; line-height: 1.7; color: #4b5563; margin-bottom: 30px; white-space: pre-line; text-align: center; display: block; width: 100%; }
     .product-image { width: 100%; max-width: 480px; height: auto; border-radius: 12px; display: block; margin: 35px auto; object-fit: ${fitMode}; ${fitMode === 'cover' ? 'height: 400px;' : ''} }
     .footer { background-color: #ffffff; padding: 30px 40px; text-align: center; border-top: 1px solid #f3f4f6; }
     .logo-container { text-align: center; margin-bottom: 25px; }
-    .brand-logo { width: 140px; height: auto; display: inline-block; }
+    .brand-logo { width: 210px; height: auto; display: inline-block; }
     .legal { font-size: 11px; color: #d1d5db; line-height: 1.5; }
     a { color: #4f46e5; text-decoration: none; font-weight: 600; }
   </style>
@@ -202,16 +202,16 @@ Reglas CRÍTICAS:
       <tr>
         <td class="header">
           <div class="logo-container">
-            <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" width="140" class="brand-logo" alt="Ecomoving" />
+            <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" width="210" class="brand-logo" alt="Ecomoving" />
           </div>
           <h1 class="title">${contenido.subject}</h1>
         </td>
       </tr>
       <tr>
-        <td class="content" style="text-align: center;">
-          <p class="text-p" style="text-align: center;">${contenido.part1}</p>
+        <td class="content" align="center" style="text-align: center;">
+          <p class="text-p" align="center" style="text-align: center; margin-left: auto; margin-right: auto;">${contenido.part1.trim()}</p>
           <img src="${activeImage.url}" class="product-image" alt="Producto Ecomoving" />
-          <p class="text-p" style="text-align: center;">${contenido.part2}</p>
+          <p class="text-p" align="center" style="text-align: center; margin-left: auto; margin-right: auto;">${contenido.part2.trim()}</p>
         </td>
       </tr>
       <tr>
