@@ -109,17 +109,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .replace(/\{\{IMG_URL\}\}/g, imageUrl);
 
         const signatureHtml = `
-      <br><br>
-      <hr style="border:none; border-top:1px solid #eee; margin:20px 0;">
-      <div style="font-family: Arial, sans-serif; color: #333;">
-        <h2 style="margin: 0; padding: 0; color: #4f46e5; font-size: 24px;">Ecomoving</h2>
-        <p style="margin: 5px 0 0 0; font-size: 14px; color: #666;">Regalos Corporativos con Impacto Sustentable</p>
-        <br>
-        <strong>Equipo Ecomoving</strong><br>
-        <a href="https://www.ecomoving.cl" style="color: #007bff; text-decoration: none;">www.ecomoving.cl</a>
-      </div>
       <br>
-      <small style="color:#999;">[Email de Prueba enviado desde el Panel de Control]</small>
+      <div style="text-align: center;">
+        <small style="color:#999;">[Email de Prueba enviado desde el Panel de Control]</small>
+      </div>
     `;
         finalHtml += signatureHtml;
 

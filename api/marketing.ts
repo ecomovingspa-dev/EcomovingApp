@@ -98,17 +98,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           finalHtml = finalHtml.replace('IMAGE_PLACEHOLDER', imageUrl);
         }
 
-        // Add Signature with Logo at the end
-        const signatureHtml = `
-          <br><br>
-          <hr style="border:none; border-top:1px solid #eee; margin:20px 0;">
-          <div style="font-family: Arial, sans-serif; color: #666;">
-            <img src="${logoUrl}" alt="Ecomoving Logo" style="width:150px; margin-bottom:10px;"><br>
-            <strong>Equipo Ecomoving</strong><br>
-            <a href="https://www.ecomoving.cl" style="color: #007bff; text-decoration: none;">www.ecomoving.cl</a>
-          </div>
-        `;
-        finalHtml += signatureHtml;
+        // No longer appending a signature here because the new FabricaMensajes 
+        // generates a complete HTML document with its own logo and footer.
 
         // 4. Send via Brevo
         const emailPayload = {

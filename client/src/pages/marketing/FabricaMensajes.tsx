@@ -191,8 +191,8 @@ Reglas CRÍTICAS:
     .product-image { width: 100%; max-width: 480px; height: auto; border-radius: 12px; display: block; margin: 35px auto; object-fit: ${fitMode}; ${fitMode === 'cover' ? 'height: 400px;' : ''} }
     .footer { background-color: #ffffff; padding: 30px 40px; text-align: center; border-top: 1px solid #f3f4f6; }
     .logo-container { text-align: center; margin-bottom: 25px; }
-    .brand-logo { width: 210px; height: auto; display: inline-block; }
-    .legal { font-size: 11px; color: #d1d5db; line-height: 1.5; }
+    .brand-logo { width: 231px; height: auto; display: inline-block; }
+    .legal { font-size: 11px; color: #4b5563; line-height: 1.5; font-weight: 400; }
     a { color: #4f46e5; text-decoration: none; font-weight: 600; }
   </style>
 </head>
@@ -202,7 +202,7 @@ Reglas CRÍTICAS:
       <tr>
         <td class="header">
           <div class="logo-container">
-            <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" width="210" class="brand-logo" alt="Ecomoving" />
+            <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" width="231" class="brand-logo" alt="Ecomoving" />
           </div>
           <h1 class="title">${contenido.subject}</h1>
         </td>

@@ -193,7 +193,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20 text-center">ID</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/4">Asunto</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Archivo</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-52">Imagen Supabase (URL)</th>
+                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Imagen Supabase (URL)</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contenido</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center w-24">Vista</th>
                                     <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-36">Acciones</th>
@@ -222,7 +222,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                                 <span className="text-xs text-gray-400">-</span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-4 min-w-[192px]">
+                                        <td className="px-4 py-4 min-w-[120px]">
                                             {editandoUrl === msg.id ? (
                                                 <div className="flex flex-col gap-2 animate-in slide-in-from-top-1">
                                                     <textarea
@@ -256,9 +256,9 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                                                         setEditandoUrl(msg.id);
                                                         setUrlTemporal(msg.imagen_url || "");
                                                     }}
-                                                    className="group relative w-full h-12 flex items-center px-3 bg-gray-50/50 dark:bg-gray-900/40 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl text-left transition-all hover:border-indigo-400/50 hover:bg-indigo-50/30 overflow-hidden"
+                                                    className="group relative w-full h-auto min-h-[48px] flex items-center px-3 bg-gray-50/50 dark:bg-gray-900/40 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl text-left transition-all hover:border-indigo-400/50 hover:bg-indigo-50/30 overflow-hidden py-2"
                                                 >
-                                                    <div className="truncate w-full pr-6">
+                                                    <div className="w-full pr-6 break-all whitespace-normal">
                                                         {msg.imagen_url ? (
                                                             <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400">{msg.imagen_url}</span>
                                                         ) : (
@@ -317,32 +317,34 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
             </div>
 
             {/* Modal de Vista Previa HTML */}
-            {vistaPrevia && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
-                        <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
-                            <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <Eye className="h-4 w-4 text-indigo-500" />
-                                Vista Previa del Email
-                            </h3>
-                            <Button variant="ghost" size="sm" onClick={() => setVistaPrevia(null)} className="h-8 w-8 p-0">
-                                ✕
-                            </Button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
-                            <div
-                                className="bg-white rounded shadow-sm overflow-hidden mx-auto max-w-[600px] border border-gray-200"
-                                dangerouslySetInnerHTML={{ __html: vistaPrevia }}
-                            />
-                        </div>
-                        <div className="p-4 border-t border-gray-100 dark:border-gray-800 text-center">
-                            <Button onClick={() => setVistaPrevia(null)} className="bg-gray-900 dark:bg-white dark:text-gray-900">
-                                Cerrar Vista
-                            </Button>
+            {
+                vistaPrevia && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
+                            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50">
+                                <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <Eye className="h-4 w-4 text-indigo-500" />
+                                    Vista Previa del Email
+                                </h3>
+                                <Button variant="ghost" size="sm" onClick={() => setVistaPrevia(null)} className="h-8 w-8 p-0">
+                                    ✕
+                                </Button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 bg-gray-50">
+                                <div
+                                    className="bg-white rounded shadow-sm overflow-hidden mx-auto max-w-[600px] border border-gray-200"
+                                    dangerouslySetInnerHTML={{ __html: vistaPrevia }}
+                                />
+                            </div>
+                            <div className="p-4 border-t border-gray-100 dark:border-gray-800 text-center">
+                                <Button onClick={() => setVistaPrevia(null)} className="bg-gray-900 dark:bg-white dark:text-gray-900">
+                                    Cerrar Vista
+                                </Button>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 }

@@ -159,7 +159,6 @@ Reglas:
     
     <div class="footer">
       <p style="margin: 0 0 8px 0;"><strong>Ecomoving SpA</strong></p>
-      <p style="margin: 0 0 16px 0;">Regalos Corporativos con Impacto Sustentable</p>
       <div style="border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 16px;">
         <p style="margin: 0;">Recibiste este correo porque estás en nuestra lista de contactos preferenciales.</p>
       </div>
