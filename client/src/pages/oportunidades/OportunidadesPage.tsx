@@ -21,6 +21,8 @@ import {
   Loader2,
   Settings,
   Globe,
+  Activity,
+  Clock,
 } from "lucide-react";
 import { useRef } from "react";
 import { useVendedores } from "../../hooks/useVendedores";
@@ -494,6 +496,23 @@ export default function OportunidadesPage() {
     });
   }, [oportunidades, busqueda, responsableSeleccionado]);
 
+  const statsSincronizacion = useMemo(() => {
+    const ahora = new Date();
+    // Consideramos "hoy" desde las 00:00
+    const hoyInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+
+    // Filtrar las que terminan en COT26 (Compras Ágiles / Cotizaciones)
+    const comprasAgiles = oportunidades.filter(op => op.id.endsWith('COT26'));
+    const licitaciones = oportunidades.filter(op => !op.id.endsWith('COT26'));
+
+    return {
+      comprasAgilesTotal: comprasAgiles.length,
+      licitacionesTotal: licitaciones.length,
+      ultimaHr: ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+      ultimaFecha: ahora.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })
+    };
+  }, [oportunidades]);
+
   const totalPaginas = Math.ceil(
     oportunidadesFiltradas.length / itemsPorPagina,
   );
@@ -663,6 +682,35 @@ export default function OportunidadesPage() {
             data-testid="input-busqueda-oportunidad"
           />
         </div>
+
+        <div className="flex items-center gap-4 bg-blue-50/50 dark:bg-blue-900/10 px-4 py-2 rounded-lg border border-blue-100/50 dark:border-blue-900/20">
+          <div className="flex items-center gap-2 border-r border-blue-200 dark:border-blue-800 pr-4">
+            <Clock className="h-4 w-4 text-blue-500" />
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-bold text-blue-400 dark:text-blue-500 leading-none">Última Actualización</span>
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">{statsSincronizacion.ultimaHr} hrs - {statsSincronizacion.ultimaFecha}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 leading-none">Compras Ágiles</span>
+              <div className="flex items-center gap-1.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{statsSincronizacion.comprasAgilesTotal}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 leading-none">Licitaciones</span>
+              <div className="flex items-center gap-1.5">
+                <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{statsSincronizacion.licitacionesTotal}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600 dark:text-gray-400">
             Responsable:

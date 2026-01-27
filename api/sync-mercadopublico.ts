@@ -98,7 +98,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         fecha_cierre: d.FechaCierre || null,
                         monto_disponible: typeof d.MontoEstimado === 'number' ? d.MontoEstimado : null,
                         estado: "Publicada",
-                        clave: keywordsEncontradas || licResumen.Nombre,
+                        clave: keywordsEncontradas || licResumen.Nombre || "Sin clave",
                         vendedor_id: null
                     };
 
