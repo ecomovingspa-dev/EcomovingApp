@@ -23,11 +23,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: "No hay palabras clave configuradas." });
         }
 
-        // 2. Obtener licitaciones de hoy (o ayer si es muy temprano)
-        const hoy = new Date();
-        const dia = String(hoy.getDate()).padStart(2, '0');
-        const mes = String(hoy.getMonth() + 1).padStart(2, '0');
-        const anio = hoy.getFullYear();
+        // 2. Obtener licitaciones de hoy en Chile (ZONA HORARIA IMPORTANTE)
+        const hoyChile = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Santiago" }));
+        const dia = String(hoyChile.getDate()).padStart(2, '0');
+        const mes = String(hoyChile.getMonth() + 1).padStart(2, '0');
+        const anio = hoyChile.getFullYear();
         const fechaStr = `${dia}${mes}${anio}`;
 
         console.log(`Buscando licitaciones para la fecha: ${fechaStr}`);
