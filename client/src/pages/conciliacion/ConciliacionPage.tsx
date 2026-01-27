@@ -47,6 +47,11 @@ interface BancoMovimiento {
     conciliado_id?: number | null;
     tipo_gasto?: string | null;
     preconciliado_match?: Coincidencia | null;
+    // BCI Detailed Columns
+    bci_glosa_detalle?: string | null;
+    bci_comentario_transferencia?: string | null;
+    bci_rut?: string | null;
+    bci_nombre?: string | null;
 }
 
 interface BancoCartola {
@@ -329,167 +334,81 @@ Ejemplos:
             const sheet = workbook.Sheets[sheetName];
             const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as any[][];
 
-            console.log("Total rows found:", rows.length);
-
             let saldoInicial = 0;
             let saldoFinal = 0;
             let movementsStartIndex = -1;
 
-            // Default indices (will be overwritten if headers are found)
+            // Column indices
             let fechaIdx = 0;
-            let descIdxStart = 2; // Usually merge of cols
             let docIdx = 7;
             let cargoIdx = 10;
             let abonoIdx = 12;
             let saldoIdx = 14;
+            let bciGlosaIdx = -1;
+            let bciComentarioIdx = -1;
+            let bciRutIdx = -1;
+            let bciNombreIdx = -1;
 
-            // Helper to clean string for comparison
             const cleanStr = (val: any) => String(val || "").toLowerCase().trim().replace(/\s+/g, ' ');
 
-            const parseMoney = (val: any) => {
+            const parseMoney = (val: any): number => {
                 if (val === undefined || val === null || val === "") return 0;
                 if (typeof val === 'number') return val;
                 if (typeof val === 'string') {
-                    // Remove $ and any non-numeric chars except , . -
                     let clean = val.replace(/[^0-9,.-]/g, '');
-
-                    // Detect decimal separator logic
-                    if (clean.includes(',')) {
-                        if (clean.includes('.')) {
-                            // Has both. Last one is decimal?
-                            if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
-                                // 1.234,56 -> remove dot, replace comma with dot
-                                clean = clean.replace(/\./g, '').replace(',', '.');
-                            } else {
-                                // 1,234.56 -> remove comma
-                                clean = clean.replace(/,/g, '');
-                            }
+                    if (clean.includes(',') && clean.includes('.')) {
+                        if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
+                            clean = clean.replace(/\./g, '').replace(',', '.');
                         } else {
-                            // Has only comma. Is it decimal or thousand? "1,000" vs "0,5"
-                            // In CL, comma is decimal.
-                            clean = clean.replace(',', '.');
+                            clean = clean.replace(/,/g, '');
                         }
-                    } else {
-                        // Only dots? "1.000" -> usually 1000. 
-                        // But "10.5" -> 10.5.
-                        // If dot count > 1, certainly thousands separator.
-                        const dotCount = (clean.match(/\./g) || []).length;
-                        if (dotCount > 1) {
-                            clean = clean.replace(/\./g, '');
-                        } else if (dotCount === 1) {
-                            // Ambiguous: 1.000 could be 1k. 3.5 could be 3.5.
-                            // If we assume CL locale where DOT is thousands:
-                            clean = clean.replace(/\./g, '');
-                        }
+                    } else if (clean.includes(',')) {
+                        clean = clean.replace(',', '.');
+                    } else if ((clean.match(/\./g) || []).length > 1) {
+                        clean = clean.replace(/\./g, '');
                     }
                     return parseFloat(clean) || 0;
                 }
                 return 0;
             };
 
-            // 1. Scan for Headers and Balances
+            // 1. Scan for Headers and Balances (BCI Specialized)
             for (let i = 0; i < Math.min(rows.length, 50); i++) {
                 const row = rows[i];
                 if (!row || row.length === 0) continue;
-
                 const rowStr = row.map(cleanStr).join(" ");
 
-                // Detect Initial Balance
-                if (rowStr.includes("saldo anterior") || rowStr.includes("saldo inicial") || rowStr.includes("saldo apertura")) {
-                    const numbers = row.filter(cell => typeof cell === 'number' || (typeof cell === 'string' && cell.match(/\d/)));
-                    if (numbers.length > 0) {
-                        // Find the first value that looks like money
-                        for (const n of numbers) {
-                            const val = parseMoney(n);
-                            if (val !== 0) {
-                                saldoInicial = val;
-                                break;
-                            }
-                        }
-                    }
-                    // If not found in same row, try next row
-                    if (saldoInicial === 0 && rows[i + 1]) {
-                        const nextNumbers = rows[i + 1].filter(cell => typeof cell === 'number' || (typeof cell === 'string' && cell.match(/\d/)));
-                        for (const n of nextNumbers) {
-                            const val = parseMoney(n);
-                            if (val !== 0) {
-                                saldoInicial = val;
-                                break;
-                            }
-                        }
-                    }
+                // Detect Balances
+                if (rowStr.includes("saldo anterior") || rowStr.includes("saldo inicial")) {
+                    const rowNumbers = row.map(parseMoney).filter(n => n !== 0);
+                    if (rowNumbers.length > 0) saldoInicial = rowNumbers[0];
+                }
+                if (rowStr.includes("saldo final") || rowStr.includes("saldo contable")) {
+                    const rowNumbers = row.map(parseMoney).filter(n => n !== 0);
+                    if (rowNumbers.length > 0) saldoFinal = rowNumbers[rowNumbers.length - 1];
                 }
 
-                // Detect Final Balance
-                if (rowStr.includes("saldo final") || rowStr.includes("saldo actual") || rowStr.includes("saldo contable")) {
-                    const numbers = row.filter(cell => typeof cell === 'number' || (typeof cell === 'string' && cell.match(/\d/)));
-                    if (numbers.length > 0) {
-                        // Find the last value that looks like money
-                        for (let k = numbers.length - 1; k >= 0; k--) {
-                            const val = parseMoney(numbers[k]);
-                            if (val !== 0) {
-                                saldoFinal = val;
-                                break;
-                            }
-                        }
-                    }
-                    // If not found in same row, try next row
-                    if (saldoFinal === 0 && rows[i + 1]) {
-                        const nextNumbers = rows[i + 1].filter(cell => typeof cell === 'number' || (typeof cell === 'string' && cell.match(/\d/)));
-                        for (let k = nextNumbers.length - 1; k >= 0; k--) {
-                            const val = parseMoney(nextNumbers[k]);
-                            if (val !== 0) {
-                                saldoFinal = val;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // Detect Column Headers
-                // We look for a row that has date/fecha AND cargo/abono/monto/valor
-                if (rowStr.includes("fecha") && (rowStr.includes("cargo") || rowStr.includes("abono") || rowStr.includes("monto") || rowStr.includes("valor"))) {
-                    console.log("Header row found at index:", i);
+                // Detect BCI Column Headers
+                if (rowStr.includes("fecha") && (rowStr.includes("glosa detalle") || rowStr.includes("comentario"))) {
                     movementsStartIndex = i + 1;
-
-                    // Map columns dynamically
                     row.forEach((cell: any, idx: number) => {
                         const val = cleanStr(cell);
                         if (val.includes("fecha")) fechaIdx = idx;
-                        if (val.includes("descripcion") || val.includes("movimiento")) descIdxStart = idx; // heuristic
-                        if (val.includes("doc") || val.includes("num")) docIdx = idx;
-                        // Changed to includes() to catch "Cargos y Cheques", "Total Cargos", etc.
+                        if (val.includes("glosa detalle")) bciGlosaIdx = idx;
+                        if (val.includes("comentario")) bciComentarioIdx = idx;
+                        if (val.includes("rut")) bciRutIdx = idx;
+                        if (val.includes("nombre")) bciNombreIdx = idx;
+                        if (val.includes("num")) docIdx = idx;
                         if (val.includes("cargo")) cargoIdx = idx;
-                        // Changed to includes() to catch "Depósitos y Abonos", "Total Abonos", etc.
-                        if (val.includes("abono") || val.includes("deposito") || val.includes("depósito")) abonoIdx = idx;
+                        if (val.includes("abono") || val.includes("deposito")) abonoIdx = idx;
                         if (val.includes("saldo") && !val.includes("anterior")) saldoIdx = idx;
-                    });
-                } else if (rowStr.includes("cheques") && rowStr.includes("otros") && rowStr.includes("cargos")) {
-                    // Fallback for BCI specific header line which might be "Cheques y otros cargos..."
-                    console.log("BCI Header detected via keywords at index:", i);
-                    movementsStartIndex = i + 1;
-                    // We can try to map if possible, otherwise rely on defaults.
-                    row.forEach((cell: any, idx: number) => {
-                        const val = cleanStr(cell);
-                        if (val.includes("cargos")) cargoIdx = idx;
-                        if (val.includes("abonos")) abonoIdx = idx;
-                        if (val.includes("saldo")) saldoIdx = idx;
                     });
                 }
             }
 
-            console.log("Indices determined:", { fechaIdx, descIdxStart, docIdx, cargoIdx, abonoIdx, saldoIdx });
-
-            // If header not found but we want to try parsing anyway
             if (movementsStartIndex === -1) {
-                // Try finding first row with a date at column 0.
-                for (let i = 0; i < rows.length; i++) {
-                    const cell0 = rows[i][0];
-                    if (cell0 && (typeof cell0 === 'number' || (typeof cell0 === 'string' && cell0.match(/\d{2}\/\d{2}\/\d{4}/)))) {
-                        movementsStartIndex = i;
-                        break;
-                    }
-                }
+                alert("No se detectó el formato oficial de la cartola detallada BCI. Asegúrate de que el archivo tenga la columna 'Glosa detalle'.");
+                return;
             }
 
             const parsedMovimientos: any[] = [];
@@ -501,45 +420,23 @@ Ejemplos:
                     const fechaRaw = row[fechaIdx]; // Use mapped index
                     if (!fechaRaw) continue;
 
-                    // Parse Date
+                    // Date Parsing
                     let fecha: string | null = null;
                     if (typeof fechaRaw === 'number') {
                         const date = XLSX.SSF.parse_date_code(fechaRaw);
                         fecha = new Date(date.y, date.m - 1, date.d).toISOString().split('T')[0];
                     } else if (typeof fechaRaw === 'string') {
-                        // Try DD/MM/YYYY
                         const parts = fechaRaw.trim().split('/');
-                        if (parts.length === 3) {
-                            fecha = `${parts[2]}-${parts[1]}-${parts[0]}`;
-                        } else {
-                            // Try standard date parsing
-                            const d = new Date(fechaRaw);
-                            if (!isNaN(d.getTime())) {
-                                fecha = d.toISOString().split('T')[0];
-                            }
-                        }
+                        if (parts.length === 3) fecha = `${parts[2]}-${parts[1]}-${parts[0]}`;
                     }
+                    if (!fecha) continue;
 
-                    if (!fecha) continue; // Skip invalid rows
-
-                    // Description: combine columns from descIdxStart up to docIdx
-                    const descParts = [];
-                    // Heuristic: take 3-4 columns after start or up to docIdx
-                    const limit = docIdx > descIdxStart ? docIdx : descIdxStart + 4;
-                    for (let k = descIdxStart; k < limit; k++) {
-                        if (typeof row[k] === 'string') descParts.push(row[k]);
-                    }
-                    const finalDesc = descParts.join(" ") || "Sin descripción";
-
-                    const nDoc = row[docIdx]; // Use mapped index
-
-
-
+                    // Description & Content
+                    const finalDesc = String(row[bciGlosaIdx] || row[1] || "Sin descripción");
+                    const nDoc = row[docIdx];
                     const cargo = parseMoney(row[cargoIdx]);
                     const abono = parseMoney(row[abonoIdx]);
                     const saldo = parseMoney(row[saldoIdx]);
-
-
 
                     parsedMovimientos.push({
                         fecha,
@@ -548,7 +445,11 @@ Ejemplos:
                         cargos: cargo,
                         abonos: abono,
                         saldo: saldo,
-                        estado: 'pendiente'
+                        estado: 'pendiente',
+                        bci_glosa_detalle: String(row[bciGlosaIdx] || ""),
+                        bci_comentario_transferencia: bciComentarioIdx !== -1 ? String(row[bciComentarioIdx] || "") : null,
+                        bci_rut: bciRutIdx !== -1 ? String(row[bciRutIdx] || "") : null,
+                        bci_nombre: bciNombreIdx !== -1 ? String(row[bciNombreIdx] || "") : null
                     });
                 }
             }
@@ -679,70 +580,133 @@ Ejemplos:
         setSearchingMatch(true);
         setCoincidencias([]);
 
-        // Determine strict types:
-        // Abono (Ingreso) -> Probablemente una Venta
-        // Cargo (Egreso) -> Probablemente una Compra (Gasto)
         const esAbono = mov.abonos > 0;
         const montoBuscado = esAbono ? mov.abonos : mov.cargos;
-        const tolerancia = 5; // Tolerancia en pesos (para redondeos) - Ahora ajustado a +/- $5
+        const tolerancia = 5;
+
+        // Limpiar RUT para búsqueda (eliminar puntos y dejar solo números o número-dv)
+        const cleanRut = (rut: string | null | undefined) => {
+            if (!rut) return null;
+            return rut.replace(/\./g, '').trim().toLowerCase();
+        };
+
+        const rutBuscado = cleanRut(mov.bci_rut);
+        const rutSinDV = rutBuscado?.split('-')[0];
+
+        // Intentar extraer folio
+        const extractFolios = (text: string | null | undefined): number[] => {
+            if (!text) return [];
+            const matches = text.match(/\b\d{3,8}\b/g);
+            return matches ? matches.map(m => parseInt(m, 10)) : [];
+        };
+
+        const foliosEnContenedores = [
+            ...extractFolios(mov.bci_comentario_transferencia),
+            ...extractFolios(mov.descripcion),
+            ...extractFolios(mov.numero_documento)
+        ];
+        const foliosUnicos = Array.from(new Set(foliosEnContenedores));
 
         const candidates: Coincidencia[] = [];
 
         // 1. Search Sales (Ventas)
         if (esAbono) {
-            // Buscar en tabla 'ventas' (que creamos anteriormente o asumimos)
-            // NOTA: Asumimos 'ventas' existe y tiene 'mnt_total', 'fch_emis'
-            const { data: ventasMatch, error } = await supabase
-                .from("ventas")
+            // A. Por Folio(s) extraído(s)
+            if (foliosUnicos.length > 0) {
+                const { data: byFolios } = await supabase.from("ventas").select("*").in("folio", foliosUnicos);
+                if (byFolios) byFolios.forEach(v => {
+                    candidates.push({
+                        id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
+                        fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
+                        estado: v.estado_deuda || "Pendiente", documento_relacionado: v
+                    });
+                });
+            }
+
+            // B. Por RUT (si está disponible en la cartola detallada)
+            if (rutBuscado || rutSinDV) {
+                let query = supabase.from("ventas").select("*");
+                if (rutBuscado) {
+                    query = query.or(`rut_recep.eq.${rutBuscado},rut_recep.ilike.%${rutSinDV}%`);
+                }
+                const { data: byRut } = await query.limit(10);
+                if (byRut) byRut.forEach(v => {
+                    if (!candidates.find(c => c.id === v.id && c.tipo === 'venta')) {
+                        candidates.push({
+                            id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
+                            fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
+                            estado: v.estado_deuda || "Pendiente", documento_relacionado: v
+                        });
+                    }
+                });
+            }
+
+            // C. Por Monto (siempre útil como último recurso o validación)
+            const { data: byMonto } = await supabase.from("ventas")
                 .select("*")
-                // Se quita el filtro estricto de saldo > 0 para permitir conciliar 
-                // facturas que ya fueron marcadas como pagadas administrativamente.
                 .gte("mnt_total", montoBuscado - tolerancia)
                 .lte("mnt_total", montoBuscado + tolerancia)
                 .limit(10);
 
-            if (ventasMatch) {
-                ventasMatch.forEach((v: any) => {
-                    // Basic filter: date should not be AFTER movement (usually)
-                    // But sometimes payment is partial or weird. Let's just suggest.
+            if (byMonto) byMonto.forEach(v => {
+                if (!candidates.find(c => c.id === v.id && c.tipo === 'venta')) {
                     candidates.push({
-                        id: v.id,
-                        tipo: 'venta',
-                        entidad: v.rzn_soc_recep || "Desconocido",
-                        fecha: v.fch_emis,
-                        monto: v.mnt_total,
-                        folio: v.folio,
-                        estado: v.estado_deuda || "Pendiente",
-                        documento_relacionado: v
+                        id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
+                        fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
+                        estado: v.estado_deuda || "Pendiente", documento_relacionado: v
                     });
-                });
-            }
+                }
+            });
         }
 
         // 2. Search Compras (Expenses)
         if (!esAbono) {
-            const { data: comprasMatch, error } = await supabase
-                .from("compras")
-                .select("*")
-                .gte("monto_total", montoBuscado - tolerancia)
-                .lte("monto_total", montoBuscado + tolerancia)
-                // Se quita el filtro estricto de "Pendiente" para permitir el flujo profesional
-                .limit(10);
-
-            if (comprasMatch) {
-                comprasMatch.forEach((c: any) => {
+            // A. Por Folio(s)
+            if (foliosUnicos.length > 0) {
+                const { data: byFolios } = await supabase.from("compras").select("*").in("folio", foliosUnicos);
+                if (byFolios) byFolios.forEach(c => {
                     candidates.push({
-                        id: c.id,
-                        tipo: 'compra',
-                        entidad: c.razon_social || "Desconocido",
-                        fecha: c.fecha_emision,
-                        monto: c.monto_total,
-                        folio: c.folio,
-                        estado: c.estado_pago || "Pendiente",
-                        documento_relacionado: c
+                        id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
+                        fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
+                        estado: c.estado_pago || "Pendiente", documento_relacionado: c
                     });
                 });
             }
+
+            // B. Por RUT
+            if (rutBuscado || rutSinDV) {
+                let query = supabase.from("compras").select("*");
+                if (rutBuscado) {
+                    query = query.or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`);
+                }
+                const { data: byRut } = await query.limit(10);
+                if (byRut) byRut.forEach(c => {
+                    if (!candidates.find(item => item.id === c.id && item.tipo === 'compra')) {
+                        candidates.push({
+                            id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
+                            fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
+                            estado: c.estado_pago || "Pendiente", documento_relacionado: c
+                        });
+                    }
+                });
+            }
+
+            // C. Por Monto
+            const { data: byMonto } = await supabase.from("compras")
+                .select("*")
+                .gte("monto_total", montoBuscado - tolerancia)
+                .lte("monto_total", montoBuscado + tolerancia)
+                .limit(10);
+
+            if (byMonto) byMonto.forEach(c => {
+                if (!candidates.find(item => item.id === c.id && item.tipo === 'compra')) {
+                    candidates.push({
+                        id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
+                        fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
+                        estado: c.estado_pago || "Pendiente", documento_relacionado: c
+                    });
+                }
+            });
         }
 
         setCoincidencias(candidates);
@@ -821,58 +785,151 @@ Ejemplos:
         if (!selectedPeriod || movimientos.length === 0) return;
 
         setIsPreconciliating(true);
-        const pendientes = movimientos.filter(m => m.estado === 'pendiente');
+        const movimientosPendientes = movimientos.filter(m => m.estado === 'pendiente');
         const encontradas: { mov: BancoMovimiento; match: Coincidencia }[] = [];
         const tolerancia = 5;
 
         try {
             // Buscamos coincidencias para cada movimiento pendiente
-            for (const mov of pendientes) {
+            for (const mov of movimientosPendientes) {
                 const esAbono = mov.abonos > 0;
                 const montoBuscado = esAbono ? mov.abonos : mov.cargos;
+                const tolerancia = 5;
+
+                const cleanRut = (rut: string | null | undefined) => {
+                    if (!rut) return null;
+                    return rut.replace(/\./g, '').trim().toLowerCase();
+                };
+                const rutBuscado = cleanRut(mov.bci_rut);
+                const rutSinDV = rutBuscado?.split('-')[0];
+
+                const extractFolios = (text: string | null | undefined): number[] => {
+                    if (!text) return [];
+                    const matches = text.match(/\b\d{3,8}\b/g);
+                    return matches ? matches.map(m => parseInt(m, 10)) : [];
+                };
+
+                const foliosPossible = Array.from(new Set([
+                    ...extractFolios(mov.bci_comentario_transferencia),
+                    ...extractFolios(mov.descripcion)
+                ]));
+
                 let candidate: Coincidencia | null = null;
 
                 if (esAbono) {
-                    const { data: ventasMatch } = await supabase
-                        .from("ventas")
-                        .select("*")
-                        .gte("mnt_total", montoBuscado - tolerancia)
-                        .lte("mnt_total", montoBuscado + tolerancia)
-                        .limit(2); // Solo nos interesa si hay exactamente 1
+                    // 1. Intentar por Folio + Monto (Muy Seguro)
+                    if (foliosPossible.length > 0) {
+                        const { data: fMatch } = await supabase.from("ventas")
+                            .select("*")
+                            .in("folio", foliosPossible)
+                            .gte("mnt_total", montoBuscado - tolerancia)
+                            .lte("mnt_total", montoBuscado + tolerancia)
+                            .limit(1);
+                        if (fMatch && fMatch.length === 1) {
+                            const v = fMatch[0];
+                            candidate = {
+                                id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
+                                fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
+                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v
+                            };
+                        }
+                    }
 
-                    if (ventasMatch && ventasMatch.length === 1) {
-                        const v = ventasMatch[0];
-                        candidate = {
-                            id: v.id,
-                            tipo: 'venta',
-                            entidad: v.rzn_soc_recep || "Desconocido",
-                            fecha: v.fch_emis,
-                            monto: v.mnt_total,
-                            folio: v.folio,
-                            estado: v.estado_deuda || "Pendiente",
-                            documento_relacionado: v
-                        };
+                    // 2. Intentar por RUT + Monto (Seguro)
+                    if (!candidate && (rutBuscado || rutSinDV)) {
+                        let query = supabase.from("ventas").select("*")
+                            .gte("mnt_total", montoBuscado - tolerancia)
+                            .lte("mnt_total", montoBuscado + tolerancia);
+
+                        if (rutBuscado) {
+                            query = query.or(`rut_recep.eq.${rutBuscado},rut_recep.ilike.%${rutSinDV}%`);
+                        }
+
+                        const { data: rMatch } = await query.limit(2);
+                        if (rMatch && rMatch.length === 1) {
+                            const v = rMatch[0];
+                            candidate = {
+                                id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
+                                fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
+                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v
+                            };
+                        }
+                    }
+
+                    // 3. Intentar solo por Monto (Si es único)
+                    if (!candidate) {
+                        const { data: mMatch } = await supabase.from("ventas")
+                            .select("*")
+                            .gte("mnt_total", montoBuscado - tolerancia)
+                            .lte("mnt_total", montoBuscado + tolerancia)
+                            .limit(2);
+
+                        if (mMatch && mMatch.length === 1) {
+                            const v = mMatch[0];
+                            candidate = {
+                                id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
+                                fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
+                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v
+                            };
+                        }
                     }
                 } else {
-                    const { data: comprasMatch } = await supabase
-                        .from("compras")
-                        .select("*")
-                        .gte("monto_total", montoBuscado - tolerancia)
-                        .lte("monto_total", montoBuscado + tolerancia)
-                        .limit(2);
+                    // Para Compras
+                    // 1. Folio + Monto
+                    if (foliosPossible.length > 0) {
+                        const { data: fMatch } = await supabase.from("compras")
+                            .select("*")
+                            .in("folio", foliosPossible)
+                            .gte("monto_total", montoBuscado - tolerancia)
+                            .lte("monto_total", montoBuscado + tolerancia)
+                            .limit(1);
+                        if (fMatch && fMatch.length === 1) {
+                            const c = fMatch[0];
+                            candidate = {
+                                id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
+                                fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
+                                estado: c.estado_pago || "Pendiente", documento_relacionado: c
+                            };
+                        }
+                    }
 
-                    if (comprasMatch && comprasMatch.length === 1) {
-                        const c = comprasMatch[0];
-                        candidate = {
-                            id: c.id,
-                            tipo: 'compra',
-                            entidad: c.razon_social || "Desconocido",
-                            fecha: c.fecha_emision,
-                            monto: c.monto_total,
-                            folio: c.folio,
-                            estado: c.estado_pago || "Pendiente",
-                            documento_relacionado: c
-                        };
+                    // 2. RUT + Monto
+                    if (!candidate && (rutBuscado || rutSinDV)) {
+                        let query = supabase.from("compras").select("*")
+                            .gte("monto_total", montoBuscado - tolerancia)
+                            .lte("monto_total", montoBuscado + tolerancia);
+
+                        if (rutBuscado) {
+                            query = query.or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`);
+                        }
+
+                        const { data: rMatch } = await query.limit(2);
+                        if (rMatch && rMatch.length === 1) {
+                            const c = rMatch[0];
+                            candidate = {
+                                id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
+                                fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
+                                estado: c.estado_pago || "Pendiente", documento_relacionado: c
+                            };
+                        }
+                    }
+
+                    // 3. Monto
+                    if (!candidate) {
+                        const { data: mMatch } = await supabase.from("compras")
+                            .select("*")
+                            .gte("monto_total", montoBuscado - tolerancia)
+                            .lte("monto_total", montoBuscado + tolerancia)
+                            .limit(2);
+
+                        if (mMatch && mMatch.length === 1) {
+                            const c = mMatch[0];
+                            candidate = {
+                                id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
+                                fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
+                                estado: c.estado_pago || "Pendiente", documento_relacionado: c
+                            };
+                        }
                     }
                 }
 
@@ -954,6 +1011,77 @@ Ejemplos:
         } catch (e: any) {
             console.error("Error conciliando:", e);
             alert("Error: " + e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const ejecutarPreconciliacionesEnLote = async () => {
+        if (preconciliacionesEncontradas.length === 0) return;
+
+        if (!confirm(`¿Estás seguro de conciliar automáticamente los ${preconciliacionesEncontradas.length} movimientos encontrados?`)) return;
+
+        setLoading(true);
+        let exitosos = 0;
+        let errores = 0;
+
+        try {
+            for (const item of preconciliacionesEncontradas) {
+                try {
+                    const { mov, match } = item;
+
+                    // 1. Actualizar Movimiento Bancario
+                    const { error: errMov } = await supabase
+                        .from("banco_movimientos")
+                        .update({
+                            estado: "conciliado",
+                            tipo_conciliacion: match.tipo,
+                            conciliado_id: match.id
+                        })
+                        .eq("id", mov.id);
+
+                    if (errMov) throw errMov;
+
+                    // 2. Actualizar Registro Relacionado (Venta o Compra)
+                    if (match.estado !== "Pagada") {
+                        if (match.tipo === "venta") {
+                            await supabase.from("ventas").update({
+                                estado_deuda: "Pagada",
+                                saldo: 0,
+                                fecha_abono: new Date().toISOString().split("T")[0],
+                                monto_abono: match.monto
+                            }).eq("id", match.id);
+
+                            await supabase.from("abonos").insert({
+                                venta_id: match.id,
+                                monto_abono: match.monto,
+                                fecha_abono: new Date().toISOString().split("T")[0],
+                                tipo_abono: "Transferencia",
+                                detalle_abono: `Conciliación Lote - Movimiento: ${mov.descripcion}`
+                            });
+                        } else {
+                            await supabase.from("compras").update({
+                                estado_pago: "Pagada",
+                                saldo: 0
+                            }).eq("id", match.id);
+                        }
+                    }
+                    exitosos++;
+                } catch (err) {
+                    console.error("Error conciliando item en lote:", err);
+                    errores++;
+                }
+            }
+
+            setPreconciliacionOpen(false);
+            // Recargar movimientos para ver cambios reales de la base de datos
+            if (selectedPeriod) await cargarMovimientos(selectedPeriod);
+
+            alert(`Proceso terminado.\nÉxito: ${exitosos}\nErrores: ${errores}`);
+
+        } catch (e: any) {
+            console.error("Error crítico en lote:", e);
+            alert("Error crítico: " + e.message);
         } finally {
             setLoading(false);
         }
@@ -1133,8 +1261,21 @@ Ejemplos:
                                         }
                                     >
                                         <TableCell className="font-medium whitespace-nowrap">{mov.fecha}</TableCell>
-                                        <TableCell className="whitespace-normal break-words py-4 leading-relaxed min-w-[300px]" title={mov.descripcion}>
-                                            {mov.descripcion}
+                                        <TableCell className="whitespace-normal break-words py-4 leading-relaxed min-w-[300px]">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="font-bold text-gray-900 dark:text-gray-100">{mov.descripcion}</span>
+                                                {mov.bci_nombre && (
+                                                    <div className="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400">
+                                                        <span className="bg-gray-100 dark:bg-gray-800 px-1 rounded font-mono">{mov.bci_rut}</span>
+                                                        <span className="font-medium">{mov.bci_nombre}</span>
+                                                    </div>
+                                                )}
+                                                {mov.bci_comentario_transferencia && (
+                                                    <span className="text-[10px] text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full w-fit italic">
+                                                        "{mov.bci_comentario_transferencia}"
+                                                    </span>
+                                                )}
+                                            </div>
                                         </TableCell>
                                         <TableCell className="w-[150px]">
                                             <select
@@ -1402,10 +1543,11 @@ Ejemplos:
                         </Button>
                         <Button
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            onClick={() => setPreconciliacionOpen(false)}
-                            disabled={preconciliacionesEncontradas.length === 0}
+                            onClick={ejecutarPreconciliacionesEnLote}
+                            disabled={loading || preconciliacionesEncontradas.length === 0}
                         >
-                            Aceptar Preconciliaciones
+                            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                            Conciliar {preconciliacionesEncontradas.length} Movimientos
                         </Button>
                     </DialogFooter>
                 </DialogContent>
