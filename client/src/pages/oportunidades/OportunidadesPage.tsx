@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Loader2,
   Settings,
+  Globe,
 } from "lucide-react";
 import { useRef } from "react";
 import { useVendedores } from "../../hooks/useVendedores";
@@ -50,6 +51,7 @@ export default function OportunidadesPage() {
   const [paginaActual, setPaginaActual] = useState(1);
   const [limpiando, setLimpiando] = useState(false);
   const [procesando, setProcesando] = useState(false);
+  const [sincronizando, setSincronizando] = useState(false);
   const [editandoVendedor, setEditandoVendedor] = useState<string | null>(null);
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -243,6 +245,27 @@ export default function OportunidadesPage() {
       setMensaje("Error al limpiar: " + error.message);
     } finally {
       setLimpiando(false);
+    }
+  };
+
+  const sincronizarMercadoPublico = async () => {
+    try {
+      setSincronizando(true);
+      setMensaje("🌐 Sincronizando con Mercado Público... Esto puede tardar unos segundos.");
+
+      const response = await fetch('/api/sync-mercadopublico');
+      const result = await response.json();
+
+      if (!response.ok) throw new Error(result.error || "Error en la sincronización");
+
+      setMensaje(`✅ Sincronización exitosa: ${result.coincidencias} encontradas, ${result.procesadas_exito} nuevas.`);
+      await cargarOportunidades();
+      setTimeout(() => setMensaje(""), 5000);
+    } catch (error: any) {
+      console.error("Error sync:", error);
+      setMensaje("❌ Error al sincronizar: " + error.message);
+    } finally {
+      setSincronizando(false);
     }
   };
 
@@ -585,6 +608,20 @@ export default function OportunidadesPage() {
 
           <Button
             variant="ghost"
+            onClick={sincronizarMercadoPublico}
+            disabled={sincronizando}
+            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20 flex items-center gap-2"
+          >
+            {sincronizando ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Globe className="h-4 w-4" />
+            )}
+            Sincronizar MP
+          </Button>
+
+          <Button
+            variant="ghost"
             size="icon"
             onClick={() => navigate("/oportunidades/configuracion")}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -602,16 +639,18 @@ export default function OportunidadesPage() {
         </div>
       </div>
 
-      {mensaje && (
-        <div
-          className={`p-4 rounded-lg font-medium border flex items-center gap-2 ${mensaje.includes("Error") || mensaje.includes("❌")
-            ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
-            : "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
-            }`}
-        >
-          {mensaje}
-        </div>
-      )}
+      {
+        mensaje && (
+          <div
+            className={`p-4 rounded-lg font-medium border flex items-center gap-2 ${mensaje.includes("Error") || mensaje.includes("❌")
+              ? "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800"
+              : "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
+              }`}
+          >
+            {mensaje}
+          </div>
+        )
+      }
 
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col md:flex-row items-start md:items-center gap-4">
         <div className="flex items-center gap-2 flex-1 w-full md:w-auto">
