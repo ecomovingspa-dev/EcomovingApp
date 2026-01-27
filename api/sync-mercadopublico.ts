@@ -66,10 +66,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { data: existentes } = await supabase
             .from('oportunidades')
             .select('id')
-            .in('id', filtradas.map(l => l.CodigoExterno));
+            .in('id', filtradas.map((l: any) => l.CodigoExterno));
 
-        const idsExistentes = new Set((existentes || []).map(e => e.id));
-        const porProcesar = filtradas.filter(l => !idsExistentes.has(l.CodigoExterno)).slice(0, 10);
+        const idsExistentes = new Set((existentes || []).map((e: any) => e.id));
+        const porProcesar = filtradas.filter((l: any) => !idsExistentes.has(l.CodigoExterno)).slice(0, 10);
 
         console.log(`Licitaciones nuevas detectadas: ${porProcesar.length}`);
 
