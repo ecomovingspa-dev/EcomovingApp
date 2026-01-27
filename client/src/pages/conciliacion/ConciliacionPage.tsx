@@ -471,111 +471,129 @@ Ejemplos:
     };
 
     // Generate unique hash for a movement to prevent duplicates
-    const generateMovementHash = (mov: any, cartolaId: number): string => {
-        // Combine key fields to create a unique identifier
-        const data = `${cartolaId}|${mov.fecha}|${mov.descripcion}|${mov.cargos}|${mov.abonos}|${mov.saldo}`;
+    // Must be stable across different uploads of the same movement
+    const generateMovementHash = (mov: any): string => {
+        // Safe string for hashing (handle tildes/unicode)
+        const normalize = (val: any) => String(val || "").trim().toLowerCase();
 
-        // Simple hash function (you could use crypto.subtle.digest for SHA-256 if needed)
-        let hash = 0;
+        const data = [
+            normalize(mov.fecha),
+            normalize(mov.descripcion),
+            normalize(mov.cargos),
+            normalize(mov.abonos),
+            normalize(mov.saldo),
+            normalize(mov.bci_rut),
+            normalize(mov.numero_documento)
+        ].join('|');
+
+        // DJB2 Hash implementation (better than simple integer addition)
+        let hash = 5381;
         for (let i = 0; i < data.length; i++) {
-            const char = data.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32bit integer
+            hash = (hash * 33) ^ data.charCodeAt(i);
         }
-        return `mov_${Math.abs(hash).toString(36)}`;
+        return `hash_${(hash >>> 0).toString(36)}`;
     };
 
 
     const descomponerYGuardar = async (fileName: string, sIni: number, sFin: number, movs: any[]) => {
-        // Calculate periodo_mes from first movement date
-        let periodoMes = "Detectado";
-        if (movs.length > 0 && movs[0].fecha) {
-            // Split date string to avoid timezone shifts with new Date()
-            const [year, month] = movs[0].fecha.split('-');
-            periodoMes = `${year}-${month}`;
-        }
+        try {
+            // Calculate periodo_mes from first movement date
+            let periodoMes = "Detectado";
+            if (movs.length > 0 && movs[0].fecha) {
+                const [year, month] = movs[0].fecha.split('-');
+                periodoMes = `${year}-${month}`;
+            }
 
-        const { data: cartolaData, error: cartolaError } = await supabase
-            .from("banco_cartolas")
-            .insert({
-                nombre_archivo: fileName,
-                banco: "BCI",
-                periodo: "Detectado",
-                periodo_mes: periodoMes,
-                saldo_inicial: sIni,
-                saldo_final: sFin
-            })
-            .select()
-            .single();
+            const { data: cartolaData, error: cartolaError } = await supabase
+                .from("banco_cartolas")
+                .insert({
+                    nombre_archivo: fileName,
+                    banco: "BCI",
+                    periodo: "Detectado",
+                    periodo_mes: periodoMes,
+                    saldo_inicial: sIni,
+                    saldo_final: sFin
+                })
+                .select()
+                .single();
 
-        if (cartolaError || !cartolaData) {
-            alert("Error guardando cartola: " + cartolaError?.message);
-            return;
-        }
+            if (cartolaError || !cartolaData) {
+                alert("Error guardando cartola: " + cartolaError?.message);
+                return;
+            }
 
-        const movimientosConId = movs.map(m => {
-            const uniqueId = generateMovementHash(m, cartolaData.id);
-            return {
-                ...m,
-                cartola_id: cartolaData.id,
-                unique_id: uniqueId
-            };
-        });
-
-        // Check for existing movements with same unique_id to prevent duplicates across uploads
-        const uniqueIds = movimientosConId.map(m => m.unique_id);
-        const { data: existingMovs } = await supabase
-            .from("banco_movimientos")
-            .select("unique_id")
-            .in("unique_id", uniqueIds);
-
-        const existingIdsInDb = new Set(existingMovs?.map(m => m.unique_id) || []);
-
-        // Filter out those already in DB AND deduplicate those within the same Excel file
-        const seenInBatch = new Set();
-        const newMovimientos = movimientosConId.filter(m => {
-            if (existingIdsInDb.has(m.unique_id)) return false;
-            if (seenInBatch.has(m.unique_id)) return false;
-            seenInBatch.add(m.unique_id);
-            return true;
-        });
-
-        if (newMovimientos.length === 0) {
-            alert("No hay movimientos nuevos para cargar (todos ya existen o están repetidos en el archivo).");
-            setUploading(false);
-            cargarCartolas();
-            return;
-        }
-
-        const { error: movsError } = await supabase
-            .from("banco_movimientos")
-            .insert(newMovimientos);
-
-        if (movsError) {
-            alert("Error guardando movimientos: " + movsError.message);
-        } else {
-            const duplicateCount = movimientosConId.length - newMovimientos.length;
-
-            // Calculate statistics
-            const totalCargos = newMovimientos.reduce((sum, m) => sum + (m.cargos || 0), 0);
-            const totalAbonos = newMovimientos.reduce((sum, m) => sum + (m.abonos || 0), 0);
-
-            // Set summary data
-            setUploadSummary({
-                total: movimientosConId.length,
-                nuevos: newMovimientos.length,
-                duplicados: duplicateCount,
-                cargos: totalCargos,
-                abonos: totalAbonos,
-                saldoInicial: sIni,
-                saldoFinal: sFin
+            const movimientosConId = movs.map(m => {
+                // Now passing only the movement, making hash stable across uploads
+                const uniqueId = generateMovementHash(m);
+                return {
+                    ...m,
+                    cartola_id: cartolaData.id,
+                    unique_id: uniqueId
+                };
             });
 
-            // Show summary dialog
-            setUploadSummaryOpen(true);
+            // Check for existing movements with same unique_id to prevent duplicates across uploads
+            const uniqueIds = movimientosConId.map(m => m.unique_id);
+            const { data: existingMovs } = await supabase
+                .from("banco_movimientos")
+                .select("unique_id")
+                .in("unique_id", uniqueIds);
 
-            cargarCartolas();
-            setSelectedPeriod(periodoMes);
+            const existingIdsInDb = new Set(existingMovs?.map(m => m.unique_id) || []);
+
+            // Filter out those already in DB AND deduplicate those within the same Excel file
+            const seenInBatch = new Set();
+            const newMovimientos = movimientosConId.filter(m => {
+                if (existingIdsInDb.has(m.unique_id)) return false;
+                if (seenInBatch.has(m.unique_id)) return false;
+                seenInBatch.add(m.unique_id);
+                return true;
+            });
+
+            if (newMovimientos.length === 0) {
+                alert("No hay movimientos nuevos para cargar (todos ya existen o están repetidos en el archivo).");
+                setUploading(false);
+                cargarCartolas();
+                return;
+            }
+
+            const { error: movsError } = await supabase
+                .from("banco_movimientos")
+                .insert(newMovimientos);
+
+            if (movsError) {
+                alert("Error guardando movimientos: " + movsError.message);
+                // Si fallan los movimientos, podemos intentar limpiar la cartola huérfana
+                await supabase.from("banco_cartolas").delete().eq("id", cartolaData.id);
+            } else {
+                const duplicateCount = movimientosConId.length - newMovimientos.length;
+
+                // Calculate statistics
+                const totalCargos = newMovimientos.reduce((sum, m) => sum + (m.cargos || 0), 0);
+                const totalAbonos = newMovimientos.reduce((sum, m) => sum + (m.abonos || 0), 0);
+
+                // Set summary data
+                setUploadSummary({
+                    total: movimientosConId.length,
+                    nuevos: newMovimientos.length,
+                    duplicados: duplicateCount,
+                    cargos: totalCargos,
+                    abonos: totalAbonos,
+                    saldoInicial: sIni,
+                    saldoFinal: sFin
+                });
+
+                // Show summary dialog
+                setUploadSummaryOpen(true);
+
+                await cargarCartolas();
+                setSelectedPeriod(periodoMes);
+            }
+        } catch (err: any) {
+            console.error("Error crítico en guardado:", err);
+            alert("Error crítico al procesar los datos: " + err.message);
+        } finally {
+            setUploading(false);
         }
     };
 
