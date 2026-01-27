@@ -14,7 +14,8 @@ import {
     Check,
     Mic,
     MicOff,
-    Sparkles
+    Sparkles,
+    Trash2
 } from "lucide-react";
 import { askGeminiAboutImage } from "../../lib/gemini";
 import { Button } from "@/components/ui/button";
@@ -1087,6 +1088,40 @@ Ejemplos:
         }
     };
 
+    const handleLimpiarDatos = async () => {
+        if (!confirm("⚠️ ATENCIÓN: Esto eliminará TODOS los movimientos bancarios y cartolas cargadas. Esta acción no se puede deshacer. ¿Deseas continuar?")) return;
+
+        setLoading(true);
+        try {
+            // Eliminar movimientos primero
+            const { error: errMovs } = await supabase
+                .from("banco_movimientos")
+                .delete()
+                .neq("id", 0);
+
+            if (errMovs) throw errMovs;
+
+            // Eliminar cartolas
+            const { error: errCartolas } = await supabase
+                .from("banco_cartolas")
+                .delete()
+                .neq("id", 0);
+
+            if (errCartolas) throw errCartolas;
+
+            alert("Base de datos de conciliación limpiada con éxito.");
+            setMovimientos([]);
+            setCartolas([]);
+            setSelectedPeriod("");
+            await cargarCartolas();
+        } catch (error: any) {
+            console.error("Error limpiando datos:", error);
+            alert("Error al limpiar datos: " + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const fmtMoney = (amount: number) => {
         return amount.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
     };
@@ -1150,6 +1185,16 @@ Ejemplos:
                             {uploading ? "Procesando..." : "Subir Cartola"}
                         </Label>
                     </div>
+
+                    <Button
+                        variant="ghost"
+                        className="h-10 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10"
+                        onClick={handleLimpiarDatos}
+                        disabled={loading}
+                    >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        <span className="hidden sm:inline">Limpiar Todo</span>
+                    </Button>
 
                     <Button
                         variant="outline"
