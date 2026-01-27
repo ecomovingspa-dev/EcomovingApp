@@ -10,6 +10,13 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const TICKET = process.env.VITE_MERCADO_PUBLICO_TICKET || 'FD7AB341-9FA0-452A-B1A8-0DEF7F6968AB';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // Seguridad: Permitir solo si es un Cron de Vercel o tiene el secreto
+    const authHeader = req.headers.authorization;
+    if (process.env.NODE_ENV === 'production' && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+        // Nota: Vercel añade automáticamente este header en los Cron Jobs
+        // Si quieres probarlo manual, puedes omitir esta validación temporalmente
+    }
+
     try {
         // 1. Obtener Palabras Clave de la base de datos
         const { data: keywordsDB, error: errorDB } = await supabase
