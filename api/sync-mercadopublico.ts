@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // 3. Filtrar por keywords en el nombre
         const filtradas = todas.filter((lic: any) => {
             const nombre = (lic.Nombre || "").toLowerCase();
-            return PALABRAS_CLAVE.some(kw => {
+            return PALABRAS_CLAVE.some((kw: string) => {
                 const regex = new RegExp(`\\b${kw}\\b`, "i");
                 return regex.test(nombre);
             });
@@ -86,7 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const d = responseDetalle.data.Listado[0];
 
                     const textoBusqueda = (d.Nombre || "").toLowerCase();
-                    const keywordsEncontradas = PALABRAS_CLAVE.filter(kw => {
+                    const keywordsEncontradas = PALABRAS_CLAVE.filter((kw: string) => {
                         const regex = new RegExp(`\\b${kw}\\b`, "i");
                         return regex.test(textoBusqueda);
                     }).join(", ");

@@ -671,7 +671,7 @@ export default function OportunidadesPage() {
         )
       }
 
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col xl:flex-row items-start xl:items-center gap-4">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col lg:flex-row items-start lg:items-center gap-4">
         <div className="flex items-center gap-2 flex-1 min-w-[300px] max-w-md">
           <Search className="h-5 w-5 text-gray-400 dark:text-gray-500" />
           <Input
