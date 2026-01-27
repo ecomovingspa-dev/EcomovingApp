@@ -240,7 +240,10 @@ export const askGeminiAboutImage = async (
     })
   });
 
-  if (!response.ok) throw new Error("Error en la comunicación con Gemini");
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    throw new Error(errorBody.error?.message || "Error en la comunicación con Gemini (Status: " + response.status + ")");
+  }
 
   const result = await response.json();
   return result.candidates?.[0]?.content?.parts?.[0]?.text || "No recibí respuesta de la IA.";

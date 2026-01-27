@@ -522,18 +522,27 @@ Ejemplos:
             };
         });
 
-        // Check for existing movements with same unique_id to prevent duplicates
+        // Check for existing movements with same unique_id to prevent duplicates across uploads
         const uniqueIds = movimientosConId.map(m => m.unique_id);
         const { data: existingMovs } = await supabase
             .from("banco_movimientos")
             .select("unique_id")
             .in("unique_id", uniqueIds);
 
-        const existingIds = new Set(existingMovs?.map(m => m.unique_id) || []);
-        const newMovimientos = movimientosConId.filter(m => !existingIds.has(m.unique_id));
+        const existingIdsInDb = new Set(existingMovs?.map(m => m.unique_id) || []);
+
+        // Filter out those already in DB AND deduplicate those within the same Excel file
+        const seenInBatch = new Set();
+        const newMovimientos = movimientosConId.filter(m => {
+            if (existingIdsInDb.has(m.unique_id)) return false;
+            if (seenInBatch.has(m.unique_id)) return false;
+            seenInBatch.add(m.unique_id);
+            return true;
+        });
 
         if (newMovimientos.length === 0) {
-            alert("Todos los movimientos ya existen en la base de datos. No se insertaron duplicados.");
+            alert("No hay movimientos nuevos para cargar (todos ya existen o están repetidos en el archivo).");
+            setUploading(false);
             cargarCartolas();
             return;
         }
