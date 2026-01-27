@@ -51,26 +51,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             });
         });
 
-        console.log(`Licitaciones que coinciden: ${filtradas.length}`);
-
         if (filtradas.length === 0) {
             return res.status(200).json({ message: "Sincronización terminada. 0 coincidencias encontradas hoy." });
         }
 
-        // 4. Obtener detalles e insertar/actualizar en Supabase
+        // 4. Evitar duplicados y límites de tiempo (Procesar solo las nuevas)
+        const { data: existentes } = await supabase
+            .from('oportunidades')
+            .select('id')
+            .in('id', filtradas.map(l => l.CodigoExterno));
+
+        const idsExistentes = new Set((existentes || []).map(e => e.id));
+        const porProcesar = filtradas.filter(l => !idsExistentes.has(l.CodigoExterno)).slice(0, 10);
+
+        console.log(`Licitaciones nuevas detectadas: ${porProcesar.length}`);
+
+        // 5. Obtener detalles e insertar
         const resultados = [];
         const errores = [];
 
-        // Para no saturar la API, procesamos una por una o en grupos pequeños
-        for (const licResumen of filtradas) {
+        for (const licResumen of porProcesar) {
             try {
                 const urlDetalle = `https://api.mercadopublico.cl/servicios/v1/publico/licitaciones.json?codigo=${licResumen.CodigoExterno}&ticket=${TICKET}`;
-                const responseDetalle = await axios.get(urlDetalle);
+                const responseDetalle = await axios.get(urlDetalle, { timeout: 4000 });
 
                 if (responseDetalle.data.Listado && responseDetalle.data.Listado.length > 0) {
                     const d = responseDetalle.data.Listado[0];
 
-                    // Identificar qué keywords coincidieron para guardarlas en el campo 'clave'
                     const textoBusqueda = (d.Nombre || "").toLowerCase();
                     const keywordsEncontradas = PALABRAS_CLAVE.filter(kw => {
                         const regex = new RegExp(`\\b${kw}\\b`, "i");
@@ -82,9 +89,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         nombre: d.Nombre,
                         organismo: d.Comprador ? d.Comprador.NombreOrganismo : "Desconocido",
                         fecha_cierre: d.FechaCierre || null,
-                        monto_disponible: d.MontoEstimado || null,
+                        monto_disponible: typeof d.MontoEstimado === 'number' ? d.MontoEstimado : null,
                         estado: "Publicada",
-                        clave: keywordsEncontradas,
+                        clave: keywordsEncontradas || licResumen.Nombre,
                         vendedor_id: null
                     };
 
@@ -102,11 +109,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         return res.status(200).json({
-            message: "Sincronización completada",
+            message: porProcesar.length === 0 ? "Ya estás al día con las licitaciones actuales." : "Sincronización parcial completada",
             total_hoy: todas.length,
             coincidencias: filtradas.length,
-            procesadas_exito: resultados.length,
-            errores: errores
+            nuevas_procesadas: resultados.length,
+            errores: errores,
+            pendientes: Math.max(0, filtradas.length - idsExistentes.size - resultados.length)
         });
 
     } catch (error: any) {
