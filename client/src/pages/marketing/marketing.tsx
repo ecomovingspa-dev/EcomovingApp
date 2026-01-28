@@ -1,4 +1,4 @@
-// Trigger build - Removing Image Factory reference
+// FORCE REBUILD - Tabs cleaned: only Monitor, Biblioteca, Fabrica IA (2026-01-28)
 import { useState } from "react";
 import ContactosMarketing from "./ContactosMarketing";
 import ListaContenidos from "./ListaContenidos";
