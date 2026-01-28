@@ -1,12 +1,13 @@
-// FORCE REBUILD - Tabs cleaned: only Monitor, Biblioteca, Fabrica IA (2026-01-28)
+// v1.0.2 - Restored Fabrica de Brochures (only Fabrica de Imagenes was removed)
 import { useState } from "react";
 import ContactosMarketing from "./ContactosMarketing";
 import ListaContenidos from "./ListaContenidos";
 import FabricaMensajes from "./FabricaMensajes";
-import { Users, Library, Sparkles } from "lucide-react";
+import FabricaBrochures from "./FabricaBrochures";
+import { Users, Library, Sparkles, Layout } from "lucide-react";
 
 export default function Marketing() {
-  const [tabActiva, setTabActiva] = useState<"monitor" | "biblioteca" | "fabrica">("monitor");
+  const [tabActiva, setTabActiva] = useState<"monitor" | "biblioteca" | "fabrica" | "brochures">("monitor");
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -49,6 +50,18 @@ export default function Marketing() {
             <span className="sm:hidden">IA</span>
           </button>
 
+          <button
+            onClick={() => setTabActiva("brochures")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "brochures"
+              ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-500/30 shadow-sm"
+              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent"
+              }`}
+          >
+            <Layout className="h-4 w-4" />
+            <span className="hidden sm:inline">Fábrica de Brochures</span>
+            <span className="sm:hidden">Brochures</span>
+          </button>
+
         </div>
 
         {/* Tab Content */}
@@ -58,6 +71,7 @@ export default function Marketing() {
           {tabActiva === "fabrica" && (
             <FabricaMensajes onSave={() => setTabActiva("biblioteca")} />
           )}
+          {tabActiva === "brochures" && <FabricaBrochures />}
 
         </div>
       </div>
