@@ -1,3 +1,4 @@
+// Trigger build - Removing Image Factory reference
 import { useState } from "react";
 import ContactosMarketing from "./ContactosMarketing";
 import ListaContenidos from "./ListaContenidos";
