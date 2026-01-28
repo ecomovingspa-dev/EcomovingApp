@@ -19,6 +19,8 @@ export interface Contacto {
   nombre: string;
   correo?: string;
   celular?: string;
+  telefono?: string;
+  departamento?: string;
   estado?: string;
   cuenta_id: string;
   created_at?: string; // ISO 8601

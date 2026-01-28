@@ -42,7 +42,7 @@ export default function CotizacionSelector() {
     try {
       const { data, error } = await supabase
         .from("contactos")
-        .select("id, nombre, correo")
+        .select("*")
         .eq("cuenta_id", cuentaId)
         .order("nombre");
 
