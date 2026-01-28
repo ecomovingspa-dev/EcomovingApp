@@ -3,11 +3,10 @@ import ContactosMarketing from "./ContactosMarketing";
 import ListaContenidos from "./ListaContenidos";
 import FabricaMensajes from "./FabricaMensajes";
 import FabricaBrochures from "./FabricaBrochures";
-import FabricaImagenes from "./FabricaImagenes";
-import { Users, Library, Sparkles, Layout, Camera } from "lucide-react";
+import { Users, Library, Sparkles, Layout } from "lucide-react";
 
 export default function Marketing() {
-  const [tabActiva, setTabActiva] = useState<"monitor" | "biblioteca" | "fabrica" | "brochures" | "imagenes">("monitor");
+  const [tabActiva, setTabActiva] = useState<"monitor" | "biblioteca" | "fabrica" | "brochures">("monitor");
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -61,17 +60,7 @@ export default function Marketing() {
             <span className="hidden sm:inline">Fábrica de Brochures</span>
             <span className="sm:hidden">Brochures</span>
           </button>
-          <button
-            onClick={() => setTabActiva("imagenes")}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "imagenes"
-              ? "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-500/30 shadow-sm"
-              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent"
-              }`}
-          >
-            <Camera className="h-4 w-4" />
-            <span className="hidden sm:inline">Fábrica de Imágenes</span>
-            <span className="sm:hidden">Fotos</span>
-          </button>
+
         </div>
 
         {/* Tab Content */}
@@ -82,7 +71,7 @@ export default function Marketing() {
             <FabricaMensajes onSave={() => setTabActiva("biblioteca")} />
           )}
           {tabActiva === "brochures" && <FabricaBrochures />}
-          {tabActiva === "imagenes" && <FabricaImagenes />}
+
         </div>
       </div>
     </div >
