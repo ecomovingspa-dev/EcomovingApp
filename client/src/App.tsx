@@ -16,6 +16,8 @@ import ComprasPage from "./pages/compras/ComprasPage";
 import ConciliacionPage from "./pages/conciliacion/ConciliacionPage";
 import Marketing from "./pages/marketing/marketing";
 
+// Build v1.0.1 - Marketing tabs cleaned (2026-01-28)
+
 export default function App() {
   return (
     <BrowserRouter>
