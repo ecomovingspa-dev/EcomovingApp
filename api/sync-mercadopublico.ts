@@ -8,6 +8,7 @@ const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_A
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const TICKET = process.env.VITE_MERCADO_PUBLICO_TICKET || 'FD7AB341-9FA0-452A-B1A8-0DEF7F6968AB';
+// Trigger redeploy: 2026-01-29 01:36
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Seguridad: Permitir solo si es un Cron de Vercel o tiene el secreto
