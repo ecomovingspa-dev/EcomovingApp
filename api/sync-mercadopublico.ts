@@ -18,60 +18,86 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-        // 1. Obtener Palabras Clave de la base de datos
+        // 1. Obtener Palabras Clave
         const { data: keywordsDB, error: errorDB } = await supabase
             .from("config_oportunidades")
             .select("keyword");
 
         if (errorDB) throw errorDB;
-        const PALABRAS_CLAVE = (keywordsDB || []).map((k) => k.keyword.toLowerCase());
+        const PALABRAS_CLAVE = (keywordsDB || []).map((k) => k.keyword.toLowerCase().trim()).filter(k => k.length > 0);
 
         if (PALABRAS_CLAVE.length === 0) {
-            return res.status(400).json({ error: "No hay palabras clave configuradas." });
+            return res.status(400).json({ error: "No hay palabras clave configuradas. Agrega algunas en la sección de Configuración." });
         }
 
-        // 2. Obtener licitaciones de hoy en Chile (ZONA HORARIA IMPORTANTE)
+        // 2. Definir ventana de tiempo (3 días)
         const hoyChile = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Santiago" }));
-        const dia = String(hoyChile.getDate()).padStart(2, '0');
-        const mes = String(hoyChile.getMonth() + 1).padStart(2, '0');
-        const anio = hoyChile.getFullYear();
-        const fechaStr = `${dia}${mes}${anio}`;
-
-        console.log(`Buscando licitaciones para la fecha: ${fechaStr}`);
-
-        const urlListar = `https://api.mercadopublico.cl/servicios/v1/publico/licitaciones.json?fecha=${fechaStr}&ticket=${TICKET}`;
-        const responseListar = await axios.get(urlListar);
-
-        if (!responseListar.data || !responseListar.data.Listado) {
-            return res.status(200).json({ message: "No se encontraron licitaciones hoy.", raw: responseListar.data });
+        const fechasABuscar = [];
+        for (let i = 0; i < 3; i++) {
+            const d = new Date(hoyChile);
+            d.setDate(hoyChile.getDate() - i);
+            const diaStr = String(d.getDate()).padStart(2, '0');
+            const mesStr = String(d.getMonth() + 1).padStart(2, '0');
+            const anioStr = d.getFullYear();
+            fechasABuscar.push(`${diaStr}${mesStr}${anioStr}`);
         }
 
-        const todas = responseListar.data.Listado;
-        console.log(`Total licitaciones hoy: ${todas.length}`);
+        let todasLasLicitaciones: any[] = [];
+        const logs: string[] = [];
 
-        // 3. Filtrar por keywords en el nombre
-        const filtradas = todas.filter((lic: any) => {
+        for (const fechaStr of fechasABuscar) {
+            try {
+                const urlListar = `https://api.mercadopublico.cl/servicios/v1/publico/licitaciones.json?fecha=${fechaStr}&ticket=${TICKET}`;
+                const responseListar = await axios.get(urlListar, { timeout: 10000 });
+
+                if (responseListar.data && Array.isArray(responseListar.data.Listado)) {
+                    todasLasLicitaciones = [...todasLasLicitaciones, ...responseListar.data.Listado];
+                    logs.push(`${fechaStr}: ${responseListar.data.Listado.length} items`);
+                } else {
+                    logs.push(`${fechaStr}: No hay datos o formato inválido`);
+                }
+            } catch (err: any) {
+                logs.push(`${fechaStr}: Error (${err.message})`);
+            }
+        }
+
+        if (todasLasLicitaciones.length === 0) {
+            return res.status(200).json({
+                message: "No se recibieron datos de la API de Mercado Público.",
+                logs,
+                keywords_configuradas: PALABRAS_CLAVE
+            });
+        }
+
+        // 3. Filtrar por keywords (Deduplicar primero)
+        const unicasVistas = Array.from(new Map(todasLasLicitaciones.map(l => [l.CodigoExterno, l])).values());
+
+        const filtradas = unicasVistas.filter((lic: any) => {
             const nombre = (lic.Nombre || "").toLowerCase();
             return PALABRAS_CLAVE.some((kw: string) => {
-                const regex = new RegExp(`\\b${kw}\\b`, "i");
-                return regex.test(nombre);
+                if (kw.length <= 3) {
+                    return new RegExp(`\\b${kw}\\b`, "i").test(nombre);
+                }
+                return nombre.includes(kw);
             });
         });
 
         if (filtradas.length === 0) {
-            return res.status(200).json({ message: "Sincronización terminada. 0 coincidencias encontradas hoy." });
+            return res.status(200).json({
+                message: `Se revisaron ${unicasVistas.length} licitaciones pero ninguna coincide con las palabras clave.`,
+                keywords_usadas: PALABRAS_CLAVE,
+                logs
+            });
         }
 
-        // 4. Evitar duplicados y límites de tiempo (Procesar solo las nuevas)
+        // 4. Evitar duplicados contra DB
         const { data: existentes } = await supabase
             .from('oportunidades')
             .select('id')
             .in('id', filtradas.map((l: any) => l.CodigoExterno));
 
         const idsExistentes = new Set((existentes || []).map((e: any) => e.id));
-        const porProcesar = filtradas.filter((l: any) => !idsExistentes.has(l.CodigoExterno)).slice(0, 10);
-
-        console.log(`Licitaciones nuevas detectadas: ${porProcesar.length}`);
+        const porProcesar = filtradas.filter((l: any) => !idsExistentes.has(l.CodigoExterno)).slice(0, 20);
 
         // 5. Obtener detalles e insertar
         const resultados = [];
@@ -80,15 +106,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         for (const licResumen of porProcesar) {
             try {
                 const urlDetalle = `https://api.mercadopublico.cl/servicios/v1/publico/licitaciones.json?codigo=${licResumen.CodigoExterno}&ticket=${TICKET}`;
-                const responseDetalle = await axios.get(urlDetalle, { timeout: 4000 });
+                const responseDetalle = await axios.get(urlDetalle, { timeout: 7000 });
 
-                if (responseDetalle.data.Listado && responseDetalle.data.Listado.length > 0) {
+                if (responseDetalle.data && Array.isArray(responseDetalle.data.Listado) && responseDetalle.data.Listado.length > 0) {
                     const d = responseDetalle.data.Listado[0];
+                    const nombreLower = (d.Nombre || "").toLowerCase();
 
-                    const textoBusqueda = (d.Nombre || "").toLowerCase();
-                    const keywordsEncontradas = PALABRAS_CLAVE.filter((kw: string) => {
-                        const regex = new RegExp(`\\b${kw}\\b`, "i");
-                        return regex.test(textoBusqueda);
+                    const matches = PALABRAS_CLAVE.filter((kw: string) => {
+                        if (kw.length <= 3) return new RegExp(`\\b${kw}\\b`, "i").test(nombreLower);
+                        return nombreLower.includes(kw);
                     }).join(", ");
 
                     const oportunidad = {
@@ -97,8 +123,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         organismo: d.Comprador ? d.Comprador.NombreOrganismo : "Desconocido",
                         fecha_cierre: d.FechaCierre || null,
                         monto_disponible: typeof d.MontoEstimado === 'number' ? d.MontoEstimado : null,
-                        estado: "Publicada",
-                        clave: keywordsEncontradas || licResumen.Nombre || "Sin clave",
+                        estado: d.EstadoUnidadCompra || "Publicada",
+                        clave: matches || "Match parcial",
                         vendedor_id: null
                     };
 
@@ -109,23 +135,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     if (upsertError) throw upsertError;
                     resultados.push(d.CodigoExterno);
                 }
+                await new Promise(resolve => setTimeout(resolve, 400));
             } catch (err: any) {
-                console.error(`Error procesando ${licResumen.CodigoExterno}:`, err.message);
                 errores.push({ id: licResumen.CodigoExterno, error: err.message });
             }
         }
 
         return res.status(200).json({
-            message: porProcesar.length === 0 ? "Ya estás al día con las licitaciones actuales." : "Sincronización parcial completada",
-            total_hoy: todas.length,
+            message: resultados.length > 0 ? `Se encontraron ${resultados.length} oportunidades nuevas.` : "No se detectaron nuevas oportunidades.",
+            total_analizadas: unicasVistas.length,
             coincidencias: filtradas.length,
             nuevas_procesadas: resultados.length,
-            errores: errores,
-            pendientes: Math.max(0, filtradas.length - idsExistentes.size - resultados.length)
+            keywords: PALABRAS_CLAVE,
+            logs,
+            errores
         });
 
     } catch (error: any) {
-        console.error("Error crítico en sincronización:", error);
+        console.error("Error crítico sync:", error);
         return res.status(500).json({ error: error.message });
     }
 }

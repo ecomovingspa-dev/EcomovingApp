@@ -17,7 +17,7 @@ export const AsistenteVoz = () => {
 
     try {
       const genAI = new GoogleGenerativeAI(API_KEY);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
       const hoy = new Date().toISOString().split("T")[0];
 
@@ -116,13 +116,12 @@ export const AsistenteVoz = () => {
       )}
       <button
         onClick={activarMicrofono}
-        className={`h-16 w-16 rounded-full shadow-2xl text-3xl transition-transform transform hover:scale-105 ${
-          estado === "escuchando"
+        className={`h-16 w-16 rounded-full shadow-2xl text-3xl transition-transform transform hover:scale-105 ${estado === "escuchando"
             ? "bg-red-500 animate-pulse"
             : estado === "exito"
               ? "bg-green-500"
               : "bg-blue-600"
-        } text-white`}
+          } text-white`}
       >
         {estado === "escuchando" ? "🛑" : estado === "exito" ? "👍" : "🎙️"}
       </button>

@@ -260,9 +260,11 @@ export default function OportunidadesPage() {
 
       if (!response.ok) throw new Error(result.error || "Error en la sincronización");
 
-      setMensaje(`✅ Sincronización exitosa: ${result.coincidencias} encontradas, ${result.procesadas_exito} nuevas.`);
+      const msg = result.message || `Sincronización exitosa: ${result.coincidencias} encontradas, ${result.nuevas_procesadas} nuevas.`;
+      setMensaje(`✅ ${msg}`);
       await cargarOportunidades();
-      setTimeout(() => setMensaje(""), 5000);
+      setTimeout(() => setMensaje(""), 10000); // Dar más tiempo para leer logs si hay
+
     } catch (error: any) {
       console.error("Error sync:", error);
       setMensaje("❌ Error al sincronizar: " + error.message);

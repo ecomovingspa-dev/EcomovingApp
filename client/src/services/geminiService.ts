@@ -3,7 +3,7 @@
  */
 const GEMINI_API_KEY = "AIzaSyANy1lc4pJU0YhaS_fL1N2JNfHJHK2F15E";
 const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-flash:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent";
 
 interface GeminiResponse {
   asunto: string;
