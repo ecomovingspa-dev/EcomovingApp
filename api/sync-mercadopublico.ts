@@ -76,20 +76,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const filtradas = unicasVistas.filter((lic: any) => {
             const nombre = (lic.Nombre || "").toLowerCase();
             return PALABRAS_CLAVE.some((kw: string) => {
+                // Si la palabra clave es corta, buscar palabra exacta
                 if (kw.length <= 3) {
                     return new RegExp(`\\b${kw}\\b`, "i").test(nombre);
                 }
+                // Si es larga, buscar contención
                 return nombre.includes(kw);
             });
         });
-
-        if (filtradas.length === 0) {
-            return res.status(200).json({
-                message: `Se revisaron ${unicasVistas.length} licitaciones pero ninguna coincide con las palabras clave.`,
-                keywords_usadas: PALABRAS_CLAVE,
-                logs
-            });
-        }
 
         // 4. Evitar duplicados contra DB
         const { data: existentes } = await supabase
@@ -98,7 +92,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .in('id', filtradas.map((l: any) => l.CodigoExterno));
 
         const idsExistentes = new Set((existentes || []).map((e: any) => e.id));
-        const porProcesar = filtradas.filter((l: any) => !idsExistentes.has(l.CodigoExterno)).slice(0, 20);
+
+        // AUMENTADO: De 20 a 100 para capturar todo el volumen disponible
+        const porProcesar = filtradas.filter((l: any) => !idsExistentes.has(l.CodigoExterno)).slice(0, 100);
 
         // 5. Obtener detalles e insertar
         const resultados = [];
@@ -107,15 +103,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         for (const licResumen of porProcesar) {
             try {
                 const urlDetalle = `https://api.mercadopublico.cl/servicios/v1/publico/licitaciones.json?codigo=${licResumen.CodigoExterno}&ticket=${TICKET}`;
-                const responseDetalle = await axios.get(urlDetalle, { timeout: 7000 });
+                // Reducido timeout para mayor velocidad
+                const responseDetalle = await axios.get(urlDetalle, { timeout: 5000 });
 
                 if (responseDetalle.data && Array.isArray(responseDetalle.data.Listado) && responseDetalle.data.Listado.length > 0) {
                     const d = responseDetalle.data.Listado[0];
                     const nombreLower = (d.Nombre || "").toLowerCase();
+                    const descripcionLower = (d.Descripcion || "").toLowerCase();
 
+                    // MEJORADO: Buscar también en la descripción si el nombre falló
                     const matches = PALABRAS_CLAVE.filter((kw: string) => {
-                        if (kw.length <= 3) return new RegExp(`\\b${kw}\\b`, "i").test(nombreLower);
-                        return nombreLower.includes(kw);
+                        if (kw.length <= 3) {
+                            const regex = new RegExp(`\\b${kw}\\b`, "i");
+                            return regex.test(nombreLower) || regex.test(descripcionLower);
+                        }
+                        return nombreLower.includes(kw) || descripcionLower.includes(kw);
                     }).join(", ");
 
                     const oportunidad = {
@@ -125,7 +127,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         fecha_cierre: d.FechaCierre || null,
                         monto_disponible: typeof d.MontoEstimado === 'number' ? d.MontoEstimado : null,
                         estado: d.EstadoUnidadCompra || "Publicada",
-                        clave: matches || "Match parcial",
+                        clave: matches || "Match",
                         vendedor_id: null
                     };
 
@@ -136,18 +138,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     if (upsertError) throw upsertError;
                     resultados.push(d.CodigoExterno);
                 }
-                await new Promise(resolve => setTimeout(resolve, 400));
+                // Pausa mínima para no saturar
+                await new Promise(resolve => setTimeout(resolve, 200));
             } catch (err: any) {
                 errores.push({ id: licResumen.CodigoExterno, error: err.message });
             }
         }
 
         return res.status(200).json({
-            message: resultados.length > 0 ? `Se encontraron ${resultados.length} oportunidades nuevas.` : "No se detectaron nuevas oportunidades.",
-            total_analizadas: unicasVistas.length,
-            coincidencias: filtradas.length,
-            nuevas_procesadas: resultados.length,
-            keywords: PALABRAS_CLAVE,
+            message: resultados.length > 0 ? `Éxito: Se procesaron ${resultados.length} nuevas oportunidades.` : "Sincronización completa. No hay nuevos matches.",
+            detalles: {
+                total_en_mp: unicasVistas.length,
+                coincidieron_filtros: filtradas.length,
+                nuevas_guardadas: resultados.length,
+                omitidas_por_duplicadas: filtradas.length - porProcesar.length
+            },
+            keywords_usadas: PALABRAS_CLAVE,
             logs,
             errores
         });
