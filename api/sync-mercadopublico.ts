@@ -64,6 +64,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const unicasVistas = Array.from(new Map(todasLasLicitaciones.map((l: any) => [l.CodigoExterno, l])).values());
 
         const filtradas = unicasVistas.filter((lic: any) => {
+            // Las Compras Ágiles (COT) siempre pasan porque sus campos vienen vacíos en el resumen
+            if (lic.CodigoExterno?.includes('COT')) {
+                return true;
+            }
+
+            // Para licitaciones normales, aplicar filtro de keywords
             const nombre = (lic.Nombre || "").toLowerCase();
             const descripcion = (lic.Descripcion || "").toLowerCase();
             const textoCompleto = nombre + " " + descripcion;
