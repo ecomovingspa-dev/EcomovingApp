@@ -55,7 +55,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
         }
 
-        // 3. Filtrar por keywords (Deduplicar primero)
+        // 3. Log de diagnóstico: contar tipos
+        const comprasAgiles = todasLasLicitaciones.filter((l: any) => l.CodigoExterno?.includes('COT'));
+        const licitacionesNormales = todasLasLicitaciones.filter((l: any) => l.CodigoExterno?.includes('-L'));
+        logs.push(`TOTAL: ${todasLasLicitaciones.length} | Compras Ágiles (COT): ${comprasAgiles.length} | Licitaciones (L): ${licitacionesNormales.length}`);
+
+        // 4. Filtrar por keywords (Deduplicar primero)
         const unicasVistas = Array.from(new Map(todasLasLicitaciones.map((l: any) => [l.CodigoExterno, l])).values());
 
         const filtradas = unicasVistas.filter((lic: any) => {
