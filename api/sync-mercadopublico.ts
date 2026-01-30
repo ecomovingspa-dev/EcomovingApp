@@ -23,11 +23,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: "No hay palabras clave configuradas." });
         }
 
-        // 2. Definir ventana de tiempo (3 días) con zona horaria de Chile
+        // 2. Definir ventana de tiempo (5 días: hoy + 4 anteriores) con zona horaria de Chile
         const fechasABuscar: string[] = [];
         const hoy = new Date();
 
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 5; i++) {
             const fechaChile = new Date(hoy.toLocaleString("en-US", { timeZone: "America/Santiago" }));
             fechaChile.setDate(fechaChile.getDate() - i);
 
