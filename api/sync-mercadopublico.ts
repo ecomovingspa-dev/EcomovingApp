@@ -31,16 +31,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             return res.status(400).json({ error: "No hay palabras clave configuradas. Agrega algunas en la sección de Configuración." });
         }
 
-        // 2. Definir ventana de tiempo (3 días)
-        const hoyChile = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Santiago" }));
+        // 2. Definir ventana de tiempo (3 días) con zona horaria de Chile
+        // Usamos Intl.DateTimeFormat para obtener la fecha exacta en Chile sin depender de strings locales
+        const ahora = new Date();
+        const chileFormatter = new Intl.DateTimeFormat('es-CL', {
+            timeZone: 'America/Santiago',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+
         const fechasABuscar = [];
         for (let i = 0; i < 3; i++) {
-            const d = new Date(hoyChile);
-            d.setDate(hoyChile.getDate() - i);
-            const diaStr = String(d.getDate()).padStart(2, '0');
-            const mesStr = String(d.getMonth() + 1).padStart(2, '0');
-            const anioStr = d.getFullYear();
-            fechasABuscar.push(`${diaStr}${mesStr}${anioStr}`);
+            const d = new Date(ahora);
+            d.setDate(ahora.getDate() - i);
+
+            // Obtener componentes para ese día específico en la zona horaria de Chile
+            const parts = new Intl.DateTimeFormat('es-CL', {
+                timeZone: 'America/Santiago',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).formatToParts(d);
+
+            const dia = parts.find(p => p.type === 'day')?.value;
+            const mes = parts.find(p => p.type === 'month')?.value;
+            const anio = parts.find(p => p.type === 'year')?.value;
+
+            fechasABuscar.push(`${dia}${mes}${anio}`);
         }
 
         let todasLasLicitaciones: any[] = [];
