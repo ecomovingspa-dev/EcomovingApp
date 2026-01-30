@@ -60,11 +60,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         const filtradas = unicasVistas.filter((lic: any) => {
             const nombre = (lic.Nombre || "").toLowerCase();
+            const descripcion = (lic.Descripcion || "").toLowerCase();
+            const textoCompleto = nombre + " " + descripcion;
+
             return PALABRAS_CLAVE.some((kw: string) => {
                 if (kw.length <= 3) {
-                    return new RegExp(`\\b${kw}\\b`, "i").test(nombre);
+                    return new RegExp(`\\b${kw}\\b`, "i").test(textoCompleto);
                 }
-                return nombre.includes(kw);
+                return textoCompleto.includes(kw);
             });
         });
 
