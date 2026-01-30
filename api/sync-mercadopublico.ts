@@ -89,19 +89,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 if (responseDetalle.data && Array.isArray(responseDetalle.data.Listado) && responseDetalle.data.Listado.length > 0) {
                     const d = responseDetalle.data.Listado[0];
+
+                    // Construir texto de búsqueda con los 4 campos
                     const nombreLower = (d.Nombre || "").toLowerCase();
                     const descLower = (d.Descripcion || "").toLowerCase();
 
+                    // Extraer texto de Items (si existen)
+                    let itemsTexto = "";
+                    if (Array.isArray(d.Items)) {
+                        itemsTexto = d.Items.map((item: any) =>
+                            `${item.NombreProducto || ""} ${item.Descripcion || ""}`
+                        ).join(" ").toLowerCase();
+                    }
+
+                    const textoCompleto = `${nombreLower} ${descLower} ${itemsTexto}`;
+
                     const matches = PALABRAS_CLAVE.filter((kw: string) => {
-                        if (kw.length <= 3) return new RegExp(`\\b${kw}\\b`, "i").test(nombreLower) || new RegExp(`\\b${kw}\\b`, "i").test(descLower);
-                        return nombreLower.includes(kw) || descLower.includes(kw);
+                        if (kw.length <= 3) return new RegExp(`\\b${kw}\\b`, "i").test(textoCompleto);
+                        return textoCompleto.includes(kw);
                     }).join(", ");
+
+                    // Usar FechaCierre con fallback a Fechas.FechaCierre
+                    const fechaCierre = d.FechaCierre || d.Fechas?.FechaCierre || null;
 
                     await supabase.from('oportunidades').upsert({
                         id: d.CodigoExterno,
                         nombre: d.Nombre,
                         organismo: d.Comprador ? d.Comprador.NombreOrganismo : "Desconocido",
-                        fecha_cierre: d.FechaCierre || null,
+                        fecha_cierre: fechaCierre,
                         monto_disponible: typeof d.MontoEstimado === 'number' ? d.MontoEstimado : null,
                         estado: d.EstadoUnidadCompra || "Publicada",
                         clave: matches || "Match",
