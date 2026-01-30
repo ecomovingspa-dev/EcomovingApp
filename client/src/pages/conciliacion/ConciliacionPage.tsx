@@ -339,12 +339,12 @@ Ejemplos:
             let saldoFinal = 0;
             let movementsStartIndex = -1;
 
-            // Column indices
-            let fechaIdx = 0;
-            let docIdx = 7;
-            let cargoIdx = 10;
-            let abonoIdx = 12;
-            let saldoIdx = 14;
+            // Column indices - will be detected from headers
+            let fechaIdx = -1;
+            let docIdx = -1;
+            let ingresoIdx = -1;  // Abonos (dinero que entra)
+            let egresoIdx = -1;   // Cargos (dinero que sale)
+            let saldoIdx = -1;
             let bciGlosaIdx = -1;
             let bciComentarioIdx = -1;
             let bciRutIdx = -1;
@@ -373,46 +373,97 @@ Ejemplos:
                 return 0;
             };
 
-            // 1. Scan for Headers and Balances (BCI Specialized)
-            for (let i = 0; i < Math.min(rows.length, 50); i++) {
+            // 1. Scan for Headers - Look for the row with column headers
+            for (let i = 0; i < Math.min(rows.length, 30); i++) {
                 const row = rows[i];
                 if (!row || row.length === 0) continue;
                 const rowStr = row.map(cleanStr).join(" ");
 
-                // Detect Balances
-                if (rowStr.includes("saldo anterior") || rowStr.includes("saldo inicial")) {
-                    const rowNumbers = row.map(parseMoney).filter(n => n !== 0);
-                    if (rowNumbers.length > 0) saldoInicial = rowNumbers[0];
-                }
-                if (rowStr.includes("saldo final") || rowStr.includes("saldo contable")) {
-                    const rowNumbers = row.map(parseMoney).filter(n => n !== 0);
-                    if (rowNumbers.length > 0) saldoFinal = rowNumbers[rowNumbers.length - 1];
-                }
+                // Detect header row by looking for key BCI columns
+                const hasIngreso = rowStr.includes("ingreso");
+                const hasEgreso = rowStr.includes("egreso");
+                const hasFecha = rowStr.includes("fecha");
+                const hasGlosa = rowStr.includes("glosa");
 
-                // Detect BCI Column Headers
-                if (rowStr.includes("fecha") && (rowStr.includes("glosa detalle") || rowStr.includes("comentario"))) {
+                if (hasFecha && (hasIngreso || hasEgreso || hasGlosa)) {
                     movementsStartIndex = i + 1;
+
+                    // Map each column
                     row.forEach((cell: any, idx: number) => {
                         const val = cleanStr(cell);
-                        if (val.includes("fecha") && val.includes("trans")) fechaIdx = idx;
-                        else if (val.includes("fecha") && fechaIdx === -1) fechaIdx = idx; // Fallback if no "trans" found
 
-                        if (val.includes("glosa detalle")) bciGlosaIdx = idx;
-                        if (val.includes("comentario")) bciComentarioIdx = idx;
-                        if (val.includes("rut")) bciRutIdx = idx;
-                        if (val.includes("nombre")) bciNombreIdx = idx;
-                        if (val.includes("num") || val.includes("n°")) docIdx = idx;
-                        if (val.includes("cargo") || val.includes("egreso")) cargoIdx = idx;
-                        if (val.includes("abono") || val.includes("deposito") || val.includes("ingreso")) abonoIdx = idx;
-                        if (val.includes("saldo") && (val.includes("contable") || val.includes("actual"))) saldoIdx = idx;
+                        // Fecha
+                        if (val.includes("fecha") && fechaIdx === -1) {
+                            fechaIdx = idx;
+                        }
+
+                        // Glosa detalle
+                        if (val.includes("glosa") && val.includes("detalle")) {
+                            bciGlosaIdx = idx;
+                        } else if (val.includes("glosa") && bciGlosaIdx === -1) {
+                            bciGlosaIdx = idx;
+                        }
+
+                        // Ingreso (Abonos - dinero que entra)
+                        if (val.includes("ingreso")) {
+                            ingresoIdx = idx;
+                        }
+
+                        // Egreso (Cargos - dinero que sale)
+                        if (val.includes("egreso")) {
+                            egresoIdx = idx;
+                        }
+
+                        // Saldo
+                        if (val.includes("saldo") && (val.includes("contable") || val.includes("actual"))) {
+                            saldoIdx = idx;
+                        } else if (val.includes("saldo") && saldoIdx === -1) {
+                            saldoIdx = idx;
+                        }
+
+                        // Comentario
+                        if (val.includes("comentario")) {
+                            bciComentarioIdx = idx;
+                        }
+
+                        // RUT
+                        if (val === "rut" || val.includes("rut ")) {
+                            bciRutIdx = idx;
+                        }
+
+                        // Nombre
+                        if (val === "nombre" || val.includes("nombre ")) {
+                            bciNombreIdx = idx;
+                        }
+
+                        // Número documento
+                        if (val.includes("numero") || val.includes("n°") || val.includes("num ") || val.includes("serie")) {
+                            docIdx = idx;
+                        }
                     });
+
+                    console.log("BCI Parser - Columnas detectadas:", {
+                        fecha: fechaIdx,
+                        glosa: bciGlosaIdx,
+                        ingreso: ingresoIdx,
+                        egreso: egresoIdx,
+                        saldo: saldoIdx,
+                        comentario: bciComentarioIdx,
+                        rut: bciRutIdx,
+                        nombre: bciNombreIdx,
+                        doc: docIdx,
+                        headerRow: i
+                    });
+                    break; // Found header row, stop searching
                 }
             }
 
-            if (movementsStartIndex === -1) {
-                alert("No se detectó el formato oficial de la cartola detallada BCI. Asegúrate de que el archivo tenga la columna 'Glosa detalle'.");
+            if (movementsStartIndex === -1 || (ingresoIdx === -1 && egresoIdx === -1)) {
+                alert("No se detectó el formato de cartola BCI. Asegúrate de que el archivo tenga columnas de Fecha, Ingreso y/o Egreso.");
+                setUploading(false);
                 return;
             }
+
 
             const parsedMovimientos: any[] = [];
             if (movementsStartIndex !== -1) {
@@ -420,7 +471,8 @@ Ejemplos:
                     const row = rows[i];
                     if (!row || row.length === 0) continue;
 
-                    const fechaRaw = row[fechaIdx]; // Use mapped index
+                    // Handle fechaIdx = -1 case
+                    const fechaRaw = fechaIdx !== -1 ? row[fechaIdx] : row[0];
                     if (!fechaRaw) continue;
 
                     // Date Parsing
@@ -435,11 +487,13 @@ Ejemplos:
                     if (!fecha) continue;
 
                     // Description & Content
-                    const finalDesc = String(row[bciGlosaIdx] || row[1] || "Sin descripción");
-                    const nDoc = row[docIdx];
-                    const cargo = parseMoney(row[cargoIdx]);
-                    const abono = parseMoney(row[abonoIdx]);
-                    const saldo = parseMoney(row[saldoIdx]);
+                    const finalDesc = String(bciGlosaIdx !== -1 ? row[bciGlosaIdx] : row[1] || "Sin descripción");
+                    const nDoc = docIdx !== -1 ? row[docIdx] : null;
+
+                    // Egreso = Cargos (dinero que sale), Ingreso = Abonos (dinero que entra)
+                    const cargo = egresoIdx !== -1 ? parseMoney(row[egresoIdx]) : 0;
+                    const abono = ingresoIdx !== -1 ? parseMoney(row[ingresoIdx]) : 0;
+                    const saldo = saldoIdx !== -1 ? parseMoney(row[saldoIdx]) : 0;
 
                     parsedMovimientos.push({
                         fecha,
@@ -449,7 +503,7 @@ Ejemplos:
                         abonos: abono,
                         saldo: saldo,
                         estado: 'pendiente',
-                        bci_glosa_detalle: String(row[bciGlosaIdx] || ""),
+                        bci_glosa_detalle: bciGlosaIdx !== -1 ? String(row[bciGlosaIdx] || "") : "",
                         bci_comentario_transferencia: bciComentarioIdx !== -1 ? String(row[bciComentarioIdx] || "") : null,
                         bci_rut: bciRutIdx !== -1 ? String(row[bciRutIdx] || "") : null,
                         bci_nombre: bciNombreIdx !== -1 ? String(row[bciNombreIdx] || "") : null
