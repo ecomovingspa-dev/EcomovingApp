@@ -2,7 +2,7 @@
     "crons": [
         {
             "path": "/api/sync-mercadopublico",
-            "schedule": "0 10,16,22 * * *"
+            "schedule": "0 10 * * *"
         }
     ]
 }
