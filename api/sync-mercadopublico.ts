@@ -75,7 +75,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // 3. Filtrar por keywords (Deduplicar primero)
-        const unicasVistas = Array.from(new Map(todasLasLicitaciones.map(l => [l.CodigoExterno, l])).values());
+        const unicasVistas = Array.from(new Map(todasLasLicitaciones.map((l: any) => [l.CodigoExterno, l])).values());
 
         const filtradas = unicasVistas.filter((lic: any) => {
             const nombre = (lic.Nombre || "").toLowerCase();
