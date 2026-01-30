@@ -1527,13 +1527,6 @@ Ejemplos:
                                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Resumen Financiero</h4>
 
                                 <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
-                                    <span className="text-sm text-gray-600 dark:text-gray-400">Saldo Inicial</span>
-                                    <span className="font-semibold text-gray-900 dark:text-gray-100">
-                                        ${uploadSummary.saldoInicial.toLocaleString()}
-                                    </span>
-                                </div>
-
-                                <div className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-gray-800">
                                     <span className="text-sm text-red-600 dark:text-red-400">Total Cargos</span>
                                     <span className="font-semibold text-red-700 dark:text-red-400">
                                         -${uploadSummary.cargos.toLocaleString()}
