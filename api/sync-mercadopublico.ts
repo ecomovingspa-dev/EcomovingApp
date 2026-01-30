@@ -109,8 +109,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                         return textoCompleto.includes(kw);
                     }).join(", ");
 
-                    // Usar FechaCierre con fallback a Fechas.FechaCierre
-                    const fechaCierre = d.FechaCierre || d.Fechas?.FechaCierre || null;
+                    // Log de campos de fecha disponibles para depuración
+                    console.log(`[${d.CodigoExterno}] Campos fecha: FechaCierre=${d.FechaCierre}, Fechas.FechaCierre=${d.Fechas?.FechaCierre}, FechaFinal=${d.FechaFinal}`);
+
+                    // Usar FechaCierre con múltiples fallbacks
+                    const fechaCierre = d.FechaCierre || d.Fechas?.FechaCierre || d.FechaFinal || d.Fechas?.FechaFinal || null;
 
                     await supabase.from('oportunidades').upsert({
                         id: d.CodigoExterno,
