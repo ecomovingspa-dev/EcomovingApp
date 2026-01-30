@@ -402,8 +402,8 @@ Ejemplos:
                         if (val.includes("rut")) bciRutIdx = idx;
                         if (val.includes("nombre")) bciNombreIdx = idx;
                         if (val.includes("num") || val.includes("n°")) docIdx = idx;
-                        if (val.includes("cargo")) cargoIdx = idx;
-                        if (val.includes("abono") || val.includes("deposito")) abonoIdx = idx;
+                        if (val.includes("cargo") || val.includes("egreso")) cargoIdx = idx;
+                        if (val.includes("abono") || val.includes("deposito") || val.includes("ingreso")) abonoIdx = idx;
                         if (val.includes("saldo") && (val.includes("contable") || val.includes("actual"))) saldoIdx = idx;
                     });
                 }

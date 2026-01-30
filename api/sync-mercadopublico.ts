@@ -43,12 +43,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         for (const fechaStr of fechasABuscar) {
             try {
-                const urlListar = `https://api.mercadopublico.cl/servicios/v1/publico/licitaciones.json?fecha=${fechaStr}&ticket=${TICKET}`;
-                const responseListar = await axios.get(urlListar, { timeout: 15000 });
+                // Consultar LICITACIONES
+                const urlLicit = `https://api.mercadopublico.cl/servicios/v1/publico/licitaciones.json?fecha=${fechaStr}&ticket=${TICKET}`;
+                const respLicit = await axios.get(urlLicit, { timeout: 15000 });
 
-                if (responseListar.data && Array.isArray(responseListar.data.Listado)) {
-                    todasLasLicitaciones = [...todasLasLicitaciones, ...responseListar.data.Listado];
-                    logs.push(`${fechaStr}: ${responseListar.data.Listado.length} items`);
+                if (respLicit.data && Array.isArray(respLicit.data.Listado)) {
+                    todasLasLicitaciones = [...todasLasLicitaciones, ...respLicit.data.Listado];
+                    logs.push(`Licit ${fechaStr}: ${respLicit.data.Listado.length}`);
+                }
+
+                // Consultar ORDENES DE COMPRA tipo Compra Ágil (AG = código 13)
+                const urlOC = `https://api.mercadopublico.cl/servicios/v1/publico/ordenesdecompra.json?fecha=${fechaStr}&ticket=${TICKET}`;
+                const respOC = await axios.get(urlOC, { timeout: 15000 });
+
+                if (respOC.data && Array.isArray(respOC.data.Listado)) {
+                    // Filtrar solo las de tipo Compra Ágil
+                    const comprasAgiles = respOC.data.Listado.filter((oc: any) =>
+                        oc.Tipo === 'AG' || oc.CodigoTipo === 13 || oc.Codigo?.includes('COT')
+                    );
+                    // Mapear a formato compatible con licitaciones
+                    const ocMapeadas = comprasAgiles.map((oc: any) => ({
+                        CodigoExterno: oc.Codigo || oc.CodigoExterno,
+                        Nombre: oc.Nombre || oc.Descripcion || `Compra Ágil ${oc.Codigo}`,
+                        Descripcion: oc.Descripcion || '',
+                        FechaCierre: oc.Fechas?.FechaEnvio || oc.FechaEnvio || null,
+                        esCompraAgil: true
+                    }));
+                    todasLasLicitaciones = [...todasLasLicitaciones, ...ocMapeadas];
+                    logs.push(`OC-AG ${fechaStr}: ${comprasAgiles.length}`);
                 }
             } catch (err: any) {
                 logs.push(`${fechaStr}: Error (${err.message})`);
