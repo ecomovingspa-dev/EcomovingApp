@@ -1,17 +1,4 @@
 {
-  "version": 2,
-  "framework": "vite",
-  "rootDirectory": null,
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ],
   "crons": [
     {
       "path": "/api/sync-mercadopublico",
