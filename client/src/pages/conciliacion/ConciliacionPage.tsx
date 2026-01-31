@@ -197,6 +197,12 @@ export default function ConciliacionPage() {
     const [isPreconciliating, setIsPreconciliating] = useState(false);
     const [searchQuery, setSearchQuery] = useState(""); // Búsqueda de movimientos
 
+    // --- CONCILIACIÓN MANUAL STATE ---
+    const [manualCategoria, setManualCategoria] = useState("");
+    const [manualDetalle, setManualDetalle] = useState("");
+    const [manualReferencia, setManualReferencia] = useState("");
+    const [conciliandoManual, setConciliandoManual] = useState(false);
+
     // --- VOICE AGENT STATE ---
     const [isListening, setIsListening] = useState(false);
     const [agentText, setAgentText] = useState("");
@@ -1027,6 +1033,66 @@ Ejemplos:
         }
     };
 
+    // --- CONCILIACIÓN MANUAL (sin factura) ---
+    const handleConciliacionManual = async () => {
+        if (!selectedMovimiento) return;
+        if (!manualCategoria) {
+            alert("Por favor selecciona una categoría");
+            return;
+        }
+
+        setConciliandoManual(true);
+        try {
+            // 1. Update banco_movimientos - marcar como conciliado manual
+            const { error: errMov } = await supabase
+                .from("banco_movimientos")
+                .update({
+                    estado: "conciliado",
+                    tipo_conciliacion: "manual",
+                    tipo_gasto: manualCategoria
+                })
+                .eq("id", selectedMovimiento.id);
+
+            if (errMov) throw errMov;
+
+            // 2. Insert registro de auditoría
+            const { error: errAudit } = await supabase
+                .from("conciliaciones_manuales")
+                .insert({
+                    movimiento_id: selectedMovimiento.id,
+                    categoria: manualCategoria,
+                    detalle: manualDetalle || null,
+                    referencia: manualReferencia || null
+                });
+
+            if (errAudit) {
+                console.warn("Advertencia: No se pudo registrar auditoría:", errAudit.message);
+                // No lanzamos error, la conciliación ya se hizo
+            }
+
+            // 3. UI Updates
+            setMovimientos(prev => prev.map(m =>
+                m.id === selectedMovimiento.id
+                    ? { ...m, estado: "conciliado", tipo_conciliacion: "manual", tipo_gasto: manualCategoria }
+                    : m
+            ));
+
+            // Limpiar formulario
+            setManualCategoria("");
+            setManualDetalle("");
+            setManualReferencia("");
+            setMatchTab("sugerencias");
+            setConciliarOpen(false);
+            setSelectedMovimiento(null);
+
+            alert("✅ Movimiento conciliado manualmente");
+
+        } catch (e: any) {
+            alert("Error al conciliar manualmente: " + e.message);
+        } finally {
+            setConciliandoManual(false);
+        }
+    };
 
     const handlePreconciliacion = async () => {
         if (!selectedPeriod || movimientos.length === 0) return;
@@ -1662,69 +1728,157 @@ Ejemplos:
                                 </div>
                             </div>
 
-                            <div className="space-y-4">
-                                {searchingMatch ? (
-                                    <div className="text-center py-6">
-                                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500" />
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Buscando documentos relacionados...</p>
-                                    </div>
-                                ) : coincidencias.length > 0 ? (
-                                    <div className="space-y-2">
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                            Ordenado por relevancia • {coincidencias.length} resultado{coincidencias.length !== 1 ? 's' : ''}
-                                        </p>
-                                        {coincidencias.map((item) => (
-                                            <div key={`${item.tipo}-${item.id}`} className="flex items-center justify-between p-3 border border-gray-100 dark:border-gray-800 rounded-md bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border-l-4 border-l-indigo-400 shadow-sm">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <Badge variant="secondary" className="uppercase text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-none">{item.tipo}</Badge>
-                                                        <span className="font-bold text-sm text-gray-900 dark:text-gray-100">Folio {item.folio}</span>
-                                                        <Badge
-                                                            variant="outline"
-                                                            className={`text-[10px] ${item.estado === 'Pagada' ? 'text-green-600 border-green-200 bg-green-50' : 'text-yellow-600 border-yellow-200 bg-yellow-50'}`}
-                                                        >
-                                                            {item.estado}
-                                                        </Badge>
-                                                        {/* Score de confianza */}
-                                                        {item.score !== undefined && (
+                            {/* Tabs para tipo de conciliación */}
+                            <Tabs value={matchTab} onValueChange={setMatchTab} className="w-full">
+                                <TabsList className="grid w-full grid-cols-2 mb-4">
+                                    <TabsTrigger value="sugerencias" className="text-sm">
+                                        📄 Buscar Documento
+                                    </TabsTrigger>
+                                    <TabsTrigger value="manual" className="text-sm">
+                                        ✏️ Conciliar Manual
+                                    </TabsTrigger>
+                                </TabsList>
+
+                                {/* Tab: Buscar Documento (existente) */}
+                                <TabsContent value="sugerencias" className="space-y-4">
+                                    {searchingMatch ? (
+                                        <div className="text-center py-6">
+                                            <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500" />
+                                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">Buscando documentos relacionados...</p>
+                                        </div>
+                                    ) : coincidencias.length > 0 ? (
+                                        <div className="space-y-2">
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                                Ordenado por relevancia • {coincidencias.length} resultado{coincidencias.length !== 1 ? 's' : ''}
+                                            </p>
+                                            {coincidencias.map((item) => (
+                                                <div key={`${item.tipo}-${item.id}`} className="flex items-center justify-between p-3 border border-gray-100 dark:border-gray-800 rounded-md bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border-l-4 border-l-indigo-400 shadow-sm">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <Badge variant="secondary" className="uppercase text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-none">{item.tipo}</Badge>
+                                                            <span className="font-bold text-sm text-gray-900 dark:text-gray-100">Folio {item.folio}</span>
                                                             <Badge
-                                                                className={`text-[9px] px-1.5 py-0.5 ${item.score >= 70
-                                                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                                                    : item.score >= 40
-                                                                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                                                        : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                                                                    }`}
+                                                                variant="outline"
+                                                                className={`text-[10px] ${item.estado === 'Pagada' ? 'text-green-600 border-green-200 bg-green-50' : 'text-yellow-600 border-yellow-200 bg-yellow-50'}`}
                                                             >
-                                                                {item.score}% match
+                                                                {item.estado}
                                                             </Badge>
+                                                            {item.score !== undefined && (
+                                                                <Badge
+                                                                    className={`text-[9px] px-1.5 py-0.5 ${item.score >= 70
+                                                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                                            : item.score >= 40
+                                                                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                                                                : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                                                        }`}
+                                                                >
+                                                                    {item.score}% match
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-sm text-gray-700 dark:text-gray-300">{item.entidad}</p>
+                                                        <p className="text-xs text-gray-400 dark:text-gray-500">{item.fecha}</p>
+                                                        {item.matchReason && (
+                                                            <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 italic">
+                                                                📌 {item.matchReason}
+                                                            </p>
                                                         )}
                                                     </div>
-                                                    <p className="text-sm text-gray-700 dark:text-gray-300">{item.entidad}</p>
-                                                    <p className="text-xs text-gray-400 dark:text-gray-500">{item.fecha}</p>
-                                                    {/* Motivo del match */}
-                                                    {item.matchReason && (
-                                                        <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 italic">
-                                                            📌 {item.matchReason}
-                                                        </p>
-                                                    )}
+                                                    <div className="text-right flex items-center gap-3 ml-4">
+                                                        <div className="font-bold text-gray-900 dark:text-gray-100">{fmtMoney(item.monto)}</div>
+                                                        <Button size="sm" variant="default" className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => ejecutarConciliacion(item)}>
+                                                            Conciliar
+                                                        </Button>
+                                                    </div>
                                                 </div>
-                                                <div className="text-right flex items-center gap-3 ml-4">
-                                                    <div className="font-bold text-gray-900 dark:text-gray-100">{fmtMoney(item.monto)}</div>
-                                                    <Button size="sm" variant="default" className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => ejecutarConciliacion(item)}>
-                                                        Conciliar
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-8 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-800 rounded-md bg-gray-50/50 dark:bg-gray-900/20">
+                                            <Search className="h-8 w-8 mx-auto text-gray-300 dark:text-gray-700 mb-2" />
+                                            <p>No se encontraron coincidencias automáticas.</p>
+                                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                                                Prueba con <button onClick={() => setMatchTab("manual")} className="text-indigo-500 hover:underline font-medium">Conciliar Manual</button> si no es una factura.
+                                            </p>
+                                        </div>
+                                    )}
+                                </TabsContent>
+
+                                {/* Tab: Conciliar Manual (NUEVO) */}
+                                <TabsContent value="manual" className="space-y-4">
+                                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                                        <p className="text-sm text-amber-800 dark:text-amber-300">
+                                            💡 Usa esta opción para movimientos que <strong>no tienen factura</strong>: comisiones bancarias, impuestos, sueldos, servicios, etc.
+                                        </p>
                                     </div>
-                                ) : (
-                                    <div className="text-center py-8 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-800 rounded-md bg-gray-50/50 dark:bg-gray-900/20">
-                                        <Search className="h-8 w-8 mx-auto text-gray-300 dark:text-gray-700 mb-2" />
-                                        <p>No se encontraron coincidencias automáticas.</p>
-                                        <p className="text-xs text-gray-400 dark:text-gray-500">Asegúrate de que el documento esté cargado y pendiente de pago.</p>
+
+                                    <div className="space-y-4">
+                                        {/* Categoría */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Categoría <span className="text-red-500">*</span>
+                                            </label>
+                                            <select
+                                                className="w-full p-2.5 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm"
+                                                value={manualCategoria}
+                                                onChange={(e) => setManualCategoria(e.target.value)}
+                                            >
+                                                <option value="">Selecciona una categoría...</option>
+                                                {categorias.map(cat => (
+                                                    <option key={cat} value={cat}>{cat}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Detalle */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Detalle / Justificación
+                                            </label>
+                                            <textarea
+                                                className="w-full p-2.5 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm resize-none"
+                                                rows={3}
+                                                placeholder="Describe brevemente el motivo de este gasto o ingreso..."
+                                                value={manualDetalle}
+                                                onChange={(e) => setManualDetalle(e.target.value)}
+                                            />
+                                        </div>
+
+                                        {/* Referencia */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                                Referencia externa (opcional)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className="w-full p-2.5 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm"
+                                                placeholder="Nº boleta, voucher, recibo..."
+                                                value={manualReferencia}
+                                                onChange={(e) => setManualReferencia(e.target.value)}
+                                            />
+                                        </div>
+
+                                        {/* Botón de acción */}
+                                        <Button
+                                            className="w-full bg-amber-600 hover:bg-amber-700 text-white"
+                                            onClick={handleConciliacionManual}
+                                            disabled={!manualCategoria || conciliandoManual}
+                                        >
+                                            {conciliandoManual ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                    Procesando...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Check className="h-4 w-4 mr-2" />
+                                                    Conciliar Manualmente
+                                                </>
+                                            )}
+                                        </Button>
                                     </div>
-                                )}
-                            </div>
+                                </TabsContent>
+                            </Tabs>
                         </div>
                     )}
                 </DialogContent>
