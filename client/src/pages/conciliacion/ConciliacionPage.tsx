@@ -985,14 +985,12 @@ Ejemplos:
                     // Update Venta -> saldo = 0, estado_deuda = 'Pagada'
                     const { error: errVenta } = await supabase.from("ventas").update({
                         estado_deuda: "Pagada",
-                        saldo: 0,
-                        fecha_abono: new Date().toISOString().split("T")[0],
-                        monto_abono: item.monto
+                        saldo: 0
                     }).eq("id", item.id);
 
                     if (errVenta) throw errVenta;
 
-                    // Also record in 'abonos' table to keep history consistent with VentasPage
+                    // Record in 'abonos' table to keep history consistent with VentasPage
                     await supabase.from("abonos").insert({
                         venta_id: item.id,
                         monto_abono: item.monto,
