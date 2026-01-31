@@ -195,6 +195,7 @@ export default function ConciliacionPage() {
     const [preconciliacionOpen, setPreconciliacionOpen] = useState(false);
     const [preconciliacionesEncontradas, setPreconciliacionesEncontradas] = useState<{ mov: BancoMovimiento; match: Coincidencia }[]>([]);
     const [isPreconciliating, setIsPreconciliating] = useState(false);
+    const [searchQuery, setSearchQuery] = useState(""); // Búsqueda de movimientos
 
     // --- VOICE AGENT STATE ---
     const [isListening, setIsListening] = useState(false);
@@ -343,19 +344,19 @@ Ejemplos:
         if (!periodo) return;
         setLoading(true);
         try {
-            // Filter by date range for the month
-            const [year, month] = periodo.split('-');
-            const startDate = `${periodo}-01`;
-            const nextMonth = parseInt(month) === 12 ? 1 : parseInt(month) + 1;
-            const nextYear = parseInt(month) === 12 ? parseInt(year) + 1 : parseInt(year);
-            const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+            let query = supabase.from("banco_movimientos").select("*");
 
-            const { data, error } = await supabase
-                .from("banco_movimientos")
-                .select("*")
-                .gte("fecha", startDate)
-                .lt("fecha", endDate)
-                .order("fecha", { ascending: true }); // Orden cronológico
+            // Si no es "Mostrar todos", filtrar por período
+            if (periodo !== "__ALL__") {
+                const [year, month] = periodo.split('-');
+                const startDate = `${periodo}-01`;
+                const nextMonth = parseInt(month) === 12 ? 1 : parseInt(month) + 1;
+                const nextYear = parseInt(month) === 12 ? parseInt(year) + 1 : parseInt(year);
+                const endDate = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`;
+                query = query.gte("fecha", startDate).lt("fecha", endDate);
+            }
+
+            const { data, error } = await query.order("fecha", { ascending: false });
 
             if (error) throw error;
             setMovimientos(data || []);
@@ -1265,39 +1266,19 @@ Ejemplos:
         }
     };
 
-    const handleLimpiarDatos = async () => {
-        if (!confirm("⚠️ ATENCIÓN: Esto eliminará TODOS los movimientos bancarios y cartolas cargadas. Esta acción no se puede deshacer. ¿Deseas continuar?")) return;
-
-        setLoading(true);
-        try {
-            // Eliminar movimientos primero
-            const { error: errMovs } = await supabase
-                .from("banco_movimientos")
-                .delete()
-                .neq("id", 0);
-
-            if (errMovs) throw errMovs;
-
-            // Eliminar cartolas
-            const { error: errCartolas } = await supabase
-                .from("banco_cartolas")
-                .delete()
-                .neq("id", 0);
-
-            if (errCartolas) throw errCartolas;
-
-            alert("Base de datos de conciliación limpiada con éxito.");
-            setMovimientos([]);
-            setCartolas([]);
-            setSelectedPeriod("");
-            await cargarCartolas();
-        } catch (error: any) {
-            console.error("Error limpiando datos:", error);
-            alert("Error al limpiar datos: " + error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Filtrar movimientos por búsqueda
+    const movimientosFiltrados = useMemo(() => {
+        if (!searchQuery.trim()) return movimientos;
+        const query = searchQuery.toLowerCase();
+        return movimientos.filter(m =>
+            m.descripcion?.toLowerCase().includes(query) ||
+            m.bci_nombre?.toLowerCase().includes(query) ||
+            m.bci_rut?.toLowerCase().includes(query) ||
+            m.bci_comentario_transferencia?.toLowerCase().includes(query) ||
+            m.numero_documento?.toLowerCase().includes(query) ||
+            m.fecha?.includes(query)
+        );
+    }, [movimientos, searchQuery]);
 
     const fmtMoney = (amount: number) => {
         return amount.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
@@ -1321,6 +1302,7 @@ Ejemplos:
                             value={selectedPeriod}
                             onChange={(e) => setSelectedPeriod(e.target.value)}
                         >
+                            <option value="__ALL__">📋 Mostrar todos</option>
                             {Array.from(new Set(cartolas.map(c => c.periodo_mes)))
                                 .filter(Boolean)
                                 .sort()
@@ -1364,15 +1346,6 @@ Ejemplos:
                         </Label>
                     </div>
 
-                    <Button
-                        variant="ghost"
-                        className="h-10 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/10"
-                        onClick={handleLimpiarDatos}
-                        disabled={loading}
-                    >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        <span className="hidden sm:inline">Limpiar Todo</span>
-                    </Button>
 
                     <Button
                         variant="outline"
@@ -1441,6 +1414,29 @@ Ejemplos:
                 <CardHeader className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
                     <CardTitle className="flex justify-between items-center text-lg">
                         <span>Movimientos Cartola</span>
+                        <div className="flex items-center gap-2">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Buscar movimientos..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="pl-9 pr-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 w-64 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery("")}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </div>
+                            <span className="text-sm text-gray-500">
+                                {movimientosFiltrados.length} de {movimientos.length}
+                            </span>
+                        </div>
                     </CardTitle>
                 </CardHeader>
                 <div className="overflow-x-auto">
@@ -1465,14 +1461,14 @@ Ejemplos:
                                         <p className="mt-2 text-gray-500">Cargando movimientos...</p>
                                     </TableCell>
                                 </TableRow>
-                            ) : movimientos.length === 0 ? (
+                            ) : movimientosFiltrados.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={8} className="text-center py-10 text-gray-500">
-                                        {selectedPeriod ? "Este período no tiene movimientos" : "Sube una cartola para comenzar"}
+                                        {searchQuery ? "No hay movimientos que coincidan con la búsqueda" : selectedPeriod ? "Este período no tiene movimientos" : "Sube una cartola para comenzar"}
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                movimientos.map((mov) => (
+                                movimientosFiltrados.map((mov) => (
                                     <TableRow
                                         key={mov.id}
                                         className={
