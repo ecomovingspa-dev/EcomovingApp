@@ -765,7 +765,22 @@ Ejemplos:
         const fechaMovimiento = mov.fecha;
 
         // Usar funciones helper globales
-        const rutBuscado = cleanRut(mov.bci_rut);
+        // Intentar obtener RUT de bci_rut, o extraer de cualquier campo de texto
+        let rutCandidate = mov.bci_rut;
+
+        if (!rutCandidate) {
+            const textosExplorables = [mov.descripcion, mov.bci_glosa_detalle, mov.bci_comentario_transferencia].filter(Boolean) as string[];
+            const regexRut = /(\b\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]\b)/;
+            for (const t of textosExplorables) {
+                const m = t.match(regexRut);
+                if (m) {
+                    rutCandidate = m[0];
+                    break;
+                }
+            }
+        }
+
+        const rutBuscado = cleanRut(rutCandidate);
         const rutSinDV = rutBuscado?.split('-')[0];
 
         const foliosEnContenedores = [
