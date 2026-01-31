@@ -991,6 +991,46 @@ Ejemplos:
                     });
                 }
             });
+
+            // D. Por Nombre/Razón Social (fallback cuando no hay RUT ni Folio)
+            // Extraer nombre del destinatario de la descripción
+            const nombreMatch = mov.descripcion?.match(/(?:enviada?\s+a|para|destinatario:?)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]+)/i);
+            const nombreBuscado = nombreMatch ? nombreMatch[1].trim() : (mov.bci_nombre || '');
+
+            if (nombreBuscado && nombreBuscado.length >= 4 && !rutBuscado && foliosUnicos.length === 0) {
+                // Dividir en palabras y buscar las más significativas (apellidos)
+                const palabras = nombreBuscado.split(/\s+/).filter(p => p.length >= 3);
+
+                for (const palabra of palabras) {
+                    const { data: byNombre } = await supabase.from("compras").select("*")
+                        .neq("estado_pago", "Pagada")
+                        .ilike("razon_social", `%${palabra}%`)
+                        .gte("monto_total", montoBuscado * 0.3) // Buscar facturas >= 30% del monto (puede ser abono)
+                        .lte("monto_total", montoBuscado * 10) // Hasta 10x (abono del 10%)
+                        .limit(20);
+
+                    if (byNombre) byNombre.forEach(c => {
+                        if (!candidatesRaw.find(item => item.id === c.id && item.tipo === 'compra')) {
+                            const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
+
+                            let adjustedScore = score + 20; // Bonus por coincidencia de nombre
+                            let adjustedReason = reason + ' | Nombre coincide';
+
+                            // Si es abono parcial
+                            if (c.monto_total > montoBuscado * 1.5) {
+                                adjustedReason += ' | Posible abono';
+                            }
+
+                            candidatesRaw.push({
+                                id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
+                                fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
+                                estado: c.estado_pago || "Pendiente", documento_relacionado: c,
+                                score: adjustedScore, matchReason: adjustedReason, scoreTmp: adjustedScore
+                            });
+                        }
+                    });
+                }
+            }
         }
 
         // Ordenar por score descendente y tomar los mejores 15
