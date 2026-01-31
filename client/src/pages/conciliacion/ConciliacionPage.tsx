@@ -1748,50 +1748,54 @@ Ejemplos:
                                         </div>
                                     ) : coincidencias.length > 0 ? (
                                         <div className="space-y-2">
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium pb-1 border-b border-gray-100 dark:border-gray-800">
                                                 Ordenado por relevancia • {coincidencias.length} resultado{coincidencias.length !== 1 ? 's' : ''}
                                             </p>
-                                            {coincidencias.map((item) => (
-                                                <div key={`${item.tipo}-${item.id}`} className="flex items-center justify-between p-3 border border-gray-100 dark:border-gray-800 rounded-md bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border-l-4 border-l-indigo-400 shadow-sm">
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2 flex-wrap">
-                                                            <Badge variant="secondary" className="uppercase text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-none">{item.tipo}</Badge>
-                                                            <span className="font-bold text-sm text-gray-900 dark:text-gray-100">Folio {item.folio}</span>
-                                                            <Badge
-                                                                variant="outline"
-                                                                className={`text-[10px] ${item.estado === 'Pagada' ? 'text-green-600 border-green-200 bg-green-50' : 'text-yellow-600 border-yellow-200 bg-yellow-50'}`}
-                                                            >
-                                                                {item.estado}
-                                                            </Badge>
-                                                            {item.score !== undefined && (
+
+                                            {/* Scrollable Container */}
+                                            <div className="max-h-[350px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                                {coincidencias.map((item) => (
+                                                    <div key={`${item.tipo}-${item.id}`} className="flex items-center justify-between p-3 border border-gray-100 dark:border-gray-800 rounded-md bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border-l-4 border-l-indigo-400 shadow-sm">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <Badge variant="secondary" className="uppercase text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-none">{item.tipo}</Badge>
+                                                                <span className="font-bold text-sm text-gray-900 dark:text-gray-100">Folio {item.folio}</span>
                                                                 <Badge
-                                                                    className={`text-[9px] px-1.5 py-0.5 ${item.score >= 70
+                                                                    variant="outline"
+                                                                    className={`text-[10px] ${item.estado === 'Pagada' ? 'text-green-600 border-green-200 bg-green-50' : 'text-yellow-600 border-yellow-200 bg-yellow-50'}`}
+                                                                >
+                                                                    {item.estado}
+                                                                </Badge>
+                                                                {item.score !== undefined && (
+                                                                    <Badge
+                                                                        className={`text-[9px] px-1.5 py-0.5 ${item.score >= 70
                                                                             ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                                                             : item.score >= 40
                                                                                 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                                                                                 : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                                                                        }`}
-                                                                >
-                                                                    {item.score}% match
-                                                                </Badge>
+                                                                            }`}
+                                                                    >
+                                                                        {item.score}% match
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-sm text-gray-700 dark:text-gray-300">{item.entidad}</p>
+                                                            <p className="text-xs text-gray-400 dark:text-gray-500">{item.fecha}</p>
+                                                            {item.matchReason && (
+                                                                <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 italic">
+                                                                    📌 {item.matchReason}
+                                                                </p>
                                                             )}
                                                         </div>
-                                                        <p className="text-sm text-gray-700 dark:text-gray-300">{item.entidad}</p>
-                                                        <p className="text-xs text-gray-400 dark:text-gray-500">{item.fecha}</p>
-                                                        {item.matchReason && (
-                                                            <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 italic">
-                                                                📌 {item.matchReason}
-                                                            </p>
-                                                        )}
+                                                        <div className="text-right flex items-center gap-3 ml-4">
+                                                            <div className="font-bold text-gray-900 dark:text-gray-100">{fmtMoney(item.monto)}</div>
+                                                            <Button size="sm" variant="default" className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => ejecutarConciliacion(item)}>
+                                                                Conciliar
+                                                            </Button>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-right flex items-center gap-3 ml-4">
-                                                        <div className="font-bold text-gray-900 dark:text-gray-100">{fmtMoney(item.monto)}</div>
-                                                        <Button size="sm" variant="default" className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => ejecutarConciliacion(item)}>
-                                                            Conciliar
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="text-center py-8 text-gray-500 dark:text-gray-400 border border-dashed border-gray-200 dark:border-gray-800 rounded-md bg-gray-50/50 dark:bg-gray-900/20">
