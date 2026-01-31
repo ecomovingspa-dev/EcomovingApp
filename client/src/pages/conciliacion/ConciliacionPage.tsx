@@ -847,13 +847,14 @@ Ejemplos:
                 });
             }
 
-            // B. Por RUT - buscar solo montos cercanos (±50%)
+            // B. Por RUT - buscar solo montos muy cercanos (±1% o ±$100 máx)
             if (rutBuscado || rutSinDV) {
+                const toleranciaRut = Math.max(100, montoBuscado * 0.01); // 1% o $100, el mayor
                 const { data: byRut } = await supabase.from("ventas").select("*")
                     .neq("estado_deuda", "Pagada")
                     .or(`rut_recep.eq.${rutBuscado},rut_recep.ilike.%${rutSinDV}%`)
-                    .gte("mnt_total", montoBuscado * 0.5) // Monto mínimo 50%
-                    .lte("mnt_total", montoBuscado * 1.5) // Monto máximo 150%
+                    .gte("mnt_total", montoBuscado - toleranciaRut)
+                    .lte("mnt_total", montoBuscado + toleranciaRut)
                     .limit(20);
 
                 if (byRut) byRut.forEach(v => {
@@ -908,13 +909,14 @@ Ejemplos:
                 });
             }
 
-            // B. Por RUT - buscar solo montos cercanos (±50%)
+            // B. Por RUT - buscar solo montos muy cercanos (±1% o ±$100 máx)
             if (rutBuscado || rutSinDV) {
+                const toleranciaRut = Math.max(100, montoBuscado * 0.01); // 1% o $100, el mayor
                 const { data: byRut } = await supabase.from("compras").select("*")
                     .neq("estado_pago", "Pagada")
                     .or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`)
-                    .gte("monto_total", montoBuscado * 0.5) // Monto mínimo 50%
-                    .lte("monto_total", montoBuscado * 1.5) // Monto máximo 150%
+                    .gte("monto_total", montoBuscado - toleranciaRut)
+                    .lte("monto_total", montoBuscado + toleranciaRut)
                     .limit(20);
 
                 if (byRut) byRut.forEach(c => {
@@ -1689,10 +1691,10 @@ Ejemplos:
                                                         {item.score !== undefined && (
                                                             <Badge
                                                                 className={`text-[9px] px-1.5 py-0.5 ${item.score >= 70
-                                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                                                        : item.score >= 40
-                                                                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                                                                            : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                                    : item.score >= 40
+                                                                        ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                                                        : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                                                                     }`}
                                                             >
                                                                 {item.score}% match
