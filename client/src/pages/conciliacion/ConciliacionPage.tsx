@@ -915,24 +915,44 @@ Ejemplos:
                 });
             }
 
-            // B. Por RUT - buscar solo montos muy cercanos (±1% o ±$100 máx)
+            // B. Por RUT - buscar montos cercanos Y montos mayores (para abonos parciales)
             if (rutBuscado || rutSinDV) {
-                const toleranciaRut = Math.max(100, montoBuscado * 0.01); // 1% o $100, el mayor
+                // Para abonos, buscamos facturas donde el monto total sea MAYOR o IGUAL al pago
+                // Ampliamos el rango superior considerablemente para encontrar la factura original
+                const toleranciaInferior = Math.max(100, montoBuscado * 0.01);
+                const limiteSuperior = montoBuscado * 10; // Buscamos facturas hasta 10 veces más grandes (para abonos del 10%)
+
                 const { data: byRut } = await supabase.from("compras").select("*")
                     .neq("estado_pago", "Pagada")
                     .or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`)
-                    .gte("monto_total", montoBuscado - toleranciaRut)
-                    .lte("monto_total", montoBuscado + toleranciaRut)
-                    .limit(20);
+                    .gte("monto_total", montoBuscado - toleranciaInferior) // Pago no puede ser mayor que la deuda + error
+                    .lte("monto_total", limiteSuperior)
+                    .limit(30);
 
                 if (byRut) byRut.forEach(c => {
                     if (!candidatesRaw.find(item => item.id === c.id && item.tipo === 'compra')) {
+                        // Custom logic for scoreCandidato call here would be redundant if function handles it, 
+                        // but we need to pass context about partial payment
                         const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
+
+                        // Si es un abono parcial claro (monto doc > monto movimiento)
+                        let adjustedReason = reason;
+                        let adjustedScore = score;
+
+                        if (c.monto_total > (montoBuscado + toleranciaInferior)) {
+                            // Es posible abono si el RUT coincide (ya garantizado por la query)
+                            // Y si el monto es una fracción razonable (ej. > 10%)
+                            if (montoBuscado >= c.monto_total * 0.1) {
+                                adjustedScore += 15; // Bonificamos por coincidencia de RUT fuerte
+                                adjustedReason += ' | Posible abono parcial';
+                            }
+                        }
+
                         candidatesRaw.push({
                             id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
                             fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
                             estado: c.estado_pago || "Pendiente", documento_relacionado: c,
-                            score, matchReason: reason, scoreTmp: score
+                            score: adjustedScore, matchReason: adjustedReason, scoreTmp: adjustedScore
                         });
                     }
                 });
@@ -987,11 +1007,26 @@ Ejemplos:
 
             // 2. Update Related Record (Venta or Compra)
             if (item.estado !== "Pagada") {
+                // Calcular saldos
+                // Importante: El documento relacionado debe tener el saldo actual. Si no, usamos el monto total como fallback.
+                const doc = item.documento_relacionado as any;
+                const saldoActual = (doc.saldo !== undefined && doc.saldo !== null) ? Number(doc.saldo) : Number(item.monto);
+
+                // El monto del abono es el del movimiento bancario (valor absoluto)
+                const montoAbono = Math.abs(selectedMovimiento.cargos || selectedMovimiento.abonos || 0);
+
+                let nuevoSaldo = saldoActual - montoAbono;
+                if (nuevoSaldo < 0) nuevoSaldo = 0; // No permitir saldos negativos por ahora
+
+                // Determinamos si se considera pagada totalmente (tolerancia de $100 pesos)
+                const esPagoTotal = nuevoSaldo <= 100;
+                const nuevoEstado = esPagoTotal ? "Pagada" : "Pendiente"; // O mantener estado original si hay otros estados intermedios
+
                 if (item.tipo === "venta") {
-                    // Update Venta -> saldo = 0, estado_deuda = 'Pagada'
+                    // Update Venta
                     const { error: errVenta } = await supabase.from("ventas").update({
-                        estado_deuda: "Pagada",
-                        saldo: 0
+                        estado_deuda: nuevoEstado,
+                        saldo: esPagoTotal ? 0 : nuevoSaldo
                     }).eq("id", item.id);
 
                     if (errVenta) throw errVenta;
@@ -999,16 +1034,16 @@ Ejemplos:
                     // Record in 'abonos' table to keep history consistent with VentasPage
                     await supabase.from("abonos").insert({
                         venta_id: item.id,
-                        monto_abono: item.monto,
+                        monto_abono: montoAbono,
                         fecha_abono: new Date().toISOString().split("T")[0],
                         tipo_abono: "Transferencia",
                         detalle_abono: `Conciliación bancaria - Movimiento: ${selectedMovimiento.descripcion}`
                     });
                 } else {
-                    // Update Compra -> estado_pago = 'Pagada', saldo = 0
+                    // Update Compra
                     const { error: errCompra } = await supabase.from("compras").update({
-                        estado_pago: "Pagada",
-                        saldo: 0
+                        estado_pago: nuevoEstado,
+                        saldo: esPagoTotal ? 0 : nuevoSaldo
                     }).eq("id", item.id);
 
                     if (errCompra) throw errCompra;
