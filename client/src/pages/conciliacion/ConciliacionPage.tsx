@@ -909,6 +909,34 @@ Ejemplos:
                     });
                 }
             });
+
+            // D. Por Saldo Actual (para pagos de saldo de ventas con abonos previos)
+            const { data: bySaldoVenta } = await supabase.from("ventas").select("*")
+                .neq("estado_deuda", "Pagada")
+                .gt("saldo", 0)
+                .gte("saldo", montoBuscado - TOLERANCIA_MONTO)
+                .lte("saldo", montoBuscado + TOLERANCIA_MONTO)
+                .limit(15);
+
+            if (bySaldoVenta) bySaldoVenta.forEach(v => {
+                if (!candidatesRaw.find(c => c.id === v.id && c.tipo === 'venta')) {
+                    const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
+
+                    let adjustedScore = score + 35;
+                    let adjustedReason = 'Saldo pendiente coincide';
+
+                    if (v.saldo < v.mnt_total) {
+                        adjustedReason += ' | Venta con abonos previos';
+                    }
+
+                    candidatesRaw.push({
+                        id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
+                        fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
+                        estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
+                        score: adjustedScore, matchReason: adjustedReason, scoreTmp: adjustedScore
+                    });
+                }
+            });
         }
 
         // 2. Search Compras (Expenses) - Solo para cargos
@@ -1031,6 +1059,37 @@ Ejemplos:
                     });
                 }
             }
+
+            // E. Por Saldo Actual (para pagar el restante de facturas con abonos previos)
+            // Buscar facturas donde el SALDO (no monto_total) coincida con el movimiento
+            const { data: bySaldo } = await supabase.from("compras").select("*")
+                .neq("estado_pago", "Pagada")
+                .gt("saldo", 0) // Solo facturas con saldo pendiente
+                .gte("saldo", montoBuscado - TOLERANCIA_MONTO)
+                .lte("saldo", montoBuscado + TOLERANCIA_MONTO)
+                .limit(15);
+
+            if (bySaldo) bySaldo.forEach(c => {
+                if (!candidatesRaw.find(item => item.id === c.id && item.tipo === 'compra')) {
+                    const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
+
+                    // Bonus alto si el saldo coincide exactamente (pago de saldo)
+                    let adjustedScore = score + 35;
+                    let adjustedReason = 'Saldo pendiente coincide';
+
+                    // Si ya tuvo abonos previos (saldo < monto_total)
+                    if (c.saldo < c.monto_total) {
+                        adjustedReason += ' | Factura con abonos previos';
+                    }
+
+                    candidatesRaw.push({
+                        id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
+                        fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
+                        estado: c.estado_pago || "Pendiente", documento_relacionado: c,
+                        score: adjustedScore, matchReason: adjustedReason, scoreTmp: adjustedScore
+                    });
+                }
+            });
         }
 
         // Ordenar por score descendente y tomar los mejores 15
