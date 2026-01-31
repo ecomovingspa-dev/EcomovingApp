@@ -756,8 +756,9 @@ Ejemplos:
 
         const esAbono = mov.abonos > 0;
         const montoBuscado = esAbono ? mov.abonos : mov.cargos;
+        const fechaMovimiento = mov.fecha;
 
-        // Usar funciones helper globales (ya no redefinidas localmente)
+        // Usar funciones helper globales
         const rutBuscado = cleanRut(mov.bci_rut);
         const rutSinDV = rutBuscado?.split('-')[0];
 
@@ -768,109 +769,194 @@ Ejemplos:
         ];
         const foliosUnicos = Array.from(new Set(foliosEnContenedores));
 
-        const candidates: Coincidencia[] = [];
+        // Función para calcular score de cada candidato
+        const scoreCandidato = (doc: any, docFolio: number | string, docMonto: number, docFecha: string): { score: number; reason: string } => {
+            let score = 0;
+            const reasons: string[] = [];
 
-        // 1. Search Sales (Ventas)
+            // 1. ¿Coincide folio? (+50 puntos)
+            const folioNum = typeof docFolio === 'string' ? parseInt(docFolio) : docFolio;
+            if (foliosUnicos.includes(folioNum)) {
+                score += 50;
+                reasons.push('Folio coincide');
+            }
+
+            // 2. ¿Monto exacto o cercano? (+30-40 puntos)
+            const diffMonto = Math.abs(docMonto - montoBuscado);
+            const porcentajeDiff = (diffMonto / montoBuscado) * 100;
+
+            if (diffMonto === 0) {
+                score += 40;
+                reasons.push('Monto exacto');
+            } else if (porcentajeDiff <= 1) {
+                score += 35;
+                reasons.push('Monto muy cercano (<1%)');
+            } else if (porcentajeDiff <= 5) {
+                score += 25;
+                reasons.push('Monto cercano (<5%)');
+            } else if (porcentajeDiff <= 10) {
+                score += 15;
+                reasons.push('Monto aproximado (<10%)');
+            }
+            // Si diferencia > 10%, no suma puntos
+
+            // 3. ¿Fecha cercana? (+10-20 puntos)
+            const diffDias = getDateDiffDays(fechaMovimiento, docFecha);
+            if (diffDias <= 3) {
+                score += 20;
+                reasons.push('Fecha muy cercana');
+            } else if (diffDias <= 7) {
+                score += 15;
+                reasons.push('Misma semana');
+            } else if (diffDias <= 30) {
+                score += 10;
+                reasons.push('Mismo mes');
+            } else if (diffDias <= 60) {
+                score += 5;
+                reasons.push('Fecha cercana');
+            }
+            // Si > 60 días, no suma puntos
+
+            // 4. ¿RUT coincide? (+10 puntos, ya filtrado por query)
+            if (rutBuscado || rutSinDV) {
+                score += 10;
+                reasons.push('Proveedor/Cliente coincide');
+            }
+
+            return { score, reason: reasons.join(' | ') || 'Coincidencia parcial' };
+        };
+
+        const candidatesRaw: Array<Coincidencia & { scoreTmp: number }> = [];
+
+        // 1. Search Sales (Ventas) - Solo para abonos
         if (esAbono) {
-            // A. Por Folio(s) extraído(s)
+            // Excluir ventas ya pagadas
+            const baseQuery = supabase.from("ventas").select("*").neq("estado_deuda", "Pagada");
+
+            // A. Por Folio(s) extraído(s) - prioridad máxima
             if (foliosUnicos.length > 0) {
-                const { data: byFolios } = await supabase.from("ventas").select("*").in("folio", foliosUnicos);
+                const { data: byFolios } = await baseQuery.in("folio", foliosUnicos);
                 if (byFolios) byFolios.forEach(v => {
-                    candidates.push({
+                    const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
+                    candidatesRaw.push({
                         id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
                         fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                        estado: v.estado_deuda || "Pendiente", documento_relacionado: v
+                        estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
+                        score, matchReason: reason, scoreTmp: score
                     });
                 });
             }
 
-            // B. Por RUT (si está disponible en la cartola detallada)
+            // B. Por RUT - buscar solo montos cercanos (±50%)
             if (rutBuscado || rutSinDV) {
-                let query = supabase.from("ventas").select("*");
-                if (rutBuscado) {
-                    query = query.or(`rut_recep.eq.${rutBuscado},rut_recep.ilike.%${rutSinDV}%`);
-                }
-                const { data: byRut } = await query.limit(10);
+                const { data: byRut } = await supabase.from("ventas").select("*")
+                    .neq("estado_deuda", "Pagada")
+                    .or(`rut_recep.eq.${rutBuscado},rut_recep.ilike.%${rutSinDV}%`)
+                    .gte("mnt_total", montoBuscado * 0.5) // Monto mínimo 50%
+                    .lte("mnt_total", montoBuscado * 1.5) // Monto máximo 150%
+                    .limit(20);
+
                 if (byRut) byRut.forEach(v => {
-                    if (!candidates.find(c => c.id === v.id && c.tipo === 'venta')) {
-                        candidates.push({
+                    if (!candidatesRaw.find(c => c.id === v.id && c.tipo === 'venta')) {
+                        const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
+                        candidatesRaw.push({
                             id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
                             fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                            estado: v.estado_deuda || "Pendiente", documento_relacionado: v
+                            estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
+                            score, matchReason: reason, scoreTmp: score
                         });
                     }
                 });
             }
 
-            // C. Por Monto (siempre útil como último recurso o validación)
-            const { data: byMonto } = await supabase.from("ventas")
-                .select("*")
+            // C. Por Monto exacto (sin filtrar por RUT)
+            const { data: byMonto } = await supabase.from("ventas").select("*")
+                .neq("estado_deuda", "Pagada")
                 .gte("mnt_total", montoBuscado - TOLERANCIA_MONTO)
                 .lte("mnt_total", montoBuscado + TOLERANCIA_MONTO)
                 .limit(10);
 
             if (byMonto) byMonto.forEach(v => {
-                if (!candidates.find(c => c.id === v.id && c.tipo === 'venta')) {
-                    candidates.push({
+                if (!candidatesRaw.find(c => c.id === v.id && c.tipo === 'venta')) {
+                    const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
+                    candidatesRaw.push({
                         id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
                         fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                        estado: v.estado_deuda || "Pendiente", documento_relacionado: v
+                        estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
+                        score, matchReason: reason, scoreTmp: score
                     });
                 }
             });
         }
 
-        // 2. Search Compras (Expenses)
+        // 2. Search Compras (Expenses) - Solo para cargos
         if (!esAbono) {
-            // A. Por Folio(s)
+            // Excluir compras ya pagadas
+            const baseQuery = supabase.from("compras").select("*").neq("estado_pago", "Pagada");
+
+            // A. Por Folio(s) - prioridad máxima
             if (foliosUnicos.length > 0) {
-                const { data: byFolios } = await supabase.from("compras").select("*").in("folio", foliosUnicos);
+                const { data: byFolios } = await baseQuery.in("folio", foliosUnicos);
                 if (byFolios) byFolios.forEach(c => {
-                    candidates.push({
+                    const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
+                    candidatesRaw.push({
                         id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
                         fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                        estado: c.estado_pago || "Pendiente", documento_relacionado: c
+                        estado: c.estado_pago || "Pendiente", documento_relacionado: c,
+                        score, matchReason: reason, scoreTmp: score
                     });
                 });
             }
 
-            // B. Por RUT
+            // B. Por RUT - buscar solo montos cercanos (±50%)
             if (rutBuscado || rutSinDV) {
-                let query = supabase.from("compras").select("*");
-                if (rutBuscado) {
-                    query = query.or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`);
-                }
-                const { data: byRut } = await query.limit(10);
+                const { data: byRut } = await supabase.from("compras").select("*")
+                    .neq("estado_pago", "Pagada")
+                    .or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`)
+                    .gte("monto_total", montoBuscado * 0.5) // Monto mínimo 50%
+                    .lte("monto_total", montoBuscado * 1.5) // Monto máximo 150%
+                    .limit(20);
+
                 if (byRut) byRut.forEach(c => {
-                    if (!candidates.find(item => item.id === c.id && item.tipo === 'compra')) {
-                        candidates.push({
+                    if (!candidatesRaw.find(item => item.id === c.id && item.tipo === 'compra')) {
+                        const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
+                        candidatesRaw.push({
                             id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
                             fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                            estado: c.estado_pago || "Pendiente", documento_relacionado: c
+                            estado: c.estado_pago || "Pendiente", documento_relacionado: c,
+                            score, matchReason: reason, scoreTmp: score
                         });
                     }
                 });
             }
 
-            // C. Por Monto
-            const { data: byMonto } = await supabase.from("compras")
-                .select("*")
+            // C. Por Monto exacto (sin filtrar por RUT)
+            const { data: byMonto } = await supabase.from("compras").select("*")
+                .neq("estado_pago", "Pagada")
                 .gte("monto_total", montoBuscado - TOLERANCIA_MONTO)
                 .lte("monto_total", montoBuscado + TOLERANCIA_MONTO)
                 .limit(10);
 
             if (byMonto) byMonto.forEach(c => {
-                if (!candidates.find(item => item.id === c.id && item.tipo === 'compra')) {
-                    candidates.push({
+                if (!candidatesRaw.find(item => item.id === c.id && item.tipo === 'compra')) {
+                    const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
+                    candidatesRaw.push({
                         id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
                         fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                        estado: c.estado_pago || "Pendiente", documento_relacionado: c
+                        estado: c.estado_pago || "Pendiente", documento_relacionado: c,
+                        score, matchReason: reason, scoreTmp: score
                     });
                 }
             });
         }
 
-        setCoincidencias(candidates);
+        // Ordenar por score descendente y tomar los mejores 15
+        const sortedCandidates = candidatesRaw
+            .sort((a, b) => b.scoreTmp - a.scoreTmp)
+            .slice(0, 15)
+            .map(({ scoreTmp, ...rest }) => rest); // Eliminar scoreTmp del resultado
+
+        setCoincidencias(sortedCandidates);
         setSearchingMatch(false);
     };
 
@@ -1584,11 +1670,13 @@ Ejemplos:
                                     </div>
                                 ) : coincidencias.length > 0 ? (
                                     <div className="space-y-2">
-                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Se encontraron posibles coincidencias por monto y estado.</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                            Ordenado por relevancia • {coincidencias.length} resultado{coincidencias.length !== 1 ? 's' : ''}
+                                        </p>
                                         {coincidencias.map((item) => (
                                             <div key={`${item.tipo}-${item.id}`} className="flex items-center justify-between p-3 border border-gray-100 dark:border-gray-800 rounded-md bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border-l-4 border-l-indigo-400 shadow-sm">
-                                                <div>
-                                                    <div className="flex items-center gap-2">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
                                                         <Badge variant="secondary" className="uppercase text-[10px] bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-none">{item.tipo}</Badge>
                                                         <span className="font-bold text-sm text-gray-900 dark:text-gray-100">Folio {item.folio}</span>
                                                         <Badge
@@ -1597,11 +1685,30 @@ Ejemplos:
                                                         >
                                                             {item.estado}
                                                         </Badge>
+                                                        {/* Score de confianza */}
+                                                        {item.score !== undefined && (
+                                                            <Badge
+                                                                className={`text-[9px] px-1.5 py-0.5 ${item.score >= 70
+                                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                                        : item.score >= 40
+                                                                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                                                            : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                                                    }`}
+                                                            >
+                                                                {item.score}% match
+                                                            </Badge>
+                                                        )}
                                                     </div>
                                                     <p className="text-sm text-gray-700 dark:text-gray-300">{item.entidad}</p>
                                                     <p className="text-xs text-gray-400 dark:text-gray-500">{item.fecha}</p>
+                                                    {/* Motivo del match */}
+                                                    {item.matchReason && (
+                                                        <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 italic">
+                                                            📌 {item.matchReason}
+                                                        </p>
+                                                    )}
                                                 </div>
-                                                <div className="text-right flex items-center gap-3">
+                                                <div className="text-right flex items-center gap-3 ml-4">
                                                     <div className="font-bold text-gray-900 dark:text-gray-100">{fmtMoney(item.monto)}</div>
                                                     <Button size="sm" variant="default" className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => ejecutarConciliacion(item)}>
                                                         Conciliar
