@@ -1537,17 +1537,6 @@ Ejemplos:
                                         <TableCell className="text-center">
                                             {mov.estado !== 'conciliado' && (
                                                 <div className="flex justify-center gap-2">
-                                                    {mov.preconciliado_match && (
-                                                        <Button
-                                                            variant="default"
-                                                            size="sm"
-                                                            className="h-8 bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1 px-3 shadow-sm"
-                                                            onClick={() => ejecutarConciliacionEspecifica(mov, mov.preconciliado_match!)}
-                                                        >
-                                                            <Check className="h-3.5 w-3.5" />
-                                                            <span className="text-[10px] font-bold">CONCILIAR</span>
-                                                        </Button>
-                                                    )}
                                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleConciliarClick(mov)}>
                                                         <Search className="h-4 w-4 text-indigo-600" />
                                                     </Button>
