@@ -76,7 +76,95 @@ interface Coincidencia {
     folio: string | number;
     estado?: string;
     documento_relacionado?: any;
+    score?: number; // 0-100 confidence score
+    matchReason?: string; // Description of why this matched
 }
+
+// ============================================================
+// PROFESSIONAL HELPER FUNCTIONS - EXTRACTED FOR REUSABILITY
+// ============================================================
+
+/** Tolerancia de monto para matching (en pesos) */
+const TOLERANCIA_MONTO = 5;
+
+/** Rango de días para considerar fechas cercanas */
+const RANGO_DIAS_FECHA = 60;
+
+/**
+ * Limpia un RUT chileno para búsqueda
+ * Elimina puntos y normaliza formato
+ */
+const cleanRut = (rut: string | null | undefined): string | null => {
+    if (!rut) return null;
+    return rut.replace(/\./g, '').trim().toLowerCase();
+};
+
+/**
+ * Extrae posibles folios de un texto
+ * Busca números de 3-8 dígitos que podrían ser folios
+ */
+const extractFolios = (text: string | null | undefined): number[] => {
+    if (!text) return [];
+    const matches = text.match(/\b\d{3,8}\b/g);
+    return matches ? matches.map(m => parseInt(m, 10)) : [];
+};
+
+/**
+ * Calcula la diferencia en días entre dos fechas
+ */
+const getDateDiffDays = (date1: string, date2: string): number => {
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+    const diffTime = Math.abs(d2.getTime() - d1.getTime());
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+/**
+ * Calcula un score de confianza (0-100) para un match
+ * Mayor score = mayor confianza en el match
+ */
+const calculateMatchScore = (
+    matchType: 'folio_monto' | 'rut_monto' | 'monto_unico',
+    movFecha: string,
+    docFecha: string,
+    movMonto: number,
+    docMonto: number
+): { score: number; reason: string } => {
+    let score = 0;
+    let reasons: string[] = [];
+
+    // Base score by match type
+    if (matchType === 'folio_monto') {
+        score = 95;
+        reasons.push('Folio + Monto coinciden');
+    } else if (matchType === 'rut_monto') {
+        score = 80;
+        reasons.push('RUT + Monto coinciden');
+    } else {
+        score = 60;
+        reasons.push('Solo monto único');
+    }
+
+    // Adjust by date proximity
+    const daysDiff = getDateDiffDays(movFecha, docFecha);
+    if (daysDiff <= 7) {
+        score += 5;
+        reasons.push('Fechas muy cercanas');
+    } else if (daysDiff <= 30) {
+        score += 2;
+    } else if (daysDiff > 90) {
+        score -= 10;
+        reasons.push('Fechas distantes');
+    }
+
+    // Adjust by monto exactness
+    if (movMonto === docMonto) {
+        score += 3;
+        reasons.push('Monto exacto');
+    }
+
+    return { score: Math.min(100, Math.max(0, score)), reason: reasons.join(' | ') };
+};
 
 export default function ConciliacionPage() {
     const [cartolas, setCartolas] = useState<BancoCartola[]>([]);
@@ -667,23 +755,10 @@ Ejemplos:
 
         const esAbono = mov.abonos > 0;
         const montoBuscado = esAbono ? mov.abonos : mov.cargos;
-        const tolerancia = 5;
 
-        // Limpiar RUT para búsqueda (eliminar puntos y dejar solo números o número-dv)
-        const cleanRut = (rut: string | null | undefined) => {
-            if (!rut) return null;
-            return rut.replace(/\./g, '').trim().toLowerCase();
-        };
-
+        // Usar funciones helper globales (ya no redefinidas localmente)
         const rutBuscado = cleanRut(mov.bci_rut);
         const rutSinDV = rutBuscado?.split('-')[0];
-
-        // Intentar extraer folio
-        const extractFolios = (text: string | null | undefined): number[] => {
-            if (!text) return [];
-            const matches = text.match(/\b\d{3,8}\b/g);
-            return matches ? matches.map(m => parseInt(m, 10)) : [];
-        };
 
         const foliosEnContenedores = [
             ...extractFolios(mov.bci_comentario_transferencia),
@@ -729,8 +804,8 @@ Ejemplos:
             // C. Por Monto (siempre útil como último recurso o validación)
             const { data: byMonto } = await supabase.from("ventas")
                 .select("*")
-                .gte("mnt_total", montoBuscado - tolerancia)
-                .lte("mnt_total", montoBuscado + tolerancia)
+                .gte("mnt_total", montoBuscado - TOLERANCIA_MONTO)
+                .lte("mnt_total", montoBuscado + TOLERANCIA_MONTO)
                 .limit(10);
 
             if (byMonto) byMonto.forEach(v => {
@@ -779,8 +854,8 @@ Ejemplos:
             // C. Por Monto
             const { data: byMonto } = await supabase.from("compras")
                 .select("*")
-                .gte("monto_total", montoBuscado - tolerancia)
-                .lte("monto_total", montoBuscado + tolerancia)
+                .gte("monto_total", montoBuscado - TOLERANCIA_MONTO)
+                .lte("monto_total", montoBuscado + TOLERANCIA_MONTO)
                 .limit(10);
 
             if (byMonto) byMonto.forEach(c => {
@@ -872,27 +947,16 @@ Ejemplos:
         setIsPreconciliating(true);
         const movimientosPendientes = movimientos.filter(m => m.estado === 'pendiente');
         const encontradas: { mov: BancoMovimiento; match: Coincidencia }[] = [];
-        const tolerancia = 5;
 
         try {
             // Buscamos coincidencias para cada movimiento pendiente
             for (const mov of movimientosPendientes) {
                 const esAbono = mov.abonos > 0;
                 const montoBuscado = esAbono ? mov.abonos : mov.cargos;
-                const tolerancia = 5;
 
-                const cleanRut = (rut: string | null | undefined) => {
-                    if (!rut) return null;
-                    return rut.replace(/\./g, '').trim().toLowerCase();
-                };
+                // Usar funciones helper externas (ya no redefinidas en cada iteración)
                 const rutBuscado = cleanRut(mov.bci_rut);
                 const rutSinDV = rutBuscado?.split('-')[0];
-
-                const extractFolios = (text: string | null | undefined): number[] => {
-                    if (!text) return [];
-                    const matches = text.match(/\b\d{3,8}\b/g);
-                    return matches ? matches.map(m => parseInt(m, 10)) : [];
-                };
 
                 const foliosPossible = Array.from(new Set([
                     ...extractFolios(mov.bci_comentario_transferencia),
@@ -900,31 +964,38 @@ Ejemplos:
                 ]));
 
                 let candidate: Coincidencia | null = null;
+                let matchType: 'folio_monto' | 'rut_monto' | 'monto_unico' = 'monto_unico';
 
                 if (esAbono) {
-                    // 1. Intentar por Folio + Monto (Muy Seguro)
+                    // ========== VENTAS ==========
+                    // 1. Intentar por Folio + Monto (Muy Seguro) - EXCLUIR YA PAGADAS
                     if (foliosPossible.length > 0) {
                         const { data: fMatch } = await supabase.from("ventas")
                             .select("*")
                             .in("folio", foliosPossible)
-                            .gte("mnt_total", montoBuscado - tolerancia)
-                            .lte("mnt_total", montoBuscado + tolerancia)
-                            .limit(1);
+                            .gte("mnt_total", montoBuscado - TOLERANCIA_MONTO)
+                            .lte("mnt_total", montoBuscado + TOLERANCIA_MONTO)
+                            .neq("estado_deuda", "Pagada")  // NUEVO: Excluir pagadas
+                            .limit(2);
                         if (fMatch && fMatch.length === 1) {
                             const v = fMatch[0];
+                            matchType = 'folio_monto';
+                            const scoring = calculateMatchScore(matchType, mov.fecha, v.fch_emis, montoBuscado, v.mnt_total);
                             candidate = {
                                 id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
                                 fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v
+                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
+                                score: scoring.score, matchReason: scoring.reason
                             };
                         }
                     }
 
-                    // 2. Intentar por RUT + Monto (Seguro)
+                    // 2. Intentar por RUT + Monto (Seguro) - EXCLUIR YA PAGADAS
                     if (!candidate && (rutBuscado || rutSinDV)) {
                         let query = supabase.from("ventas").select("*")
-                            .gte("mnt_total", montoBuscado - tolerancia)
-                            .lte("mnt_total", montoBuscado + tolerancia);
+                            .gte("mnt_total", montoBuscado - TOLERANCIA_MONTO)
+                            .lte("mnt_total", montoBuscado + TOLERANCIA_MONTO)
+                            .neq("estado_deuda", "Pagada");  // NUEVO: Excluir pagadas
 
                         if (rutBuscado) {
                             query = query.or(`rut_recep.eq.${rutBuscado},rut_recep.ilike.%${rutSinDV}%`);
@@ -933,56 +1004,68 @@ Ejemplos:
                         const { data: rMatch } = await query.limit(2);
                         if (rMatch && rMatch.length === 1) {
                             const v = rMatch[0];
+                            matchType = 'rut_monto';
+                            const scoring = calculateMatchScore(matchType, mov.fecha, v.fch_emis, montoBuscado, v.mnt_total);
                             candidate = {
                                 id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
                                 fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v
+                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
+                                score: scoring.score, matchReason: scoring.reason
                             };
                         }
                     }
 
-                    // 3. Intentar solo por Monto (Si es único)
+                    // 3. Intentar solo por Monto (Si es único) - EXCLUIR YA PAGADAS
                     if (!candidate) {
                         const { data: mMatch } = await supabase.from("ventas")
                             .select("*")
-                            .gte("mnt_total", montoBuscado - tolerancia)
-                            .lte("mnt_total", montoBuscado + tolerancia)
+                            .gte("mnt_total", montoBuscado - TOLERANCIA_MONTO)
+                            .lte("mnt_total", montoBuscado + TOLERANCIA_MONTO)
+                            .neq("estado_deuda", "Pagada")  // NUEVO: Excluir pagadas
                             .limit(2);
 
                         if (mMatch && mMatch.length === 1) {
                             const v = mMatch[0];
+                            matchType = 'monto_unico';
+                            const scoring = calculateMatchScore(matchType, mov.fecha, v.fch_emis, montoBuscado, v.mnt_total);
                             candidate = {
                                 id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
                                 fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v
+                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
+                                score: scoring.score, matchReason: scoring.reason
                             };
                         }
                     }
                 } else {
-                    // Para Compras
-                    // 1. Folio + Monto
+                    // ========== COMPRAS ==========
+                    // 1. Folio + Monto - EXCLUIR YA PAGADAS
                     if (foliosPossible.length > 0) {
                         const { data: fMatch } = await supabase.from("compras")
                             .select("*")
                             .in("folio", foliosPossible)
-                            .gte("monto_total", montoBuscado - tolerancia)
-                            .lte("monto_total", montoBuscado + tolerancia)
-                            .limit(1);
+                            .gte("monto_total", montoBuscado - TOLERANCIA_MONTO)
+                            .lte("monto_total", montoBuscado + TOLERANCIA_MONTO)
+                            .neq("estado_pago", "Pagada")  // NUEVO: Excluir pagadas
+                            .limit(2);
                         if (fMatch && fMatch.length === 1) {
                             const c = fMatch[0];
+                            matchType = 'folio_monto';
+                            const scoring = calculateMatchScore(matchType, mov.fecha, c.fecha_emision, montoBuscado, c.monto_total);
                             candidate = {
                                 id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
                                 fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                                estado: c.estado_pago || "Pendiente", documento_relacionado: c
+                                estado: c.estado_pago || "Pendiente", documento_relacionado: c,
+                                score: scoring.score, matchReason: scoring.reason
                             };
                         }
                     }
 
-                    // 2. RUT + Monto
+                    // 2. RUT + Monto - EXCLUIR YA PAGADAS
                     if (!candidate && (rutBuscado || rutSinDV)) {
                         let query = supabase.from("compras").select("*")
-                            .gte("monto_total", montoBuscado - tolerancia)
-                            .lte("monto_total", montoBuscado + tolerancia);
+                            .gte("monto_total", montoBuscado - TOLERANCIA_MONTO)
+                            .lte("monto_total", montoBuscado + TOLERANCIA_MONTO)
+                            .neq("estado_pago", "Pagada");  // NUEVO: Excluir pagadas
 
                         if (rutBuscado) {
                             query = query.or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`);
@@ -991,28 +1074,35 @@ Ejemplos:
                         const { data: rMatch } = await query.limit(2);
                         if (rMatch && rMatch.length === 1) {
                             const c = rMatch[0];
+                            matchType = 'rut_monto';
+                            const scoring = calculateMatchScore(matchType, mov.fecha, c.fecha_emision, montoBuscado, c.monto_total);
                             candidate = {
                                 id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
                                 fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                                estado: c.estado_pago || "Pendiente", documento_relacionado: c
+                                estado: c.estado_pago || "Pendiente", documento_relacionado: c,
+                                score: scoring.score, matchReason: scoring.reason
                             };
                         }
                     }
 
-                    // 3. Monto
+                    // 3. Monto - EXCLUIR YA PAGADAS
                     if (!candidate) {
                         const { data: mMatch } = await supabase.from("compras")
                             .select("*")
-                            .gte("monto_total", montoBuscado - tolerancia)
-                            .lte("monto_total", montoBuscado + tolerancia)
+                            .gte("monto_total", montoBuscado - TOLERANCIA_MONTO)
+                            .lte("monto_total", montoBuscado + TOLERANCIA_MONTO)
+                            .neq("estado_pago", "Pagada")  // NUEVO: Excluir pagadas
                             .limit(2);
 
                         if (mMatch && mMatch.length === 1) {
                             const c = mMatch[0];
+                            matchType = 'monto_unico';
+                            const scoring = calculateMatchScore(matchType, mov.fecha, c.fecha_emision, montoBuscado, c.monto_total);
                             candidate = {
                                 id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
                                 fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                                estado: c.estado_pago || "Pendiente", documento_relacionado: c
+                                estado: c.estado_pago || "Pendiente", documento_relacionado: c,
+                                score: scoring.score, matchReason: scoring.reason
                             };
                         }
                     }
@@ -1022,6 +1112,9 @@ Ejemplos:
                     encontradas.push({ mov, match: candidate });
                 }
             }
+
+            // Ordenar por score de confianza (mayor primero)
+            encontradas.sort((a, b) => (b.match.score || 0) - (a.match.score || 0));
 
             setPreconciliacionesEncontradas(encontradas);
 
@@ -1217,6 +1310,7 @@ Ejemplos:
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         <ArrowRightLeft className="h-8 w-8 text-indigo-600" />
                         Conciliación Bancaria
+                        <span className="text-[10px] bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full font-mono font-normal">v1.2-fixed</span>
                     </h1>
                 </div>
 
@@ -1636,10 +1730,23 @@ Ejemplos:
                                             <p className="text-sm font-bold truncate">{item.mov.descripcion}</p>
                                             <p className="text-[10px] text-gray-400">{item.mov.fecha}</p>
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-right flex flex-col items-end gap-1">
                                             <p className={`text-sm font-bold ${item.mov.cargos > 0 ? 'text-red-500' : 'text-green-500'}`}>
                                                 {fmtMoney(item.mov.cargos || item.mov.abonos)}
                                             </p>
+                                            {/* Score de Confianza */}
+                                            {item.match.score !== undefined && (
+                                                <Badge
+                                                    className={`text-[9px] px-1.5 py-0.5 ${item.match.score >= 90
+                                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                                        : item.match.score >= 70
+                                                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                                            : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                                                        }`}
+                                                >
+                                                    {item.match.score}% confianza
+                                                </Badge>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="flex justify-between items-center p-2 bg-indigo-50/50 dark:bg-indigo-900/20 rounded border border-indigo-100 dark:border-indigo-900/30">
@@ -1649,6 +1756,12 @@ Ejemplos:
                                         </div>
                                         <p className="text-xs text-indigo-600 dark:text-indigo-400 truncate max-w-[200px]">{item.match.entidad}</p>
                                     </div>
+                                    {/* Motivo del Match */}
+                                    {item.match.matchReason && (
+                                        <p className="text-[10px] text-gray-400 mt-1 italic">
+                                            📌 {item.match.matchReason}
+                                        </p>
+                                    )}
                                 </div>
                             ))
                         ) : (
