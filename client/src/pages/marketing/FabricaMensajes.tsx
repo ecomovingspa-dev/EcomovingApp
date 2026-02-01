@@ -51,8 +51,8 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [previewOpen, setPreviewOpen] = useState(false);
     const [fitMode, setFitMode] = useState<"contain" | "cover">("contain");
     const [textStyles, setTextStyles] = useState({
-        fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
-        fontSize: "17px",
+        fontFamily: "'Oswald', sans-serif",
+        fontSize: "21px",
         textAlign: "center"
     });
     const [tono, setTono] = useState("profesional");
