@@ -37,7 +37,7 @@ import {
 
 export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     // States for Storage Explorer
-    const [images, setImages] = useState<{ name: string; url: string }[]>([]);
+    const [images, setImages] = useState<{ name: string; url: string; categoria?: string }[]>([]);
     const [loadingStorage, setLoadingStorage] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState<"images" | "templates">("images");
@@ -58,48 +58,117 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [tono, setTono] = useState("profesional");
     const [subiendoImagen, setSubiendoImagen] = useState(false);
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState("productos");
+    const [selectedCategory, setSelectedCategory] = useState("");
     const [pendingFile, setPendingFile] = useState<File | null>(null);
+    const [categorias, setCategorias] = useState<string[]>([]);
+    const [newCategoryName, setNewCategoryName] = useState("");
+    const [showNewCategory, setShowNewCategory] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Categorías disponibles para organizar imágenes
-    const CATEGORIAS_IMAGEN = [
-        { value: "productos", label: "🛍️ Productos" },
-        { value: "campañas", label: "📢 Campañas" },
-        { value: "branding", label: "🎨 Branding" },
-        { value: "redes-sociales", label: "📱 Redes Sociales" },
-        { value: "sin-categoria", label: "📁 Sin Categoría" }
-    ];
+    // Path base donde se guardan las imágenes de marketing
+    const STORAGE_BASE_PATH = "email_mkt";
 
     useEffect(() => {
+        fetchCategorias();
         fetchStorageImages();
     }, []);
+
+    // Cargar carpetas (categorías) desde el storage
+    const fetchCategorias = async () => {
+        try {
+            const { data: folders, error } = await supabase.storage
+                .from('imagenes-marketing')
+                .list(STORAGE_BASE_PATH, { limit: 100 });
+
+            if (error) throw error;
+
+            if (folders) {
+                // Filtrar solo carpetas (no tienen extensión o son carpetas conocidas)
+                const folderNames = folders
+                    .filter(f => f.name !== '.emptyFolderPlaceholder' && !f.name.includes('.'))
+                    .map(f => f.name);
+                setCategorias(folderNames);
+
+                // Si no hay categoría seleccionada y hay carpetas, seleccionar la primera
+                if (folderNames.length > 0 && !selectedCategory) {
+                    setSelectedCategory(folderNames[0]);
+                }
+            }
+        } catch (err) {
+            console.error("Error cargando categorías:", err);
+        }
+    };
 
     const fetchStorageImages = async () => {
         try {
             setLoadingStorage(true);
-            const { data: files, error } = await supabase.storage.from('imagenes-marketing').list('', {
-                limit: 100,
-                offset: 0,
-                sortBy: { column: 'name', order: 'desc' }
-            });
 
-            if (error) throw error;
+            // Listar todas las imágenes recursivamente desde email_mkt
+            const allImages: { name: string; url: string; categoria: string }[] = [];
 
-            if (files) {
-                const formatted = files
-                    .filter(f => f.name !== '.emptyFolderPlaceholder' && !f.name.endsWith('.json'))
-                    .map(f => ({
-                        name: f.name,
-                        url: supabase.storage.from('imagenes-marketing').getPublicUrl(f.name).data.publicUrl
-                    }));
-                setImages(formatted);
+            // Primero obtener las carpetas
+            const { data: folders } = await supabase.storage
+                .from('imagenes-marketing')
+                .list(STORAGE_BASE_PATH, { limit: 100 });
+
+            if (folders) {
+                // Para cada carpeta, obtener sus imágenes
+                for (const folder of folders) {
+                    if (folder.name === '.emptyFolderPlaceholder' || folder.name.includes('.')) continue;
+
+                    const folderPath = `${STORAGE_BASE_PATH}/${folder.name}`;
+                    const { data: files } = await supabase.storage
+                        .from('imagenes-marketing')
+                        .list(folderPath, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+
+                    if (files) {
+                        files
+                            .filter(f => f.name !== '.emptyFolderPlaceholder' && !f.name.endsWith('.json'))
+                            .forEach(f => {
+                                const fullPath = `${folderPath}/${f.name}`;
+                                allImages.push({
+                                    name: f.name,
+                                    url: supabase.storage.from('imagenes-marketing').getPublicUrl(fullPath).data.publicUrl,
+                                    categoria: folder.name
+                                });
+                            });
+                    }
+                }
             }
+
+            setImages(allImages);
         } catch (err) {
             console.error("Error cargando imagenes:", err);
             setMensaje("❌ Error al conectar con Storage");
         } finally {
             setLoadingStorage(false);
+        }
+    };
+
+    // Crear nueva categoría (carpeta)
+    const crearCategoria = async () => {
+        if (!newCategoryName.trim()) return;
+
+        const folderName = newCategoryName.trim().toLowerCase().replace(/\s+/g, '-');
+        const folderPath = `${STORAGE_BASE_PATH}/${folderName}/.emptyFolderPlaceholder`;
+
+        try {
+            // Crear un archivo placeholder para crear la carpeta
+            const { error } = await supabase.storage
+                .from('imagenes-marketing')
+                .upload(folderPath, new Blob(['']));
+
+            if (error && !error.message.includes('already exists')) throw error;
+
+            setMensaje(`✅ Categoría "${folderName}" creada`);
+            setNewCategoryName("");
+            setShowNewCategory(false);
+            setSelectedCategory(folderName);
+            fetchCategorias();
+            setTimeout(() => setMensaje(""), 3000);
+        } catch (err: any) {
+            console.error("Error creando categoría:", err);
+            setMensaje("❌ Error: " + err.message);
         }
     };
 
@@ -166,10 +235,10 @@ Reglas CRÍTICAS:
             setMensaje("📤 Subiendo imagen a Supabase...");
 
             // Obtener el siguiente número disponible en la categoría
-            const folderPath = selectedCategory === 'sin-categoria' ? '' : `${selectedCategory}/`;
+            const folderPath = `${STORAGE_BASE_PATH}/${selectedCategory}`;
             const { data: existingFiles } = await supabase.storage
                 .from('imagenes-marketing')
-                .list(folderPath || '', { limit: 500 });
+                .list(folderPath, { limit: 500 });
 
             let maxNumber = 0;
             if (existingFiles) {
@@ -184,7 +253,7 @@ Reglas CRÍTICAS:
 
             const nextNumber = maxNumber + 1;
             const fileName = `imagen_${nextNumber}.jpg`;
-            const fullPath = folderPath ? `${folderPath}${fileName}` : fileName;
+            const fullPath = `${folderPath}/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('imagenes-marketing')
@@ -195,9 +264,9 @@ Reglas CRÍTICAS:
 
             if (uploadError) throw uploadError;
 
-            const categoryLabel = CATEGORIAS_IMAGEN.find(c => c.value === selectedCategory)?.label || selectedCategory;
-            setMensaje(`✅ Subida exitosa: ${categoryLabel} / ${fileName}`);
+            setMensaje(`✅ Subida exitosa: ${selectedCategory}/${fileName}`);
             fetchStorageImages();
+            fetchCategorias();
 
             const publicUrl = supabase.storage.from('imagenes-marketing').getPublicUrl(fullPath).data.publicUrl;
             setActiveImage({ name: fileName, url: publicUrl });
@@ -694,20 +763,55 @@ Reglas CRÍTICAS:
                             <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                                 Categoría de la imagen
                             </label>
-                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                <SelectTrigger className="w-full bg-white dark:bg-gray-800">
-                                    <SelectValue placeholder="Selecciona categoría" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {CATEGORIAS_IMAGEN.map(cat => (
-                                        <SelectItem key={cat.value} value={cat.value}>
-                                            {cat.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            {!showNewCategory ? (
+                                <>
+                                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                        <SelectTrigger className="w-full bg-white dark:bg-gray-800">
+                                            <SelectValue placeholder="Selecciona categoría" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {categorias.map((cat: string) => (
+                                                <SelectItem key={cat} value={cat}>
+                                                    📁 {cat}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="w-full text-xs text-indigo-600 hover:text-indigo-700"
+                                        onClick={() => setShowNewCategory(true)}
+                                    >
+                                        + Crear nueva categoría
+                                    </Button>
+                                </>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <Input
+                                        placeholder="Nombre de la categoría..."
+                                        value={newCategoryName}
+                                        onChange={(e) => setNewCategoryName(e.target.value)}
+                                        className="flex-1"
+                                        onKeyDown={(e) => e.key === 'Enter' && crearCategoria()}
+                                    />
+                                    <Button size="sm" onClick={crearCategoria}>
+                                        Crear
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                            setShowNewCategory(false);
+                                            setNewCategoryName("");
+                                        }}
+                                    >
+                                        ✕
+                                    </Button>
+                                </div>
+                            )}
                             <p className="text-xs text-gray-500">
-                                Se guardará como: {selectedCategory}/imagen_X.jpg
+                                Se guardará en: email_mkt/{selectedCategory}/imagen_X.jpg
                             </p>
                         </div>
                     </div>
