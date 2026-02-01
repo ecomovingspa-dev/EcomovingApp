@@ -1187,6 +1187,75 @@ Ejemplos:
         }
     };
 
+    // --- DESHACER CONCILIACIÓN ---
+    const deshacerConciliacion = async (mov: BancoMovimiento) => {
+        if (!confirm(`¿Estás seguro de deshacer la conciliación de este movimiento?\n\nEsto lo marcará como pendiente nuevamente.`)) return;
+
+        try {
+            const montoMovimiento = Math.abs(mov.cargos || mov.abonos || 0);
+
+            // Si tiene documento relacionado, restaurar su saldo
+            if (mov.conciliado_id && mov.tipo_conciliacion !== 'manual') {
+                const tabla = mov.tipo_conciliacion === 'venta' ? 'ventas' : 'compras';
+                const campoEstado = mov.tipo_conciliacion === 'venta' ? 'estado_deuda' : 'estado_pago';
+                const campoMonto = mov.tipo_conciliacion === 'venta' ? 'mnt_total' : 'monto_total';
+
+                // Obtener el documento actual
+                const { data: doc } = await supabase.from(tabla).select('*').eq('id', mov.conciliado_id).single();
+
+                if (doc) {
+                    const saldoActual = doc.saldo ?? 0;
+                    const nuevoSaldo = saldoActual + montoMovimiento;
+                    const montoTotal = doc[campoMonto];
+
+                    // Determinar el nuevo estado
+                    let nuevoEstadoDoc = 'Pendiente';
+                    if (nuevoSaldo >= montoTotal) {
+                        nuevoEstadoDoc = 'Pendiente'; // Vuelve a estar completamente pendiente
+                    } else if (nuevoSaldo > 0) {
+                        nuevoEstadoDoc = 'Parcial'; // Tiene abonos pero no está pagada
+                    }
+
+                    await supabase.from(tabla).update({
+                        [campoEstado]: nuevoEstadoDoc,
+                        saldo: Math.min(nuevoSaldo, montoTotal)
+                    }).eq('id', mov.conciliado_id);
+                }
+            }
+
+            // Si es conciliación manual, eliminar registro de conciliaciones_manuales
+            if (mov.tipo_conciliacion === 'manual') {
+                await supabase.from('conciliaciones_manuales')
+                    .delete()
+                    .eq('movimiento_id', mov.id);
+            }
+
+            // Revertir el movimiento bancario
+            const { error } = await supabase.from("banco_movimientos")
+                .update({
+                    estado: "pendiente",
+                    tipo_conciliacion: null,
+                    conciliado_id: null
+                })
+                .eq("id", mov.id);
+
+            if (error) throw error;
+
+            // Actualizar lista local
+            setMovimientos(prev => prev.map(m =>
+                m.id === mov.id
+                    ? { ...m, estado: "pendiente", tipo_conciliacion: undefined, conciliado_id: null }
+                    : m
+            ));
+
+            alert("Conciliación deshecha. El movimiento está pendiente nuevamente.");
+
+        } catch (e: any) {
+            console.error("Error deshaciendo conciliación:", e);
+            alert("Error al deshacer: " + e.message);
+        }
+    };
+
     // --- CONCILIACIÓN MANUAL (sin factura) ---
     const handleConciliacionManual = async () => {
         if (!selectedMovimiento) return;
@@ -1572,17 +1641,31 @@ Ejemplos:
         }
     };
 
-    // Filtrar movimientos por búsqueda
+    // Filtrar movimientos por búsqueda (incluyendo estado)
     const movimientosFiltrados = useMemo(() => {
         if (!searchQuery.trim()) return movimientos;
-        const query = searchQuery.toLowerCase();
+        const query = searchQuery.toLowerCase().trim();
+
+        // Filtros especiales por estado
+        if (query === 'conciliado' || query === 'conciliados') {
+            return movimientos.filter(m => m.estado === 'conciliado');
+        }
+        if (query === 'pendiente' || query === 'pendientes') {
+            return movimientos.filter(m => m.estado === 'pendiente');
+        }
+        if (query === 'preconciliado' || query === 'preconciliados') {
+            return movimientos.filter(m => m.preconciliado_match);
+        }
+
         return movimientos.filter(m =>
             m.descripcion?.toLowerCase().includes(query) ||
             m.bci_nombre?.toLowerCase().includes(query) ||
             m.bci_rut?.toLowerCase().includes(query) ||
             m.bci_comentario_transferencia?.toLowerCase().includes(query) ||
             m.numero_documento?.toLowerCase().includes(query) ||
-            m.fecha?.includes(query)
+            m.fecha?.includes(query) ||
+            m.estado?.toLowerCase().includes(query) ||
+            m.tipo_gasto?.toLowerCase().includes(query)
         );
     }, [movimientos, searchQuery]);
 
@@ -1725,7 +1808,7 @@ Ejemplos:
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 <input
                                     type="text"
-                                    placeholder="Buscar movimientos..."
+                                    placeholder="Buscar o filtrar: conciliado, pendiente..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="pl-9 pr-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 w-64 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
@@ -1849,31 +1932,49 @@ Ejemplos:
                                                                 <Info className="h-4 w-4 text-blue-500" />
                                                             </Button>
                                                         </PopoverTrigger>
-                                                        <PopoverContent className="w-80 p-0" align="end">
-                                                            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-3 rounded-t-lg">
-                                                                <h4 className="font-semibold flex items-center gap-2">
-                                                                    <FileText className="h-4 w-4" />
+                                                        <PopoverContent className="w-96 p-0" align="end" sideOffset={5}>
+                                                            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-4 rounded-t-lg">
+                                                                <h4 className="font-semibold flex items-center gap-2 text-base">
+                                                                    <FileText className="h-5 w-5" />
                                                                     Detalle de Conciliación
                                                                 </h4>
+                                                                <p className="text-blue-100 text-xs mt-1">Información del movimiento conciliado</p>
                                                             </div>
-                                                            <div className="p-4 space-y-3 bg-white dark:bg-gray-900">
-                                                                <div className="flex items-center gap-2 text-sm">
-                                                                    <Calendar className="h-4 w-4 text-gray-400" />
-                                                                    <span className="text-gray-500">Fecha:</span>
-                                                                    <span className="font-medium text-gray-900 dark:text-gray-100">{mov.fecha}</span>
+                                                            <div className="p-5 space-y-4 bg-white dark:bg-gray-900">
+                                                                {/* Descripción */}
+                                                                <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg">
+                                                                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2">
+                                                                        {mov.descripcion}
+                                                                    </p>
                                                                 </div>
-                                                                <div className="flex items-center gap-2 text-sm">
-                                                                    <DollarSign className="h-4 w-4 text-gray-400" />
-                                                                    <span className="text-gray-500">Monto:</span>
-                                                                    <span className={`font-bold ${mov.cargos > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                                        {fmtMoney(mov.cargos || mov.abonos)}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="border-t border-gray-100 dark:border-gray-800 pt-3">
+
+                                                                {/* Grid de información */}
+                                                                <div className="grid grid-cols-2 gap-4">
                                                                     <div className="flex items-center gap-2 text-sm">
-                                                                        <Link className="h-4 w-4 text-gray-400" />
-                                                                        <span className="text-gray-500">Tipo:</span>
-                                                                        <Badge variant="outline" className="text-xs">
+                                                                        <Calendar className="h-4 w-4 text-gray-400" />
+                                                                        <div>
+                                                                            <span className="text-gray-500 text-xs block">Fecha</span>
+                                                                            <span className="font-medium text-gray-900 dark:text-gray-100">{mov.fecha}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 text-sm">
+                                                                        <DollarSign className="h-4 w-4 text-gray-400" />
+                                                                        <div>
+                                                                            <span className="text-gray-500 text-xs block">Monto</span>
+                                                                            <span className={`font-bold ${mov.cargos > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                                                {fmtMoney(mov.cargos || mov.abonos)}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-3">
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-2 text-sm">
+                                                                            <Link className="h-4 w-4 text-gray-400" />
+                                                                            <span className="text-gray-500">Tipo de conciliación:</span>
+                                                                        </div>
+                                                                        <Badge variant="outline" className="text-sm">
                                                                             {mov.tipo_conciliacion === 'venta' ? '📈 Venta' :
                                                                                 mov.tipo_conciliacion === 'compra' ? '📦 Compra' :
                                                                                     mov.tipo_conciliacion === 'manual' ? '✏️ Manual' :
@@ -1881,15 +1982,34 @@ Ejemplos:
                                                                         </Badge>
                                                                     </div>
                                                                     {mov.conciliado_id && (
-                                                                        <div className="mt-2 text-xs text-gray-500">
-                                                                            ID Documento: <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">#{mov.conciliado_id}</span>
+                                                                        <div className="flex items-center justify-between text-sm">
+                                                                            <span className="text-gray-500">ID Documento:</span>
+                                                                            <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-indigo-600 dark:text-indigo-400">
+                                                                                #{mov.conciliado_id}
+                                                                            </span>
                                                                         </div>
                                                                     )}
                                                                     {mov.tipo_gasto && (
-                                                                        <div className="mt-2 text-xs text-gray-500">
-                                                                            Categoría: <span className="font-medium text-indigo-600 dark:text-indigo-400">{mov.tipo_gasto}</span>
+                                                                        <div className="flex items-center justify-between text-sm">
+                                                                            <span className="text-gray-500">Categoría:</span>
+                                                                            <span className="font-medium text-indigo-600 dark:text-indigo-400">
+                                                                                {mov.tipo_gasto}
+                                                                            </span>
                                                                         </div>
                                                                     )}
+                                                                </div>
+
+                                                                {/* Botón Deshacer */}
+                                                                <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        className="w-full text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 dark:border-red-800 dark:hover:bg-red-900/20"
+                                                                        onClick={() => deshacerConciliacion(mov)}
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4 mr-2" />
+                                                                        Deshacer Conciliación
+                                                                    </Button>
                                                                 </div>
                                                             </div>
                                                         </PopoverContent>
