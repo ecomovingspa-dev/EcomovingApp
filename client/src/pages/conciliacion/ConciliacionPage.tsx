@@ -16,7 +16,11 @@ import {
     Mic,
     MicOff,
     Sparkles,
-    Trash2
+    Trash2,
+    Info,
+    FileText,
+    Calendar,
+    DollarSign
 } from "lucide-react";
 import { askGeminiAboutImage } from "../../lib/gemini";
 import { Button } from "@/components/ui/button";
@@ -33,6 +37,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 // Types
 interface BancoMovimiento {
@@ -1832,13 +1837,65 @@ Ejemplos:
                                             )}
                                         </TableCell>
                                         <TableCell className="text-center">
-                                            {mov.estado !== 'conciliado' && (
-                                                <div className="flex justify-center gap-2">
+                                            <div className="flex justify-center gap-1">
+                                                {mov.estado !== 'conciliado' ? (
                                                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleConciliarClick(mov)}>
                                                         <Search className="h-4 w-4 text-indigo-600" />
                                                     </Button>
-                                                </div>
-                                            )}
+                                                ) : (
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                <Info className="h-4 w-4 text-blue-500" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-80 p-0" align="end">
+                                                            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-3 rounded-t-lg">
+                                                                <h4 className="font-semibold flex items-center gap-2">
+                                                                    <FileText className="h-4 w-4" />
+                                                                    Detalle de Conciliación
+                                                                </h4>
+                                                            </div>
+                                                            <div className="p-4 space-y-3 bg-white dark:bg-gray-900">
+                                                                <div className="flex items-center gap-2 text-sm">
+                                                                    <Calendar className="h-4 w-4 text-gray-400" />
+                                                                    <span className="text-gray-500">Fecha:</span>
+                                                                    <span className="font-medium text-gray-900 dark:text-gray-100">{mov.fecha}</span>
+                                                                </div>
+                                                                <div className="flex items-center gap-2 text-sm">
+                                                                    <DollarSign className="h-4 w-4 text-gray-400" />
+                                                                    <span className="text-gray-500">Monto:</span>
+                                                                    <span className={`font-bold ${mov.cargos > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                                        {fmtMoney(mov.cargos || mov.abonos)}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="border-t border-gray-100 dark:border-gray-800 pt-3">
+                                                                    <div className="flex items-center gap-2 text-sm">
+                                                                        <Link className="h-4 w-4 text-gray-400" />
+                                                                        <span className="text-gray-500">Tipo:</span>
+                                                                        <Badge variant="outline" className="text-xs">
+                                                                            {mov.tipo_conciliacion === 'venta' ? '📈 Venta' :
+                                                                                mov.tipo_conciliacion === 'compra' ? '📦 Compra' :
+                                                                                    mov.tipo_conciliacion === 'manual' ? '✏️ Manual' :
+                                                                                        '🔄 Automático'}
+                                                                        </Badge>
+                                                                    </div>
+                                                                    {mov.conciliado_id && (
+                                                                        <div className="mt-2 text-xs text-gray-500">
+                                                                            ID Documento: <span className="font-mono bg-gray-100 dark:bg-gray-800 px-1 rounded">#{mov.conciliado_id}</span>
+                                                                        </div>
+                                                                    )}
+                                                                    {mov.tipo_gasto && (
+                                                                        <div className="mt-2 text-xs text-gray-500">
+                                                                            Categoría: <span className="font-medium text-indigo-600 dark:text-indigo-400">{mov.tipo_gasto}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))
