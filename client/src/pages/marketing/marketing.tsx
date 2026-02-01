@@ -27,6 +27,18 @@ export default function Marketing() {
           </button>
 
           <button
+            onClick={() => setTabActiva("fabrica")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "fabrica"
+              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/30 shadow-sm"
+              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent"
+              }`}
+          >
+            <Sparkles className="h-4 w-4" />
+            <span className="hidden sm:inline">Fábrica de Contenidos</span>
+            <span className="sm:hidden">Contenidos</span>
+          </button>
+
+          <button
             onClick={() => setTabActiva("biblioteca")}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "biblioteca"
               ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-500/30 shadow-sm"
@@ -36,18 +48,6 @@ export default function Marketing() {
             <Library className="h-4 w-4" />
             <span className="hidden sm:inline">Tabla de Contenidos</span>
             <span className="sm:hidden">Biblioteca</span>
-          </button>
-
-          <button
-            onClick={() => setTabActiva("fabrica")}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "fabrica"
-              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/30 shadow-sm"
-              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent"
-              }`}
-          >
-            <Sparkles className="h-4 w-4" />
-            <span className="hidden sm:inline">Fábrica de IA</span>
-            <span className="sm:hidden">IA</span>
           </button>
 
           <button
