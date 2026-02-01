@@ -37,7 +37,7 @@ import {
 
 export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     // States for Storage Explorer
-    const [images, setImages] = useState<{ name: string; url: string; categoria?: string }[]>([]);
+    const [images, setImages] = useState<{ name: string; url: string }[]>([]);
     const [loadingStorage, setLoadingStorage] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState<"images" | "templates">("images");
@@ -57,83 +57,38 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     });
     const [tono, setTono] = useState("profesional");
     const [subiendoImagen, setSubiendoImagen] = useState(false);
-    const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState("");
-    const [pendingFile, setPendingFile] = useState<File | null>(null);
-    const [categorias, setCategorias] = useState<string[]>([]);
-    const [newCategoryName, setNewCategoryName] = useState("");
-    const [showNewCategory, setShowNewCategory] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Path base donde se guardan las imágenes de marketing
     const STORAGE_BASE_PATH = "email_mkt";
 
     useEffect(() => {
-        fetchCategorias();
         fetchStorageImages();
     }, []);
-
-    // Cargar carpetas (categorías) desde el storage
-    const fetchCategorias = async () => {
-        try {
-            const { data: folders, error } = await supabase.storage
-                .from('imagenes-marketing')
-                .list(STORAGE_BASE_PATH, { limit: 100 });
-
-            if (error) throw error;
-
-            if (folders) {
-                // Filtrar solo carpetas (no tienen extensión o son carpetas conocidas)
-                const folderNames = folders
-                    .filter(f => f.name !== '.emptyFolderPlaceholder' && !f.name.includes('.'))
-                    .map(f => f.name);
-                setCategorias(folderNames);
-
-                // Si no hay categoría seleccionada y hay carpetas, seleccionar la primera
-                if (folderNames.length > 0 && !selectedCategory) {
-                    setSelectedCategory(folderNames[0]);
-                }
-            }
-        } catch (err) {
-            console.error("Error cargando categorías:", err);
-        }
-    };
 
     const fetchStorageImages = async () => {
         try {
             setLoadingStorage(true);
 
-            // Listar todas las imágenes recursivamente desde email_mkt
-            const allImages: { name: string; url: string; categoria: string }[] = [];
-
-            // Primero obtener las carpetas
-            const { data: folders } = await supabase.storage
+            // Listar todas las imágenes desde email_mkt
+            const { data: files, error } = await supabase.storage
                 .from('imagenes-marketing')
-                .list(STORAGE_BASE_PATH, { limit: 100 });
+                .list(STORAGE_BASE_PATH, { limit: 500, sortBy: { column: 'name', order: 'desc' } });
 
-            if (folders) {
-                // Para cada carpeta, obtener sus imágenes
-                for (const folder of folders) {
-                    if (folder.name === '.emptyFolderPlaceholder' || folder.name.includes('.')) continue;
+            if (error) throw error;
 
-                    const folderPath = `${STORAGE_BASE_PATH}/${folder.name}`;
-                    const { data: files } = await supabase.storage
-                        .from('imagenes-marketing')
-                        .list(folderPath, { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+            const allImages: { name: string; url: string }[] = [];
 
-                    if (files) {
-                        files
-                            .filter(f => f.name !== '.emptyFolderPlaceholder' && !f.name.endsWith('.json'))
-                            .forEach(f => {
-                                const fullPath = `${folderPath}/${f.name}`;
-                                allImages.push({
-                                    name: f.name,
-                                    url: supabase.storage.from('imagenes-marketing').getPublicUrl(fullPath).data.publicUrl,
-                                    categoria: folder.name
-                                });
-                            });
-                    }
-                }
+            if (files) {
+                files
+                    .filter(f => f.name !== '.emptyFolderPlaceholder' && !f.name.endsWith('.json') && f.name.includes('.'))
+                    .forEach(f => {
+                        const fullPath = `${STORAGE_BASE_PATH}/${f.name}`;
+                        allImages.push({
+                            name: f.name,
+                            url: supabase.storage.from('imagenes-marketing').getPublicUrl(fullPath).data.publicUrl
+                        });
+                    });
             }
 
             setImages(allImages);
@@ -145,32 +100,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         }
     };
 
-    // Crear nueva categoría (carpeta)
-    const crearCategoria = async () => {
-        if (!newCategoryName.trim()) return;
 
-        const folderName = newCategoryName.trim().toLowerCase().replace(/\s+/g, '-');
-        const folderPath = `${STORAGE_BASE_PATH}/${folderName}/.emptyFolderPlaceholder`;
-
-        try {
-            // Crear un archivo placeholder para crear la carpeta
-            const { error } = await supabase.storage
-                .from('imagenes-marketing')
-                .upload(folderPath, new Blob(['']));
-
-            if (error && !error.message.includes('already exists')) throw error;
-
-            setMensaje(`✅ Categoría "${folderName}" creada`);
-            setNewCategoryName("");
-            setShowNewCategory(false);
-            setSelectedCategory(folderName);
-            fetchCategorias();
-            setTimeout(() => setMensaje(""), 3000);
-        } catch (err: any) {
-            console.error("Error creando categoría:", err);
-            setMensaje("❌ Error: " + err.message);
-        }
-    };
 
     const filteredImages = images.filter(img =>
         img.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -217,28 +147,19 @@ Reglas CRÍTICAS:
         }
     };
 
-    // Paso 1: Cuando el usuario selecciona un archivo, abrir diálogo de categoría
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Subir imagen directamente
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setPendingFile(file);
-        setUploadDialogOpen(true);
-    };
-
-    // Paso 2: Subir con la categoría seleccionada
-    const handleFileUpload = async () => {
-        if (!pendingFile) return;
 
         try {
             setSubiendoImagen(true);
-            setUploadDialogOpen(false);
             setMensaje("📤 Subiendo imagen a Supabase...");
 
-            // Obtener el siguiente número disponible en la categoría
-            const folderPath = `${STORAGE_BASE_PATH}/${selectedCategory}`;
+            // Obtener el siguiente número disponible
             const { data: existingFiles } = await supabase.storage
                 .from('imagenes-marketing')
-                .list(folderPath, { limit: 500 });
+                .list(STORAGE_BASE_PATH, { limit: 500 });
 
             let maxNumber = 0;
             if (existingFiles) {
@@ -253,25 +174,23 @@ Reglas CRÍTICAS:
 
             const nextNumber = maxNumber + 1;
             const fileName = `imagen_${nextNumber}.jpg`;
-            const fullPath = `${folderPath}/${fileName}`;
+            const fullPath = `${STORAGE_BASE_PATH}/${fileName}`;
 
             const { error: uploadError } = await supabase.storage
                 .from('imagenes-marketing')
-                .upload(fullPath, pendingFile, {
+                .upload(fullPath, file, {
                     contentType: 'image/jpeg',
                     upsert: false
                 });
 
             if (uploadError) throw uploadError;
 
-            setMensaje(`✅ Subida exitosa: ${selectedCategory}/${fileName}`);
+            setMensaje(`✅ Subida exitosa: ${fileName}`);
             fetchStorageImages();
-            fetchCategorias();
 
             const publicUrl = supabase.storage.from('imagenes-marketing').getPublicUrl(fullPath).data.publicUrl;
             setActiveImage({ name: fileName, url: publicUrl });
             setContenido(null);
-            setPendingFile(null);
 
             setTimeout(() => setMensaje(""), 4000);
         } catch (err: any) {
@@ -438,7 +357,7 @@ Reglas CRÍTICAS:
                         <input
                             type="file"
                             ref={fileInputRef}
-                            onChange={handleFileSelect}
+                            onChange={handleFileUpload}
                             className="hidden"
                             accept="image/*"
                         />
@@ -732,112 +651,7 @@ Reglas CRÍTICAS:
                 </DialogContent>
             </Dialog>
 
-            {/* MODAL DE SELECCIÓN DE CATEGORÍA PARA SUBIDA */}
-            <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
-                <DialogContent className="max-w-md bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
-                            <ImageIcon className="h-5 w-5 text-indigo-600" />
-                            Subir Imagen
-                        </DialogTitle>
-                    </DialogHeader>
 
-                    <div className="space-y-4 pt-2">
-                        {pendingFile && (
-                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg flex items-center gap-3">
-                                <div className="h-12 w-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                                    <ImageIcon className="h-6 w-6 text-indigo-600" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                        {pendingFile.name}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                        {(pendingFile.size / 1024).toFixed(1)} KB
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                Categoría de la imagen
-                            </label>
-                            {!showNewCategory ? (
-                                <>
-                                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                                        <SelectTrigger className="w-full bg-white dark:bg-gray-800">
-                                            <SelectValue placeholder="Selecciona categoría" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {categorias.map((cat: string) => (
-                                                <SelectItem key={cat} value={cat}>
-                                                    📁 {cat}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="w-full text-xs text-indigo-600 hover:text-indigo-700"
-                                        onClick={() => setShowNewCategory(true)}
-                                    >
-                                        + Crear nueva categoría
-                                    </Button>
-                                </>
-                            ) : (
-                                <div className="flex gap-2">
-                                    <Input
-                                        placeholder="Nombre de la categoría..."
-                                        value={newCategoryName}
-                                        onChange={(e) => setNewCategoryName(e.target.value)}
-                                        className="flex-1"
-                                        onKeyDown={(e) => e.key === 'Enter' && crearCategoria()}
-                                    />
-                                    <Button size="sm" onClick={crearCategoria}>
-                                        Crear
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => {
-                                            setShowNewCategory(false);
-                                            setNewCategoryName("");
-                                        }}
-                                    >
-                                        ✕
-                                    </Button>
-                                </div>
-                            )}
-                            <p className="text-xs text-gray-500">
-                                Se guardará en: email_mkt/{selectedCategory}/imagen_X.jpg
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-3 pt-4">
-                        <Button
-                            variant="outline"
-                            onClick={() => {
-                                setUploadDialogOpen(false);
-                                setPendingFile(null);
-                                if (fileInputRef.current) fileInputRef.current.value = '';
-                            }}
-                        >
-                            Cancelar
-                        </Button>
-                        <Button
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                            onClick={handleFileUpload}
-                            disabled={subiendoImagen}
-                        >
-                            {subiendoImagen ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Subir Imagen
-                        </Button>
-                    </div>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }
