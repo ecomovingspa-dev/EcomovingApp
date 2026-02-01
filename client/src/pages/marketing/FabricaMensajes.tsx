@@ -57,7 +57,19 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     });
     const [tono, setTono] = useState("profesional");
     const [subiendoImagen, setSubiendoImagen] = useState(false);
+    const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState("productos");
+    const [pendingFile, setPendingFile] = useState<File | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Categorías disponibles para organizar imágenes
+    const CATEGORIAS_IMAGEN = [
+        { value: "productos", label: "🛍️ Productos" },
+        { value: "campañas", label: "📢 Campañas" },
+        { value: "branding", label: "🎨 Branding" },
+        { value: "redes-sociales", label: "📱 Redes Sociales" },
+        { value: "sin-categoria", label: "📁 Sin Categoría" }
+    ];
 
     useEffect(() => {
         fetchStorageImages();
@@ -136,32 +148,63 @@ Reglas CRÍTICAS:
         }
     };
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Paso 1: Cuando el usuario selecciona un archivo, abrir diálogo de categoría
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        setPendingFile(file);
+        setUploadDialogOpen(true);
+    };
+
+    // Paso 2: Subir con la categoría seleccionada
+    const handleFileUpload = async () => {
+        if (!pendingFile) return;
 
         try {
             setSubiendoImagen(true);
+            setUploadDialogOpen(false);
             setMensaje("📤 Subiendo imagen a Supabase...");
 
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-            const filePath = `${fileName}`;
+            // Obtener el siguiente número disponible en la categoría
+            const folderPath = selectedCategory === 'sin-categoria' ? '' : `${selectedCategory}/`;
+            const { data: existingFiles } = await supabase.storage
+                .from('imagenes-marketing')
+                .list(folderPath || '', { limit: 500 });
+
+            let maxNumber = 0;
+            if (existingFiles) {
+                existingFiles.forEach(f => {
+                    const match = f.name.match(/^imagen_(\d+)\.(jpg|jpeg|png|webp)$/i);
+                    if (match) {
+                        const num = parseInt(match[1], 10);
+                        if (num > maxNumber) maxNumber = num;
+                    }
+                });
+            }
+
+            const nextNumber = maxNumber + 1;
+            const fileName = `imagen_${nextNumber}.jpg`;
+            const fullPath = folderPath ? `${folderPath}${fileName}` : fileName;
 
             const { error: uploadError } = await supabase.storage
                 .from('imagenes-marketing')
-                .upload(filePath, file);
+                .upload(fullPath, pendingFile, {
+                    contentType: 'image/jpeg',
+                    upsert: false
+                });
 
             if (uploadError) throw uploadError;
 
-            setMensaje("✅ Imagen subida con éxito");
+            const categoryLabel = CATEGORIAS_IMAGEN.find(c => c.value === selectedCategory)?.label || selectedCategory;
+            setMensaje(`✅ Subida exitosa: ${categoryLabel} / ${fileName}`);
             fetchStorageImages();
 
-            const publicUrl = supabase.storage.from('imagenes-marketing').getPublicUrl(filePath).data.publicUrl;
-            setActiveImage({ name: file.name, url: publicUrl });
+            const publicUrl = supabase.storage.from('imagenes-marketing').getPublicUrl(fullPath).data.publicUrl;
+            setActiveImage({ name: fileName, url: publicUrl });
             setContenido(null);
+            setPendingFile(null);
 
-            setTimeout(() => setMensaje(""), 3000);
+            setTimeout(() => setMensaje(""), 4000);
         } catch (err: any) {
             console.error("Error al subir:", err);
             setMensaje("❌ Error al subir: " + err.message);
@@ -326,7 +369,7 @@ Reglas CRÍTICAS:
                         <input
                             type="file"
                             ref={fileInputRef}
-                            onChange={handleFileUpload}
+                            onChange={handleFileSelect}
                             className="hidden"
                             accept="image/*"
                         />
@@ -615,6 +658,78 @@ Reglas CRÍTICAS:
                         </Button>
                         <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={guardarMensaje}>
                             <Save className="h-4 w-4 mr-2" /> Guardar Ahora
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* MODAL DE SELECCIÓN DE CATEGORÍA PARA SUBIDA */}
+            <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+                <DialogContent className="max-w-md bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
+                            <ImageIcon className="h-5 w-5 text-indigo-600" />
+                            Subir Imagen
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-4 pt-2">
+                        {pendingFile && (
+                            <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg flex items-center gap-3">
+                                <div className="h-12 w-12 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                                    <ImageIcon className="h-6 w-6 text-indigo-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                        {pendingFile.name}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        {(pendingFile.size / 1024).toFixed(1)} KB
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                Categoría de la imagen
+                            </label>
+                            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                <SelectTrigger className="w-full bg-white dark:bg-gray-800">
+                                    <SelectValue placeholder="Selecciona categoría" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {CATEGORIAS_IMAGEN.map(cat => (
+                                        <SelectItem key={cat.value} value={cat.value}>
+                                            {cat.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-gray-500">
+                                Se guardará como: {selectedCategory}/imagen_X.jpg
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-3 pt-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setUploadDialogOpen(false);
+                                setPendingFile(null);
+                                if (fileInputRef.current) fileInputRef.current.value = '';
+                            }}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                            onClick={handleFileUpload}
+                            disabled={subiendoImagen}
+                        >
+                            {subiendoImagen ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Subir Imagen
                         </Button>
                     </div>
                 </DialogContent>
