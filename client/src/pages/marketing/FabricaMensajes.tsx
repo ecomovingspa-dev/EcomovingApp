@@ -15,7 +15,9 @@ import {
     Minimize,
     Search,
     ExternalLink,
-    RefreshCw
+    RefreshCw,
+    ZoomIn,
+    X
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -42,6 +44,7 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState<"images" | "templates">("images");
     const [activeImage, setActiveImage] = useState<{ name: string; url: string } | null>(null);
+    const [viewerImage, setViewerImage] = useState<{ name: string; url: string } | null>(null);
 
     // States for Content Generation
     const [procesando, setProcesando] = useState(false);
@@ -69,26 +72,51 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const fetchStorageImages = async () => {
         try {
             setLoadingStorage(true);
+            const allImages: { name: string; url: string }[] = [];
 
-            // Listar todas las imágenes desde email_mkt
-            const { data: files, error } = await supabase.storage
+            // Listar contenido del directorio base
+            const { data: items, error } = await supabase.storage
                 .from('imagenes-marketing')
                 .list(STORAGE_BASE_PATH, { limit: 500, sortBy: { column: 'name', order: 'desc' } });
 
             if (error) throw error;
 
-            const allImages: { name: string; url: string }[] = [];
+            if (items) {
+                // Separar archivos de carpetas
+                const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 
-            if (files) {
-                files
-                    .filter(f => f.name !== '.emptyFolderPlaceholder' && !f.name.endsWith('.json') && f.name.includes('.'))
-                    .forEach(f => {
-                        const fullPath = `${STORAGE_BASE_PATH}/${f.name}`;
+                for (const item of items) {
+                    if (item.name === '.emptyFolderPlaceholder') continue;
+
+                    const isImage = imageExtensions.some(ext => item.name.toLowerCase().endsWith(ext));
+
+                    if (isImage) {
+                        // Es una imagen en el nivel raíz
+                        const fullPath = `${STORAGE_BASE_PATH}/${item.name}`;
                         allImages.push({
-                            name: f.name,
+                            name: item.name,
                             url: supabase.storage.from('imagenes-marketing').getPublicUrl(fullPath).data.publicUrl
                         });
-                    });
+                    } else if (!item.name.includes('.')) {
+                        // Probablemente es una carpeta, buscar imágenes dentro
+                        const folderPath = `${STORAGE_BASE_PATH}/${item.name}`;
+                        const { data: subFiles } = await supabase.storage
+                            .from('imagenes-marketing')
+                            .list(folderPath, { limit: 200, sortBy: { column: 'name', order: 'desc' } });
+
+                        if (subFiles) {
+                            subFiles
+                                .filter(f => imageExtensions.some(ext => f.name.toLowerCase().endsWith(ext)))
+                                .forEach(f => {
+                                    const fullPath = `${folderPath}/${f.name}`;
+                                    allImages.push({
+                                        name: `${item.name}/${f.name}`,
+                                        url: supabase.storage.from('imagenes-marketing').getPublicUrl(fullPath).data.publicUrl
+                                    });
+                                });
+                        }
+                    }
+                }
             }
 
             setImages(allImages);
@@ -393,7 +421,16 @@ Reglas CRÍTICAS:
                                                 }`}
                                         >
                                             <img src={img.url} className="w-full h-full object-cover" alt={img.name} />
-                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2 text-center">
+                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2 text-center gap-2">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setViewerImage(img);
+                                                    }}
+                                                    className="bg-white/20 hover:bg-white/30 backdrop-blur-sm p-1.5 rounded-lg transition-all"
+                                                >
+                                                    <ZoomIn className="h-4 w-4 text-white" />
+                                                </button>
                                                 <p className="text-[8px] text-white font-bold uppercase truncate w-full">{img.name}</p>
                                             </div>
                                             {activeImage?.name === img.name && (
@@ -650,6 +687,58 @@ Reglas CRÍTICAS:
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* MODAL VISOR DE IMAGEN AMPLIADA */}
+            {viewerImage && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+                    onClick={() => setViewerImage(null)}
+                >
+                    <button
+                        className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 backdrop-blur-md p-2 rounded-full transition-all"
+                        onClick={() => setViewerImage(null)}
+                    >
+                        <X className="h-6 w-6 text-white" />
+                    </button>
+                    <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-lg">
+                        <p className="text-sm text-white font-medium">{viewerImage.name}</p>
+                    </div>
+                    <img
+                        src={viewerImage.url}
+                        alt={viewerImage.name}
+                        className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border-none"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveImage(viewerImage);
+                                setContenido(null);
+                                setViewerImage(null);
+                            }}
+                        >
+                            <CheckCircle2 className="h-4 w-4 mr-2" />
+                            Seleccionar para generar
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white border-none"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(viewerImage.url, '_blank');
+                            }}
+                        >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Abrir original
+                        </Button>
+                    </div>
+                </div>
+            )}
 
 
         </div>
