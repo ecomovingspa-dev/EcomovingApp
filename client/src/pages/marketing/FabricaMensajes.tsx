@@ -72,59 +72,63 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const fetchStorageImages = async () => {
         try {
             setLoadingStorage(true);
-            console.log("🔍 Conectando a Supabase Storage...");
-            console.log("📍 Bucket: imagenes-marketing");
-            console.log("📍 Path: " + STORAGE_BASE_PATH);
+            const bucket = 'imagenes-marketing';
+            const folder = 'email_mkt';
 
-            // Listar archivos directamente en email_mkt/
+            console.log(`🚀 Iniciando búsqueda en bucket: "${bucket}", carpeta: "${folder}"`);
+
+            // Intento 1: Listar directamente en la carpeta
             const { data: files, error } = await supabase.storage
-                .from('imagenes-marketing')
-                .list(STORAGE_BASE_PATH, {
+                .from(bucket)
+                .list(folder, {
                     limit: 500,
+                    offset: 0,
                     sortBy: { column: 'name', order: 'asc' }
                 });
 
-            console.log("📦 Respuesta:", { files, error });
-
             if (error) {
-                console.error("❌ Error:", error);
+                console.error("❌ Error al listar carpeta:", error);
                 setMensaje("❌ Error: " + error.message);
+                // Si falla la carpeta, intentamos listar la raíz para ver si el bucket responde
+                const { data: rootFiles } = await supabase.storage.from(bucket).list('', { limit: 10 });
+                console.log("📂 Diagnóstico: Contenido de la raíz del bucket:", rootFiles);
                 setImages([]);
                 return;
             }
+
+            console.log("📦 Archivos encontrados en Storage:", files);
 
             if (!files || files.length === 0) {
-                console.log("⚠️ No hay archivos en la carpeta");
+                console.warn("⚠️ La carpeta parece estar vacía o no existe.");
                 setImages([]);
                 return;
             }
 
-            // Filtrar solo imágenes
             const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'];
-            const imageFiles = files.filter(f => {
-                const ext = f.name.toLowerCase();
-                return imageExtensions.some(e => ext.endsWith(e));
-            });
 
-            console.log("🖼️ Archivos de imagen encontrados:", imageFiles.length);
+            const processedImages = files
+                .filter(f => {
+                    // Ignorar archivos ocultos o marcadores de carpeta
+                    if (f.name === '.emptyFolderPlaceholder') return false;
 
-            // Generar URLs públicas
-            const allImages = imageFiles.map(f => {
-                const fullPath = `${STORAGE_BASE_PATH}/${f.name}`;
-                const { data } = supabase.storage.from('imagenes-marketing').getPublicUrl(fullPath);
-                console.log("  →", f.name, ":", data.publicUrl);
-                return {
-                    name: f.name,
-                    url: data.publicUrl
-                };
-            });
+                    const lowerName = f.name.toLowerCase();
+                    return imageExtensions.some(ext => lowerName.endsWith(ext));
+                })
+                .map(f => {
+                    const fullPath = `${folder}/${f.name}`;
+                    const { data } = supabase.storage.from(bucket).getPublicUrl(fullPath);
+                    return {
+                        name: f.name,
+                        url: data.publicUrl
+                    };
+                });
 
-            console.log("✅ Total imágenes cargadas:", allImages.length);
-            setImages(allImages);
+            console.log(`✅ Se procesaron ${processedImages.length} imágenes correctamente.`);
+            setImages(processedImages);
 
         } catch (err: any) {
-            console.error("💥 Error crítico:", err);
-            setMensaje("❌ Error al conectar con Storage");
+            console.error("💥 Error crítico en Media Explorer:", err);
+            setMensaje("❌ Error crítico al conectar con Storage");
             setImages([]);
         } finally {
             setLoadingStorage(false);
