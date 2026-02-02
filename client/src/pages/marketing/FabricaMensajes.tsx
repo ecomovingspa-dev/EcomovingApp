@@ -74,14 +74,21 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
             setLoadingStorage(true);
             const allImages: { name: string; url: string }[] = [];
 
+            console.log("🔍 Buscando imágenes en:", STORAGE_BASE_PATH);
+
             // Listar contenido del directorio base
             const { data: items, error } = await supabase.storage
                 .from('imagenes-marketing')
                 .list(STORAGE_BASE_PATH, { limit: 500, sortBy: { column: 'name', order: 'desc' } });
 
-            if (error) throw error;
+            console.log("📦 Respuesta Storage:", { items, error });
 
-            if (items) {
+            if (error) {
+                console.error("❌ Error de Supabase Storage:", error);
+                throw error;
+            }
+
+            if (items && items.length > 0) {
                 // Separar archivos de carpetas
                 const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 
@@ -100,6 +107,8 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                     } else if (!item.name.includes('.')) {
                         // Probablemente es una carpeta, buscar imágenes dentro
                         const folderPath = `${STORAGE_BASE_PATH}/${item.name}`;
+                        console.log("📂 Buscando en subcarpeta:", folderPath);
+
                         const { data: subFiles } = await supabase.storage
                             .from('imagenes-marketing')
                             .list(folderPath, { limit: 200, sortBy: { column: 'name', order: 'desc' } });
@@ -117,8 +126,11 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
                         }
                     }
                 }
+            } else {
+                console.log("⚠️ No se encontraron items en el directorio");
             }
 
+            console.log("✅ Imágenes encontradas:", allImages.length);
             setImages(allImages);
         } catch (err) {
             console.error("Error cargando imagenes:", err);
