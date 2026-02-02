@@ -44,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       diasAtraso: Math.abs(regla.dias_min)
     };
 
-    // 3. Construir HTML (Misma lógica que cron-cobranza.ts)
+    // 3. Construir HTML (Misma lógica que cron-daily.ts)
     const asunto = regla.asunto_template
       .replace('{folio}', String(mockFactura.folio))
       .replace('{dias}', String(mockFactura.diasAtraso));
