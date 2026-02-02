@@ -317,9 +317,9 @@ async function ejecutarMarketing(maxEmails: number): Promise<{
                     headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' }
                 });
 
-                // Actualizar próximo envío (+7 días)
+                // Actualizar próximo envío (+3 días = ~2 emails por semana)
                 const nextDate = new Date();
-                nextDate.setDate(nextDate.getDate() + 7);
+                nextDate.setDate(nextDate.getDate() + 3);
 
                 await supabase
                     .from('contactos')
