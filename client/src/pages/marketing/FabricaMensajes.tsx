@@ -72,69 +72,60 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const fetchStorageImages = async () => {
         try {
             setLoadingStorage(true);
-            const allImages: { name: string; url: string }[] = [];
+            console.log("🔍 Conectando a Supabase Storage...");
+            console.log("📍 Bucket: imagenes-marketing");
+            console.log("📍 Path: " + STORAGE_BASE_PATH);
 
-            console.log("🔍 Buscando imágenes en:", STORAGE_BASE_PATH);
-
-            // Listar contenido del directorio base
-            const { data: items, error } = await supabase.storage
+            // Listar archivos directamente en email_mkt/
+            const { data: files, error } = await supabase.storage
                 .from('imagenes-marketing')
-                .list(STORAGE_BASE_PATH, { limit: 500, sortBy: { column: 'name', order: 'desc' } });
+                .list(STORAGE_BASE_PATH, {
+                    limit: 500,
+                    sortBy: { column: 'name', order: 'asc' }
+                });
 
-            console.log("📦 Respuesta Storage:", { items, error });
+            console.log("📦 Respuesta:", { files, error });
 
             if (error) {
-                console.error("❌ Error de Supabase Storage:", error);
-                throw error;
+                console.error("❌ Error:", error);
+                setMensaje("❌ Error: " + error.message);
+                setImages([]);
+                return;
             }
 
-            if (items && items.length > 0) {
-                // Separar archivos de carpetas
-                const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
-
-                for (const item of items) {
-                    if (item.name === '.emptyFolderPlaceholder') continue;
-
-                    const isImage = imageExtensions.some(ext => item.name.toLowerCase().endsWith(ext));
-
-                    if (isImage) {
-                        // Es una imagen en el nivel raíz
-                        const fullPath = `${STORAGE_BASE_PATH}/${item.name}`;
-                        allImages.push({
-                            name: item.name,
-                            url: supabase.storage.from('imagenes-marketing').getPublicUrl(fullPath).data.publicUrl
-                        });
-                    } else if (!item.name.includes('.')) {
-                        // Probablemente es una carpeta, buscar imágenes dentro
-                        const folderPath = `${STORAGE_BASE_PATH}/${item.name}`;
-                        console.log("📂 Buscando en subcarpeta:", folderPath);
-
-                        const { data: subFiles } = await supabase.storage
-                            .from('imagenes-marketing')
-                            .list(folderPath, { limit: 200, sortBy: { column: 'name', order: 'desc' } });
-
-                        if (subFiles) {
-                            subFiles
-                                .filter(f => imageExtensions.some(ext => f.name.toLowerCase().endsWith(ext)))
-                                .forEach(f => {
-                                    const fullPath = `${folderPath}/${f.name}`;
-                                    allImages.push({
-                                        name: `${item.name}/${f.name}`,
-                                        url: supabase.storage.from('imagenes-marketing').getPublicUrl(fullPath).data.publicUrl
-                                    });
-                                });
-                        }
-                    }
-                }
-            } else {
-                console.log("⚠️ No se encontraron items en el directorio");
+            if (!files || files.length === 0) {
+                console.log("⚠️ No hay archivos en la carpeta");
+                setImages([]);
+                return;
             }
 
-            console.log("✅ Imágenes encontradas:", allImages.length);
+            // Filtrar solo imágenes
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg'];
+            const imageFiles = files.filter(f => {
+                const ext = f.name.toLowerCase();
+                return imageExtensions.some(e => ext.endsWith(e));
+            });
+
+            console.log("🖼️ Archivos de imagen encontrados:", imageFiles.length);
+
+            // Generar URLs públicas
+            const allImages = imageFiles.map(f => {
+                const fullPath = `${STORAGE_BASE_PATH}/${f.name}`;
+                const { data } = supabase.storage.from('imagenes-marketing').getPublicUrl(fullPath);
+                console.log("  →", f.name, ":", data.publicUrl);
+                return {
+                    name: f.name,
+                    url: data.publicUrl
+                };
+            });
+
+            console.log("✅ Total imágenes cargadas:", allImages.length);
             setImages(allImages);
-        } catch (err) {
-            console.error("Error cargando imagenes:", err);
+
+        } catch (err: any) {
+            console.error("💥 Error crítico:", err);
             setMensaje("❌ Error al conectar con Storage");
+            setImages([]);
         } finally {
             setLoadingStorage(false);
         }
