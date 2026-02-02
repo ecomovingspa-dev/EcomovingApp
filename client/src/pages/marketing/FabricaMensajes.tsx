@@ -62,8 +62,8 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
     const [subiendoImagen, setSubiendoImagen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Path base donde se guardan las imágenes de marketing
-    const STORAGE_BASE_PATH = "email_mkt";
+    // Path base donde se guardan las imágenes de marketing (vacío = raíz del bucket)
+    const STORAGE_BASE_PATH = "";
 
     useEffect(() => {
         fetchStorageImages();
@@ -73,33 +73,29 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         try {
             setLoadingStorage(true);
             const bucket = 'imagenes-marketing';
-            const folder = 'email_mkt';
 
-            console.log(`🚀 Iniciando búsqueda en bucket: "${bucket}", carpeta: "${folder}"`);
+            console.log(`🚀 Buscando imágenes en bucket: "${bucket}"`);
 
-            // Intento 1: Listar directamente en la carpeta
+            // Listar archivos en la raíz del bucket
             const { data: files, error } = await supabase.storage
                 .from(bucket)
-                .list(folder, {
+                .list('', {
                     limit: 500,
                     offset: 0,
                     sortBy: { column: 'name', order: 'asc' }
                 });
 
             if (error) {
-                console.error("❌ Error al listar carpeta:", error);
+                console.error("❌ Error al listar bucket:", error);
                 setMensaje("❌ Error: " + error.message);
-                // Si falla la carpeta, intentamos listar la raíz para ver si el bucket responde
-                const { data: rootFiles } = await supabase.storage.from(bucket).list('', { limit: 10 });
-                console.log("📂 Diagnóstico: Contenido de la raíz del bucket:", rootFiles);
                 setImages([]);
                 return;
             }
 
-            console.log("📦 Archivos encontrados en Storage:", files);
+            console.log("📦 Archivos encontrados:", files);
 
             if (!files || files.length === 0) {
-                console.warn("⚠️ La carpeta parece estar vacía o no existe.");
+                console.warn("⚠️ El bucket parece estar vacío.");
                 setImages([]);
                 return;
             }
@@ -108,22 +104,23 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
 
             const processedImages = files
                 .filter(f => {
-                    // Ignorar archivos ocultos o marcadores de carpeta
+                    // Ignorar carpetas y archivos ocultos
                     if (f.name === '.emptyFolderPlaceholder') return false;
+                    if (!f.name.includes('.')) return false; // Es carpeta
 
                     const lowerName = f.name.toLowerCase();
                     return imageExtensions.some(ext => lowerName.endsWith(ext));
                 })
                 .map(f => {
-                    const fullPath = `${folder}/${f.name}`;
-                    const { data } = supabase.storage.from(bucket).getPublicUrl(fullPath);
+                    // Imágenes en la raíz, no en subcarpeta
+                    const { data } = supabase.storage.from(bucket).getPublicUrl(f.name);
                     return {
                         name: f.name,
                         url: data.publicUrl
                     };
                 });
 
-            console.log(`✅ Se procesaron ${processedImages.length} imágenes correctamente.`);
+            console.log(`✅ Se encontraron ${processedImages.length} imágenes.`);
             setImages(processedImages);
 
         } catch (err: any) {
