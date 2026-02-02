@@ -257,26 +257,38 @@ async function ejecutarMarketing(maxEmails: number): Promise<{
     try {
         const today = new Date().toISOString().split('T')[0];
 
+        // Buscar contactos activos (case-insensitive) con próximo envío pendiente
         const { data: contacts, error: contactError } = await supabase
             .from('contactos')
             .select('*')
-            .eq('estado', 'Activo')
+            .ilike('estado', 'activo')
             .or(`proximo_envio.is.null,proximo_envio.lte.${today}`)
             .limit(maxEmails);
 
         if (contactError) throw contactError;
-        if (!contacts || contacts.length === 0) return report;
+        if (!contacts || contacts.length === 0) {
+            console.log('⚠️ Marketing: No hay contactos activos con envío pendiente');
+            return report;
+        }
+
+        console.log(`📋 Marketing: ${contacts.length} contactos para procesar`);
 
         for (const contact of contacts) {
             if (report.sent >= maxEmails) break;
             report.processed++;
 
             try {
+                // Obtener etapa de envío (usar 1 si es NULL, 0, o no existe)
+                let etapaActual = parseInt(contact.etapa_envio) || 1;
+                if (etapaActual < 1) etapaActual = 1;
+
+                console.log(`  📧 Procesando ${contact.correo} - Etapa ${etapaActual}`);
+
                 // Buscar contenido de la secuencia
                 let { data: messageData } = await supabase
                     .from('marketing')
                     .select('*')
-                    .eq('nombre_envio', contact.indice_secuencia)
+                    .eq('nombre_envio', etapaActual)
                     .eq('activo', true)
                     .maybeSingle();
 
@@ -321,14 +333,19 @@ async function ejecutarMarketing(maxEmails: number): Promise<{
                 const nextDate = new Date();
                 nextDate.setDate(nextDate.getDate() + 3);
 
+                // Calcular próxima etapa
+                const siguienteEtapa = etapaActual + 1;
+
                 await supabase
                     .from('contactos')
                     .update({
                         ultimo_envio: new Date().toISOString(),
                         proximo_envio: nextDate.toISOString(),
-                        indice_secuencia: contact.indice_secuencia + 1
+                        etapa_envio: siguienteEtapa
                     })
                     .eq('id', contact.id);
+
+                console.log(`  ✅ Enviado a ${contact.correo} - Etapa ${etapaActual} → ${siguienteEtapa}`);
 
                 report.sent++;
                 await sleep(DELAY_BETWEEN_EMAILS_MS);

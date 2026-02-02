@@ -178,7 +178,7 @@ export default function Marketing() {
                   Contacto
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Progreso
+                  Etapa de Envío
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Último Envío
@@ -201,21 +201,14 @@ export default function Marketing() {
                     </div>
                   </td>
 
-                  {/* Progreso */}
+                  {/* Etapa de Envío */}
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 dark:bg-blue-500 h-2 rounded-full transition-all"
-                            style={{
-                              width: `${calcularProgreso(contacto.etapa_envio)}%`,
-                            }}
-                          ></div>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold text-gray-700 dark:text-gray-300 min-w-[50px]">
-                        {contacto.etapa_envio || "0"}/100
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-bold text-sm">
+                        {contacto.etapa_envio || 1}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        de secuencia
                       </span>
                     </div>
                   </td>
