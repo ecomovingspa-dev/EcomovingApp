@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../../supabase";
+import { supabase } from "../../lib/supabase";
 import { Search, Mail, Calendar, ToggleRight } from "lucide-react";
 
 export default function Marketing() {

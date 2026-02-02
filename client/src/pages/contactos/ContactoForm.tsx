@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { supabase } from "../../supabase";
+import { supabase } from "../../lib/supabase";
 import type { Contacto, Cuenta } from "../../types";
 import { ArrowLeft, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";

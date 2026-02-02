@@ -1,5 +1,5 @@
-﻿import { useState, useEffect } from "react";
-import { supabase } from "../../supabase";
+import { useState, useEffect } from "react";
+import { supabase } from "../../lib/supabase";
 import {
     Plus,
     Trash2,
@@ -100,7 +100,7 @@ export default function FabricaBrochures() {
 
     const saveTemplate = async () => {
         if (!currentCategory || !templateName || brochureData.items.length === 0) {
-            alert("Por favor completa: Categor├¡a, Nombre y a├▒ade al menos una imagen.");
+            alert("Por favor completa: Categor+�a, Nombre y a+�ade al menos una imagen.");
             return;
         }
 
@@ -128,7 +128,7 @@ export default function FabricaBrochures() {
 
             if (error) throw error;
 
-            alert("Ô£ô Plantilla guardada exitosamente en el Storage.");
+            alert("ԣ� Plantilla guardada exitosamente en el Storage.");
             if (!categories.includes(currentCategory.toUpperCase())) {
                 setCategories(prev => [...prev, currentCategory.toUpperCase()]);
             }
@@ -181,7 +181,7 @@ export default function FabricaBrochures() {
                 }
             }
         } catch (err) {
-            console.error("Error cargando im├ígenes:", err);
+            console.error("Error cargando im+�genes:", err);
         } finally {
             setLoading(false);
         }
@@ -208,10 +208,10 @@ export default function FabricaBrochures() {
             setCurrentCategory(template.category || "");
             setTemplateName(template.name || "");
 
-            alert(`Ô£ô Dise├▒o "${template.name}" cargado.`);
+            alert(`ԣ� Dise+�o "${template.name}" cargado.`);
         } catch (err) {
             console.error("Error cargando plantilla:", err);
-            alert("Error al cargar el dise├▒o.");
+            alert("Error al cargar el dise+�o.");
         } finally {
             setLoadingTemplatesArea(false);
         }
@@ -289,7 +289,7 @@ export default function FabricaBrochures() {
                         onClick={() => setActiveTab("storage")}
                         className={`flex-1 py-3 text-[10px] font-bold transition-all ${activeTab === "storage" ? "text-indigo-600 border-b-2 border-indigo-600 bg-white dark:bg-gray-800" : "text-gray-400 hover:text-gray-600"}`}
                     >
-                        IM├üGENES
+                        IM+�GENES
                     </button>
                     <button
                         onClick={() => setActiveTab("templates")}
@@ -367,7 +367,7 @@ export default function FabricaBrochures() {
                     <div className="flex flex-col flex-1 overflow-hidden">
                         <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-amber-50/30 dark:bg-amber-900/10">
                             <h3 className="font-bold text-[10px] uppercase tracking-wider text-amber-600 flex items-center gap-2">
-                                <FileText className="h-4 w-4" /> Dise├▒os Guardados
+                                <FileText className="h-4 w-4" /> Dise+�os Guardados
                             </h3>
                             <p className="text-[9px] text-gray-500 mt-1 uppercase">Carga una base para trabajar</p>
                         </div>
@@ -408,7 +408,7 @@ export default function FabricaBrochures() {
                         </div>
                         <div className="min-w-0">
                             <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2 truncate">
-                                Dise├▒ador
+                                Dise+�ador
                                 <span className={`text-[9px] px-1.5 py-0.5 rounded-full uppercase tracking-tighter ${layoutMode === 'structural' ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600' : 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'}`}>
                                     {layoutMode === 'structural' ? 'Estructural' : 'Libre'}
                                 </span>
@@ -436,7 +436,7 @@ export default function FabricaBrochures() {
                                         onChange={(e) => setRows(Math.max(1, parseInt(e.target.value) || 1))}
                                         className="w-7 h-5 bg-transparent border-none text-[9px] font-bold text-center focus:ring-0 appearance-none"
                                     />
-                                    <span className="text-[9px] text-gray-400 font-bold px-0.5">├ù</span>
+                                    <span className="text-[9px] text-gray-400 font-bold px-0.5">+�</span>
                                     <input
                                         type="number" min="1" max="6" value={cols}
                                         onChange={(e) => setCols(Math.max(1, parseInt(e.target.value) || 1))}
@@ -500,7 +500,7 @@ export default function FabricaBrochures() {
                     {brochureData.items.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-4 opacity-30">
                             <Layout className="h-12 w-12" />
-                            <p className="text-sm font-medium uppercase tracking-widest">Lienzo Vac├¡o</p>
+                            <p className="text-sm font-medium uppercase tracking-widest">Lienzo Vac+�o</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../../supabase";
+import { supabase } from "../../lib/supabase";
 import * as XLSX from "xlsx";
 import type { Venta } from "../../types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

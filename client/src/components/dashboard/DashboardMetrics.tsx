@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { supabase } from "../../supabase";
+import { supabase } from "../../lib/supabase";
 import {
     BarChart,
     Bar,

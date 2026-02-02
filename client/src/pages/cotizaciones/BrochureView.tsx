@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from "react";
-import { supabase } from "../../supabase";
+import { supabase } from "../../lib/supabase";
 import type { Cotizacion } from "../../types";
 import { Button } from "@/components/ui/button";
 import { Download, Share2, ArrowLeft, MousePointer2, LayoutGrid, Layers, ChevronUp, ChevronDown, Move, ZoomIn, Copy, Type, Loader2 } from "lucide-react";

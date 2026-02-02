@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "../../supabase";
+import { supabase } from "../../lib/supabase";
 import type { Cotizacion, Item, SubCosto, Cuenta, Contacto } from "../../types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

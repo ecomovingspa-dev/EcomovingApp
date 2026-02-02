@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { supabase } from "../../supabase";
+import { supabase } from "../../lib/supabase";
 import type { Cuenta, Contacto } from "../../types";
 
 export default function CotizacionSelector() {
