@@ -38,6 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Types
 interface BancoMovimiento {
@@ -213,6 +214,12 @@ export default function ConciliacionPage() {
     const [agentText, setAgentText] = useState("");
     const [agentResponse, setAgentResponse] = useState("");
     const [agentProcessing, setAgentProcessing] = useState(false);
+
+    // --- MULTI-SELECTION STATE ---
+    const [multipleSelectedDocs, setMultipleSelectedDocs] = useState<Coincidencia[]>([]);
+    const [allUnreconciledDocs, setAllUnreconciledDocs] = useState<Coincidencia[]>([]);
+    const [loadingAllDocs, setLoadingAllDocs] = useState(false);
+    const [multiSearchQuery, setMultiSearchQuery] = useState("");
 
     const speak = (text: string) => {
         const SpeechSynthesis = (window as any).speechSynthesis;
@@ -758,6 +765,8 @@ Ejemplos:
     const handleConciliarClick = (mov: BancoMovimiento) => {
         setSelectedMovimiento(mov);
         setConciliarOpen(true);
+        setMatchTab("sugerencias");
+        setMultipleSelectedDocs([]);
         buscarSugerencias(mov);
     };
 
@@ -1105,6 +1114,140 @@ Ejemplos:
 
         setCoincidencias(sortedCandidates);
         setSearchingMatch(false);
+
+        // Si no hay coincidencias automáticas, cargamos todos los documentos del RUT si existe
+        if (sortedCandidates.length === 0 && (rutBuscado || rutSinDV)) {
+            cargarTodosLosDocumentosPendientes(mov);
+        }
+    };
+
+    const cargarTodosLosDocumentosPendientes = async (mov: BancoMovimiento) => {
+        setLoadingAllDocs(true);
+        try {
+            const esAbono = mov.abonos > 0;
+            const tabla = esAbono ? 'ventas' : 'compras';
+            const rutBuscado = cleanRut(mov.bci_rut);
+            const rutSinDV = rutBuscado?.split('-')[0];
+
+            let query = supabase.from(tabla).select("*");
+
+            if (esAbono) {
+                query = query.neq("estado_deuda", "Pagada");
+                if (rutSinDV) {
+                    query = query.or(`rut_recep.eq.${rutBuscado},rut_recep.ilike.%${rutSinDV}%`);
+                }
+            } else {
+                query = query.neq("estado_pago", "Pagada");
+                if (rutSinDV) {
+                    query = query.or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`);
+                }
+            }
+
+            const orderField = esAbono ? 'fch_emis' : 'fecha_emision';
+            const { data, error } = await query.order(orderField, { ascending: false }).limit(50);
+
+            if (error) throw error;
+
+            const docs: Coincidencia[] = (data || []).map(d => ({
+                id: d.id,
+                tipo: esAbono ? 'venta' : 'compra',
+                entidad: d.rzn_soc_recep || d.razon_social || "Desconocido",
+                fecha: d.fch_emis || d.fecha_emision,
+                monto: d.mnt_total || d.monto_total,
+                folio: d.folio,
+                estado: d.estado_deuda || d.estado_pago || "Pendiente",
+                documento_relacionado: d
+            }));
+
+            setAllUnreconciledDocs(docs);
+        } catch (error) {
+            console.error("Error loading all docs:", error);
+        } finally {
+            setLoadingAllDocs(false);
+        }
+    };
+
+    const toggleDocSelection = (doc: Coincidencia) => {
+        setMultipleSelectedDocs(prev => {
+            const exists = prev.find(d => d.id === doc.id && d.tipo === doc.tipo);
+            if (exists) {
+                return prev.filter(d => !(d.id === doc.id && d.tipo === doc.tipo));
+            } else {
+                return [...prev, doc];
+            }
+        });
+    };
+
+    const totalSelectedAmount = useMemo(() => {
+        return multipleSelectedDocs.reduce((sum, doc) => sum + doc.monto, 0);
+    }, [multipleSelectedDocs]);
+
+    const ejecutarConciliacionMultiple = async () => {
+        if (!selectedMovimiento || multipleSelectedDocs.length === 0) return;
+
+        const montoMovimiento = Math.abs(selectedMovimiento.cargos || selectedMovimiento.abonos || 0);
+        const diff = Math.abs(totalSelectedAmount - montoMovimiento);
+
+        if (diff > 5) { // Tolerancia de 5 pesos
+            if (!confirm(`El monto total seleccionado (${fmtMoney(totalSelectedAmount)}) no coincide con el movimiento (${fmtMoney(montoMovimiento)}). ¿Deseas continuar de todas formas?`)) {
+                return;
+            }
+        }
+
+        if (!confirm(`¿Estás seguro de conciliar este movimiento con los ${multipleSelectedDocs.length} documentos seleccionados?`)) return;
+
+        setLoading(true);
+        try {
+            // 1. Marcar movimiento como conciliado (tipo 'multiple')
+            const { error: errMov } = await supabase
+                .from("banco_movimientos")
+                .update({
+                    estado: "conciliado",
+                    tipo_conciliacion: "multiple",
+                    conciliado_id: multipleSelectedDocs[0].id // Guardamos el primero como referencia
+                })
+                .eq("id", selectedMovimiento.id);
+
+            if (errMov) throw errMov;
+
+            // 2. Actualizar cada documento
+            for (const doc of multipleSelectedDocs) {
+                const docData = doc.documento_relacionado;
+                if (doc.tipo === 'venta') {
+                    await supabase.from("ventas").update({
+                        estado_deuda: "Pagada",
+                        saldo: 0,
+                        fecha_abono: new Date().toISOString().split("T")[0],
+                        monto_abono: doc.monto
+                    }).eq("id", doc.id);
+
+                    await supabase.from("abonos").insert({
+                        venta_id: doc.id,
+                        monto_abono: doc.monto,
+                        fecha_abono: new Date().toISOString().split("T")[0],
+                        tipo_abono: "Transferencia",
+                        detalle_abono: `Conciliación Múltiple - Movimiento: ${selectedMovimiento.descripcion}`
+                    });
+                } else {
+                    await supabase.from("compras").update({
+                        estado_pago: "Pagada",
+                        saldo: 0
+                    }).eq("id", doc.id);
+                }
+            }
+
+            setConciliarOpen(false);
+            setMovimientos(prev => prev.map(m =>
+                m.id === selectedMovimiento.id
+                    ? { ...m, estado: "conciliado", tipo_conciliacion: "multiple", conciliado_id: multipleSelectedDocs[0].id }
+                    : m
+            ));
+            alert("¡Conciliación múltiple exitosa!");
+        } catch (error: any) {
+            alert("Error: " + error.message);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const ejecutarConciliacion = async (item: Coincidencia) => {
@@ -1196,9 +1339,10 @@ Ejemplos:
 
             // Si tiene documento relacionado, restaurar su saldo
             if (mov.conciliado_id && mov.tipo_conciliacion !== 'manual') {
-                const tabla = mov.tipo_conciliacion === 'venta' ? 'ventas' : 'compras';
-                const campoEstado = mov.tipo_conciliacion === 'venta' ? 'estado_deuda' : 'estado_pago';
-                const campoMonto = mov.tipo_conciliacion === 'venta' ? 'mnt_total' : 'monto_total';
+                const esMultiple = mov.tipo_conciliacion === 'multiple';
+                const tabla = esMultiple ? 'ventas' : (mov.tipo_conciliacion === 'venta' ? 'ventas' : 'compras');
+                const campoEstado = (esMultiple || mov.tipo_conciliacion === 'venta') ? 'estado_deuda' : 'estado_pago';
+                const campoMonto = (esMultiple || mov.tipo_conciliacion === 'venta') ? 'mnt_total' : 'monto_total';
 
                 // Obtener el documento actual
                 const { data: doc } = await supabase.from(tabla).select('*').eq('id', mov.conciliado_id).single();
@@ -2055,10 +2199,18 @@ Ejemplos:
                             </div>
 
                             {/* Tabs para tipo de conciliación */}
-                            <Tabs value={matchTab} onValueChange={setMatchTab} className="w-full">
-                                <TabsList className="grid w-full grid-cols-2 mb-4">
+                            <Tabs value={matchTab} onValueChange={(val) => {
+                                setMatchTab(val);
+                                if (val === "multiple" && allUnreconciledDocs.length === 0) {
+                                    cargarTodosLosDocumentosPendientes(selectedMovimiento);
+                                }
+                            }} className="w-full">
+                                <TabsList className="grid w-full grid-cols-3 mb-4">
                                     <TabsTrigger value="sugerencias" className="text-sm">
-                                        📄 Buscar Documento
+                                        📄 Sugerencias
+                                    </TabsTrigger>
+                                    <TabsTrigger value="multiple" className="text-sm">
+                                        ✅ Selección Múltiple
                                     </TabsTrigger>
                                     <TabsTrigger value="manual" className="text-sm">
                                         ✏️ Conciliar Manual
@@ -2132,6 +2284,91 @@ Ejemplos:
                                             </p>
                                         </div>
                                     )}
+                                </TabsContent>
+
+                                {/* Tab: Selección Múltiple (NUEVO) */}
+                                <TabsContent value="multiple" className="space-y-4">
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                                            <div>
+                                                <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase">Total Seleccionado</p>
+                                                <p className={`text-xl font-bold ${Math.abs(totalSelectedAmount - Math.abs(selectedMovimiento.cargos || selectedMovimiento.abonos)) < 5 ? 'text-green-600' : 'text-indigo-600'}`}>
+                                                    {fmtMoney(totalSelectedAmount)}
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className="text-xs text-indigo-600 dark:text-indigo-400">Seleccionados: {multipleSelectedDocs.length}</p>
+                                                <Button
+                                                    size="sm"
+                                                    disabled={multipleSelectedDocs.length === 0 || loading}
+                                                    onClick={ejecutarConciliacionMultiple}
+                                                    className="mt-1"
+                                                >
+                                                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                                                    Conciliar Selección
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative">
+                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Buscar por folio o entidad..."
+                                                className="w-full pl-9 pr-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+                                                value={multiSearchQuery}
+                                                onChange={(e) => setMultiSearchQuery(e.target.value)}
+                                            />
+                                        </div>
+
+                                        <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                            {loadingAllDocs ? (
+                                                <div className="text-center py-10">
+                                                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500" />
+                                                    <p className="text-sm text-gray-500 mt-2">Cargando documentos pendientes...</p>
+                                                </div>
+                                            ) : allUnreconciledDocs.length === 0 ? (
+                                                <div className="text-center py-10 text-gray-500 text-sm">
+                                                    No se encontraron otros documentos pendientes para este RUT.
+                                                    <Button variant="link" size="sm" onClick={() => cargarTodosLosDocumentosPendientes(selectedMovimiento)}>
+                                                        Recargar
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                allUnreconciledDocs
+                                                    .filter(d =>
+                                                        d.entidad.toLowerCase().includes(multiSearchQuery.toLowerCase()) ||
+                                                        String(d.folio).includes(multiSearchQuery)
+                                                    )
+                                                    .map(doc => {
+                                                        const isSelected = multipleSelectedDocs.some(d => d.id === doc.id && d.tipo === doc.tipo);
+                                                        return (
+                                                            <div
+                                                                key={`${doc.tipo}-${doc.id}`}
+                                                                className={`flex items-center gap-3 p-3 border rounded-md transition-colors cursor-pointer ${isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-100 dark:border-gray-800 hover:bg-gray-50'}`}
+                                                                onClick={() => toggleDocSelection(doc)}
+                                                            >
+                                                                <Checkbox
+                                                                    checked={isSelected}
+                                                                    onCheckedChange={() => toggleDocSelection(doc)}
+                                                                />
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-sm">Folio {doc.folio}</span>
+                                                                        <Badge variant="outline" className="text-[10px] uppercase py-0">{doc.tipo}</Badge>
+                                                                    </div>
+                                                                    <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{doc.entidad}</p>
+                                                                    <p className="text-[10px] text-gray-400">{doc.fecha}</p>
+                                                                </div>
+                                                                <div className="font-bold text-sm">
+                                                                    {fmtMoney(doc.monto)}
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })
+                                            )}
+                                        </div>
+                                    </div>
                                 </TabsContent>
 
                                 {/* Tab: Conciliar Manual (NUEVO) */}
