@@ -431,7 +431,7 @@ export default function CuentasPage() {
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">
                         <Link
-                          to={`/cuentas/editar/${cuenta.id}`}
+                          to={`/cuentas/${cuenta.id}`}
                           className="text-blue-600 hover:text-blue-900 transition-colors"
                           title="Editar"
                         >
