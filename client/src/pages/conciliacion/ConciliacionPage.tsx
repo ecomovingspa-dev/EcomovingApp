@@ -2345,7 +2345,10 @@ Ejemplos:
                                                         return (
                                                             <div
                                                                 key={`${doc.tipo}-${doc.id}`}
-                                                                className={`flex items-center gap-3 p-3 border rounded-md transition-colors cursor-pointer ${isSelected ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-gray-100 dark:border-gray-800 hover:bg-gray-50'}`}
+                                                                className={`flex items-center gap-3 p-3 border rounded-md transition-colors cursor-pointer ${isSelected
+                                                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/40'
+                                                                        : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                                                    }`}
                                                                 onClick={() => toggleDocSelection(doc)}
                                                             >
                                                                 <Checkbox
