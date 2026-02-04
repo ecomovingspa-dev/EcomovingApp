@@ -84,6 +84,7 @@ interface Coincidencia {
     documento_relacionado?: any;
     score?: number; // 0-100 confidence score
     matchReason?: string; // Description of why this matched
+    conciliado?: boolean;
 }
 
 // ============================================================
@@ -1173,7 +1174,7 @@ Ejemplos:
 
     // Helper para procesar documentos de ventas/compras a Coincidencia
     const processDocs = (data: any[], esAbono: boolean): Coincidencia[] => {
-        return data.map(d => ({
+        return data.map((d: any) => ({
             id: d.id,
             tipo: esAbono ? 'venta' : 'compra',
             entidad: d.rzn_soc_recep || d.razon_social || "Desconocido",
@@ -1181,6 +1182,7 @@ Ejemplos:
             monto: d.mnt_total || d.monto_total,
             folio: d.folio,
             estado: d.estado_deuda || d.estado_pago || "Pendiente",
+            conciliado: d.conciliado || false,
             documento_relacionado: d
         }));
     };
@@ -1237,6 +1239,7 @@ Ejemplos:
                     await supabase.from("ventas").update({
                         estado_deuda: "Pagada",
                         saldo: 0,
+                        conciliado: true,
                         fecha_abono: new Date().toISOString().split("T")[0],
                         monto_abono: doc.monto
                     }).eq("id", doc.id);
@@ -1251,7 +1254,8 @@ Ejemplos:
                 } else {
                     await supabase.from("compras").update({
                         estado_pago: "Pagada",
-                        saldo: 0
+                        saldo: 0,
+                        conciliado: true
                     }).eq("id", doc.id);
                 }
             }
@@ -1382,7 +1386,8 @@ Ejemplos:
 
                     await supabase.from(tabla).update({
                         [campoEstado]: nuevoEstadoDoc,
-                        saldo: Math.min(nuevoSaldo, montoTotal)
+                        saldo: Math.min(nuevoSaldo, montoTotal),
+                        conciliado: false
                     }).eq('id', mov.conciliado_id);
                 }
             }
@@ -1699,6 +1704,7 @@ Ejemplos:
                     await supabase.from("ventas").update({
                         estado_deuda: "Pagada",
                         saldo: 0,
+                        conciliado: true,
                         fecha_abono: new Date().toISOString().split("T")[0],
                         monto_abono: item.monto
                     }).eq("id", item.id);
@@ -1713,7 +1719,8 @@ Ejemplos:
                 } else {
                     await supabase.from("compras").update({
                         estado_pago: "Pagada",
-                        saldo: 0
+                        saldo: 0,
+                        conciliado: true
                     }).eq("id", item.id);
                 }
             }
@@ -1766,6 +1773,7 @@ Ejemplos:
                             await supabase.from("ventas").update({
                                 estado_deuda: "Pagada",
                                 saldo: 0,
+                                conciliado: true,
                                 fecha_abono: new Date().toISOString().split("T")[0],
                                 monto_abono: match.monto
                             }).eq("id", match.id);
@@ -1780,7 +1788,8 @@ Ejemplos:
                         } else {
                             await supabase.from("compras").update({
                                 estado_pago: "Pagada",
-                                saldo: 0
+                                saldo: 0,
+                                conciliado: true
                             }).eq("id", match.id);
                         }
                     }
@@ -2264,6 +2273,15 @@ Ejemplos:
                                                                 >
                                                                     {item.estado}
                                                                 </Badge>
+                                                                {item.conciliado ? (
+                                                                    <Badge variant="default" className="bg-emerald-500 text-white border-none text-[9px] px-1.5 py-0">
+                                                                        <Check className="w-2 h-2 mr-1" /> CONCILIADA
+                                                                    </Badge>
+                                                                ) : (
+                                                                    <Badge variant="destructive" className="bg-rose-500 text-white border-none text-[9px] px-1.5 py-0">
+                                                                        SIN BANCARIZAR
+                                                                    </Badge>
+                                                                )}
                                                                 {item.score !== undefined && (
                                                                     <Badge
                                                                         className={`text-[9px] px-1.5 py-0.5 ${item.score >= 70
@@ -2380,6 +2398,15 @@ Ejemplos:
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="font-bold text-sm">Folio {doc.folio}</span>
                                                                         <Badge variant="outline" className="text-[10px] uppercase py-0">{doc.tipo}</Badge>
+                                                                        {doc.conciliado ? (
+                                                                            <Badge variant="default" className="bg-emerald-500 text-white border-none text-[9px] px-1.5 py-0">
+                                                                                <Check className="w-2 h-2 mr-1" /> CONCILIADA
+                                                                            </Badge>
+                                                                        ) : (
+                                                                            <Badge variant="destructive" className="bg-rose-500 text-white border-none text-[9px] px-1.5 py-0">
+                                                                                SIN BANCARIZAR
+                                                                            </Badge>
+                                                                        )}
                                                                     </div>
                                                                     <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{doc.entidad}</p>
                                                                     <p className="text-[10px] text-gray-400">{doc.fecha}</p>
