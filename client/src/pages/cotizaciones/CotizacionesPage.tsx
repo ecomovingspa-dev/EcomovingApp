@@ -345,3 +345,4 @@ export default function CotizacionesPage() {
     </div>
   );
 }
+// Updated view management v1.1
