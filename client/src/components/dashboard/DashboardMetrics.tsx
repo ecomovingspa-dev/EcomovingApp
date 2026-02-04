@@ -222,14 +222,14 @@ export default function DashboardMetrics() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex flex-col gap-1">
                     <h2 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white flex items-center gap-3">
-                        Architectural Finance Center
+                        Centro de Arquitectura Financiera
                         <div className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] uppercase px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800 tracking-wider font-bold">
-                            Live Performance
+                            Rendimiento en Vivo
                         </div>
                     </h2>
                     <p className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        Intelligence report for the last 12 months (Cash & Accrual)
+                        Reporte de inteligencia - últimos 12 meses (Caja y Devengado)
                     </p>
                 </div>
             </div>
@@ -239,7 +239,7 @@ export default function DashboardMetrics() {
                 <Card className="shadow-lg border-none bg-white dark:bg-gray-800 overflow-hidden group hover:shadow-xl transition-all duration-300">
                     <div className="h-1 w-full bg-emerald-500"></div>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Net Revenue</CardTitle>
+                        <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Ingresos Netos</CardTitle>
                         <div className="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-300">
                             <ArrowUpRight className="h-4 w-4 text-emerald-500 group-hover:text-white" />
                         </div>
@@ -250,7 +250,7 @@ export default function DashboardMetrics() {
                             <div className={`flex items-center text-xs font-bold ${kpi.monthlyGrowth >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {kpi.monthlyGrowth >= 0 ? '+' : ''}{kpi.monthlyGrowth.toFixed(1)}%
                             </div>
-                            <span className="text-[10px] text-gray-400">vs last period</span>
+                            <span className="text-[10px] text-gray-400">vs periodo anterior</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -258,21 +258,21 @@ export default function DashboardMetrics() {
                 <Card className="shadow-lg border-none bg-white dark:bg-gray-800 overflow-hidden group hover:shadow-xl transition-all duration-300">
                     <div className="h-1 w-full bg-rose-500"></div>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Op. Expenses</CardTitle>
+                        <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Gastos Op.</CardTitle>
                         <div className="p-2 bg-rose-50 dark:bg-rose-900/20 rounded-lg group-hover:bg-rose-500 group-hover:text-white transition-colors duration-300">
                             <ShoppingBag className="h-4 w-4 text-rose-500 group-hover:text-white" />
                         </div>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(kpi.totalExpenses)}</div>
-                        <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tighter">Based on Compras Book</p>
+                        <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold tracking-tighter">Basado en Libro de Compras</p>
                     </CardContent>
                 </Card>
 
                 <Card className="shadow-lg border-none bg-white dark:bg-gray-800 overflow-hidden group hover:shadow-xl transition-all duration-300">
                     <div className="h-1 w-full bg-indigo-500"></div>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Gross Profit</CardTitle>
+                        <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Utilidad Bruta</CardTitle>
                         <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg group-hover:bg-indigo-500 group-hover:text-white transition-colors duration-300">
                             <TrendingUp className="h-4 w-4 text-indigo-500 group-hover:text-white" />
                         </div>
@@ -280,7 +280,7 @@ export default function DashboardMetrics() {
                     <CardContent>
                         <div className="text-2xl font-black text-gray-900 dark:text-white">{formatCurrency(kpi.totalProfit)}</div>
                         <div className="text-xs font-bold text-indigo-500 mt-1">
-                            Margin: {kpi.totalSales > 0 ? ((kpi.totalProfit / kpi.totalSales) * 100).toFixed(1) : 0}%
+                            Margen: {kpi.totalSales > 0 ? ((kpi.totalProfit / kpi.totalSales) * 100).toFixed(1) : 0}%
                         </div>
                     </CardContent>
                 </Card>
@@ -288,7 +288,7 @@ export default function DashboardMetrics() {
                 <Card className="shadow-lg border-none bg-white dark:bg-gray-800 overflow-hidden group hover:shadow-xl transition-all duration-300">
                     <div className="h-1 w-full bg-amber-500"></div>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Collection Risk</CardTitle>
+                        <CardTitle className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Riesgo Cobranza</CardTitle>
                         <div className="p-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg group-hover:bg-amber-500 group-hover:text-white transition-colors duration-300">
                             <AlertCircle className="h-4 w-4 text-amber-500 group-hover:text-white" />
                         </div>
@@ -297,7 +297,7 @@ export default function DashboardMetrics() {
                         <div className="text-2xl font-black text-amber-600 dark:text-amber-500">{formatCurrency(kpi.pendingCollection)}</div>
                         <div className="flex items-center mt-1 text-xs text-rose-500 font-bold gap-1">
                             <span>{formatCurrency(kpi.overdueCollection)}</span>
-                            <span className="text-[10px] uppercase opacity-70">Overdue</span>
+                            <span className="text-[10px] uppercase opacity-70">Vencido</span>
                         </div>
                     </CardContent>
                 </Card>
@@ -309,12 +309,12 @@ export default function DashboardMetrics() {
                 <Card className="col-span-4 shadow-xl border-none bg-white dark:bg-gray-800 p-2">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <div>
-                            <CardTitle className="text-lg font-bold">Monthly Flux: Sales vs Expenses</CardTitle>
-                            <p className="text-xs text-gray-400">Accrual basis comparison over time</p>
+                            <CardTitle className="text-lg font-bold">Flujo Mensual: Ventas vs Gastos</CardTitle>
+                            <p className="text-xs text-gray-400">Comparativa de base devengada en el tiempo</p>
                         </div>
                         <div className="flex items-center gap-4 text-xs font-bold uppercase tracking-tighter">
-                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> Sales</div>
-                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-rose-400"></div> Expenses</div>
+                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div> Ventas</div>
+                            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-rose-400"></div> Gastos</div>
                         </div>
                     </CardHeader>
                     <CardContent>
@@ -351,16 +351,16 @@ export default function DashboardMetrics() {
                                                         <p className="font-black text-gray-900 dark:text-white mb-2">{payload[0].payload.fullName}</p>
                                                         <div className="space-y-1.5">
                                                             <div className="flex items-center justify-between gap-8">
-                                                                <span className="text-[10px] uppercase font-bold text-emerald-600">Revenue</span>
+                                                                <span className="text-[10px] uppercase font-bold text-emerald-600">Ingresos</span>
                                                                 <span className="font-bold text-gray-900 dark:text-gray-100">{formatCurrency(payload[0].value as number)}</span>
                                                             </div>
                                                             <div className="flex items-center justify-between gap-8">
-                                                                <span className="text-[10px] uppercase font-bold text-rose-500">Expenses</span>
+                                                                <span className="text-[10px] uppercase font-bold text-rose-500">Gastos</span>
                                                                 <span className="font-bold text-gray-900 dark:text-gray-100">{formatCurrency(payload[1].value as number)}</span>
                                                             </div>
                                                             <div className="h-px bg-gray-100 dark:bg-gray-800 my-1"></div>
                                                             <div className="flex items-center justify-between gap-8">
-                                                                <span className="text-[10px] uppercase font-bold text-indigo-500">Delta</span>
+                                                                <span className="text-[10px] uppercase font-bold text-indigo-500">Diferencia</span>
                                                                 <span className="font-black text-indigo-600">
                                                                     {formatCurrency((payload[0].value as number) - (payload[1].value as number))}
                                                                 </span>
@@ -375,7 +375,7 @@ export default function DashboardMetrics() {
                                     <Area type="monotone" dataKey="sales" stroke="#10b981" fillOpacity={1} fill="url(#colorSales)" strokeWidth={0} />
                                     <Bar dataKey="sales" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={30} />
                                     <Bar dataKey="expenses" stackId="b" fill="#f43f5e" fillOpacity={0.6} radius={[4, 4, 0, 0]} maxBarSize={30} />
-                                    <Line type="monotone" dataKey="trend" name="Market Trend" stroke="#6366f1" strokeWidth={3} dot={false} strokeDasharray="5 5" />
+                                    <Line type="monotone" dataKey="trend" name="Tendencia Mercado" stroke="#6366f1" strokeWidth={3} dot={false} strokeDasharray="5 5" />
                                 </ComposedChart>
                             </ResponsiveContainer>
                         </div>
@@ -388,19 +388,19 @@ export default function DashboardMetrics() {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
                             <Receipt className="h-5 w-5" />
-                            Financial Synthesis
+                            Síntesis Financiera
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-8 relative z-10">
                         <div className="bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-md">
-                            <p className="text-xs uppercase font-bold tracking-widest opacity-80 mb-1">Burn Rate Factor</p>
+                            <p className="text-xs uppercase font-bold tracking-widest opacity-80 mb-1">Factor de Gasto Operativo</p>
                             <div className="flex items-end justify-between">
                                 <span className="text-3xl font-black">
                                     {(kpi.totalSales > 0 ? (kpi.totalExpenses / kpi.totalSales) * 100 : 0).toFixed(1)}%
                                 </span>
                                 <div className="text-right">
-                                    <p className="text-[10px] uppercase font-medium opacity-70">Efficiency Score</p>
-                                    <p className="text-xs font-bold text-emerald-300">V. Highly Optimized</p>
+                                    <p className="text-[10px] uppercase font-medium opacity-70">Puntaje Eficiencia</p>
+                                    <p className="text-xs font-bold text-emerald-300">Muy Optimizado</p>
                                 </div>
                             </div>
                         </div>
@@ -408,7 +408,7 @@ export default function DashboardMetrics() {
                         <div className="space-y-4 pt-2">
                             <div className="flex justify-between items-center group">
                                 <div className="space-y-0.5">
-                                    <p className="text-xs font-medium opacity-80">Collection Liquidity</p>
+                                    <p className="text-xs font-medium opacity-80">Liquidez de Cobranza</p>
                                     <p className="text-xl font-black">
                                         {Math.max(0, 100 - (kpi.pendingCollection / (kpi.totalSales || 1)) * 100).toFixed(0)}%
                                     </p>
@@ -422,7 +422,7 @@ export default function DashboardMetrics() {
 
                             <div className="flex justify-between items-center group">
                                 <div className="space-y-0.5">
-                                    <p className="text-xs font-medium opacity-80">Net Cash Flow Profile</p>
+                                    <p className="text-xs font-medium opacity-80">Perfil Flujo Caja Neto</p>
                                     <p className="text-xl font-black">{formatCurrency(kpi.totalProfit)}</p>
                                 </div>
                                 <div className="bg-white/20 p-2 rounded-xl">
@@ -433,7 +433,7 @@ export default function DashboardMetrics() {
 
                         <div className="pt-6">
                             <Button className="w-full bg-white text-indigo-600 font-bold hover:bg-indigo-50 transition-all rounded-xl py-6 group">
-                                View Full Audit Log
+                                Ver Log de Auditoría Completo
                                 <ArrowUpRight className="ml-2 h-4 w-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                             </Button>
                         </div>
