@@ -1186,9 +1186,10 @@ Ejemplos:
 
     const toggleDocSelection = (doc: Coincidencia) => {
         setMultipleSelectedDocs(prev => {
-            const exists = prev.find(d => d.id === doc.id && d.tipo === doc.tipo);
+            // Usamos == para permitir comparación de string vs number si fuera necesario
+            const exists = prev.find(d => String(d.id) === String(doc.id) && d.tipo === doc.tipo);
             if (exists) {
-                return prev.filter(d => !(d.id === doc.id && d.tipo === doc.tipo));
+                return prev.filter(d => !(String(d.id) === String(doc.id) && d.tipo === doc.tipo));
             } else {
                 return [...prev, doc];
             }
@@ -2370,7 +2371,8 @@ Ejemplos:
                                                             >
                                                                 <Checkbox
                                                                     checked={isSelected}
-                                                                    onCheckedChange={() => toggleDocSelection(doc)}
+                                                                    // No necesitamos handler aquí porque el padre div ya tiene onClick
+                                                                    onCheckedChange={() => { }}
                                                                 />
                                                                 <div className="flex-1">
                                                                     <div className="flex items-center gap-2">
