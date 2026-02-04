@@ -172,13 +172,27 @@ const TimelineEstado = ({
   );
 };
 
-export default function CotizacionForm() {
+interface CotizacionFormProps {
+  id?: string;
+  cuentaId?: string;
+  contactoId?: string;
+  onClose?: () => void;
+  onSave?: () => void;
+}
+
+export default function CotizacionForm({
+  id: propId,
+  cuentaId: propCuentaId,
+  contactoId: propContactoId,
+  onClose,
+  onSave,
+}: CotizacionFormProps) {
   const navigate = useNavigate();
-  const {
-    id,
-    cuentaId: paramCuentaId,
-    contactoId: paramContactoId,
-  } = useParams();
+  const params = useParams();
+
+  const id = propId || params.id;
+  const paramCuentaId = propCuentaId || params.cuentaId;
+  const paramContactoId = propContactoId || params.contactoId;
   const esEdicion = !!id;
   const [guardando, setGuardando] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -974,7 +988,15 @@ export default function CotizacionForm() {
         setMensaje("✅ Cotización creada");
       }
 
-      setTimeout(() => navigate("/cotizaciones"), 1500);
+      if (onSave) onSave();
+
+      setTimeout(() => {
+        if (onClose) {
+          onClose();
+        } else {
+          navigate("/cotizaciones");
+        }
+      }, 1500);
     } catch (error: any) {
       console.error("Error:", error);
       setMensaje("❌ Error: " + error.message);
@@ -985,8 +1007,8 @@ export default function CotizacionForm() {
 
   const getTextoBoton = () => {
     if (guardando) return "Guardando...";
-    if (cotizacion.estado_cotizacion === "borrador") return "Enviar Cotización";
-    return "Guardar Cambios";
+    if (cotizacion.estado_cotizacion === "borrador") return "Guardar y Enviar";
+    return "Guardar y Volver al Listado";
   };
 
   const getIconoBoton = () => {
@@ -1051,7 +1073,7 @@ export default function CotizacionForm() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate("/cotizaciones")}
+                onClick={() => (onClose ? onClose() : navigate("/cotizaciones"))}
                 className="hover:bg-slate-100 dark:hover:bg-gray-700 rounded-full"
               >
                 <ArrowLeft className="h-5 w-5 text-slate-600 dark:text-gray-300" />
@@ -1141,10 +1163,10 @@ export default function CotizacionForm() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate("/cotizaciones")}
+                  onClick={() => (onClose ? onClose() : navigate("/cotizaciones"))}
                   className="text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200"
                 >
-                  Cancelar
+                  Regresar
                 </Button>
                 <Button
                   onClick={handleSubmit}

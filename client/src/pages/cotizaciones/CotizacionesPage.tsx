@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, FileText, Search } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, Search, X, ChevronLeft } from "lucide-react";
+import CotizacionForm from "./CotizacionForm";
 
 interface CotizacionConCuenta {
   id: number;
@@ -24,14 +25,28 @@ interface CotizacionConCuenta {
 
 export default function CotizacionesPage() {
   const navigate = useNavigate();
+  const { id: routeId } = useParams();
+  const [searchParams] = useSearchParams();
+
   const [cotizaciones, setCotizaciones] = useState<CotizacionConCuenta[]>([]);
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
   const [mensaje, setMensaje] = useState("");
 
+  // State for the integrated form
+  const [viewMode, setViewMode] = useState<"list" | "form">("list");
+  const [selectedId, setSelectedId] = useState<string | undefined>(routeId);
+
   useEffect(() => {
     cargarCotizaciones();
   }, []);
+
+  useEffect(() => {
+    if (routeId) {
+      setSelectedId(routeId);
+      setViewMode("form");
+    }
+  }, [routeId]);
 
   const cargarCotizaciones = async () => {
     setCargando(true);
@@ -103,16 +118,6 @@ export default function CotizacionesPage() {
     );
   }, [cotizaciones, busqueda]);
 
-  const formatearNumero = (valor?: number) => {
-    if (valor == null) return "-";
-    return new Intl.NumberFormat("es-CL").format(valor);
-  };
-
-  const formatearPorcentaje = (valor?: number) => {
-    if (valor == null) return "-";
-    return `${valor}%`;
-  };
-
   const stats = useMemo(() => {
     const defaultStats = {
       borrador: { total: 0, count: 0, label: "Borradores", color: "text-gray-500", icon: <FileText className="h-4 w-4" /> },
@@ -152,6 +157,39 @@ export default function CotizacionesPage() {
     }
   };
 
+  const handleEdit = (id: number) => {
+    setSelectedId(String(id));
+    setViewMode("form");
+    navigate(`/cotizaciones/${id}`, { replace: true });
+  };
+
+  const handleNueva = () => {
+    setSelectedId(undefined);
+    setViewMode("form");
+    navigate("/cotizaciones/nueva", { replace: true });
+  };
+
+  const handleCerrarForm = () => {
+    setViewMode("list");
+    setSelectedId(undefined);
+    navigate("/cotizaciones", { replace: true });
+    cargarCotizaciones();
+  };
+
+  if (viewMode === "form") {
+    return (
+      <div className="fixed inset-0 z-50 bg-white dark:bg-gray-900 overflow-auto animate-in fade-in duration-300">
+        <CotizacionForm
+          id={selectedId}
+          cuentaId={searchParams.get("cuentaId") || undefined}
+          contactoId={searchParams.get("contactoId") || undefined}
+          onClose={handleCerrarForm}
+          onSave={cargarCotizaciones}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -165,7 +203,7 @@ export default function CotizacionesPage() {
           </p>
         </div>
         <Button
-          onClick={() => navigate("/cotizaciones/nueva")}
+          onClick={handleNueva}
           className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white shadow-md"
           data-testid="button-nueva-cotizacion"
         >
@@ -173,7 +211,6 @@ export default function CotizacionesPage() {
         </Button>
       </div>
 
-      {/* Panel de Resumen Ejectuivo */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {Object.entries(stats).map(([key, value]) => (
           <div key={key} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow group">
@@ -185,7 +222,7 @@ export default function CotizacionesPage() {
             </div>
             <div className="flex flex-col">
               <span className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-none">
-                ${formatearNumero(value.total)}
+                ${new Intl.NumberFormat("es-CL").format(value.total)}
               </span>
               <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium mt-1">
                 {value.count} documentos
@@ -234,44 +271,21 @@ export default function CotizacionesPage() {
             <table className="w-full">
               <thead className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                 <tr>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    N°
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Cliente
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Neto
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    IVA
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Total
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    MG
-                  </th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Ganancia
-                  </th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Vendedor
-                  </th>
-                  <th className="px-4 py-3 text-center text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Estado
-                  </th>
-                  <th className="px-4 py-3 text-center text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Acc.
-                  </th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">N°</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Neto</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">IVA</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">MG</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ganancia</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vendedor</th>
+                  <th className="px-4 py-3 text-center text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
+                  <th className="px-4 py-3 text-center text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acc.</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {cotizacionesFiltradas.map((cot) => (
-                  <tr
-                    key={cot.id}
-                    className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors"
-                  >
+                  <tr key={cot.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
                     <td className="px-4 py-4 text-sm font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                       {cot.numero_cotizacion || "-"}
                     </td>
@@ -281,34 +295,32 @@ export default function CotizacionesPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4 text-sm text-right text-gray-900 dark:text-gray-100 font-medium whitespace-nowrap">
-                      ${formatearNumero(cot.total_neto)}
+                      ${new Intl.NumberFormat("es-CL").format(cot.total_neto || 0)}
                     </td>
                     <td className="px-4 py-4 text-sm text-right text-gray-500 dark:text-gray-400 italic whitespace-nowrap">
-                      ${formatearNumero(cot.iva)}
+                      ${new Intl.NumberFormat("es-CL").format(cot.iva || 0)}
                     </td>
                     <td className="px-4 py-4 text-sm text-right text-gray-900 dark:text-gray-100 font-bold whitespace-nowrap">
-                      ${formatearNumero(cot.total)}
+                      ${new Intl.NumberFormat("es-CL").format(cot.total || 0)}
                     </td>
                     <td className="px-4 py-4 text-sm text-right text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap">
-                      {formatearPorcentaje(cot.mg)}
+                      {cot.mg}%
                     </td>
                     <td className="px-4 py-4 text-sm text-right text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
-                      ${formatearNumero(cot.ganancias)}
+                      ${new Intl.NumberFormat("es-CL").format(cot.ganancias || 0)}
                     </td>
                     <td className="px-4 py-4 text-[13px] text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
                       {cot.vendedores?.nombre || "-"}
                     </td>
                     <td className="px-4 py-4 text-center whitespace-nowrap">
-                      <span
-                        className={`px-3 py-1 text-[10px] rounded-full uppercase font-bold tracking-tight shadow-sm ${getEstadoColor(cot.estado_cotizacion)}`}
-                      >
+                      <span className={`px-3 py-1 text-[10px] rounded-full uppercase font-bold tracking-tight shadow-sm ${getEstadoColor(cot.estado_cotizacion)}`}>
                         {cot.estado_cotizacion || "Sin estado"}
                       </span>
                     </td>
                     <td className="px-4 py-4 text-center whitespace-nowrap">
                       <div className="flex justify-center gap-2">
                         <button
-                          onClick={() => navigate(`/cotizaciones/${cot.id}`)}
+                          onClick={() => handleEdit(cot.id)}
                           className="p-1.5 hover:bg-white dark:hover:bg-gray-800 rounded-lg shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-all group"
                           title="Editar"
                         >
