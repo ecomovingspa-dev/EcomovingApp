@@ -1129,38 +1129,40 @@ Ejemplos:
             const rutBuscado = cleanRut(mov.bci_rut);
             const rutSinDV = rutBuscado?.split('-')[0];
 
-            let query = supabase.from(tabla).select("*");
+            // 1. Obtener IDs que ya están conciliados en el banco
+            const { data: concMovs } = await supabase
+                .from("banco_movimientos")
+                .select("conciliado_id")
+                .eq("tipo_conciliacion", esAbono ? "venta" : "compra")
+                .not("conciliado_id", "is", null);
 
-            if (esAbono) {
-                query = query.neq("estado_deuda", "Pagada");
-            } else {
-                query = query.neq("estado_pago", "Pagada");
-            }
+            const idsConciliados = new Set(concMovs?.map(m => m.conciliado_id) || []);
 
-            // Si hay RUT, intentamos filtrar primero por él
+            let docs: Coincidencia[] = [];
+
+            // 2. Intentar filtrar por RUT primero
             if (rutSinDV) {
                 const column = esAbono ? 'rut_recep' : 'rut_proveedor';
-                const { data: filteredData, error: filteredError } = await query
+                const { data: filteredData } = await (supabase.from(tabla).select("*") as any)
                     .or(`${column}.eq.${rutBuscado},${column}.ilike.%${rutSinDV}%`)
                     .order(esAbono ? 'fch_emis' : 'fecha_emision', { ascending: false })
-                    .limit(50);
+                    .limit(100);
 
-                if (!filteredError && filteredData && filteredData.length > 0) {
-                    const docs = processDocs(filteredData, esAbono);
-                    setAllUnreconciledDocs(docs);
-                    setLoadingAllDocs(false);
-                    return;
+                if (filteredData && filteredData.length > 0) {
+                    docs = processDocs(filteredData.filter((d: any) => !idsConciliados.has(d.id)), esAbono);
                 }
             }
 
-            // Fallback: mostrar los últimos 50 documentos pendientes globales si no hay RUT o no hubo resultados
-            const { data, error } = await query
-                .order(esAbono ? 'fch_emis' : 'fecha_emision', { ascending: false })
-                .limit(50);
+            // 3. Fallback: mostrar los últimos 100 documentos si no hay RUT o no hubo resultados
+            if (docs.length === 0) {
+                const { data, error } = await (supabase.from(tabla).select("*") as any)
+                    .order(esAbono ? 'fch_emis' : 'fecha_emision', { ascending: false })
+                    .limit(100);
 
-            if (error) throw error;
+                if (error) throw error;
+                docs = processDocs((data || []).filter(d => !idsConciliados.has(d.id)), esAbono);
+            }
 
-            const docs = processDocs(data || [], esAbono);
             setAllUnreconciledDocs(docs);
         } catch (error) {
             console.error("Error loading all docs:", error);
