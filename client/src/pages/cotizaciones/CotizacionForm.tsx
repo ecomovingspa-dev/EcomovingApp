@@ -906,8 +906,8 @@ export default function CotizacionForm({
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!cotizacion.cuenta_id) {
       setMensaje("⚠️ Debe seleccionar una cuenta (cliente)");
       return;
@@ -1073,7 +1073,7 @@ export default function CotizacionForm({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => (onClose ? onClose() : navigate("/cotizaciones"))}
+                onClick={() => handleSubmit()}
                 className="hover:bg-slate-100 dark:hover:bg-gray-700 rounded-full"
               >
                 <ArrowLeft className="h-5 w-5 text-slate-600 dark:text-gray-300" />
@@ -1163,7 +1163,7 @@ export default function CotizacionForm({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => (onClose ? onClose() : navigate("/cotizaciones"))}
+                  onClick={() => handleSubmit()}
                   className="text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200"
                 >
                   Regresar
