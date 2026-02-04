@@ -60,14 +60,15 @@ async function migrateData() {
         }
 
         // Crear el nuevo contacto
+        const tieneCorreo = !!cuenta.correo;
         const { error: insertError } = await supabase
             .from('contactos')
             .insert({
                 nombre: `Contacto Principal - ${cuenta.cliente}`,
-                correo: cuenta.correo || null,
+                correo: cuenta.correo || "",
                 celular: cuenta.telefono || null,
                 cuenta_id: cuenta.id,
-                estado: 'activo',
+                estado: tieneCorreo ? 'activo' : 'inactivo',
                 departamento: 'Administración'
             });
 

@@ -148,7 +148,7 @@ export default function CuentasPage() {
             Cuentas
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1 font-medium">
-            Gestión inteligente de empresas con edición directa en tabla
+            Gestión inteligente de empresas. <span className="text-blue-500 font-bold underline">Nota:</span> Correo y Teléfono ahora se gestionan en la pestaña de <Link to="/contactos" className="hover:text-blue-600">Contactos</Link>.
           </p>
         </div>
         <Link
@@ -238,8 +238,8 @@ export default function CuentasPage() {
                     value={cuenta.estado || "activo"}
                     onChange={(e) => actualizarCuentaInline(cuenta.id, "estado", e.target.value)}
                     className={`text-xs font-bold rounded-full px-4 py-1.5 border-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer ${cuenta.estado === "activo" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                        cuenta.estado === "prospecto" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
-                          "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400"
+                      cuenta.estado === "prospecto" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                        "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400"
                       }`}
                   >
                     <option value="activo">ACTIVO</option>
@@ -268,19 +268,15 @@ export default function CuentasPage() {
                     className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
                   />
                 </td>
-                <td className="px-4 py-2 space-y-1">
-                  <input
-                    defaultValue={cuenta.correo || ""}
-                    onBlur={(e) => actualizarCuentaInline(cuenta.id, "correo", e.target.value)}
-                    placeholder="Email"
-                    className="w-full bg-transparent border-none rounded-lg px-2 py-1 text-xs text-blue-600 dark:text-blue-400 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
-                  />
-                  <input
-                    defaultValue={cuenta.telefono || ""}
-                    onBlur={(e) => actualizarCuentaInline(cuenta.id, "telefono", e.target.value)}
-                    placeholder="Teléfono"
-                    className="w-full bg-transparent border-none rounded-lg px-2 py-1 text-xs text-gray-500 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
-                  />
+                <td className="px-4 py-2 space-y-1 opacity-50 bg-gray-50/50 dark:bg-gray-900/20">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-mono text-gray-500 truncate max-w-[150px]" title="Dato migrado a contactos">
+                      {cuenta.correo || "Sin correo"}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      {cuenta.telefono || "Sin teléfono"}
+                    </span>
+                  </div>
                 </td>
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-3">

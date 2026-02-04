@@ -102,11 +102,10 @@ export default function CuentaForm() {
       {/* Mensaje */}
       {mensaje && (
         <div
-          className={`p-4 rounded-lg font-medium ${
-            mensaje.includes("❌") || mensaje.includes("⚠️")
+          className={`p-4 rounded-lg font-medium ${mensaje.includes("❌") || mensaje.includes("⚠️")
               ? "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400"
               : "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-          }`}
+            }`}
         >
           {mensaje}
         </div>
@@ -200,28 +199,30 @@ export default function CuentaForm() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Correo Electrónico
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                Correo Electrónico <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">MIGRADO</span>
               </label>
               <input
                 type="email"
                 value={cuenta.correo}
                 onChange={(e) => handleChange("correo", e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="contacto@empresa.com"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed opacity-60"
+                placeholder="Mover datos a la tabla de contactos"
+                disabled
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Teléfono
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
+                Teléfono <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">MIGRADO</span>
               </label>
               <input
                 type="tel"
                 value={cuenta.telefono}
                 onChange={(e) => handleChange("telefono", e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="+56 9 1234 5678"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed opacity-60"
+                placeholder="Mover datos a la tabla de contactos"
+                disabled
               />
             </div>
 

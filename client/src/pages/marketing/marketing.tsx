@@ -4,16 +4,17 @@ import ContactosMarketing from "./ContactosMarketing";
 import ListaContenidos from "./ListaContenidos";
 import FabricaMensajes from "./FabricaMensajes";
 import FabricaBrochures from "./FabricaBrochures";
-import { Users, Library, Sparkles, Layout } from "lucide-react";
+import FabricaImagenes from "./FabricaImagenes"; // Importamos el nuevo componente
+import { Users, Library, Sparkles, Layout, Palette } from "lucide-react";
 
 export default function Marketing() {
-  const [tabActiva, setTabActiva] = useState<"monitor" | "biblioteca" | "fabrica" | "brochures">("monitor");
+  const [tabActiva, setTabActiva] = useState<"monitor" | "biblioteca" | "fabrica" | "brochures" | "imagenes">("monitor");
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto p-6 pt-2">
         {/* Tab Navigation */}
-        <div className="flex w-full max-w-4xl mx-auto gap-2 mb-4 bg-white/50 dark:bg-gray-800/50 p-1.5 rounded-2xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-md">
+        <div className="flex w-full max-w-5xl mx-auto gap-2 mb-4 bg-white/50 dark:bg-gray-800/50 p-1.5 rounded-2xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-md">
           <button
             onClick={() => setTabActiva("monitor")}
             className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "monitor"
@@ -24,6 +25,18 @@ export default function Marketing() {
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Monitor de Contactos</span>
             <span className="sm:hidden">Monitor</span>
+          </button>
+
+          <button
+            onClick={() => setTabActiva("imagenes")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "imagenes"
+              ? "bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-200/50 dark:border-purple-500/30 shadow-sm"
+              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent"
+              }`}
+          >
+            <Palette className="h-4 w-4" />
+            <span className="hidden sm:inline">Fábrica de Imágenes</span>
+            <span className="sm:hidden">Imágenes</span>
           </button>
 
           <button
@@ -67,6 +80,7 @@ export default function Marketing() {
         {/* Tab Content */}
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
           {tabActiva === "monitor" && <ContactosMarketing />}
+          {tabActiva === "imagenes" && <FabricaImagenes onGenerateContent={() => setTabActiva("fabrica")} />}
           {tabActiva === "biblioteca" && <ListaContenidos onNew={() => setTabActiva("fabrica")} />}
           {tabActiva === "fabrica" && (
             <FabricaMensajes onSave={() => setTabActiva("biblioteca")} />

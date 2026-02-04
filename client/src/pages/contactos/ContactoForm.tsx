@@ -102,7 +102,16 @@ export default function ContactoForm() {
   };
 
   const handleChange = (field: keyof Contacto, value: string) => {
-    setContacto((prev) => ({ ...prev, [field]: value }));
+    setContacto((prev) => {
+      const nuevoContacto = { ...prev, [field]: value };
+
+      // Regla: Sin correo => Inactivo forzado
+      if (field === "correo" && !value.trim()) {
+        nuevoContacto.estado = "inactivo";
+      }
+
+      return nuevoContacto;
+    });
   };
 
   return (
@@ -132,11 +141,10 @@ export default function ContactoForm() {
       {/* Mensaje */}
       {mensaje && (
         <div
-          className={`p-4 rounded-lg font-medium border ${
-            mensaje.includes("❌") || mensaje.includes("⚠️")
+          className={`p-4 rounded-lg font-medium border ${mensaje.includes("❌") || mensaje.includes("⚠️")
               ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
               : "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
-          }`}
+            }`}
         >
           {mensaje}
         </div>
@@ -262,7 +270,9 @@ export default function ContactoForm() {
               onChange={(e) => handleChange("estado", e.target.value)}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             >
-              <option value="activo">Activo</option>
+              <option value="activo" disabled={!contacto.correo?.trim()}>
+                Activo {!contacto.correo?.trim() ? "(Requiere Correo)" : ""}
+              </option>
               <option value="inactivo">Inactivo</option>
             </select>
           </div>

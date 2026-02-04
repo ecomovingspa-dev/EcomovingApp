@@ -248,3 +248,48 @@ export const askGeminiAboutImage = async (
   const result = await response.json();
   return result.candidates?.[0]?.content?.parts?.[0]?.text || "No recibí respuesta de la IA.";
 };
+
+/**
+ * Genera una imagen profesional usando Imagen 3 (Google AI Studio)
+ */
+export const generateImage = async (prompt: string): Promise<string> => {
+  // Usamos la API Key proporcionada por el usuario para este motor específico
+  const IMAGEN_API_KEY = "AIzaSyANy1lc4pJU0YhaS_fL1N2JNfHJHK2F15E";
+  const URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key=${IMAGEN_API_KEY}`;
+
+  try {
+    const response = await fetch(URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        instances: [
+          {
+            prompt: prompt
+          }
+        ],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: "1:1",
+          outputMimeType: "image/jpeg"
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Error al generar imagen con Imagen 3");
+    }
+
+    const result = await response.json();
+    const base64Image = result.predictions?.[0]?.bytesBase64Encoded;
+
+    if (!base64Image) {
+      throw new Error("La API no devolvió ninguna imagen.");
+    }
+
+    return `data:image/jpeg;base64,${base64Image}`;
+  } catch (err: any) {
+    console.error("Error en generateImage:", err);
+    throw new Error("No pudimos crear la imagen: " + err.message);
+  }
+};
