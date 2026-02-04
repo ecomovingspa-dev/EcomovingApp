@@ -1133,32 +1133,34 @@ Ejemplos:
 
             if (esAbono) {
                 query = query.neq("estado_deuda", "Pagada");
-                if (rutSinDV) {
-                    query = query.or(`rut_recep.eq.${rutBuscado},rut_recep.ilike.%${rutSinDV}%`);
-                }
             } else {
                 query = query.neq("estado_pago", "Pagada");
-                if (rutSinDV) {
-                    query = query.or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`);
+            }
+
+            // Si hay RUT, intentamos filtrar primero por él
+            if (rutSinDV) {
+                const column = esAbono ? 'rut_recep' : 'rut_proveedor';
+                const { data: filteredData, error: filteredError } = await query
+                    .or(`${column}.eq.${rutBuscado},${column}.ilike.%${rutSinDV}%`)
+                    .order(esAbono ? 'fch_emis' : 'fecha_emision', { ascending: false })
+                    .limit(50);
+
+                if (!filteredError && filteredData && filteredData.length > 0) {
+                    const docs = processDocs(filteredData, esAbono);
+                    setAllUnreconciledDocs(docs);
+                    setLoadingAllDocs(false);
+                    return;
                 }
             }
 
-            const orderField = esAbono ? 'fch_emis' : 'fecha_emision';
-            const { data, error } = await query.order(orderField, { ascending: false }).limit(50);
+            // Fallback: mostrar los últimos 50 documentos pendientes globales si no hay RUT o no hubo resultados
+            const { data, error } = await query
+                .order(esAbono ? 'fch_emis' : 'fecha_emision', { ascending: false })
+                .limit(50);
 
             if (error) throw error;
 
-            const docs: Coincidencia[] = (data || []).map(d => ({
-                id: d.id,
-                tipo: esAbono ? 'venta' : 'compra',
-                entidad: d.rzn_soc_recep || d.razon_social || "Desconocido",
-                fecha: d.fch_emis || d.fecha_emision,
-                monto: d.mnt_total || d.monto_total,
-                folio: d.folio,
-                estado: d.estado_deuda || d.estado_pago || "Pendiente",
-                documento_relacionado: d
-            }));
-
+            const docs = processDocs(data || [], esAbono);
             setAllUnreconciledDocs(docs);
         } catch (error) {
             console.error("Error loading all docs:", error);
@@ -1166,6 +1168,21 @@ Ejemplos:
             setLoadingAllDocs(false);
         }
     };
+
+    // Helper para procesar documentos de ventas/compras a Coincidencia
+    const processDocs = (data: any[], esAbono: boolean): Coincidencia[] => {
+        return data.map(d => ({
+            id: d.id,
+            tipo: esAbono ? 'venta' : 'compra',
+            entidad: d.rzn_soc_recep || d.razon_social || "Desconocido",
+            fecha: d.fch_emis || d.fecha_emision,
+            monto: d.mnt_total || d.monto_total,
+            folio: d.folio,
+            estado: d.estado_deuda || d.estado_pago || "Pendiente",
+            documento_relacionado: d
+        }));
+    };
+
 
     const toggleDocSelection = (doc: Coincidencia) => {
         setMultipleSelectedDocs(prev => {
@@ -2346,8 +2363,8 @@ Ejemplos:
                                                             <div
                                                                 key={`${doc.tipo}-${doc.id}`}
                                                                 className={`flex items-center gap-3 p-3 border rounded-md transition-colors cursor-pointer ${isSelected
-                                                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/40'
-                                                                        : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800'
+                                                                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/40'
+                                                                    : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800'
                                                                     }`}
                                                                 onClick={() => toggleDocSelection(doc)}
                                                             >
