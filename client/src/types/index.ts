@@ -127,4 +127,5 @@ export interface Venta {
   fecha_procesamiento?: string | null; // ✅ Nullable, formato 'YYYY-MM-DD', solo para registros nuevos
   ultimo_tipo_aviso?: string | null;
   fecha_ultimo_aviso?: string | null;
+  conciliado?: boolean;
 }

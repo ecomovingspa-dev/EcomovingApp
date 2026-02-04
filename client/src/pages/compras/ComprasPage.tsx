@@ -35,12 +35,14 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+    Check,
     Banknote,
     DollarSign,
     Receipt,
     Save,
     X,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 // Tipos adaptados para Compras
 interface Compra {
@@ -62,6 +64,7 @@ interface Compra {
     lista_nc: string | null;
     saldo: number;
     estado_pago: string; // 'Pendiente', 'Pagada', 'Vencida'
+    conciliado?: boolean;
     created_at: string;
 }
 
@@ -649,9 +652,20 @@ export default function ComprasPage() {
                                                 ${(compra.saldo || 0).toLocaleString()}
                                             </td>
                                             <td className="px-6 py-3 text-center">
-                                                <span className={`inline-flex px-3 py-1 rounded-full text-sm font-bold ${getStatusColor(compra.estado_pago)}`}>
-                                                    {compra.estado_pago}
-                                                </span>
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <span className={`inline-flex px-3 py-1 rounded-full text-sm font-bold ${getStatusColor(compra.estado_pago)}`}>
+                                                        {compra.estado_pago}
+                                                    </span>
+                                                    {compra.conciliado ? (
+                                                        <Badge variant="default" className="bg-emerald-500 text-white border-none text-[9px] px-1.5 py-0">
+                                                            <Check className="w-2 h-2 mr-1" /> CONCILIADA
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="destructive" className="bg-rose-500 text-white border-none text-[9px] px-1.5 py-0">
+                                                            SIN BANCARIZAR
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-3 text-center">
                                                 {/* Boton Pagar (Popover) */}

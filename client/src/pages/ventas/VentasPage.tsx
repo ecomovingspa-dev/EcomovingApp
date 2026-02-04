@@ -25,7 +25,9 @@ import {
   XCircle,
   DollarSign,
   Settings, // Added Settings icon
+  Check,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { ConfiguracionCobranza } from "@/components/ventas/ConfiguracionCobranza";
 import {
   Select,
@@ -918,11 +920,22 @@ export default function VentasPage() {
                       ${venta.saldo?.toLocaleString() || 0}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(venta.estado_deuda)}`}
-                      >
-                        {venta.estado_deuda}
-                      </span>
+                      <div className="flex flex-col items-center gap-1">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(venta.estado_deuda)}`}
+                        >
+                          {venta.estado_deuda}
+                        </span>
+                        {venta.conciliado ? (
+                          <Badge variant="default" className="bg-emerald-500 text-white border-none text-[9px] px-1.5 py-0">
+                            <Check className="w-2 h-2 mr-1" /> CONCILIADA
+                          </Badge>
+                        ) : (
+                          <Badge variant="destructive" className="bg-rose-500 text-white border-none text-[9px] px-1.5 py-0">
+                            SIN BANCARIZAR
+                          </Badge>
+                        )}
+                      </div>
                     </td>
                     <td className="px-2 py-4 text-center">
                       <div className="flex items-center gap-1 justify-center">
