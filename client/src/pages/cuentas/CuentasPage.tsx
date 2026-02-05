@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw } from "lucide-react";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, Users } from "lucide-react";
+import ModalContactosMP from "../../components/ModalContactosMP";
 
 export default function CuentasPage() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
@@ -10,6 +11,9 @@ export default function CuentasPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
+
+  // Estados para Modal Mercado Público
+  const [cuentaParaMP, setCuentaParaMP] = useState<Cuenta | null>(null);
 
 
 
@@ -282,9 +286,20 @@ export default function CuentasPage() {
                     <button
                       onClick={() => eliminarCuenta(cuenta.id)}
                       className="p-2 text-gray-400 hover:text-red-500 transition-colors bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                      title="Eliminar Cuenta"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
+
+                    {cuenta.sector?.toLowerCase() === "publico" && (
+                      <button
+                        onClick={() => setCuentaParaMP(cuenta)}
+                        className="p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors bg-blue-50 dark:bg-gray-700/50 rounded-lg"
+                        title="Buscar contactos en Mercado Público"
+                      >
+                        <Users className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -292,6 +307,18 @@ export default function CuentasPage() {
           </tbody>
         </table>
       </div>
+
+      {cuentaParaMP && (
+        <ModalContactosMP
+          cuenta={cuentaParaMP}
+          onClose={() => setCuentaParaMP(null)}
+          onSuccess={() => {
+            // Opcional: refrescar algo o mostrar notificación
+            setError("Contactos actualizados correctamente");
+            setTimeout(() => setError(""), 3000);
+          }}
+        />
+      )}
 
       {/* Paginación */}
       {
