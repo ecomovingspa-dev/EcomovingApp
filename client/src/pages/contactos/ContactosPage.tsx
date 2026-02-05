@@ -128,6 +128,22 @@ export default function ContactosPage() {
       const { error } = await supabase.from("contactos").delete().eq("id", id);
       if (error) throw error;
 
+      // Verificar si la cuenta se quedó sin contactos
+      const contactoEliminado = contactos.find(c => c.id === id);
+      if (contactoEliminado?.cuenta_id) {
+        const { count, error: countError } = await supabase
+          .from("contactos")
+          .select("*", { count: 'exact', head: true })
+          .eq("cuenta_id", contactoEliminado.cuenta_id);
+
+        if (!countError && count === 0) {
+          await supabase
+            .from("cuentas")
+            .update({ estado: "prospecto" })
+            .eq("id", contactoEliminado.cuenta_id);
+        }
+      }
+
       setMensaje("✅ Contacto eliminado correctamente");
       cargarContactos();
       setTimeout(() => setMensaje(""), 3000);

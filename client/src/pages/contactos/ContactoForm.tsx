@@ -121,11 +121,23 @@ export default function ContactoForm() {
 
         if (error) throw error;
         setMensaje("✅ Contacto actualizado");
+
+        // Regla: Asegurar que la cuenta actual esté activa
+        await supabase
+          .from("cuentas")
+          .update({ estado: "activo" })
+          .eq("id", contacto.cuenta_id);
       } else {
         const { error } = await supabase.from("contactos").insert([contacto]);
 
         if (error) throw error;
         setMensaje("✅ Contacto creado");
+
+        // Regla: Si tiene contactos -> Activo
+        await supabase
+          .from("cuentas")
+          .update({ estado: "activo" })
+          .eq("id", contacto.cuenta_id);
       }
 
       setTimeout(() => navigate("/contactos"), 1500);
