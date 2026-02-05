@@ -32,6 +32,18 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
         setProgreso("Iniciando búsqueda profunda...");
         const contactosUnicos = new Map();
 
+        // Helper para normalizar texto (quitar acentos, puntuación y pasar a minúsculas)
+        const normalize = (str: string) =>
+            (str || "").toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-z0-9]/g, " ")
+                .trim();
+
+        const rutLimpio = cuenta.rut?.replace(/\./g, "").split("-")[0];
+        const nombreBusqueda = normalize(cuenta.cliente);
+        const keywordsBusqueda = nombreBusqueda.split(" ").filter(w => w.length > 3);
+
         try {
             // 1. Intentar encontrar el CodigoOrganismo para búsquedas precisas
             setProgreso("Identificando organismo en Mercado Público...");
@@ -50,17 +62,19 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
 
                         const match = listado.find((c: any) => {
                             const apiRutLimpio = c.RutUnidad?.replace(/\./g, "").split("-")[0];
-                            const matchRut = rutLimpio && apiRutLimpio === rutLimpio;
-                            const matchExact = c.NombreEmpresa?.toLowerCase() === searchName;
-                            const matchIncludes = c.NombreEmpresa?.toLowerCase().includes(searchName);
-                            const matchKeywords = sigKeywords.length > 0 && sigKeywords.every(k => c.NombreEmpresa?.toLowerCase().includes(k));
+                            if (rutLimpio && apiRutLimpio === rutLimpio) return true;
 
-                            return matchRut || matchExact || matchIncludes || matchKeywords;
+                            const nameApi = normalize(c.NombreEmpresa);
+                            if (nameApi === nombreBusqueda) return true;
+                            if (keywordsBusqueda.length > 0 && keywordsBusqueda.every(k => nameApi.includes(k))) return true;
+
+                            return false;
                         });
 
                         if (match) {
                             codigoOrganismo = match.CodigoEmpresa;
                             console.log("Organismo identificado:", match.NombreEmpresa, codigoOrganismo);
+                            setProgreso(`Organismo: ${match.NombreEmpresa}`);
                         }
                     }
                 }
@@ -103,19 +117,15 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                         const data = await resp.json();
                         if (!data.Listado || !Array.isArray(data.Listado)) return;
 
-                        // Filtrar resultados si no tenemos codigoOrganismo o para doble verificación
+                        // Filtrar resultados en el sumario
                         const matches = data.Listado.filter((oc: any) => {
-                            if (codigoOrganismo) return true; // Si filtramos por API, confiamos en el resultado
+                            if (codigoOrganismo) return true;
 
-                            const apiRutLimpio = oc.Comprador?.RutUnidad?.replace(/\./g, "").split("-")[0];
-                            const matchRut = rutLimpio && apiRutLimpio === rutLimpio;
+                            const nameOC = normalize(oc.NombreOrganismo || "");
+                            if (nameOC.includes(nombreBusqueda)) return true;
+                            if (keywordsBusqueda.length > 0 && keywordsBusqueda.every(k => nameOC.includes(k))) return true;
 
-                            const nameOC = (oc.NombreOrganismo || oc.Comprador?.NombreOrganismo || "").toLowerCase();
-                            const keywords = nombreBusqueda.split(" ").filter(w => w.length > 3);
-                            const matchNombre = nameOC.includes(nombreBusqueda) ||
-                                (keywords.length > 0 && keywords.every(k => nameOC.includes(k)));
-
-                            return matchRut || matchNombre;
+                            return false;
                         });
 
                         for (const match of matches) {
@@ -129,8 +139,8 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                                     const c = d.Comprador;
 
                                     // Búsqueda exhaustiva de campos de contacto
-                                    const email = c.MailContacto || c.EmailContacto || c.ContactoEmail || d.MailContacto;
-                                    const nombre = c.NombreContacto || c.ContactoNombre || d.NombreContacto;
+                                    const email = c.MailContacto || c.EmailContacto || c.ContactoEmail || d.MailContacto || d.EmailContacto;
+                                    const nombre = c.NombreContacto || c.ContactoNombre || d.NombreContacto || d.ContactoNombre;
 
                                     if (nombre && email && email.includes("@")) {
                                         const key = email.toLowerCase().trim();
