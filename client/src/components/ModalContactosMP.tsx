@@ -134,23 +134,27 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                             const detailResp = await fetch(detailUrl);
                             if (detailResp.ok) {
                                 const detailData = await detailResp.json();
-                                if (detailData.Listado?.[0]) {
-                                    const d = detailData.Listado[0];
-                                    const c = d.Comprador;
+                                const dOC = detailData.Listado?.[0];
 
-                                    // Búsqueda exhaustiva de campos de contacto
-                                    const email = c.MailContacto || c.EmailContacto || c.ContactoEmail || d.MailContacto || d.EmailContacto;
-                                    const nombre = c.NombreContacto || c.ContactoNombre || d.NombreContacto || d.ContactoNombre;
+                                if (dOC) {
+                                    const cOC = dOC.Comprador;
+                                    // Depuración: Ver el objeto completo para identificar campos de contacto reales
+                                    console.log(`Detalle OC ${match.Codigo}:`, dOC);
 
-                                    if (nombre && email && email.includes("@")) {
+                                    const email = cOC?.MailContacto || cOC?.EmailContacto || cOC?.ContactoEmail ||
+                                        dOC?.MailContacto || dOC?.EmailContacto || dOC?.ContactoEmail;
+                                    const nombre = cOC?.NombreContacto || cOC?.ContactoNombre ||
+                                        dOC?.NombreContacto || dOC?.ContactoNombre || "Contacto OC " + match.Codigo;
+
+                                    if (email && typeof email === 'string' && email.includes("@")) {
                                         const key = email.toLowerCase().trim();
                                         if (!contactosUnicos.has(key)) {
                                             contactosUnicos.set(key, {
                                                 nombre: nombre,
                                                 correo: email,
-                                                telefono: c.FonoContacto || c.ContactoTelefono || d.FonoContacto || "",
-                                                cargo: c.CargoContacto || d.CargoContacto || "Contacto Mercado Público",
-                                                departamento: c.NombreUnidad || d.NombreUnidad || ""
+                                                telefono: cOC?.FonoContacto || cOC?.ContactoTelefono || dOC?.FonoContacto || "",
+                                                cargo: cOC?.CargoContacto || dOC?.CargoContacto || "Contacto Mercado Público",
+                                                departamento: cOC?.NombreUnidad || dOC?.NombreUnidad || ""
                                             });
                                             // Actualizar lista visible mientras se busca
                                             setContactosEncontrados(Array.from(contactosUnicos.values()));
@@ -160,7 +164,7 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                             }
                         }
                     } catch (e) {
-                        // Ignorar errores de red en fechas individuales
+                        // Ignorar errores de red
                     }
                 }));
 
