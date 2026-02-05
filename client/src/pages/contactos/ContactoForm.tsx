@@ -49,6 +49,13 @@ export default function ContactoForm() {
     cuenta_id: "",
   });
 
+  const [busquedaCuentas, setBusquedaCuentas] = useState("");
+
+  const cuentasFiltradas = (cuentas || []).filter((c) =>
+    c.cliente?.toLowerCase().includes(busquedaCuentas.toLowerCase()) ||
+    c.rut?.toLowerCase().includes(busquedaCuentas.toLowerCase())
+  );
+
   useEffect(() => {
     cargarCuentas();
     if (esEdicion) cargarContacto();
@@ -327,7 +334,7 @@ export default function ContactoForm() {
                         variant="outline"
                         role="combobox"
                         aria-expanded={cuentaOpen}
-                        className="w-full justify-between h-11 dark:bg-gray-900 dark:border-gray-700"
+                        className="w-full justify-between h-11 dark:bg-gray-900 dark:border-gray-700 hover:border-blue-500 transition-all"
                       >
                         <span className="truncate">
                           {contacto.cuenta_id
@@ -337,33 +344,51 @@ export default function ContactoForm() {
                         <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Buscar cuenta..." />
-                        <CommandList>
-                          <CommandEmpty>No se encontraron cuentas.</CommandEmpty>
-                          <CommandGroup>
-                            {cuentas.map((cuenta) => (
-                              <CommandItem
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-xl" align="start">
+                      <div className="flex flex-col h-[300px]">
+                        <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                          <div className="relative">
+                            <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                            <Input
+                              placeholder="Buscar cliente..."
+                              className="pl-8 h-9 text-sm bg-gray-50 dark:bg-gray-900 border-none"
+                              value={busquedaCuentas}
+                              onChange={(e) => setBusquedaCuentas(e.target.value)}
+                              autoFocus
+                            />
+                          </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-1 custom-scrollbar">
+                          {cuentasFiltradas.length === 0 ? (
+                            <div className="py-6 text-center text-sm text-gray-500">
+                              No se encontraron cuentas activas.
+                            </div>
+                          ) : (
+                            cuentasFiltradas.map((cuenta) => (
+                              <button
                                 key={cuenta.id}
-                                value={cuenta.cliente}
-                                onSelect={() => {
+                                type="button"
+                                onClick={() => {
                                   handleChange("cuenta_id", cuenta.id);
                                   setCuentaOpen(false);
+                                  setBusquedaCuentas("");
                                 }}
+                                className={cn(
+                                  "w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors text-left",
+                                  contacto.cuenta_id === cuenta.id
+                                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                                    : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                )}
                               >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    contacto.cuenta_id === cuenta.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {cuenta.cliente}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
+                                <span className="truncate pr-2">{cuenta.cliente}</span>
+                                {contacto.cuenta_id === cuenta.id && (
+                                  <Check className="h-4 w-4 shrink-0" />
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </div>
                     </PopoverContent>
                   </Popover>
                   <p className="text-[10px] text-gray-500 dark:text-gray-400">
