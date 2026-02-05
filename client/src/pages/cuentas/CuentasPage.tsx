@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, Users } from "lucide-react";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, Zap } from "lucide-react";
+import ProspectorIAModal from "../../components/crm/ProspectorIAModal";
 
 export default function CuentasPage() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
@@ -10,6 +11,7 @@ export default function CuentasPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
+  const [cuentaParaInvestigar, setCuentaParaInvestigar] = useState<Cuenta | null>(null);
 
 
 
@@ -281,6 +283,14 @@ export default function CuentasPage() {
                     )}
 
                     <button
+                      onClick={() => setCuentaParaInvestigar(cuenta)}
+                      className="p-2 text-amber-500 hover:text-amber-600 transition-colors bg-amber-50 dark:bg-amber-900/20 rounded-lg"
+                      title="Investigar con Prospector IA"
+                    >
+                      <Zap className="h-4 w-4 fill-current" />
+                    </button>
+
+                    <button
                       onClick={() => eliminarCuenta(cuenta.id)}
                       className="p-2 text-gray-400 hover:text-red-500 transition-colors bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                       title="Eliminar Cuenta"
@@ -325,6 +335,16 @@ export default function CuentasPage() {
       }
 
 
-    </div >
+      {cuentaParaInvestigar && (
+        <ProspectorIAModal
+          cuenta={cuentaParaInvestigar}
+          onClose={() => setCuentaParaInvestigar(null)}
+          onSuccess={() => {
+            setCuentaParaInvestigar(null);
+            cargarCuentas();
+          }}
+        />
+      )}
+    </div>
   );
 }
