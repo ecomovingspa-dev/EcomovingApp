@@ -2,9 +2,32 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Contacto, Cuenta } from "../../types";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Search, Check, User, Mail, Phone, Building2, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 export default function ContactoForm() {
   const navigate = useNavigate();
@@ -12,8 +35,10 @@ export default function ContactoForm() {
   const esEdicion = !!id;
 
   const [guardando, setGuardando] = useState(false);
+  const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
+  const [cuentaOpen, setCuentaOpen] = useState(false);
   const [contacto, setContacto] = useState<Partial<Contacto>>({
     nombre: "",
     correo: "",
@@ -33,7 +58,8 @@ export default function ContactoForm() {
     try {
       const { data, error } = await supabase
         .from("cuentas")
-        .select("id, cliente")
+        .select("id, cliente, rut, estado")
+        .eq("estado", "activo") // Solo cuentas con estado activo
         .order("cliente");
 
       if (error) throw error;
@@ -45,6 +71,7 @@ export default function ContactoForm() {
   };
 
   const cargarContacto = async () => {
+    setCargando(true);
     try {
       const { data, error } = await supabase
         .from("contactos")
@@ -57,6 +84,8 @@ export default function ContactoForm() {
     } catch (error: any) {
       console.error("Error al cargar contacto:", error);
       setMensaje("❌ Error al cargar contacto");
+    } finally {
+      setCargando(false);
     }
   };
 
@@ -105,7 +134,7 @@ export default function ContactoForm() {
     setContacto((prev) => {
       const nuevoContacto = { ...prev, [field]: value };
 
-      // Regla: Sin correo => Inactivo forzado
+      // Regla: Sin correo => Inactivo forzado (si se desea mantener esta lógica)
       if (field === "correo" && !value.trim()) {
         nuevoContacto.estado = "inactivo";
       }
@@ -114,188 +143,292 @@ export default function ContactoForm() {
     });
   };
 
+  if (cargando) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-3xl mx-auto space-y-6 dark:bg-gray-900">
+    <div className="max-w-4xl mx-auto pb-12">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 mb-8">
         <Button
           variant="ghost"
           size="icon"
           onClick={() => navigate("/contactos")}
-          className="h-10 w-10 dark:text-gray-200 dark:hover:bg-gray-800"
+          className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
             {esEdicion ? "Editar Contacto" : "Nuevo Contacto"}
           </h1>
-          <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
             {esEdicion
-              ? "Modifica la información del contacto"
-              : "Completa los datos del nuevo contacto"}
+              ? "Modifica la información del contacto existente"
+              : "Completa los datos para registrar un nuevo contacto"}
           </p>
         </div>
       </div>
 
-      {/* Mensaje */}
+      {/* Mensaje de Feedback */}
       {mensaje && (
         <div
-          className={`p-4 rounded-lg font-medium border ${mensaje.includes("❌") || mensaje.includes("⚠️")
-              ? "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
-              : "bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800"
-            }`}
+          className={cn(
+            "mb-6 p-4 rounded-xl border flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300",
+            mensaje.includes("❌") || mensaje.includes("⚠️")
+              ? "bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900/50 text-red-700 dark:text-red-400"
+              : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/50 text-emerald-700 dark:text-emerald-400"
+          )}
         >
-          {mensaje}
+          <span className="text-lg">{mensaje.split(" ")[0]}</span>
+          <span className="font-medium">{mensaje.split(" ").slice(1).join(" ")}</span>
         </div>
       )}
 
-      {/* Formulario */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700"
-      >
-        <div className="p-6 space-y-6">
-          {/* Cuenta */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Cuenta <span className="text-red-500 dark:text-red-400">*</span>
-            </label>
-            {cuentas.length === 0 ? (
-              <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-yellow-800 dark:text-yellow-400 text-sm">
-                ⚠️ No hay cuentas disponibles.
-                <Link
-                  to="/cuentas/nueva"
-                  className="underline ml-1 font-medium"
-                >
-                  Crear una cuenta primero
-                </Link>
-              </div>
-            ) : (
-              <select
-                value={contacto.cuenta_id}
-                onChange={(e) => handleChange("cuenta_id", e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                required
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Columna Principal */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+              <CardHeader className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <User className="h-5 w-5 text-blue-500" />
+                  Información Personal
+                </CardTitle>
+                <CardDescription>
+                  Datos básicos y de identificación del contacto
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="nombre" className="text-sm font-semibold">
+                    Nombre Completo <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input
+                      id="nombre"
+                      value={contacto.nombre}
+                      onChange={(e) => handleChange("nombre", e.target.value)}
+                      placeholder="Ej: Juan Pérez"
+                      className="pl-10 h-11 dark:bg-gray-900 dark:border-gray-700 focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="correo" className="text-sm font-semibold">
+                      Correo Electrónico
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="correo"
+                        type="email"
+                        value={contacto.correo}
+                        onChange={(e) => handleChange("correo", e.target.value)}
+                        placeholder="juan@empresa.com"
+                        className="pl-10 h-11 dark:bg-gray-900 dark:border-gray-700 focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="departamento" className="text-sm font-semibold">
+                      Departamento
+                    </Label>
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="departamento"
+                        value={contacto.departamento}
+                        onChange={(e) => handleChange("departamento", e.target.value)}
+                        placeholder="Ej: Ventas, Logística..."
+                        className="pl-10 h-11 dark:bg-gray-900 dark:border-gray-700 focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+              <CardHeader className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Phone className="h-5 w-5 text-emerald-500" />
+                  Medios de Contacto
+                </CardTitle>
+                <CardDescription>
+                  Teléfonos de contacto directo
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="celular" className="text-sm font-semibold">
+                      Celular
+                    </Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="celular"
+                        value={contacto.celular}
+                        onChange={(e) => handleChange("celular", e.target.value)}
+                        placeholder="+56 9 1234 5678"
+                        className="pl-10 h-11 dark:bg-gray-900 dark:border-gray-700"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="telefono" className="text-sm font-semibold">
+                      Teléfono Fijo
+                    </Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="telefono"
+                        value={contacto.telefono}
+                        onChange={(e) => handleChange("telefono", e.target.value)}
+                        placeholder="+56 2 1234 5678"
+                        className="pl-10 h-11 dark:bg-gray-900 dark:border-gray-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Columna Lateral */}
+          <div className="space-y-6">
+            <Card className="border-gray-200 dark:border-gray-800 shadow-sm overflow-hidden">
+              <CardHeader className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-purple-500" />
+                  Asignación
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">
+                    Cuenta / Cliente <span className="text-red-500">*</span>
+                  </Label>
+                  <Popover open={cuentaOpen} onOpenChange={setCuentaOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={cuentaOpen}
+                        className="w-full justify-between h-11 dark:bg-gray-900 dark:border-gray-700"
+                      >
+                        <span className="truncate">
+                          {contacto.cuenta_id
+                            ? cuentas.find((c) => c.id === contacto.cuenta_id)?.cliente
+                            : "Seleccionar cuenta..."}
+                        </span>
+                        <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Buscar cuenta..." />
+                        <CommandList>
+                          <CommandEmpty>No se encontraron cuentas.</CommandEmpty>
+                          <CommandGroup>
+                            {cuentas.map((cuenta) => (
+                              <CommandItem
+                                key={cuenta.id}
+                                value={cuenta.cliente}
+                                onSelect={() => {
+                                  handleChange("cuenta_id", cuenta.id);
+                                  setCuentaOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    contacto.cuenta_id === cuenta.id ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {cuenta.cliente}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                    Solo se muestran cuentas con estado activo.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="estado" className="text-sm font-semibold">
+                    Estado del Contacto
+                  </Label>
+                  <Select
+                    value={contacto.estado}
+                    onValueChange={(val) => handleChange("estado", val as any)}
+                  >
+                    <SelectTrigger className="h-11 dark:bg-gray-900 dark:border-gray-700">
+                      <SelectValue placeholder="Seleccionar estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="activo">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                          Activo
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="inactivo">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2 w-2 rounded-full bg-red-500" />
+                          Inactivo
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex flex-col gap-3">
+              <Button
+                type="submit"
+                disabled={guardando || !contacto.cuenta_id}
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20"
               >
-                <option value="">Seleccionar cuenta...</option>
-                {cuentas.map((cuenta) => (
-                  <option key={cuenta.id} value={cuenta.id}>
-                    {cuenta.cliente}
-                  </option>
-                ))}
-              </select>
-            )}
+                {guardando ? (
+                  <div className="flex items-center gap-2">
+                    <div className="animate-spin h-4 w-4 border-2 border-white/30 border-t-white rounded-full" />
+                    Guardando...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Save className="h-4 w-4" />
+                    {esEdicion ? "Actualizar Contacto" : "Crear Contacto"}
+                  </div>
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate("/contactos")}
+                className="w-full h-11 dark:border-gray-800 dark:hover:bg-gray-800"
+              >
+                Cancelar
+              </Button>
+            </div>
           </div>
-
-          {/* Nombre */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Nombre Completo{" "}
-              <span className="text-red-500 dark:text-red-400">*</span>
-            </label>
-            <Input
-              type="text"
-              value={contacto.nombre}
-              onChange={(e) => handleChange("nombre", e.target.value)}
-              placeholder="Ej: Juan Pérez González"
-              required
-              className="h-12"
-            />
-          </div>
-
-          {/* Correo */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Correo Electrónico
-            </label>
-            <Input
-              type="email"
-              value={contacto.correo}
-              onChange={(e) => handleChange("correo", e.target.value)}
-              placeholder="juan.perez@empresa.com"
-              className="h-12"
-            />
-          </div>
-
-          {/* Celular */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Celular
-            </label>
-            <Input
-              type="tel"
-              value={contacto.celular}
-              onChange={(e) => handleChange("celular", e.target.value)}
-              placeholder="+56 9 1234 5678"
-              className="h-12"
-            />
-          </div>
-
-          {/* Teléfono */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Teléfono Fijo
-            </label>
-            <Input
-              type="tel"
-              value={contacto.telefono}
-              onChange={(e) => handleChange("telefono", e.target.value)}
-              placeholder="+56 2 1234 5678"
-              className="h-12"
-            />
-          </div>
-
-          {/* Departamento */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Departamento
-            </label>
-            <Input
-              type="text"
-              value={contacto.departamento}
-              onChange={(e) => handleChange("departamento", e.target.value)}
-              placeholder="Ej: Ventas, Marketing, RRHH"
-              className="h-12"
-            />
-          </div>
-
-          {/* Estado */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Estado
-            </label>
-            <select
-              value={contacto.estado}
-              onChange={(e) => handleChange("estado", e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            >
-              <option value="activo" disabled={!contacto.correo?.trim()}>
-                Activo {!contacto.correo?.trim() ? "(Requiere Correo)" : ""}
-              </option>
-              <option value="inactivo">Inactivo</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Botones */}
-        <div className="p-6 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate("/contactos")}
-            className="px-6"
-          >
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            disabled={guardando || cuentas.length === 0}
-            className="px-6 bg-blue-600 hover:bg-blue-700"
-          >
-            <Save className="mr-2 h-4 w-4" />
-            {guardando ? "Guardando..." : esEdicion ? "Actualizar" : "Guardar"}
-          </Button>
         </div>
       </form>
     </div>
