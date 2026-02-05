@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, Linkedin, Sparkles } from "lucide-react";
-import { ProspectorIAModal } from "../../components/ProspectorIA";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw } from "lucide-react";
 
 export default function CuentasPage() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
@@ -12,9 +11,7 @@ export default function CuentasPage() {
   const [error, setError] = useState("");
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
 
-  // Estados para Modal Prospector IA
-  const [prospectorOpen, setProspectorOpen] = useState(false);
-  const [prospectorData, setProspectorData] = useState({ id: "", name: "" });
+
 
   // Estados para filtros y búsqueda
   const [busqueda, setBusqueda] = useState("");
@@ -290,16 +287,7 @@ export default function CuentasPage() {
                     ) : (
                       <CheckCircle2 className="h-4 w-4 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                     )}
-                    <button
-                      onClick={() => {
-                        setProspectorData({ id: cuenta.id, name: cuenta.cliente || "" });
-                        setProspectorOpen(true);
-                      }}
-                      title="Prospectar con LinkedIn IA"
-                      className="p-2 text-blue-500 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/20 rounded-lg transition-all hover:scale-110"
-                    >
-                      <Linkedin className="h-4 w-4" />
-                    </button>
+
                     <button
                       onClick={() => eliminarCuenta(cuenta.id)}
                       className="p-2 text-gray-400 hover:text-red-500 transition-colors bg-gray-50 dark:bg-gray-700/50 rounded-lg"
@@ -339,13 +327,7 @@ export default function CuentasPage() {
         </div>
       )}
 
-      {/* Modal de Prospector IA */}
-      <ProspectorIAModal
-        isOpen={prospectorOpen}
-        onClose={() => setProspectorOpen(false)}
-        accountName={prospectorData.name}
-        accountId={prospectorData.id}
-      />
+
     </div>
   );
 }
