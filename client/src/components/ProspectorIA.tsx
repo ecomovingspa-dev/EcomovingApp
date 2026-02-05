@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
-import { Linkedin, Sparkles, Loader2, X, Plus, Check } from 'lucide-react';
+import { Linkedin, Sparkles, Loader2, X, Plus, Check, AlertCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { prospectLinkedIn } from '../lib/gemini';
 
 interface LinkedInContact {
     name: string;
@@ -20,26 +20,26 @@ export const ProspectorIAModal: React.FC<ProspectorIAModalProps> = ({ isOpen, on
     const [loading, setLoading] = useState(false);
     const [contacts, setContacts] = useState<LinkedInContact[]>([]);
     const [searching, setSearching] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
 
     if (!isOpen) return null;
 
-    const startSearch = () => {
+    const startSearch = async () => {
         setSearching(true);
         setLoading(true);
-        // Como soy un agente IA, aviso al usuario que debe pedirme la búsqueda si esto fuera una app real sin backend
-        // Pero para efectos de la demo/herramienta, simularé que "envío la señal"
-        console.log(`[PROSPECTOR] Buscando contactos para ${accountName}...`);
+        setError(null);
 
-        // Simulación de resultados encontrados por el agente
-        setTimeout(() => {
-            setContacts([
-                { name: 'Nicolás Correa', role: 'Gerente General', email: 'nicolas.correa@enex.cl' },
-                { name: 'Claudia Hoyos', role: 'Jefa de Comunicaciones y RSE', email: 'claudia.hoyos@enex.cl' },
-                { name: 'Gerardo Acuña', role: 'Gerente de Personas', email: 'gerardo.acuna@enex.cl' }
-            ]);
+        try {
+            console.log(`[PROSPECTOR] Buscando contactos para ${accountName}...`);
+            const results = await prospectLinkedIn(accountName);
+            setContacts(results);
+        } catch (err: any) {
+            console.error("Error en prospector:", err);
+            setError("No pudimos conectar con la base de datos de LinkedIn. Intenta nuevamente.");
+        } finally {
             setLoading(false);
-        }, 2000);
+        }
     };
 
     const addContact = async (contact: LinkedInContact) => {
@@ -54,7 +54,7 @@ export const ProspectorIAModal: React.FC<ProspectorIAModalProps> = ({ isOpen, on
             ]);
 
             if (error) throw error;
-            setAddedIds(prev => new Set(prev).add(contact.email));
+            setAddedIds((prev: Set<string>) => new Set(prev).add(contact.email));
         } catch (err) {
             console.error("Error al agregar contacto:", err);
         }
@@ -106,13 +106,21 @@ export const ProspectorIAModal: React.FC<ProspectorIAModalProps> = ({ isOpen, on
                                         <Loader2 className="h-12 w-12 text-blue-600 animate-spin" />
                                         <Sparkles className="absolute -top-2 -right-2 h-6 w-6 text-yellow-400 animate-pulse" />
                                     </div>
-                                    <p className="text-gray-600 dark:text-gray-400 font-medium">Escaneando LinkedIn para {accountName}...</p>
+                                    <p className="text-gray-600 dark:text-gray-400 font-medium">Analizando LinkedIn para {accountName}...</p>
+                                </div>
+                            ) : error ? (
+                                <div className="text-center py-12 space-y-4">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-50 text-red-500">
+                                        <AlertCircle className="h-8 w-8" />
+                                    </div>
+                                    <p className="text-red-600 font-medium">{error}</p>
+                                    <button onClick={startSearch} className="text-blue-600 font-bold hover:underline">Reintentar</button>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
                                     <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Contactos Encontrados</h4>
                                     <div className="grid gap-3">
-                                        {contacts.map((contact, idx) => (
+                                        {contacts.map((contact: LinkedInContact, idx: number) => (
                                             <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-100 dark:border-gray-700 group hover:border-blue-200 dark:hover:border-blue-900/50 transition-all">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">
