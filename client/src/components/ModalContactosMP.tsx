@@ -18,7 +18,7 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
     const [error, setError] = useState("");
     const [mensajeExito, setMensajeExito] = useState("");
 
-    const TICKET = "F8537A18-6766-4DEF-9E59-426B4FEE2844"; // Ticket oficial de Mercado Público
+    const TICKET = "FD7AB341-9FA0-452A-B1A8-0DEF7F6968AB"; // Ticket oficial de Mercado Público
 
     useEffect(() => {
         buscarContactos();
