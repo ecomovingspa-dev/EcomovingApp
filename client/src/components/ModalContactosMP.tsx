@@ -12,6 +12,7 @@ interface ModalContactosMPProps {
 
 export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalContactosMPProps) {
     const [cargando, setCargando] = useState(false);
+    const [progreso, setProgreso] = useState("");
     const [contactosEncontrados, setContactosEncontrados] = useState<any[]>([]);
     const [seleccionados, setSeleccionados] = useState<Set<number>>(new Set());
     const [error, setError] = useState("");
@@ -28,78 +29,126 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
 
         setCargando(true);
         setError("");
+        setProgreso("Iniciando búsqueda profunda...");
+        const contactosUnicos = new Map();
+
         try {
-            // 1. Buscar Licitaciones recientes de este organismo
-            // Usaremos una ventana de tiempo de los últimos 30 días para encontrar contactos activos
-            const hoy = new Date();
-            const fechas = [];
-            for (let i = 0; i < 3; i++) { // Probamos con los últimos 3 días para velocidad
-                const d = new Date(hoy);
-                d.setDate(d.getDate() - i);
-                fechas.push(d.toISOString().slice(0, 10).replace(/-/g, ""));
-            }
+            // 1. Intentar encontrar el CodigoOrganismo para búsquedas precisas
+            setProgreso("Identificando organismo en Mercado Público...");
+            let codigoOrganismo = null;
+            try {
+                const respCompradores = await fetch(`https://api.mercadopublico.cl/servicios/v1/Publico/Empresas/BuscarComprador?ticket=${TICKET}`);
+                if (respCompradores.ok) {
+                    const dataCompradores = await respCompradores.json();
+                    if (Array.isArray(dataCompradores)) {
+                        const searchName = cuenta.cliente.toLowerCase();
+                        const rutLimpio = cuenta.rut?.replace(/\./g, "").split("-")[0];
 
-            let todosLosDocumentos: any[] = [];
-
-            for (const fecha of fechas) {
-                const url = `https://api.mercadopublico.cl/servicios/v1/publico/licitaciones.json?fecha=${fecha}&ticket=${TICKET}`;
-                const resp = await fetch(url);
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (data.Listado) {
-                        const matches = data.Listado.filter((l: any) =>
-                            (cuenta.rut && l.CodigoExterno.includes(cuenta.rut.split("-")[0])) ||
-                            (l.Nombre && l.Nombre.toLowerCase().includes(cuenta.cliente.toLowerCase()))
+                        const match = dataCompradores.find((c: any) =>
+                            (rutLimpio && c.RutUnidad?.includes(rutLimpio)) ||
+                            c.NombreEmpresa.toLowerCase() === searchName ||
+                            c.NombreEmpresa.toLowerCase().includes(searchName)
                         );
-                        todosLosDocumentos = [...todosLosDocumentos, ...matches];
-                    }
-                }
-            }
-
-            if (todosLosDocumentos.length === 0) {
-                // Fallback: Buscar por nombre si no hay por RUT/Fecha
-                setError("No se encontraron licitaciones recientes para extraer contactos. Reintenta más tarde o busca por OC.");
-                setCargando(false);
-                return;
-            }
-
-            // 2. Obtener detalles para extraer contactos
-            const contactosUnicos = new Map();
-
-            for (const doc of todosLosDocumentos.slice(0, 5)) { // Limitamos a 5 para no saturar
-                const detailUrl = `https://api.mercadopublico.cl/servicios/v1/publico/licitaciones.json?codigo=${doc.CodigoExterno}&ticket=${TICKET}`;
-                const detailResp = await fetch(detailUrl);
-                if (detailResp.ok) {
-                    const detailData = await detailResp.json();
-                    if (detailData.Listado && detailData.Listado[0]) {
-                        const d = detailData.Listado[0];
-                        const c = d.Comprador;
-                        if (c && c.ContactoNombre && c.ContactoEmail) {
-                            const key = c.ContactoEmail.toLowerCase().trim();
-                            if (!contactosUnicos.has(key)) {
-                                contactosUnicos.set(key, {
-                                    nombre: c.ContactoNombre,
-                                    correo: c.ContactoEmail,
-                                    telefono: c.ContactoTelefono || "",
-                                    cargo: c.CargoContacto || "Contacto Mercado Público",
-                                    departamento: c.NombreUnidad || ""
-                                });
-                            }
+                        if (match) {
+                            codigoOrganismo = match.CodigoEmpresa;
+                            console.log("Organismo identificado:", match.NombreEmpresa, codigoOrganismo);
                         }
                     }
                 }
+            } catch (e) {
+                console.warn("No se pudo obtener la lista de compradores, se usará búsqueda general");
             }
 
-            const lista = Array.from(contactosUnicos.values());
-            setContactosEncontrados(lista);
-            if (lista.length === 0) {
-                setError("Se encontraron licitaciones pero no tenían datos de contacto legibles.");
+            // 2. Generar fechas para los últimos 6 meses (180 días)
+            const hoy = new Date();
+            const dates = [];
+            for (let i = 0; i < 180; i++) {
+                const d = new Date(hoy);
+                d.setDate(d.getDate() - i);
+                const dia = String(d.getDate()).padStart(2, '0');
+                const mes = String(d.getMonth() + 1).padStart(2, '0');
+                const anio = d.getFullYear();
+                dates.push(`${dia}${mes}${anio}`);
+            }
+
+            const rutLimpio = cuenta.rut?.replace(/\./g, "").split("-")[0];
+            const nombreBusqueda = cuenta.cliente.toLowerCase();
+
+            // 3. Procesar por lotes de fechas para eficiencia y feedback
+            const batchSize = 10;
+            for (let i = 0; i < dates.length; i += batchSize) {
+                const batch = dates.slice(i, i + batchSize);
+                const mesActual = i / 30;
+                setProgreso(`Buscando en Órdenes de Compra (Mes ${Math.floor(mesActual) + 1}/6)...`);
+
+                await Promise.all(batch.map(async (fecha) => {
+                    try {
+                        let url = `https://api.mercadopublico.cl/servicios/v1/publico/ordenesdecompra.json?fecha=${fecha}&ticket=${TICKET}`;
+                        if (codigoOrganismo) {
+                            url += `&CodigoOrganismo=${codigoOrganismo}`;
+                        }
+
+                        const resp = await fetch(url);
+                        if (!resp.ok) return;
+
+                        const data = await resp.json();
+                        if (!data.Listado || !Array.isArray(data.Listado)) return;
+
+                        // Filtrar resultados si no tenemos codigoOrganismo
+                        const matches = codigoOrganismo ? data.Listado : data.Listado.filter((oc: any) => {
+                            const matchRut = rutLimpio && oc.Comprador?.RutUnidad?.includes(rutLimpio);
+                            const matchNombre = oc.NombreOrganismo?.toLowerCase().includes(nombreBusqueda) ||
+                                oc.Comprador?.NombreOrganismo?.toLowerCase().includes(nombreBusqueda);
+                            return matchRut || matchNombre;
+                        });
+
+                        for (const match of matches) {
+                            // Consultar detalle para extraer contacto real
+                            const detailUrl = `https://api.mercadopublico.cl/servicios/v1/publico/ordenesdecompra.json?codigo=${match.Codigo}&ticket=${TICKET}`;
+                            const detailResp = await fetch(detailUrl);
+                            if (detailResp.ok) {
+                                const detailData = await detailResp.json();
+                                if (detailData.Listado?.[0]) {
+                                    const d = detailData.Listado[0];
+                                    const c = d.Comprador;
+                                    const email = c.MailContacto || c.EmailContacto || c.ContactoEmail;
+                                    const nombre = c.NombreContacto || c.ContactoNombre;
+
+                                    if (nombre && email && email.includes("@")) {
+                                        const key = email.toLowerCase().trim();
+                                        if (!contactosUnicos.has(key)) {
+                                            contactosUnicos.set(key, {
+                                                nombre: nombre,
+                                                correo: email,
+                                                telefono: c.FonoContacto || c.ContactoTelefono || "",
+                                                cargo: c.CargoContacto || "Contacto Mercado Público",
+                                                departamento: c.NombreUnidad || d.NombreUnidad || ""
+                                            });
+                                            // Actualizar lista visible mientras se busca
+                                            setContactosEncontrados(Array.from(contactosUnicos.values()));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // Ignorar errores de red en fechas individuales
+                    }
+                }));
+
+                // Si ya encontramos suficientes contactos, detenemos la búsqueda profunda
+                if (contactosUnicos.size >= 15) break;
+            }
+
+            if (contactosUnicos.size === 0) {
+                setError("No se encontraron contactos en las órdenes de compra emitidas en los últimos 6 meses.");
             }
         } catch (err: any) {
             console.error("Error buscando contactos:", err);
             setError("Error de conexión con la API de Mercado Público.");
         } finally {
             setCargando(false);
+            setProgreso("");
         }
     };
 
@@ -156,7 +205,7 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                             Buscador de Contactos MP
                         </h2>
                         <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
-                            Extrayendo de licitaciones recientes para: <span className="text-blue-500">{cuenta.cliente}</span>
+                            Buscando contactos en OCs (6 meses) para: <span className="text-blue-500">{cuenta.cliente}</span>
                         </p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors">
@@ -169,7 +218,7 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                     {cargando && !contactosEncontrados.length && (
                         <div className="flex flex-col items-center justify-center py-12 space-y-4">
                             <Loader2 className="h-10 w-10 text-blue-500 animate-spin" />
-                            <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold animate-pulse">Consultando Mercado Público...</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold animate-pulse">{progreso || "Consultando Mercado Público..."}</p>
                         </div>
                     )}
 
@@ -191,8 +240,8 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                                     key={idx}
                                     onClick={() => toggleSeleccion(idx)}
                                     className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-4 ${seleccionados.has(idx)
-                                            ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 shadow-md"
-                                            : "border-gray-100 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                                        ? "border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 shadow-md"
+                                        : "border-gray-100 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                                         }`}
                                 >
                                     <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${seleccionados.has(idx) ? "bg-blue-500 border-blue-500" : "border-gray-300 dark:border-gray-600"
