@@ -18,7 +18,7 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
     const [error, setError] = useState("");
     const [mensajeExito, setMensajeExito] = useState("");
 
-    const TICKET = "FD7AB341-9FA0-452A-B1A8-0DEF7F6968AB"; // Ticket de Mercado Público
+    const TICKET = "F8537A18-6766-4DEF-9E59-426B4FEE2844"; // Ticket oficial de Mercado Público
 
     useEffect(() => {
         buscarContactos();
@@ -40,15 +40,24 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                 const respCompradores = await fetch(`https://api.mercadopublico.cl/servicios/v1/Publico/Empresas/BuscarComprador?ticket=${TICKET}`);
                 if (respCompradores.ok) {
                     const dataCompradores = await respCompradores.json();
-                    if (Array.isArray(dataCompradores)) {
+                    const listado = Array.isArray(dataCompradores) ? dataCompradores : (dataCompradores.Listado || []);
+
+                    if (listado.length > 0) {
                         const searchName = cuenta.cliente.toLowerCase();
                         const rutLimpio = cuenta.rut?.replace(/\./g, "").split("-")[0];
+                        const sigKeywords = searchName.split(" ")
+                            .filter(w => w.length > 4 && w !== "provincial" && w !== "regional");
 
-                        const match = dataCompradores.find((c: any) =>
-                            (rutLimpio && c.RutUnidad?.includes(rutLimpio)) ||
-                            c.NombreEmpresa.toLowerCase() === searchName ||
-                            c.NombreEmpresa.toLowerCase().includes(searchName)
-                        );
+                        const match = listado.find((c: any) => {
+                            const apiRutLimpio = c.RutUnidad?.replace(/\./g, "").split("-")[0];
+                            const matchRut = rutLimpio && apiRutLimpio === rutLimpio;
+                            const matchExact = c.NombreEmpresa?.toLowerCase() === searchName;
+                            const matchIncludes = c.NombreEmpresa?.toLowerCase().includes(searchName);
+                            const matchKeywords = sigKeywords.length > 0 && sigKeywords.every(k => c.NombreEmpresa?.toLowerCase().includes(k));
+
+                            return matchRut || matchExact || matchIncludes || matchKeywords;
+                        });
+
                         if (match) {
                             codigoOrganismo = match.CodigoEmpresa;
                             console.log("Organismo identificado:", match.NombreEmpresa, codigoOrganismo);
@@ -56,7 +65,7 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                     }
                 }
             } catch (e) {
-                console.warn("No se pudo obtener la lista de compradores, se usará búsqueda general");
+                console.warn("No se pudo obtener la lista de compradores, se usará búsqueda general", e);
             }
 
             // 2. Generar fechas para los últimos 6 meses (180 días)
@@ -75,11 +84,11 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
             const nombreBusqueda = cuenta.cliente.toLowerCase();
 
             // 3. Procesar por lotes de fechas para eficiencia y feedback
-            const batchSize = 10;
+            const batchSize = 5; // Reducido para evitar 429
             for (let i = 0; i < dates.length; i += batchSize) {
                 const batch = dates.slice(i, i + batchSize);
                 const mesActual = i / 30;
-                setProgreso(`Buscando en Órdenes de Compra (Mes ${Math.floor(mesActual) + 1}/6)...`);
+                setProgreso(`Buscando en Órdenes de Compra (${Math.floor(mesActual) + 1}/6 meses)...`);
 
                 await Promise.all(batch.map(async (fecha) => {
                     try {
@@ -94,11 +103,18 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                         const data = await resp.json();
                         if (!data.Listado || !Array.isArray(data.Listado)) return;
 
-                        // Filtrar resultados si no tenemos codigoOrganismo
-                        const matches = codigoOrganismo ? data.Listado : data.Listado.filter((oc: any) => {
-                            const matchRut = rutLimpio && oc.Comprador?.RutUnidad?.includes(rutLimpio);
-                            const matchNombre = oc.NombreOrganismo?.toLowerCase().includes(nombreBusqueda) ||
-                                oc.Comprador?.NombreOrganismo?.toLowerCase().includes(nombreBusqueda);
+                        // Filtrar resultados si no tenemos codigoOrganismo o para doble verificación
+                        const matches = data.Listado.filter((oc: any) => {
+                            if (codigoOrganismo) return true; // Si filtramos por API, confiamos en el resultado
+
+                            const apiRutLimpio = oc.Comprador?.RutUnidad?.replace(/\./g, "").split("-")[0];
+                            const matchRut = rutLimpio && apiRutLimpio === rutLimpio;
+
+                            const nameOC = (oc.NombreOrganismo || oc.Comprador?.NombreOrganismo || "").toLowerCase();
+                            const keywords = nombreBusqueda.split(" ").filter(w => w.length > 3);
+                            const matchNombre = nameOC.includes(nombreBusqueda) ||
+                                (keywords.length > 0 && keywords.every(k => nameOC.includes(k)));
+
                             return matchRut || matchNombre;
                         });
 
@@ -111,8 +127,10 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                                 if (detailData.Listado?.[0]) {
                                     const d = detailData.Listado[0];
                                     const c = d.Comprador;
-                                    const email = c.MailContacto || c.EmailContacto || c.ContactoEmail;
-                                    const nombre = c.NombreContacto || c.ContactoNombre;
+
+                                    // Búsqueda exhaustiva de campos de contacto
+                                    const email = c.MailContacto || c.EmailContacto || c.ContactoEmail || d.MailContacto;
+                                    const nombre = c.NombreContacto || c.ContactoNombre || d.NombreContacto;
 
                                     if (nombre && email && email.includes("@")) {
                                         const key = email.toLowerCase().trim();
@@ -120,8 +138,8 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                                             contactosUnicos.set(key, {
                                                 nombre: nombre,
                                                 correo: email,
-                                                telefono: c.FonoContacto || c.ContactoTelefono || "",
-                                                cargo: c.CargoContacto || "Contacto Mercado Público",
+                                                telefono: c.FonoContacto || c.ContactoTelefono || d.FonoContacto || "",
+                                                cargo: c.CargoContacto || d.CargoContacto || "Contacto Mercado Público",
                                                 departamento: c.NombreUnidad || d.NombreUnidad || ""
                                             });
                                             // Actualizar lista visible mientras se busca
@@ -136,8 +154,11 @@ export default function ModalContactosMP({ cuenta, onClose, onSuccess }: ModalCo
                     }
                 }));
 
+                // Pequeño delay entre lotes para respetar límites de la API
+                await new Promise(resolve => setTimeout(resolve, 800));
+
                 // Si ya encontramos suficientes contactos, detenemos la búsqueda profunda
-                if (contactosUnicos.size >= 15) break;
+                if (contactosUnicos.size >= 10) break;
             }
 
             if (contactosUnicos.size === 0) {
