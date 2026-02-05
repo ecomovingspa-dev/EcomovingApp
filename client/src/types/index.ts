@@ -6,8 +6,6 @@ export interface Cuenta {
   sector?: string;
   segmento?: string;
   estado?: string;
-  correo?: string;
-  telefono?: string;
   ciudad?: string;
   web?: string;
   created_at?: string; // ISO 8601

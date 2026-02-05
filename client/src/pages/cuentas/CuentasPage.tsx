@@ -85,8 +85,7 @@ export default function CuentasPage() {
         (cuenta) =>
           cuenta.cliente?.toLowerCase().includes(busquedaLower) ||
           cuenta.rut?.toLowerCase().includes(busquedaLower) ||
-          cuenta.ciudad?.toLowerCase().includes(busquedaLower) ||
-          cuenta.correo?.toLowerCase().includes(busquedaLower)
+          cuenta.ciudad?.toLowerCase().includes(busquedaLower)
       );
     }
     if (filtroSector) resultado = resultado.filter((cuenta) => cuenta.sector === filtroSector);
@@ -169,7 +168,7 @@ export default function CuentasPage() {
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por cliente, RUT, ciudad o correo..."
+            placeholder="Buscar por cliente, RUT o ciudad..."
             className="w-full border-none rounded-xl px-12 py-4 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 transition-all font-medium"
           />
         </div>
@@ -213,7 +212,7 @@ export default function CuentasPage() {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
-              {["Cliente", "RUT", "Estado", "Sector", "Segmento", "Ciudad", "Contacto (Email / Tel)", ""].map((h, i) => (
+              {["Cliente", "RUT", "Estado", "Sector", "Segmento", "Ciudad", ""].map((h, i) => (
                 <th key={i} className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{h}</th>
               ))}
             </tr>
@@ -221,11 +220,12 @@ export default function CuentasPage() {
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
             {cuentasPaginadas.map((cuenta) => (
               <tr key={cuenta.id} className="group hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors">
-                <td className="px-4 py-2">
-                  <input
+                <td className="px-4 py-2 min-w-[450px]">
+                  <textarea
                     defaultValue={cuenta.cliente || ""}
                     onBlur={(e) => actualizarCuentaInline(cuenta.id, "cliente", e.target.value)}
-                    className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm font-bold text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
+                    rows={2}
+                    className="w-full bg-transparent border-none rounded-lg px-2 py-1 text-sm font-bold text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all resize-none"
                   />
                 </td>
                 <td className="px-4 py-2">
@@ -249,37 +249,28 @@ export default function CuentasPage() {
                     <option value="inactivo">INACTIVO</option>
                   </select>
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-2 min-w-[120px]">
                   <input
                     defaultValue={cuenta.sector || ""}
                     onBlur={(e) => actualizarCuentaInline(cuenta.id, "sector", e.target.value)}
                     className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
                   />
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-2 min-w-[150px]">
                   <input
                     defaultValue={cuenta.segmento || ""}
                     onBlur={(e) => actualizarCuentaInline(cuenta.id, "segmento", e.target.value)}
                     className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
                   />
                 </td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-2 min-w-[120px]">
                   <input
                     defaultValue={cuenta.ciudad || ""}
                     onBlur={(e) => actualizarCuentaInline(cuenta.id, "ciudad", e.target.value)}
                     className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
                   />
                 </td>
-                <td className="px-4 py-2 space-y-1 opacity-50 bg-gray-50/50 dark:bg-gray-900/20">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-mono text-gray-500 truncate max-w-[150px]" title="Dato migrado a contactos">
-                      {cuenta.correo || "Sin correo"}
-                    </span>
-                    <span className="text-[10px] text-gray-400">
-                      {cuenta.telefono || "Sin teléfono"}
-                    </span>
-                  </div>
-                </td>
+
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-3">
                     {guardandoId === cuenta.id ? (
@@ -303,31 +294,33 @@ export default function CuentasPage() {
       </div>
 
       {/* Paginación */}
-      {totalPaginas > 1 && (
-        <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 px-6 py-4">
-          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
-            Página <span className="text-gray-900 dark:text-white">{paginaActual}</span> de <span className="text-gray-900 dark:text-white">{totalPaginas}</span>
+      {
+        totalPaginas > 1 && (
+          <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 px-6 py-4">
+            <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+              Página <span className="text-gray-900 dark:text-white">{paginaActual}</span> de <span className="text-gray-900 dark:text-white">{totalPaginas}</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPaginaActual(p => Math.max(p - 1, 1))}
+                disabled={paginaActual === 1}
+                className="px-6 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl font-bold disabled:opacity-50 transition-all"
+              >
+                Anterior
+              </button>
+              <button
+                onClick={() => setPaginaActual(p => Math.min(p + 1, totalPaginas))}
+                disabled={paginaActual === totalPaginas}
+                className="px-6 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl font-bold disabled:opacity-50 transition-all"
+              >
+                Siguiente
+              </button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPaginaActual(p => Math.max(p - 1, 1))}
-              disabled={paginaActual === 1}
-              className="px-6 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl font-bold disabled:opacity-50 transition-all"
-            >
-              Anterior
-            </button>
-            <button
-              onClick={() => setPaginaActual(p => Math.min(p + 1, totalPaginas))}
-              disabled={paginaActual === totalPaginas}
-              className="px-6 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl font-bold disabled:opacity-50 transition-all"
-            >
-              Siguiente
-            </button>
-          </div>
-        </div>
-      )}
+        )
+      }
 
 
-    </div>
+    </div >
   );
 }

@@ -223,8 +223,6 @@ export default function CotizacionForm({
     sector: "",
     segmento: "",
     estado: "activo",
-    correo: "",
-    telefono: "",
     ciudad: "",
     web: "",
   });
@@ -740,8 +738,6 @@ export default function CotizacionForm({
           sector: "",
           segmento: "",
           estado: "activo",
-          correo: "",
-          telefono: "",
           ciudad: "",
           web: "",
         });
@@ -1428,47 +1424,7 @@ export default function CotizacionForm({
                               />
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                              <Label
-                                htmlFor="cuenta-correo"
-                                className="dark:text-gray-300"
-                              >
-                                Correo
-                              </Label>
-                              <Input
-                                id="cuenta-correo"
-                                type="email"
-                                value={nuevaCuenta.correo}
-                                onChange={(e) =>
-                                  setNuevaCuenta({
-                                    ...nuevaCuenta,
-                                    correo: e.target.value,
-                                  })
-                                }
-                                className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
-                              />
-                            </div>
-                            <div className="grid gap-2">
-                              <Label
-                                htmlFor="cuenta-telefono"
-                                className="dark:text-gray-300"
-                              >
-                                Teléfono
-                              </Label>
-                              <Input
-                                id="cuenta-telefono"
-                                value={nuevaCuenta.telefono}
-                                onChange={(e) =>
-                                  setNuevaCuenta({
-                                    ...nuevaCuenta,
-                                    telefono: e.target.value,
-                                  })
-                                }
-                                className="dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
-                              />
-                            </div>
-                          </div>
+
                           <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
                               <Label
