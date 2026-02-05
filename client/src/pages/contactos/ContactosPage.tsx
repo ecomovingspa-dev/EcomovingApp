@@ -412,8 +412,20 @@ export default function ContactosPage() {
                           className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                         >
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate" title={contacto.nombre}>
-                              {contacto.nombre}
+                            <div className="flex flex-col">
+                              <div className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate" title={contacto.nombre}>
+                                {contacto.nombre}
+                              </div>
+                              {contacto.departamento?.toLowerCase().includes("gerencia") && (
+                                <span className="text-[10px] w-fit font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 rounded uppercase">
+                                  👑 Nivel Ejecutivo
+                                </span>
+                              )}
+                              {contacto.departamento?.toLowerCase().includes("directivo") && (
+                                <span className="text-[10px] w-fit font-bold px-1.5 py-0.5 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 rounded uppercase">
+                                  🏛️ Nivel Directivo
+                                </span>
+                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">

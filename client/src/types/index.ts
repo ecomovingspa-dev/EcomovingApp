@@ -21,6 +21,8 @@ export interface Contacto {
   celular?: string;
   telefono?: string;
   departamento?: string;
+  cargo?: string;
+  nivel?: string;
   estado?: string;
   cuenta_id: string;
   created_at?: string; // ISO 8601

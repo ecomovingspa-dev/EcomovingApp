@@ -34,8 +34,8 @@ export default function Marketing() {
               }`}
           >
             <Sparkles className="h-4 w-4" />
-            <span className="hidden sm:inline">Fábrica de Contenidos</span>
-            <span className="sm:hidden">Contenidos</span>
+            <span className="hidden sm:inline">Fábrica de IA</span>
+            <span className="sm:hidden">IA</span>
           </button>
 
           <button
