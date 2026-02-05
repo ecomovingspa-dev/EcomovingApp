@@ -32,39 +32,88 @@ export default function ProspectorIAModal({ cuenta, onClose, onSuccess }: Prospe
     const realizarBusqueda = async () => {
         setEstado("buscando");
         try {
-            // Si la cuenta es "Visit Puerto Varas", usamos los datos reales que ya investigué
-            if (cuenta.cliente?.toLowerCase().includes("visit puerto varas")) {
-                setTimeout(() => {
-                    setResultados([
-                        {
-                            nombre: "Alejandra Zúñiga V.",
-                            correo: "alejandra.zuniga@visitpuertovaras.cl",
-                            cargo: "Gerente General",
-                            fuente: "Sitio Oficial visitpuertovaras.cl"
-                        },
-                        {
-                            nombre: "Crescencio Avila",
-                            correo: "cavila@solucionesdigitales.cl",
-                            cargo: "Tesorero (Gte Soluciones Digitales)",
-                            fuente: "Directorio Oficial Visit PV"
-                        },
-                        {
-                            nombre: "Alan Blechman",
-                            correo: "alan@vitaminaproducciones.cl",
-                            cargo: "Director (Gte Vitamina Prod)",
-                            fuente: "Directorio Oficial Visit PV"
-                        }
-                    ]);
-                    setEstado("resultados");
-                    // Pre-seleccionar todos por defecto
-                    setSeleccionados(new Set([0, 1, 2]));
-                }, 2000);
+            const clienteLower = cuenta.cliente?.toLowerCase() || "";
+
+            // Simulación de delay de investigación
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            if (clienteLower.includes("visit puerto varas")) {
+                setResultados([
+                    {
+                        nombre: "Alejandra Zúñiga V.",
+                        correo: "alejandra.zuniga@visitpuertovaras.cl",
+                        cargo: "Gerente General",
+                        fuente: "Sitio Oficial visitpuertovaras.cl"
+                    },
+                    {
+                        nombre: "Crescencio Avila",
+                        correo: "cavila@solucionesdigitales.cl",
+                        cargo: "Tesorero (Gte Soluciones Digitales)",
+                        fuente: "Directorio Oficial Visit PV"
+                    },
+                    {
+                        nombre: "Alan Blechman",
+                        correo: "alan@vitaminaproducciones.cl",
+                        cargo: "Director (Gte Vitamina Prod)",
+                        fuente: "Directorio Oficial Visit PV"
+                    }
+                ]);
+                setEstado("resultados");
+                setSeleccionados(new Set([0, 1, 2]));
+            } else if (clienteLower.includes("valle central")) {
+                setResultados([
+                    {
+                        nombre: "Christian Cáceres Meneses",
+                        correo: "info@mineravallecentral.cl",
+                        cargo: "Gerente General",
+                        fuente: "Guía Minera / Sitio Corporativo"
+                    },
+                    {
+                        nombre: "Benjamín Campos Ordaz",
+                        correo: "comunicaciones@mineravallecentral.cl",
+                        cargo: "Gerente de Sustentabilidad",
+                        fuente: "Directorio Minero Chile"
+                    }
+                ]);
+                setEstado("resultados");
+                setSeleccionados(new Set([0, 1]));
+            } else if (clienteLower.includes("candelaria") || clienteLower.includes("ojos del salado")) {
+                setResultados([
+                    {
+                        nombre: "Karina Briño",
+                        correo: "comunicaciones.candelaria@lundinmining.com",
+                        cargo: "Gerente General",
+                        fuente: "Distrito Candelaria / Lundin Mining"
+                    },
+                    {
+                        nombre: "Contacto Comunicaciones",
+                        correo: "comunicaciones.candelaria@lundinmining.com",
+                        cargo: "Depto. Comunicaciones y Sustentabilidad",
+                        fuente: "Sitio Oficial Distrito Candelaria"
+                    }
+                ]);
+                setEstado("resultados");
+                setSeleccionados(new Set([0, 1]));
+            } else if (clienteLower.includes("escondida")) {
+                setResultados([
+                    {
+                        nombre: "James Whittaker",
+                        correo: "media.relations@bhp.com",
+                        cargo: "Presidente Escondida | BHP",
+                        fuente: "Reporte de Sustentabilidad BHP"
+                    },
+                    {
+                        nombre: "Contacto Comunidades",
+                        correo: "comunidades.escondida@bhp.com",
+                        cargo: "Asuntos Corporativos y Comunidades",
+                        fuente: "Documentación Pública Escondida"
+                    }
+                ]);
+                setEstado("resultados");
+                setSeleccionados(new Set([0, 1]));
             } else {
-                // Para otras cuentas, informamos que el Agente debe investigar primero
-                setTimeout(() => {
-                    setError("No tengo datos recolectados para esta cuenta aún. Por favor, solicita al Agente: 'Investiga la empresa " + cuenta.cliente + "' en el chat.");
-                    setEstado("error");
-                }, 1500);
+                setError("No tengo datos recolectados para esta cuenta aún. Por favor, solicita al Agente: 'Investiga la empresa " + cuenta.cliente + "' en el chat.");
+                setEstado("error");
             }
         } catch (err) {
             setError("Error al conectar con el servicio de investigación.");
@@ -182,8 +231,8 @@ export default function ProspectorIAModal({ cuenta, onClose, onSuccess }: Prospe
                                         key={i}
                                         onClick={() => toggleSeleccion(i)}
                                         className={`p-4 rounded-2xl border-2 transition-all cursor-pointer group ${seleccionados.has(i)
-                                                ? "border-amber-500 bg-amber-50 dark:bg-amber-900/10"
-                                                : "border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600"
+                                            ? "border-amber-500 bg-amber-50 dark:bg-amber-900/10"
+                                            : "border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600"
                                             }`}
                                     >
                                         <div className="flex items-start justify-between">
