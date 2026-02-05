@@ -291,7 +291,7 @@ export default function CuentasPage() {
                       <Trash2 className="h-4 w-4" />
                     </button>
 
-                    {cuenta.sector?.toLowerCase() === "publico" && (
+                    {(cuenta.sector?.toLowerCase() === "publico" || cuenta.sector?.toLowerCase() === "público") && (
                       <button
                         onClick={() => setCuentaParaMP(cuenta)}
                         className="p-2 text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors bg-blue-50 dark:bg-gray-700/50 rounded-lg"
