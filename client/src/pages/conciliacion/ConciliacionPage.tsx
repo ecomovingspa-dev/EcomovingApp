@@ -1060,16 +1060,26 @@ Ejemplos:
 
             // 2. Actualizar cada documento
             for (const doc of multipleSelectedDocs) {
-                const docData = doc.documento_relacionado;
-                if (doc.tipo === 'venta') {
-                    await supabase.from("ventas").update({
-                        estado_deuda: "Pagada",
-                        saldo: 0,
-                        conciliado: true,
-                        fecha_abono: new Date().toISOString().split("T")[0],
-                        monto_abono: doc.monto
-                    }).eq("id", doc.id);
+                const docData = doc.documento_relacionado as any;
+                const saldoActual = (docData.saldo !== undefined && docData.saldo !== null) ? Number(docData.saldo) : Number(doc.monto);
 
+                // En selección múltiple, asumimos que 'doc.monto' es lo que el usuario quiere aplicar a ese doc.
+                // Si el doc.monto es igual al saldo del doc, se paga completo.
+                let nuevoSaldo = saldoActual - doc.monto;
+                if (nuevoSaldo < 0) nuevoSaldo = 0;
+                const esPagoTotal = nuevoSaldo <= 100;
+
+                const updateDoc: any = {
+                    conciliado: esPagoTotal,
+                    saldo: esPagoTotal ? 0 : nuevoSaldo,
+                };
+
+                if (doc.tipo === 'venta') {
+                    updateDoc.estado_deuda = esPagoTotal ? "Pagada" : "Parcial";
+                    updateDoc.fecha_abono = new Date().toISOString().split("T")[0];
+                    updateDoc.monto_abono = doc.monto;
+
+                    await supabase.from("ventas").update(updateDoc).eq("id", doc.id);
                     await supabase.from("abonos").insert({
                         venta_id: doc.id,
                         monto_abono: doc.monto,
@@ -1078,11 +1088,8 @@ Ejemplos:
                         detalle_abono: `Conciliación Múltiple - Movimiento: ${selectedMovimiento.descripcion}`
                     });
                 } else {
-                    await supabase.from("compras").update({
-                        estado_pago: "Pagada",
-                        saldo: 0,
-                        conciliado: true
-                    }).eq("id", doc.id);
+                    updateDoc.estado_pago = esPagoTotal ? "Pagada" : "Parcial";
+                    await supabase.from("compras").update(updateDoc).eq("id", doc.id);
                 }
             }
 
@@ -1118,26 +1125,23 @@ Ejemplos:
             if (errMov) throw errMov;
 
             // 2. Update Related Record (Venta or Compra)
-            const doc = item.documento_relacionado as any;
+            const docData = item.documento_relacionado as any;
             const montoMovimiento = Math.abs(selectedMovimiento.cargos || selectedMovimiento.abonos || 0);
 
-            // Siempre marcar como conciliado
-            const updateData: any = { conciliado: true };
+            const saldoActual = (docData.saldo !== undefined && docData.saldo !== null) ? Number(docData.saldo) : Number(item.monto);
+            let nuevoSaldo = saldoActual - montoMovimiento;
+            if (nuevoSaldo < 0) nuevoSaldo = 0;
 
-            if (item.estado !== "Pagada") {
-                // Calcular saldos si no estaba ya pagada
-                const saldoActual = (doc.saldo !== undefined && doc.saldo !== null) ? Number(doc.saldo) : Number(item.monto);
-                let nuevoSaldo = saldoActual - montoMovimiento;
-                if (nuevoSaldo < 0) nuevoSaldo = 0;
-
-                const esPagoTotal = nuevoSaldo <= 100;
-                updateData[item.tipo === "venta" ? "estado_deuda" : "estado_pago"] = esPagoTotal ? "Pagada" : "Pendiente";
-                updateData.saldo = esPagoTotal ? 0 : nuevoSaldo;
-            }
+            const esPagoTotal = nuevoSaldo <= 100;
+            const updateDoc: any = {
+                conciliado: esPagoTotal,
+                saldo: esPagoTotal ? 0 : nuevoSaldo,
+                [item.tipo === "venta" ? "estado_deuda" : "estado_pago"]: esPagoTotal ? "Pagada" : "Parcial"
+            };
 
             const { error: errDoc } = await supabase
                 .from(item.tipo === "venta" ? "ventas" : "compras")
-                .update(updateData)
+                .update(updateDoc)
                 .eq("id", item.id);
 
             if (errDoc) throw errDoc;
