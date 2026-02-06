@@ -1363,51 +1363,42 @@ Ejemplos:
             if (errMov) throw errMov;
 
             // 2. Update Related Record (Venta or Compra)
+            const doc = item.documento_relacionado as any;
+            const montoMovimiento = Math.abs(selectedMovimiento.cargos || selectedMovimiento.abonos || 0);
+
+            // Siempre marcar como conciliado
+            const updateData: any = { conciliado: true };
+
             if (item.estado !== "Pagada") {
-                // Calcular saldos
-                // Importante: El documento relacionado debe tener el saldo actual. Si no, usamos el monto total como fallback.
-                const doc = item.documento_relacionado as any;
+                // Calcular saldos si no estaba ya pagada
                 const saldoActual = (doc.saldo !== undefined && doc.saldo !== null) ? Number(doc.saldo) : Number(item.monto);
+                let nuevoSaldo = saldoActual - montoMovimiento;
+                if (nuevoSaldo < 0) nuevoSaldo = 0;
 
-                // El monto del abono es el del movimiento bancario (valor absoluto)
-                const montoAbono = Math.abs(selectedMovimiento.cargos || selectedMovimiento.abonos || 0);
-
-                let nuevoSaldo = saldoActual - montoAbono;
-                if (nuevoSaldo < 0) nuevoSaldo = 0; // No permitir saldos negativos por ahora
-
-                // Determinamos si se considera pagada totalmente (tolerancia de $100 pesos)
                 const esPagoTotal = nuevoSaldo <= 100;
-                const nuevoEstado = esPagoTotal ? "Pagada" : "Pendiente"; // O mantener estado original si hay otros estados intermedios
-
-                if (item.tipo === "venta") {
-                    // Update Venta
-                    const { error: errVenta } = await supabase.from("ventas").update({
-                        estado_deuda: nuevoEstado,
-                        saldo: esPagoTotal ? 0 : nuevoSaldo
-                    }).eq("id", item.id);
-
-                    if (errVenta) throw errVenta;
-
-                    // Record in 'abonos' table to keep history consistent with VentasPage
-                    await supabase.from("abonos").insert({
-                        venta_id: item.id,
-                        monto_abono: montoAbono,
-                        fecha_abono: new Date().toISOString().split("T")[0],
-                        tipo_abono: "Transferencia",
-                        detalle_abono: `Conciliación bancaria - Movimiento: ${selectedMovimiento.descripcion}`
-                    });
-                } else {
-                    // Update Compra
-                    const { error: errCompra } = await supabase.from("compras").update({
-                        estado_pago: nuevoEstado,
-                        saldo: esPagoTotal ? 0 : nuevoSaldo
-                    }).eq("id", item.id);
-
-                    if (errCompra) throw errCompra;
-                }
+                updateData[item.tipo === "venta" ? "estado_deuda" : "estado_pago"] = esPagoTotal ? "Pagada" : "Pendiente";
+                updateData.saldo = esPagoTotal ? 0 : nuevoSaldo;
             }
 
-            // 3. UI Updates
+            const { error: errDoc } = await supabase
+                .from(item.tipo === "venta" ? "ventas" : "compras")
+                .update(updateData)
+                .eq("id", item.id);
+
+            if (errDoc) throw errDoc;
+
+            // 3. Record in 'abonos' if it's a sale
+            if (item.tipo === "venta") {
+                await supabase.from("abonos").insert({
+                    venta_id: item.id,
+                    monto_abono: montoMovimiento,
+                    fecha_abono: new Date().toISOString().split("T")[0],
+                    tipo_abono: "Transferencia",
+                    detalle_abono: `Conciliación bancaria - Movimiento: ${selectedMovimiento.descripcion}`
+                });
+            }
+
+            // 4. UI Updates
             setConciliarOpen(false);
 
             // Update local list
@@ -1606,12 +1597,12 @@ Ejemplos:
                         }
                     }
 
-                    // 2. Intentar por RUT + Monto (Seguro) - EXCLUIR YA PAGADAS
+                    // 2. Intentar por RUT + Monto (Seguro) - INCLUIR PAGADAS NO BANCARIZADAS
                     if (!candidate && (rutBuscado || rutSinDV)) {
                         let query = supabase.from("ventas").select("*")
+                            .eq("conciliado", false) // Solo no bancarizadas
                             .gte("mnt_total", montoBuscado - TOLERANCIA_MONTO)
-                            .lte("mnt_total", montoBuscado + TOLERANCIA_MONTO)
-                            .neq("estado_deuda", "Pagada");  // NUEVO: Excluir pagadas
+                            .lte("mnt_total", montoBuscado + TOLERANCIA_MONTO);
 
                         if (rutBuscado) {
                             query = query.or(`rut_recep.eq.${rutBuscado},rut_recep.ilike.%${rutSinDV}%`);
@@ -1631,13 +1622,13 @@ Ejemplos:
                         }
                     }
 
-                    // 3. Intentar solo por Monto (Si es único) - EXCLUIR YA PAGADAS
+                    // 3. Intentar solo por Monto (Si es único) - INCLUIR PAGADAS NO BANCARIZADAS
                     if (!candidate) {
                         const { data: mMatch } = await supabase.from("ventas")
                             .select("*")
+                            .eq("conciliado", false) // Solo no bancarizadas
                             .gte("mnt_total", montoBuscado - TOLERANCIA_MONTO)
                             .lte("mnt_total", montoBuscado + TOLERANCIA_MONTO)
-                            .neq("estado_deuda", "Pagada")  // NUEVO: Excluir pagadas
                             .limit(2);
 
                         if (mMatch && mMatch.length === 1) {
@@ -1654,14 +1645,14 @@ Ejemplos:
                     }
                 } else {
                     // ========== COMPRAS ==========
-                    // 1. Folio + Monto - EXCLUIR YA PAGADAS
+                    // 1. Folio + Monto - INCLUIR PAGADAS NO BANCARIZADAS
                     if (foliosPossible.length > 0) {
                         const { data: fMatch } = await supabase.from("compras")
                             .select("*")
+                            .eq("conciliado", false)
                             .in("folio", foliosPossible)
                             .gte("monto_total", montoBuscado - TOLERANCIA_MONTO)
                             .lte("monto_total", montoBuscado + TOLERANCIA_MONTO)
-                            .neq("estado_pago", "Pagada")  // NUEVO: Excluir pagadas
                             .limit(2);
                         if (fMatch && fMatch.length === 1) {
                             const c = fMatch[0];
@@ -1676,12 +1667,12 @@ Ejemplos:
                         }
                     }
 
-                    // 2. RUT + Monto - EXCLUIR YA PAGADAS
+                    // 2. RUT + Monto - INCLUIR PAGADAS NO BANCARIZADAS
                     if (!candidate && (rutBuscado || rutSinDV)) {
                         let query = supabase.from("compras").select("*")
+                            .eq("conciliado", false)
                             .gte("monto_total", montoBuscado - TOLERANCIA_MONTO)
-                            .lte("monto_total", montoBuscado + TOLERANCIA_MONTO)
-                            .neq("estado_pago", "Pagada");  // NUEVO: Excluir pagadas
+                            .lte("monto_total", montoBuscado + TOLERANCIA_MONTO);
 
                         if (rutBuscado) {
                             query = query.or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`);
@@ -1701,13 +1692,13 @@ Ejemplos:
                         }
                     }
 
-                    // 3. Monto - EXCLUIR YA PAGADAS
+                    // 3. Monto - INCLUIR PAGADAS NO BANCARIZADAS
                     if (!candidate) {
                         const { data: mMatch } = await supabase.from("compras")
                             .select("*")
+                            .eq("conciliado", false)
                             .gte("monto_total", montoBuscado - TOLERANCIA_MONTO)
                             .lte("monto_total", montoBuscado + TOLERANCIA_MONTO)
-                            .neq("estado_pago", "Pagada")  // NUEVO: Excluir pagadas
                             .limit(2);
 
                         if (mMatch && mMatch.length === 1) {
