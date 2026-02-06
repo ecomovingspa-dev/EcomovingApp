@@ -24,7 +24,8 @@ import {
   CheckCircle,
   XCircle,
   DollarSign,
-  Settings, // Added Settings icon
+  Settings,
+  Settings2,
   Check,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -628,6 +629,47 @@ export default function VentasPage() {
       alert("Error al guardar: " + e.message);
     } finally {
       setGuardandoAbono(false);
+    }
+  };
+
+  // ==================== CORRECCIÓN MANUAL ====================
+  const [correctionOpen, setCorrectionOpen] = useState<number | null>(null);
+  const [correctionForm, setCorrectionForm] = useState({
+    saldo: 0,
+    estado_deuda: "",
+    conciliado: false
+  });
+
+  const openCorrectionForm = (venta: Venta) => {
+    setCorrectionForm({
+      saldo: venta.saldo,
+      estado_deuda: venta.estado_deuda,
+      conciliado: venta.conciliado || false
+    });
+    setCorrectionOpen(venta.id);
+  };
+
+  const handleManualCorrection = async (ventaId: number) => {
+    setGuardando(true);
+    try {
+      const { error } = await supabase
+        .from("ventas")
+        .update({
+          saldo: correctionForm.saldo,
+          estado_deuda: correctionForm.estado_deuda,
+          conciliado: correctionForm.conciliado
+        })
+        .eq("id", ventaId);
+
+      if (error) throw error;
+
+      setVentas(prev => prev.map(v => v.id === ventaId ? { ...v, ...correctionForm } : v));
+      setCorrectionOpen(null);
+      alert("Registro corregido correctamente");
+    } catch (e: any) {
+      alert("Error al corregir: " + e.message);
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -1290,6 +1332,95 @@ export default function VentasPage() {
                               >
                                 <Save className="h-3 w-3 mr-1" />
                                 {guardandoAbono ? "Guardando..." : "Guardar"}
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+
+                        {/* Popover Corrección Manual */}
+                        <Popover
+                          open={correctionOpen === venta.id}
+                          onOpenChange={(open) => {
+                            if (open) openCorrectionForm(venta);
+                            else setCorrectionOpen(null);
+                          }}
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 hover:bg-red-50"
+                              title="Corregir estado manualmente"
+                            >
+                              <Settings2 className="h-3.5 w-3.5 text-gray-500 hover:text-red-600" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className="w-72 p-4 bg-white dark:bg-gray-800 dark:border-gray-700"
+                            align="end"
+                          >
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-semibold text-red-600">
+                                  Corrección Manual
+                                </h4>
+                              </div>
+
+                              <p className="text-[10px] text-gray-500 italic">
+                                Usa esto solo para corregir errores de estado o saldo.
+                              </p>
+
+                              <div className="space-y-3">
+                                <div className="space-y-1">
+                                  <Label className="text-[10px] uppercase text-gray-500 font-semibold">Saldo Pendiente</Label>
+                                  <Input
+                                    type="number"
+                                    value={correctionForm.saldo}
+                                    onChange={(e) => setCorrectionForm(prev => ({ ...prev, saldo: parseFloat(e.target.value) || 0 }))}
+                                    className="h-8 text-xs"
+                                  />
+                                </div>
+
+                                <div className="space-y-1">
+                                  <Label className="text-[10px] uppercase text-gray-500 font-semibold">Estado</Label>
+                                  <Select
+                                    value={correctionForm.estado_deuda}
+                                    onValueChange={(val) => setCorrectionForm(prev => ({ ...prev, estado_deuda: val }))}
+                                  >
+                                    <SelectTrigger className="h-8 text-xs">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Pendiente">Pendiente</SelectItem>
+                                      <SelectItem value="Parcial">Parcial</SelectItem>
+                                      <SelectItem value="Pagada">Pagada</SelectItem>
+                                      <SelectItem value="Vencida">Vencida</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+
+                                <div className="flex items-center space-x-2 py-1">
+                                  <input
+                                    type="checkbox"
+                                    id={`conc-check-${venta.id}`}
+                                    checked={correctionForm.conciliado}
+                                    onChange={(e) => setCorrectionForm(prev => ({ ...prev, conciliado: e.target.checked }))}
+                                    className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600"
+                                  />
+                                  <Label htmlFor={`conc-check-${venta.id}`} className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                    Bancarizada (Conciliada)
+                                  </Label>
+                                </div>
+                              </div>
+
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="w-full h-8 text-xs"
+                                onClick={() => handleManualCorrection(venta.id)}
+                                disabled={guardando}
+                              >
+                                {guardando ? "Aplicando..." : "Aplicar Corrección"}
                               </Button>
                             </div>
                           </PopoverContent>

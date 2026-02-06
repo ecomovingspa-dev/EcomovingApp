@@ -41,6 +41,7 @@ import {
     Receipt,
     Save,
     X,
+    Settings2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -439,6 +440,45 @@ export default function ComprasPage() {
             alert("Error al guardar pago: " + error.message);
         } finally {
             setGuardandoAbono(false);
+        }
+    };
+
+
+    // ==================== CORRECCIÓN MANUAL ====================
+    const [correctionOpen, setCorrectionOpen] = useState<number | null>(null);
+    const [correctionForm, setCorrectionForm] = useState({
+        saldo: 0,
+        estado_pago: "",
+        conciliado: false
+    });
+
+    const openCorrectionForm = (compra: Compra) => {
+        setCorrectionForm({
+            saldo: compra.saldo,
+            estado_pago: compra.estado_pago,
+            conciliado: compra.conciliado || false
+        });
+        setCorrectionOpen(compra.id);
+    };
+
+    const handleManualCorrection = async (compraId: number) => {
+        try {
+            const { error } = await supabase
+                .from("compras")
+                .update({
+                    saldo: correctionForm.saldo,
+                    estado_pago: correctionForm.estado_pago,
+                    conciliado: correctionForm.conciliado
+                })
+                .eq("id", compraId);
+
+            if (error) throw error;
+
+            setCompras(prev => prev.map(c => c.id === compraId ? { ...c, ...correctionForm } : c));
+            setCorrectionOpen(null);
+            alert("Registro corregido correctamente");
+        } catch (e: any) {
+            alert("Error al corregir: " + e.message);
         }
     };
 
@@ -850,6 +890,94 @@ export default function ComprasPage() {
                                                             >
                                                                 <Save className="h-3 w-3 mr-1" />
                                                                 {guardandoAbono ? "Guardando..." : "Guardar"}
+                                                            </Button>
+                                                        </div>
+                                                    </PopoverContent>
+                                                </Popover>
+
+                                                {/* Popover Corrección Manual */}
+                                                <Popover
+                                                    open={correctionOpen === compra.id}
+                                                    onOpenChange={(open) => {
+                                                        if (open) openCorrectionForm(compra);
+                                                        else setCorrectionOpen(null);
+                                                    }}
+                                                >
+                                                    <PopoverTrigger asChild>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-9 w-9 p-0 hover:bg-red-50 dark:hover:bg-red-900/10 shadow-sm border border-gray-100 dark:border-gray-700 ml-1"
+                                                            title="Corregir estado manualmente"
+                                                        >
+                                                            <Settings2 className="h-5 w-5 text-gray-500 hover:text-red-600" />
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent
+                                                        className="w-72 p-4 bg-white dark:bg-gray-800 dark:border-gray-700"
+                                                        align="end"
+                                                    >
+                                                        <div className="space-y-4">
+                                                            <div className="flex items-center justify-between">
+                                                                <h4 className="text-sm font-semibold text-red-600">
+                                                                    Corrección Manual
+                                                                </h4>
+                                                            </div>
+
+                                                            <p className="text-[10px] text-gray-500 dark:text-gray-400 italic">
+                                                                Usa esto solo para corregir errores de estado o saldo.
+                                                            </p>
+
+                                                            <div className="space-y-3">
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-[10px] uppercase text-gray-400 font-semibold">Saldo Pendiente</Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        value={correctionForm.saldo}
+                                                                        onChange={(e) => setCorrectionForm(prev => ({ ...prev, saldo: parseFloat(e.target.value) || 0 }))}
+                                                                        className="h-8 text-xs dark:bg-gray-950"
+                                                                    />
+                                                                </div>
+
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-[10px] uppercase text-gray-400 font-semibold">Estado</Label>
+                                                                    <Select
+                                                                        value={correctionForm.estado_pago}
+                                                                        onValueChange={(val) => setCorrectionForm(prev => ({ ...prev, estado_pago: val }))}
+                                                                    >
+                                                                        <SelectTrigger className="h-8 text-xs dark:bg-gray-950">
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="Pendiente">Pendiente</SelectItem>
+                                                                            <SelectItem value="Parcial">Parcial</SelectItem>
+                                                                            <SelectItem value="Pagada">Pagada</SelectItem>
+                                                                            <SelectItem value="Vencida">Vencida</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+
+                                                                <div className="flex items-center space-x-2 py-1">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        id={`conc-check-compra-${compra.id}`}
+                                                                        checked={correctionForm.conciliado}
+                                                                        onChange={(e) => setCorrectionForm(prev => ({ ...prev, conciliado: e.target.checked }))}
+                                                                        className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600 dark:bg-gray-950"
+                                                                    />
+                                                                    <Label htmlFor={`conc-check-compra-${compra.id}`} className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                                        Bancarizada (Conciliada)
+                                                                    </Label>
+                                                                </div>
+                                                            </div>
+
+                                                            <Button
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                className="w-full h-8 text-xs"
+                                                                onClick={() => handleManualCorrection(compra.id)}
+                                                            >
+                                                                Aplicar Corrección
                                                             </Button>
                                                         </div>
                                                     </PopoverContent>

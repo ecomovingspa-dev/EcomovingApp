@@ -1231,6 +1231,15 @@ Ejemplos:
                         saldo: Math.min(nuevoSaldo, montoTotal),
                         conciliado: false
                     }).eq('id', mov.conciliado_id);
+
+                    // NUEVO: Eliminar el registro del abono/pago histórico
+                    const tablaAbonos = (tabla === 'ventas') ? 'abonos' : 'compras_abonos';
+                    const campoFK = (tabla === 'ventas') ? 'venta_id' : 'compra_id';
+
+                    await supabase.from(tablaAbonos)
+                        .delete()
+                        .eq(campoFK, mov.conciliado_id)
+                        .ilike('detalle_abono', `%${mov.descripcion}%`);
                 }
             }
 
