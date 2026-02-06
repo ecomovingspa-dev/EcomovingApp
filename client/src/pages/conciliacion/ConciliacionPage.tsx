@@ -94,8 +94,32 @@ interface Coincidencia {
 /** Tolerancia de monto para matching (en pesos) */
 const TOLERANCIA_MONTO = 5;
 
-/** Palabras comunes que no aportan valor a la búsqueda por nombre */
-const NOISE_WORDS = new Set(['UNIVERSIDAD', 'SOCIEDAD', 'LTDA', 'LIMITADA', 'S.A.', 'SA', 'SPA', 'EIRL', 'EMPRESA', 'CIA', 'ASOCIACION', 'CORPORACION', 'FUNDACION', 'DE', 'EL', 'LA', 'LOS', 'LAS', 'Y']);
+/** Palabras bancarias comunes que no identifican a un cliente/proveedor */
+const BANK_NOISE = new Set([
+    'TRANSFERENCIA', 'ABONO', 'PAGO', 'RECIBIDO', 'DE', 'POR', 'TEF', 'ELECTRONICA', 'BANCARIA', 'DEPOSITO', 'DOCUMENTO',
+    'CARGO', 'GASTO', 'COMISION', 'IVA', 'VALOR', 'RECAUDACION', 'PORTAL', 'BANCO', 'BCI', 'SANTANDER', 'ESTADO', 'CHILE',
+    'SCOTIABANK', 'ITAU', 'WEB', 'APP', 'MOVIL', 'CAJERO', 'AUTOMATICO', 'SERVIPAG', 'UNIRED', 'TRANSBANK', 'ENVIADA',
+    'PARA', 'DESTINATARIO', 'REMITENTE', 'GIRO', 'CHEQUE', 'EFECTIVO'
+]);
+
+/** Palabras de razón social que no aportan unicidad en la búsqueda */
+const ENTITY_NOISE = new Set([
+    'UNIVERSIDAD', 'SOCIEDAD', 'LTDA', 'LIMITADA', 'S.A.', 'SA', 'SPA', 'EIRL', 'EMPRESA', 'CIA', 'ASOCIACION',
+    'CORPORACION', 'FUNDACION', 'DE', 'EL', 'LA', 'LOS', 'LAS', 'Y', 'AL', 'DEL', 'E', 'O', 'U', 'SERVICIOS',
+    'INVERSIONES', 'COMERCIAL', 'LIMITAD', 'CHILE', 'S.P.A'
+]);
+
+/** Extrae términos significativos de un texto para búsqueda */
+const getSearchTokens = (text: string | null | undefined): string[] => {
+    if (!text) return [];
+    return text.toUpperCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quitar acentos
+        .replace(/[^A-Z0-9\s]/g, ' ') // Solo letras, números y espacios
+        .split(/\s+/)
+        .filter(word => word.length >= 3)
+        .filter(word => !BANK_NOISE.has(word) && !ENTITY_NOISE.has(word))
+        .filter(word => isNaN(Number(word))); // No queremos números puros aquí (los folios se manejan aparte)
+};
 
 /** Rango de días para considerar fechas cercanas */
 const RANGO_DIAS_FECHA = 60;
@@ -793,20 +817,16 @@ Ejemplos:
         const montoBuscado = esAbono ? mov.abonos : mov.cargos;
         const fechaMovimiento = mov.fecha;
 
-        // Extract RUT and Folios
+        // 1. Identificadores Fuertes (RUT y Folios)
         let rutCandidate = mov.bci_rut;
         if (!rutCandidate) {
             const textosExplorables = [mov.descripcion, mov.bci_glosa_detalle, mov.bci_comentario_transferencia].filter(Boolean) as string[];
             const regexRut = /(\b\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]\b)/;
             for (const t of textosExplorables) {
                 const m = t.match(regexRut);
-                if (m) {
-                    rutCandidate = m[0];
-                    break;
-                }
+                if (m) { rutCandidate = m[0]; break; }
             }
         }
-
         const rutBuscado = cleanRut(rutCandidate);
         const rutSinDV = rutBuscado?.split('-')[0];
 
@@ -817,224 +837,120 @@ Ejemplos:
         ];
         const foliosUnicos = Array.from(new Set(foliosEnContenedores));
 
-        // Scoring function
-        const scoreCandidato = (doc: any, docFolio: number | string, docMonto: number, docFecha: string): { score: number; reason: string } => {
+        // 2. Tokens de búsqueda (NLP básico)
+        const tokens = getSearchTokens(`${mov.descripcion} ${mov.bci_glosa_detalle || ''}`);
+
+        // 3. Sistema de Scoring
+        const scoreCandidato = (doc: any, docFolio: number | string, docMonto: number, docFecha: string, entityName: string): { score: number; reason: string } => {
             let score = 0;
             const reasons: string[] = [];
 
-            // 1. Folio match
+            // A. Match RUT (Prioridad máxima)
+            if (rutSinDV) {
+                const docRut = cleanRut(doc.rut_recep || doc.rut_proveedor)?.split('-')[0];
+                if (docRut === rutSinDV) {
+                    score += 50;
+                    reasons.push('Entidad (RUT)');
+                }
+            }
+
+            // B. Match Folio
             const folioNum = typeof docFolio === 'string' ? parseInt(docFolio) : docFolio;
             if (foliosUnicos.includes(folioNum)) {
-                score += 50;
-                reasons.push('Folio coincide');
-            }
-
-            // 2. Amount match
-            const diffMonto = Math.abs(docMonto - montoBuscado);
-            const porcentajeDiff = (diffMonto / montoBuscado) * 100;
-            if (diffMonto === 0) {
                 score += 40;
+                reasons.push('Folio');
+            }
+
+            // C. Match Monto
+            const diffMonto = Math.abs(docMonto - montoBuscado);
+            if (diffMonto === 0) {
+                score += 30;
                 reasons.push('Monto exacto');
-            } else if (porcentajeDiff <= 1) {
-                score += 35;
-                reasons.push('Monto muy cercano (<1%)');
-            } else if (porcentajeDiff <= 5) {
+            } else if (diffMonto <= 5) {
                 score += 25;
-                reasons.push('Monto cercano (<5%)');
-            } else if (porcentajeDiff <= 10) {
-                score += 15;
-                reasons.push('Monto aproximado (<10%)');
+                reasons.push('Monto ajustable');
             }
 
-            // 3. Date match
+            // D. Match de Tokens (Nombre)
+            const docTokens = getSearchTokens(entityName);
+            const matchingTokens = tokens.filter(t => docTokens.includes(t));
+            if (matchingTokens.length > 0) {
+                score += (matchingTokens.length * 15);
+                reasons.push(`Nombre (${matchingTokens.length} keywords)`);
+            }
+
+            // E. Proximidad Temporal
             const diffDias = getDateDiffDays(fechaMovimiento, docFecha);
-            if (diffDias <= 3) {
-                score += 20;
-                reasons.push('Fecha muy cercana');
-            } else if (diffDias <= 7) {
-                score += 15;
-                reasons.push('Misma semana');
-            } else if (diffDias <= 30) {
-                score += 10;
-                reasons.push('Mismo mes');
-            }
+            if (diffDias <= 7) score += 10;
 
-            // 4. RUT/Entity name
-            if (rutSinDV) {
-                score += 10;
-                reasons.push('Entidad coincide');
-            }
-
-            return { score, reason: reasons.join(' | ') || 'Coincidencia parcial' };
+            return { score, reason: reasons.join(' | ') };
         };
 
         const candidatesRaw: Array<Coincidencia & { scoreTmp: number }> = [];
+        const tabla = esAbono ? 'ventas' : 'compras';
+        const colEntidad = esAbono ? 'rzn_soc_recep' : 'razon_social';
+        const colRut = esAbono ? 'rut_recep' : 'rut_proveedor';
 
-        if (esAbono) {
-            // ========== VENTAS ==========
-            const baseQuery = supabase.from("ventas").select("*").eq("conciliado", false);
+        // 4. Búsqueda Multi-factor
+        let query = supabase.from(tabla).select("*").eq("conciliado", false);
 
-            // A. By Folio
-            if (foliosUnicos.length > 0) {
-                const { data: byFolios } = await baseQuery.in("folio", foliosUnicos);
-                if (byFolios) byFolios.forEach(v => {
-                    const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
+        // Construir filtros dinámicos basados en lo que tenemos
+        const orFilters = [];
+        if (rutSinDV) orFilters.push(`${colRut}.ilike.%${rutSinDV}%`);
+        if (foliosUnicos.length > 0) orFilters.push(`folio.in.(${foliosUnicos.join(',')})`);
+        // Solo usar los primeros 2 tokens para no sobrecargar la query SQL
+        tokens.slice(0, 3).forEach(t => orFilters.push(`${colEntidad}.ilike.%${t}%`));
+
+        if (orFilters.length > 0) {
+            const { data } = await query.or(orFilters.join(',')).limit(100);
+            if (data) {
+                data.forEach(d => {
+                    const { score, reason } = scoreCandidato(d, d.folio, d.mnt_total || d.monto_total, d.fch_emis || d.fecha_emision, d[colEntidad]);
                     candidatesRaw.push({
-                        id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
-                        fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                        estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
-                        score, matchReason: reason, scoreTmp: score
+                        id: d.id,
+                        tipo: esAbono ? 'venta' : 'compra',
+                        entidad: d[colEntidad] || "Desconocido",
+                        fecha: d.fch_emis || d.fecha_emision,
+                        monto: d.mnt_total || d.monto_total,
+                        folio: d.folio,
+                        estado: d.estado_deuda || d.estado_pago || "Pendiente",
+                        documento_relacionado: d,
+                        score,
+                        matchReason: reason,
+                        scoreTmp: score
                     });
                 });
             }
+        }
 
-            // B. By RUT - Show ALL unreconciled of client
-            if (rutBuscado || rutSinDV) {
-                const { data: byRut } = await supabase.from("ventas").select("*")
-                    .eq("conciliado", false)
-                    .or(`rut_recep.eq.${rutBuscado},rut_recep.ilike.%${rutSinDV}%`)
-                    .limit(40);
-
-                if (byRut) byRut.forEach(v => {
-                    if (!candidatesRaw.find(c => c.id === v.id && c.tipo === 'venta')) {
-                        const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
-                        let finalScore = score + (Math.abs(v.mnt_total - montoBuscado) > TOLERANCIA_MONTO ? 20 : 0);
-                        candidatesRaw.push({
-                            id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
-                            fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                            estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
-                            score: finalScore, matchReason: reason + (finalScore > score ? " | Misma entidad" : ""),
-                            scoreTmp: finalScore
-                        });
-                    }
+        // 5. Fallback por Monto si no hay nada
+        if (candidatesRaw.length === 0) {
+            const { data: byMonto } = await supabase.from(tabla).select("*")
+                .eq("conciliado", false)
+                .gte(esAbono ? "mnt_total" : "monto_total", montoBuscado - 1)
+                .lte(esAbono ? "mnt_total" : "monto_total", montoBuscado + 1)
+                .limit(10);
+            if (byMonto) byMonto.forEach(d => {
+                candidatesRaw.push({
+                    id: d.id, tipo: esAbono ? 'venta' : 'compra',
+                    entidad: d[colEntidad] || "Desconocido",
+                    fecha: d.fch_emis || d.fecha_emision, monto: d.mnt_total || d.monto_total,
+                    folio: d.folio, estado: d.estado_deuda || d.estado_pago || "Pendiente",
+                    documento_relacionado: d, score: 30, matchReason: 'Monto similar', scoreTmp: 30
                 });
-            } else {
-                // Fallback: Por Nombre if no RUT
-                const regexNombre = /(?:pago\s+recibido\s+de|transferencia\s+de|abono\s+de|deposito\s+de|de:?|pago\s+de|remitente:?)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]{4,})/i;
-                const matchNombre = mov.descripcion?.match(regexNombre);
-                let palabraClave = "";
-                if (matchNombre) {
-                    const rawWords = matchNombre[1].trim().split(/\s+/);
-                    const filteredWords = rawWords.filter(w => w.length >= 3 && !NOISE_WORDS.has(w.toUpperCase()));
-                    palabraClave = filteredWords[0] || rawWords[0];
-                }
-
-                if (palabraClave) {
-                    const { data: byNombre } = await supabase.from("ventas").select("*")
-                        .eq("conciliado", false)
-                        .ilike("rzn_soc_recep", `%${palabraClave}%`)
-                        .limit(20);
-
-                    if (byNombre) byNombre.forEach(v => {
-                        if (!candidatesRaw.find(c => c.id === v.id && c.tipo === 'venta')) {
-                            const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
-                            let finalScore = score + 20;
-                            candidatesRaw.push({
-                                id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
-                                fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
-                                score: finalScore, matchReason: reason + ' | Empresa coincide',
-                                scoreTmp: finalScore
-                            });
-                        }
-                    });
-                }
-            }
-
-            // C. By Amount fallback
-            const { data: byMonto } = await baseQuery.gte("mnt_total", montoBuscado - TOLERANCIA_MONTO).lte("mnt_total", montoBuscado + TOLERANCIA_MONTO).limit(10);
-            if (byMonto) byMonto.forEach(v => {
-                if (!candidatesRaw.find(c => c.id === v.id && c.tipo === 'venta')) {
-                    const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
-                    candidatesRaw.push({
-                        id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
-                        fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                        estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
-                        score, matchReason: reason, scoreTmp: score
-                    });
-                }
             });
-        } else {
-            // ========== COMPRAS ==========
-            const baseQuery = supabase.from("compras").select("*").eq("conciliado", false);
-
-            if (foliosUnicos.length > 0) {
-                const { data: byFolios } = await baseQuery.in("folio", foliosUnicos);
-                if (byFolios) byFolios.forEach(c => {
-                    const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
-                    candidatesRaw.push({
-                        id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
-                        fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                        estado: c.estado_pago || "Pendiente", documento_relacionado: c,
-                        score, matchReason: reason, scoreTmp: score
-                    });
-                });
-            }
-
-            if (rutBuscado || rutSinDV) {
-                const { data: byRut } = await supabase.from("compras").select("*")
-                    .eq("conciliado", false)
-                    .or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`)
-                    .limit(40);
-
-                if (byRut) byRut.forEach(c => {
-                    if (!candidatesRaw.find(item => item.id === c.id && item.tipo === 'compra')) {
-                        const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
-                        let finalScore = score + (Math.abs(c.monto_total - montoBuscado) > TOLERANCIA_MONTO ? 20 : 0);
-                        candidatesRaw.push({
-                            id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
-                            fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                            estado: c.estado_pago || "Pendiente", documento_relacionado: c,
-                            score: finalScore, matchReason: reason + (finalScore > score ? " | Misma entidad" : ""),
-                            scoreTmp: finalScore
-                        });
-                    }
-                });
-            } else {
-                // Fallback: Por Nombre if no RUT
-                const regexNombre = /(?:enviada?\s+a|para|destinatario:?|pago\s+a|transferencia\s+a)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]{3,})/i;
-                const matchNombre = mov.descripcion?.match(regexNombre);
-                let palabraClave = "";
-                if (matchNombre) {
-                    const rawWords = matchNombre[1].trim().split(/\s+/);
-                    const filteredWords = rawWords.filter(w => w.length >= 3 && !NOISE_WORDS.has(w.toUpperCase()));
-                    palabraClave = filteredWords[0] || rawWords[0];
-                }
-
-                if (palabraClave) {
-                    const { data: byNombre } = await supabase.from("compras").select("*")
-                        .eq("conciliado", false)
-                        .ilike("razon_social", `%${palabraClave}%`)
-                        .limit(20);
-
-                    if (byNombre) byNombre.forEach(c => {
-                        if (!candidatesRaw.find(item => item.id === c.id && item.tipo === 'compra')) {
-                            const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
-                            let finalScore = score + 20;
-                            candidatesRaw.push({
-                                id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
-                                fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                                estado: c.estado_pago || "Pendiente", documento_relacionado: c,
-                                score: finalScore, matchReason: reason + ' | Empresa coincide',
-                                scoreTmp: finalScore
-                            });
-                        }
-                    });
-                }
-            }
         }
 
         const sortedCandidates = candidatesRaw
             .sort((a, b) => b.scoreTmp - a.scoreTmp)
-            .slice(0, 15)
+            .slice(0, 20)
             .map(({ scoreTmp, ...rest }) => rest);
 
         setCoincidencias(sortedCandidates);
         setSearchingMatch(false);
 
-        if (sortedCandidates.length === 0 && (rutSinDV)) {
+        if (sortedCandidates.length === 0 && (rutSinDV || tokens.length > 0)) {
             cargarTodosLosDocumentosPendientes(mov);
-            // Si hay un RUT pero no hubo sugerencias directas (probablemente por monto), sugerimos ir a selección múltiple
             setMatchTab("multiple");
         }
     };
@@ -1044,38 +960,27 @@ Ejemplos:
         try {
             const esAbono = Boolean(mov.abonos && mov.abonos > 0);
             const tabla = esAbono ? 'ventas' : 'compras';
+            const colEntidad = esAbono ? 'rzn_soc_recep' : 'razon_social';
+            const colRut = esAbono ? 'rut_recep' : 'rut_proveedor';
 
             const rutBuscado = cleanRut(mov.bci_rut);
             const rutSinDV = rutBuscado?.split('-')[0];
-
-            // Intentar identificar nombre si no hay RUT
-            let nombreCandidato = "";
-            if (!rutSinDV) {
-                const regexNombre = /(?:pago\s+recibido\s+de|transferencia\s+de|abono\s+de|deposito\s+de|de:?|pago\s+de|remitente:?)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]{4,})/i;
-                const match = mov.descripcion?.match(regexNombre);
-                if (match) nombreCandidato = match[1].trim().split(/\s+/)[0];
-            }
+            const tokens = getSearchTokens(`${mov.descripcion} ${mov.bci_glosa_detalle || ''}`);
 
             let docs: Coincidencia[] = [];
 
-            // 1. Filtrar por RUT o Nombre identificado
-            if (rutSinDV) {
-                const column = esAbono ? 'rut_recep' : 'rut_proveedor';
-                const { data } = await (supabase.from(tabla).select("*") as any)
-                    .eq("conciliado", false)
-                    .or(`${column}.eq.${rutBuscado},${column}.ilike.%${rutSinDV}%`)
-                    .limit(100);
-                if (data) docs = processDocs(data, esAbono);
-            } else if (nombreCandidato) {
-                const column = esAbono ? 'rzn_soc_recep' : 'razon_social';
-                const { data } = await (supabase.from(tabla).select("*") as any)
-                    .eq("conciliado", false)
-                    .ilike(column, `%${nombreCandidato}%`)
-                    .limit(100);
+            // 1. Filtrar por identificadores conocidos
+            const q = (supabase.from(tabla).select("*") as any).eq("conciliado", false);
+            const orFilters = [];
+            if (rutSinDV) orFilters.push(`${colRut}.ilike.%${rutSinDV}%`);
+            tokens.slice(0, 3).forEach(t => orFilters.push(`${colEntidad}.ilike.%${t}%`));
+
+            if (orFilters.length > 0) {
+                const { data } = await q.or(orFilters.join(',')).limit(100);
                 if (data) docs = processDocs(data, esAbono);
             }
 
-            // 2. Fallback: últimos 200 sin bancarizar
+            // 2. Fallback: últimos 200 sin bancarizar si no hay filtros o resultados
             if (docs.length === 0) {
                 const { data } = await (supabase.from(tabla).select("*") as any)
                     .eq("conciliado", false)
