@@ -790,10 +790,8 @@ Ejemplos:
         const montoBuscado = esAbono ? mov.abonos : mov.cargos;
         const fechaMovimiento = mov.fecha;
 
-        // Usar funciones helper globales
-        // Intentar obtener RUT de bci_rut, o extraer de cualquier campo de texto
+        // Extract RUT and Folios
         let rutCandidate = mov.bci_rut;
-
         if (!rutCandidate) {
             const textosExplorables = [mov.descripcion, mov.bci_glosa_detalle, mov.bci_comentario_transferencia].filter(Boolean) as string[];
             const regexRut = /(\b\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]\b)/;
@@ -816,22 +814,21 @@ Ejemplos:
         ];
         const foliosUnicos = Array.from(new Set(foliosEnContenedores));
 
-        // Función para calcular score de cada candidato
+        // Scoring function
         const scoreCandidato = (doc: any, docFolio: number | string, docMonto: number, docFecha: string): { score: number; reason: string } => {
             let score = 0;
             const reasons: string[] = [];
 
-            // 1. ¿Coincide folio? (+50 puntos)
+            // 1. Folio match
             const folioNum = typeof docFolio === 'string' ? parseInt(docFolio) : docFolio;
             if (foliosUnicos.includes(folioNum)) {
                 score += 50;
                 reasons.push('Folio coincide');
             }
 
-            // 2. ¿Monto exacto o cercano? (+30-40 puntos)
+            // 2. Amount match
             const diffMonto = Math.abs(docMonto - montoBuscado);
             const porcentajeDiff = (diffMonto / montoBuscado) * 100;
-
             if (diffMonto === 0) {
                 score += 40;
                 reasons.push('Monto exacto');
@@ -845,9 +842,8 @@ Ejemplos:
                 score += 15;
                 reasons.push('Monto aproximado (<10%)');
             }
-            // Si diferencia > 10%, no suma puntos
 
-            // 3. ¿Fecha cercana? (+10-20 puntos)
+            // 3. Date match
             const diffDias = getDateDiffDays(fechaMovimiento, docFecha);
             if (diffDias <= 3) {
                 score += 20;
@@ -858,27 +854,12 @@ Ejemplos:
             } else if (diffDias <= 30) {
                 score += 10;
                 reasons.push('Mismo mes');
-            } else if (diffDias <= 60) {
-                score += 5;
-                reasons.push('Fecha cercana');
             }
-            // Si > 60 días, no suma puntos
 
-            // 4. ¿RUT coincide? (+10 puntos, ya filtrado por query)
-            if (rutBuscado || rutSinDV) {
+            // 4. RUT/Entity name
+            if (rutSinDV) {
                 score += 10;
-                reasons.push('Proveedor/Cliente coincide');
-            }
-
-            // 5. ¿Nombre coincide parcialmente? (+15 puntos)
-            const entidadNorm = normalizeText(doc.entidad || doc.rzn_soc_recep || doc.razon_social);
-            const descNorm = normalizeText(mov.descripcion);
-            if (entidadNorm && descNorm) {
-                const palabrasEntidad = entidadNorm.split(/\s+/).filter(p => p.length >= 4);
-                if (palabrasEntidad.some(p => descNorm.includes(p))) {
-                    score += 15;
-                    reasons.push('Nombre coincide');
-                }
+                reasons.push('Entidad coincide');
             }
 
             return { score, reason: reasons.join(' | ') || 'Coincidencia parcial' };
@@ -886,12 +867,11 @@ Ejemplos:
 
         const candidatesRaw: Array<Coincidencia & { scoreTmp: number }> = [];
 
-        // 1. Search Sales (Ventas) - Solo para abonos
         if (esAbono) {
-            // CAMBIO: No excluir por estado 'Pagada', buscar facturas NO CONCILIADAS (Sin Bancarizar)
+            // ========== VENTAS ==========
             const baseQuery = supabase.from("ventas").select("*").eq("conciliado", false);
 
-            // A. Por Folio(s) extraído(s) - prioridad máxima
+            // A. By Folio
             if (foliosUnicos.length > 0) {
                 const { data: byFolios } = await baseQuery.in("folio", foliosUnicos);
                 if (byFolios) byFolios.forEach(v => {
@@ -905,36 +885,59 @@ Ejemplos:
                 });
             }
 
-            // B. Por RUT - buscar solo montos muy cercanos (±1% o ±$100 máx)
+            // B. By RUT - Show ALL unreconciled of client
             if (rutBuscado || rutSinDV) {
-                const toleranciaRut = Math.max(100, montoBuscado * 0.01); // 1% o $100, el mayor
                 const { data: byRut } = await supabase.from("ventas").select("*")
                     .eq("conciliado", false)
                     .or(`rut_recep.eq.${rutBuscado},rut_recep.ilike.%${rutSinDV}%`)
-                    .gte("mnt_total", montoBuscado - toleranciaRut)
-                    .lte("mnt_total", montoBuscado + toleranciaRut)
-                    .limit(20);
+                    .limit(40);
 
                 if (byRut) byRut.forEach(v => {
                     if (!candidatesRaw.find(c => c.id === v.id && c.tipo === 'venta')) {
                         const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
+                        let finalScore = score + (Math.abs(v.mnt_total - montoBuscado) > TOLERANCIA_MONTO ? 20 : 0);
                         candidatesRaw.push({
                             id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
                             fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
                             estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
-                            score, matchReason: reason, scoreTmp: score
+                            score: finalScore, matchReason: reason + (finalScore > score ? " | Misma entidad" : ""),
+                            scoreTmp: finalScore
                         });
                     }
                 });
+            } else {
+                // Fallback: Por Nombre if no RUT
+                const regexNombre = /(?:pago\s+recibido\s+de|transferencia\s+de|abono\s+de|deposito\s+de|de:?|pago\s+de|remitente:?)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]{4,})/i;
+                const matchNombre = mov.descripcion?.match(regexNombre);
+                let palabraClave = "";
+                if (matchNombre) {
+                    palabraClave = matchNombre[1].trim().split(/\s+/)[0];
+                }
+
+                if (palabraClave) {
+                    const { data: byNombre } = await supabase.from("ventas").select("*")
+                        .eq("conciliado", false)
+                        .ilike("rzn_soc_recep", `%${palabraClave}%`)
+                        .limit(20);
+
+                    if (byNombre) byNombre.forEach(v => {
+                        if (!candidatesRaw.find(c => c.id === v.id && c.tipo === 'venta')) {
+                            const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
+                            let finalScore = score + 20;
+                            candidatesRaw.push({
+                                id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
+                                fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
+                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
+                                score: finalScore, matchReason: reason + ' | Empresa coincide',
+                                scoreTmp: finalScore
+                            });
+                        }
+                    });
+                }
             }
 
-            // C. Por Monto exacto (sin filtrar por RUT)
-            const { data: byMonto } = await supabase.from("ventas").select("*")
-                .eq("conciliado", false)
-                .gte("mnt_total", montoBuscado - TOLERANCIA_MONTO)
-                .lte("mnt_total", montoBuscado + TOLERANCIA_MONTO)
-                .limit(10);
-
+            // C. By Amount fallback
+            const { data: byMonto } = await baseQuery.gte("mnt_total", montoBuscado - TOLERANCIA_MONTO).lte("mnt_total", montoBuscado + TOLERANCIA_MONTO).limit(10);
             if (byMonto) byMonto.forEach(v => {
                 if (!candidatesRaw.find(c => c.id === v.id && c.tipo === 'venta')) {
                     const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
@@ -946,82 +949,10 @@ Ejemplos:
                     });
                 }
             });
-
-            // D. Por Saldo Actual (para pagos de saldo de ventas con abonos previos)
-            const { data: bySaldoVenta } = await supabase.from("ventas").select("*")
-                .eq("conciliado", false)
-                .gt("saldo", 0)
-                .gte("saldo", montoBuscado - TOLERANCIA_MONTO)
-                .lte("saldo", montoBuscado + TOLERANCIA_MONTO)
-                .limit(15);
-
-            if (bySaldoVenta) bySaldoVenta.forEach(v => {
-                if (!candidatesRaw.find(c => c.id === v.id && c.tipo === 'venta')) {
-                    const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
-
-                    let adjustedScore = score + 35;
-                    let adjustedReason = 'Saldo pendiente coincide';
-
-                    if (v.saldo < v.mnt_total) {
-                        adjustedReason += ' | Venta con abonos previos';
-                    }
-
-                    candidatesRaw.push({
-                        id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
-                        fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                        estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
-                        score: adjustedScore, matchReason: adjustedReason, scoreTmp: adjustedScore
-                    });
-                }
-            });
-
-            // E. NUEVO: Por Nombre/Razón Social (Ventas)
-            // Extraer nombre del remitente de la descripción
-            const regexNombre = /(?:pago\s+recibido\s+de|transferencia\s+de|abono\s+de|deposito\s+de|de:?|pago\s+de|remitente:?)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]{3,})/i;
-            const matchNombre = mov.descripcion?.match(regexNombre);
-
-            // Si el regex no captura nada, usamos las palabras más largas de la descripción como términos de búsqueda
-            let terminosBusqueda: string[] = [];
-            if (matchNombre) {
-                terminosBusqueda = matchNombre[1].split(/\s+/).filter(p => p.length >= 3);
-            } else {
-                // Fallback: usar palabras de la descripción que no sean ruido
-                const ruido = new Set(['pago', 'recibido', 'transferencia', 'abono', 'deposito', 'bci', 'banco', 'servicios', 'giro']);
-                terminosBusqueda = (mov.descripcion || '').split(/\s+/).filter(p => p.length >= 4 && !ruido.has(p.toLowerCase()));
-            }
-
-            if (terminosBusqueda.length > 0) {
-                for (const palabra of terminosBusqueda.slice(0, 3)) { // Máximo 3 términos para no saturar
-                    const { data: byNombre } = await supabase.from("ventas").select("*")
-                        .eq("conciliado", false)
-                        .ilike("rzn_soc_recep", `%${palabra}%`)
-                        .limit(20);
-
-                    if (byNombre) byNombre.forEach(v => {
-                        if (!candidatesRaw.find(c => c.id === v.id && c.tipo === 'venta')) {
-                            const { score, reason } = scoreCandidato(v, v.folio, v.mnt_total, v.fch_emis);
-                            // Bonus por nombre coincide si no se filtró por RUT o Folio arriba
-                            const bonusNombre = 20;
-                            candidatesRaw.push({
-                                id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
-                                fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
-                                score: score + bonusNombre, matchReason: reason + ' | Nombre coincide',
-                                scoreTmp: score + bonusNombre
-                            });
-                        }
-                    });
-                }
-            }
-        }
-
-
-        // 2. Search Compras (Expenses) - Solo para cargos
-        if (!esAbono) {
-            // CAMBIO: No excluir Pagadas, buscar facturas NO CONCILIADAS (Sin Bancarizar)
+        } else {
+            // ========== COMPRAS ==========
             const baseQuery = supabase.from("compras").select("*").eq("conciliado", false);
 
-            // A. Por Folio(s) - prioridad máxima
             if (foliosUnicos.length > 0) {
                 const { data: byFolios } = await baseQuery.in("folio", foliosUnicos);
                 if (byFolios) byFolios.forEach(c => {
@@ -1035,208 +966,120 @@ Ejemplos:
                 });
             }
 
-            // B. Por RUT - buscar montos cercanos Y montos mayores (para abonos parciales)
             if (rutBuscado || rutSinDV) {
-                // Para abonos, buscamos facturas donde el monto total sea MAYOR o IGUAL al pago
-                // Ampliamos el rango superior considerablemente para encontrar la factura original
-                const toleranciaInferior = Math.max(100, montoBuscado * 0.01);
-                const limiteSuperior = montoBuscado * 10; // Buscamos facturas hasta 10 veces más grandes (para abonos del 10%)
-
                 const { data: byRut } = await supabase.from("compras").select("*")
                     .eq("conciliado", false)
                     .or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`)
-                    .gte("monto_total", montoBuscado - toleranciaInferior) // Pago no puede ser mayor que la deuda + error
-                    .lte("monto_total", limiteSuperior)
-                    .limit(30);
+                    .limit(40);
 
                 if (byRut) byRut.forEach(c => {
                     if (!candidatesRaw.find(item => item.id === c.id && item.tipo === 'compra')) {
                         const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
-
-                        // Si es un abono parcial claro (monto doc > monto movimiento)
-                        let adjustedReason = reason;
-                        let adjustedScore = score;
-
-                        if (c.monto_total > (montoBuscado + toleranciaInferior)) {
-                            // Es posible abono si el RUT coincide (ya garantizado por la query)
-                            // Y si el monto es una fracción razonable (ej. > 10%)
-                            if (montoBuscado >= c.monto_total * 0.1) {
-                                adjustedScore += 15; // Bonificamos por coincidencia de RUT fuerte
-                                adjustedReason += ' | Posible abono parcial';
-                            }
-                        }
-
+                        let finalScore = score + (Math.abs(c.monto_total - montoBuscado) > TOLERANCIA_MONTO ? 20 : 0);
                         candidatesRaw.push({
                             id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
                             fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
                             estado: c.estado_pago || "Pendiente", documento_relacionado: c,
-                            score: adjustedScore, matchReason: adjustedReason, scoreTmp: adjustedScore
+                            score: finalScore, matchReason: reason + (finalScore > score ? " | Misma entidad" : ""),
+                            scoreTmp: finalScore
                         });
                     }
                 });
-            }
-
-            // C. Por Monto exacto (sin filtrar por RUT)
-            const { data: byMonto } = await supabase.from("compras").select("*")
-                .eq("conciliado", false)
-                .gte("monto_total", montoBuscado - TOLERANCIA_MONTO)
-                .lte("monto_total", montoBuscado + TOLERANCIA_MONTO)
-                .limit(10);
-
-            if (byMonto) byMonto.forEach(c => {
-                if (!candidatesRaw.find(item => item.id === c.id && item.tipo === 'compra')) {
-                    const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
-                    candidatesRaw.push({
-                        id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
-                        fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                        estado: c.estado_pago || "Pendiente", documento_relacionado: c,
-                        score, matchReason: reason, scoreTmp: score
-                    });
-                }
-            });
-
-            // D. Por Nombre/Razón Social (fallback cuando no hay RUT ni Folio)
-            // Extraer nombre del destinatario de la descripción
-            const nombreMatch = mov.descripcion?.match(/(?:enviada?\s+a|para|destinatario:?|pago\s+a|transferencia\s+a)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]+)/i);
-
-            let terminosBusqueda: string[] = [];
-            if (nombreMatch) {
-                terminosBusqueda = nombreMatch[1].split(/\s+/).filter(p => p.length >= 3);
             } else {
-                // Fallback: usar palabras de la descripción que no sean ruido
-                const ruido = new Set(['pago', 'enviado', 'transferencia', 'abono', 'cargo', 'bci', 'banco', 'compra', 'giro']);
-                terminosBusqueda = (mov.descripcion || '').split(/\s+/).filter(p => p.length >= 4 && !ruido.has(p.toLowerCase()));
-            }
+                // Fallback: Por Nombre if no RUT
+                const regexNombre = /(?:enviada?\s+a|para|destinatario:?|pago\s+a|transferencia\s+a)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]{3,})/i;
+                const matchNombre = mov.descripcion?.match(regexNombre);
+                let palabraClave = "";
+                if (matchNombre) {
+                    palabraClave = matchNombre[1].trim().split(/\s+/)[0];
+                }
 
-            if (terminosBusqueda.length > 0 && !rutBuscado && foliosUnicos.length === 0) {
-                // Dividir en palabras y buscar las más significativas (apellidos)
-                const palabras = terminosBusqueda.filter(p => p.length >= 3);
-
-                for (const palabra of palabras.slice(0, 3)) {
+                if (palabraClave) {
                     const { data: byNombre } = await supabase.from("compras").select("*")
                         .eq("conciliado", false)
-                        .ilike("razon_social", `%${palabra}%`)
-                        .gte("monto_total", montoBuscado * 0.3) // Buscar facturas >= 30% del monto (puede ser abono)
-                        .lte("monto_total", montoBuscado * 10) // Hasta 10x (abono del 10%)
+                        .ilike("razon_social", `%${palabraClave}%`)
                         .limit(20);
 
                     if (byNombre) byNombre.forEach(c => {
                         if (!candidatesRaw.find(item => item.id === c.id && item.tipo === 'compra')) {
                             const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
-
-                            let adjustedScore = score + 20; // Bonus por coincidencia de nombre
-                            let adjustedReason = reason + ' | Nombre coincide';
-
-                            // Si es abono parcial
-                            if (c.monto_total > montoBuscado * 1.5) {
-                                adjustedReason += ' | Posible abono';
-                            }
-
+                            let finalScore = score + 20;
                             candidatesRaw.push({
                                 id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
                                 fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
                                 estado: c.estado_pago || "Pendiente", documento_relacionado: c,
-                                score: adjustedScore, matchReason: adjustedReason, scoreTmp: adjustedScore
+                                score: finalScore, matchReason: reason + ' | Empresa coincide',
+                                scoreTmp: finalScore
                             });
                         }
                     });
                 }
             }
-
-            // E. Por Saldo Actual (para pagar el restante de facturas con abonos previos)
-            // Buscar facturas donde el SALDO (no monto_total) coincida con el movimiento
-            const { data: bySaldo } = await supabase.from("compras").select("*")
-                .eq("conciliado", false)
-                .gt("saldo", 0) // Solo facturas con saldo pendiente
-                .gte("saldo", montoBuscado - TOLERANCIA_MONTO)
-                .lte("saldo", montoBuscado + TOLERANCIA_MONTO)
-                .limit(15);
-
-            if (bySaldo) bySaldo.forEach(c => {
-                if (!candidatesRaw.find(item => item.id === c.id && item.tipo === 'compra')) {
-                    const { score, reason } = scoreCandidato(c, c.folio, c.monto_total, c.fecha_emision);
-
-                    // Bonus alto si el saldo coincide exactamente (pago de saldo)
-                    let adjustedScore = score + 35;
-                    let adjustedReason = 'Saldo pendiente coincide';
-
-                    // Si ya tuvo abonos previos (saldo < monto_total)
-                    if (c.saldo < c.monto_total) {
-                        adjustedReason += ' | Factura con abonos previos';
-                    }
-
-                    candidatesRaw.push({
-                        id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
-                        fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                        estado: c.estado_pago || "Pendiente", documento_relacionado: c,
-                        score: adjustedScore, matchReason: adjustedReason, scoreTmp: adjustedScore
-                    });
-                }
-            });
         }
 
-
-        // Ordenar por score descendente y tomar los mejores 15
         const sortedCandidates = candidatesRaw
             .sort((a, b) => b.scoreTmp - a.scoreTmp)
             .slice(0, 15)
-            .map(({ scoreTmp, ...rest }) => rest); // Eliminar scoreTmp del resultado
+            .map(({ scoreTmp, ...rest }) => rest);
 
         setCoincidencias(sortedCandidates);
         setSearchingMatch(false);
 
-        // Si no hay coincidencias automáticas, cargamos todos los documentos del RUT si existe
-        if (sortedCandidates.length === 0 && (rutBuscado || rutSinDV)) {
+        if (sortedCandidates.length === 0 && (rutSinDV)) {
             cargarTodosLosDocumentosPendientes(mov);
+            // Si hay un RUT pero no hubo sugerencias directas (probablemente por monto), sugerimos ir a selección múltiple
+            setMatchTab("multiple");
         }
     };
 
     const cargarTodosLosDocumentosPendientes = async (mov: BancoMovimiento) => {
         setLoadingAllDocs(true);
         try {
-            // Asegurar que detectamos correctamente si es Abono (Ingreso)
-            // Si el movimiento tiene abonos > 0, buscamos en VENTAS
             const esAbono = Boolean(mov.abonos && mov.abonos > 0);
             const tabla = esAbono ? 'ventas' : 'compras';
-
-
-            console.log(`Cargando documentos para selección múltiple. Tabla: ${tabla}, Movimiento:`, mov);
 
             const rutBuscado = cleanRut(mov.bci_rut);
             const rutSinDV = rutBuscado?.split('-')[0];
 
-            let docs: Coincidencia[] = [];
-
-            // 1. Intentar filtrar por RUT primero - Solo documentos NO conciliados
-            if (rutSinDV) {
-                const column = esAbono ? 'rut_recep' : 'rut_proveedor';
-                const { data: filteredData } = await (supabase.from(tabla).select("*") as any)
-                    .eq("conciliado", false)
-                    .or(`${column}.eq.${rutBuscado},${column}.ilike.%${rutSinDV}%`)
-                    .order(esAbono ? 'fch_emis' : 'fecha_emision', { ascending: false })
-                    .limit(100);
-
-                if (filteredData && filteredData.length > 0) {
-                    docs = processDocs(filteredData, esAbono);
-                } else {
-                    console.log("No se encontraron documentos para el RUT, buscando generales...");
-                }
+            // Intentar identificar nombre si no hay RUT
+            let nombreCandidato = "";
+            if (!rutSinDV) {
+                const regexNombre = /(?:pago\s+recibido\s+de|transferencia\s+de|abono\s+de|deposito\s+de|de:?|pago\s+de|remitente:?)\s+([A-Za-záéíóúñÁÉÍÓÚÑ\s]{4,})/i;
+                const match = mov.descripcion?.match(regexNombre);
+                if (match) nombreCandidato = match[1].trim().split(/\s+/)[0];
             }
 
-            // 2. Fallback: mostrar los últimos 100 documentos NO CONCILIADOS si no hay RUT o no hubo resultados
+            let docs: Coincidencia[] = [];
+
+            // 1. Filtrar por RUT o Nombre identificado
+            if (rutSinDV) {
+                const column = esAbono ? 'rut_recep' : 'rut_proveedor';
+                const { data } = await (supabase.from(tabla).select("*") as any)
+                    .eq("conciliado", false)
+                    .or(`${column}.eq.${rutBuscado},${column}.ilike.%${rutSinDV}%`)
+                    .limit(100);
+                if (data) docs = processDocs(data, esAbono);
+            } else if (nombreCandidato) {
+                const column = esAbono ? 'rzn_soc_recep' : 'razon_social';
+                const { data } = await (supabase.from(tabla).select("*") as any)
+                    .eq("conciliado", false)
+                    .ilike(column, `%${nombreCandidato}%`)
+                    .limit(100);
+                if (data) docs = processDocs(data, esAbono);
+            }
+
+            // 2. Fallback: últimos 200 sin bancarizar
             if (docs.length === 0) {
-                const { data, error } = await (supabase.from(tabla).select("*") as any)
+                const { data } = await (supabase.from(tabla).select("*") as any)
                     .eq("conciliado", false)
                     .order(esAbono ? 'fch_emis' : 'fecha_emision', { ascending: false })
                     .limit(200);
-
-                if (error) throw error;
-                docs = processDocs(data || [], esAbono);
+                if (data) docs = processDocs(data || [], esAbono);
             }
 
             setAllUnreconciledDocs(docs);
         } catch (error) {
-            console.error("Error loading all docs:", error);
+            console.error("Error loading docs:", error);
         } finally {
             setLoadingAllDocs(false);
         }
