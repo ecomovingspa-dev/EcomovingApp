@@ -358,9 +358,32 @@ export default function ComprasPage() {
         monto_abono: "",
     });
 
+    // Historial de Abonos
+    const [abonosHistorial, setAbonosHistorial] = useState<any[]>([]);
+    const [cargandoAbonos, setCargandoAbonos] = useState(false);
+
+    const cargarAbonos = async (compraId: number) => {
+        setCargandoAbonos(true);
+        try {
+            const { data, error } = await supabase
+                .from("compras_abonos")
+                .select("*")
+                .eq("compra_id", compraId)
+                .order("created_at", { ascending: false });
+
+            if (error) throw error;
+            setAbonosHistorial(data || []);
+        } catch (e) {
+            console.error("Error cargando abonos:", e);
+        } finally {
+            setCargandoAbonos(false);
+        }
+    };
+
     // Abrir formulario
     const openAbonoForm = (compra: Compra) => {
         setAbonoOpen(compra.id);
+        cargarAbonos(compra.id);
         // Pre-fill amount with pending balance
         setAbonoForm({
             fecha_abono: new Date().toISOString().split("T")[0],
@@ -395,11 +418,16 @@ export default function ComprasPage() {
                 })
                 .eq("id", compraId);
 
-            if (error) throw error; // Revert if fails
+            if (error) throw error;
 
-            // 3. Crear Registro de Movimiento en 'banco_movimientos' ?
-            // Opcional: Si queremos registrar el egreso automáticamente en la conciliación.
-            // Por ahora solo actualizamos la compra como "pagada" parcialmente.
+            // 3. Crear Registro de Abono
+            await supabase.from("compras_abonos").insert({
+                compra_id: compraId,
+                monto_abono: monto,
+                fecha_abono: abonoForm.fecha_abono || new Date().toISOString().split("T")[0],
+                tipo_abono: abonoForm.tipo_abono || "transferencia",
+                detalle_abono: abonoForm.detalle_abono || ""
+            });
 
             // Si funciona:
             setAbonoOpen(null);
@@ -706,9 +734,26 @@ export default function ComprasPage() {
                                                             </div>
 
                                                             <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                                                                {/* Historial de Pagos Anteriores */}
+                                                                {abonosHistorial.length > 0 && (
+                                                                    <div className="mb-4 space-y-1">
+                                                                        <Label className="text-[10px] uppercase text-indigo-500 font-bold">Pagos Registrados</Label>
+                                                                        <div className="max-h-24 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                                                                            {abonosHistorial.map((abono) => (
+                                                                                <div key={abono.id} className="text-[10px] flex justify-between bg-gray-50 dark:bg-gray-900/50 p-1.5 rounded border border-gray-100 dark:border-gray-800">
+                                                                                    <span className="text-gray-500">{abono.fecha_abono}</span>
+                                                                                    <span className="font-bold text-gray-700 dark:text-gray-300">
+                                                                                        ${Number(abono.monto_abono).toLocaleString()}
+                                                                                    </span>
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+
                                                                 <div className="space-y-1">
                                                                     <Label className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-semibold">
-                                                                        Fecha
+                                                                        Nueva Fecha
                                                                     </Label>
                                                                     <div className="relative">
                                                                         <CalendarDays className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
@@ -759,7 +804,7 @@ export default function ComprasPage() {
                                                                 </div>
                                                                 <div className="space-y-1">
                                                                     <Label className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-semibold">
-                                                                        Monto
+                                                                        Monto a Pagar
                                                                     </Label>
                                                                     <div className="relative">
                                                                         <DollarSign className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />

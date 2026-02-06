@@ -78,13 +78,15 @@ interface Coincidencia {
     tipo: 'venta' | 'compra';
     entidad: string; // Cliente o Proveedor
     fecha: string;
-    monto: number;
+    monto: number; // Monto PENDIENTE (Saldo)
+    monto_total: number; // Monto Original
     folio: string | number;
     estado?: string;
     documento_relacionado?: any;
     score?: number; // 0-100 confidence score
     matchReason?: string; // Description of why this matched
     conciliado?: boolean;
+    saldo?: number;
 }
 
 // ============================================================
@@ -841,7 +843,7 @@ Ejemplos:
         const tokens = getSearchTokens(`${mov.descripcion} ${mov.bci_glosa_detalle || ''}`);
 
         // 3. Sistema de Scoring
-        const scoreCandidato = (doc: any, docFolio: number | string, docMonto: number, docFecha: string, entityName: string): { score: number; reason: string } => {
+        const scoreCandidato = (doc: any, docFolio: number | string, docMontoOriginal: number, docSaldo: number, docFecha: string, entityName: string): { score: number; reason: string } => {
             let score = 0;
             const reasons: string[] = [];
 
@@ -861,14 +863,19 @@ Ejemplos:
                 reasons.push('Folio');
             }
 
-            // C. Match Monto
-            const diffMonto = Math.abs(docMonto - montoBuscado);
-            if (diffMonto === 0) {
+            // C. Match Monto (Priorizar coincidencia con Saldo Pendiente)
+            const diffSaldo = Math.abs(docSaldo - montoBuscado);
+            const diffTotal = Math.abs(docMontoOriginal - montoBuscado);
+
+            if (diffSaldo === 0) {
                 score += 30;
-                reasons.push('Monto exacto');
-            } else if (diffMonto <= 5) {
+                reasons.push('Saldo exacto');
+            } else if (diffTotal === 0) {
+                score += 20;
+                reasons.push('Monto total exacto');
+            } else if (diffSaldo <= 5) {
                 score += 25;
-                reasons.push('Monto ajustable');
+                reasons.push('Monto ajustable (saldo)');
             }
 
             // D. Match de Tokens (Nombre)
@@ -905,13 +912,17 @@ Ejemplos:
             const { data } = await query.or(orFilters.join(',')).limit(100);
             if (data) {
                 data.forEach(d => {
-                    const { score, reason } = scoreCandidato(d, d.folio, d.mnt_total || d.monto_total, d.fch_emis || d.fecha_emision, d[colEntidad]);
+                    const montoTotal = d.mnt_total || d.monto_total || 0;
+                    const balance = d.saldo !== undefined && d.saldo !== null ? d.saldo : montoTotal;
+
+                    const { score, reason } = scoreCandidato(d, d.folio, montoTotal, balance, d.fch_emis || d.fecha_emision, d[colEntidad]);
                     candidatesRaw.push({
                         id: d.id,
                         tipo: esAbono ? 'venta' : 'compra',
                         entidad: d[colEntidad] || "Desconocido",
                         fecha: d.fch_emis || d.fecha_emision,
-                        monto: d.mnt_total || d.monto_total,
+                        monto: balance, // Mostramos el Saldo como monto principal
+                        monto_total: montoTotal,
                         folio: d.folio,
                         estado: d.estado_deuda || d.estado_pago || "Pendiente",
                         documento_relacionado: d,
@@ -930,11 +941,15 @@ Ejemplos:
                 .gte(esAbono ? "mnt_total" : "monto_total", montoBuscado - 1)
                 .lte(esAbono ? "mnt_total" : "monto_total", montoBuscado + 1)
                 .limit(10);
-            if (byMonto) byMonto.forEach(d => {
+            byMonto.forEach(d => {
+                const montoTotal = d.mnt_total || d.monto_total || 0;
+                const balance = d.saldo !== undefined && d.saldo !== null ? d.saldo : montoTotal;
                 candidatesRaw.push({
                     id: d.id, tipo: esAbono ? 'venta' : 'compra',
                     entidad: d[colEntidad] || "Desconocido",
-                    fecha: d.fch_emis || d.fecha_emision, monto: d.mnt_total || d.monto_total,
+                    fecha: d.fch_emis || d.fecha_emision,
+                    monto: balance,
+                    monto_total: montoTotal,
                     folio: d.folio, estado: d.estado_deuda || d.estado_pago || "Pendiente",
                     documento_relacionado: d, score: 30, matchReason: 'Monto similar', scoreTmp: 30
                 });
@@ -1000,17 +1015,22 @@ Ejemplos:
 
     // Helper para procesar documentos de ventas/compras a Coincidencia
     const processDocs = (data: any[], esAbono: boolean): Coincidencia[] => {
-        return data.map((d: any) => ({
-            id: d.id,
-            tipo: esAbono ? 'venta' : 'compra',
-            entidad: d.rzn_soc_recep || d.razon_social || "Desconocido",
-            fecha: d.fch_emis || d.fecha_emision,
-            monto: d.mnt_total || d.monto_total,
-            folio: d.folio,
-            estado: d.estado_deuda || d.estado_pago || "Pendiente",
-            conciliado: d.conciliado || false,
-            documento_relacionado: d
-        }));
+        return data.map((d: any) => {
+            const montoTotal = d.mnt_total || d.monto_total || 0;
+            const balance = d.saldo !== undefined && d.saldo !== null ? d.saldo : montoTotal;
+            return {
+                id: d.id,
+                tipo: esAbono ? 'venta' : 'compra',
+                entidad: d.rzn_soc_recep || d.razon_social || "Desconocido",
+                fecha: d.fch_emis || d.fecha_emision,
+                monto: balance, // Importante: Mostrar Saldo como monto a conciliar
+                monto_total: montoTotal,
+                folio: d.folio,
+                estado: d.estado_deuda || d.estado_pago || "Pendiente",
+                conciliado: d.conciliado || false,
+                documento_relacionado: d
+            };
+        });
     };
 
 
@@ -1128,7 +1148,7 @@ Ejemplos:
             const docData = item.documento_relacionado as any;
             const montoMovimiento = Math.abs(selectedMovimiento.cargos || selectedMovimiento.abonos || 0);
 
-            const saldoActual = (docData.saldo !== undefined && docData.saldo !== null) ? Number(docData.saldo) : Number(item.monto);
+            const saldoActual = (docData.saldo !== undefined && docData.saldo !== null) ? Number(docData.saldo) : Number(item.monto_total);
             let nuevoSaldo = saldoActual - montoMovimiento;
             if (nuevoSaldo < 0) nuevoSaldo = 0;
 
@@ -1146,16 +1166,17 @@ Ejemplos:
 
             if (errDoc) throw errDoc;
 
-            // 3. Record in 'abonos' if it's a sale
-            if (item.tipo === "venta") {
-                await supabase.from("abonos").insert({
-                    venta_id: item.id,
-                    monto_abono: montoMovimiento,
-                    fecha_abono: new Date().toISOString().split("T")[0],
-                    tipo_abono: "Transferencia",
-                    detalle_abono: `Conciliación bancaria - Movimiento: ${selectedMovimiento.descripcion}`
-                });
-            }
+            // 3. Record in 'abonos' or 'compras_abonos'
+            const abonosTable = item.tipo === "venta" ? "abonos" : "compras_abonos";
+            const foreignKey = item.tipo === "venta" ? "venta_id" : "compra_id";
+
+            await supabase.from(abonosTable).insert({
+                [foreignKey]: item.id,
+                monto_abono: montoMovimiento,
+                fecha_abono: new Date().toISOString().split("T")[0],
+                tipo_abono: "Transferencia",
+                detalle_abono: `Conciliación bancaria - Movimiento: ${selectedMovimiento.descripcion}`
+            });
 
             // 4. UI Updates
             setConciliarOpen(false);
@@ -1339,137 +1360,175 @@ Ejemplos:
                         const { data: fMatch } = await supabase.from("ventas")
                             .select("*")
                             .in("folio", foliosPossible)
-                            .gte("mnt_total", montoBuscado - TOLERANCIA_MONTO)
-                            .lte("mnt_total", montoBuscado + TOLERANCIA_MONTO)
-                            .neq("estado_deuda", "Pagada")  // NUEVO: Excluir pagadas
-                            .limit(2);
-                        if (fMatch && fMatch.length === 1) {
-                            const v = fMatch[0];
-                            matchType = 'folio_monto';
-                            const scoring = calculateMatchScore(matchType, mov.fecha, v.fch_emis, montoBuscado, v.mnt_total);
-                            candidate = {
-                                id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
-                                fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
-                                score: scoring.score, matchReason: scoring.reason
-                            };
+                            .neq("estado_deuda", "Pagada")
+                            .limit(10);
+
+                        if (fMatch) {
+                            const exactMatch = fMatch.find(v => {
+                                const balance = v.saldo !== undefined && v.saldo !== null ? v.saldo : v.mnt_total;
+                                return Math.abs(balance - montoBuscado) <= TOLERANCIA_MONTO;
+                            });
+
+                            if (exactMatch) {
+                                const v = exactMatch;
+                                matchType = 'folio_monto';
+                                const balance = v.saldo !== undefined && v.saldo !== null ? v.saldo : v.mnt_total;
+                                const scoring = calculateMatchScore(matchType, mov.fecha, v.fch_emis, montoBuscado, balance);
+                                candidate = {
+                                    id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
+                                    fecha: v.fch_emis, monto: balance, monto_total: v.mnt_total, folio: v.folio,
+                                    estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
+                                    score: scoring.score, matchReason: scoring.reason
+                                };
+                            }
                         }
                     }
 
-                    // 2. Intentar por RUT + Monto (Seguro) - INCLUIR PAGADAS NO BANCARIZADAS
+                    // 2. Intentar por RUT + Monto (Seguro)
                     if (!candidate && (rutBuscado || rutSinDV)) {
                         let query = supabase.from("ventas").select("*")
-                            .eq("conciliado", false) // Solo no bancarizadas
-                            .gte("mnt_total", montoBuscado - TOLERANCIA_MONTO)
-                            .lte("mnt_total", montoBuscado + TOLERANCIA_MONTO);
+                            .eq("conciliado", false); // Solo no bancarizadas
 
                         if (rutBuscado) {
                             query = query.or(`rut_recep.eq.${rutBuscado},rut_recep.ilike.%${rutSinDV}%`);
                         }
 
-                        const { data: rMatch } = await query.limit(2);
-                        if (rMatch && rMatch.length === 1) {
-                            const v = rMatch[0];
-                            matchType = 'rut_monto';
-                            const scoring = calculateMatchScore(matchType, mov.fecha, v.fch_emis, montoBuscado, v.mnt_total);
-                            candidate = {
-                                id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
-                                fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
-                                score: scoring.score, matchReason: scoring.reason
-                            };
+                        const { data: rMatch } = await query.limit(50);
+                        if (rMatch) {
+                            const exactMatch = rMatch.find(v => {
+                                const balance = v.saldo !== undefined && v.saldo !== null ? v.saldo : v.mnt_total;
+                                return Math.abs(balance - montoBuscado) <= TOLERANCIA_MONTO;
+                            });
+
+                            if (exactMatch) {
+                                const v = exactMatch;
+                                matchType = 'rut_monto';
+                                const balance = v.saldo !== undefined && v.saldo !== null ? v.saldo : v.mnt_total;
+                                const scoring = calculateMatchScore(matchType, mov.fecha, v.fch_emis, montoBuscado, balance);
+                                candidate = {
+                                    id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
+                                    fecha: v.fch_emis, monto: balance, monto_total: v.mnt_total, folio: v.folio,
+                                    estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
+                                    score: scoring.score, matchReason: scoring.reason
+                                };
+                            }
                         }
                     }
 
-                    // 3. Intentar solo por Monto (Si es único) - INCLUIR PAGADAS NO BANCARIZADAS
+                    // 3. Intentar solo por Monto (Si es único)
                     if (!candidate) {
                         const { data: mMatch } = await supabase.from("ventas")
                             .select("*")
                             .eq("conciliado", false) // Solo no bancarizadas
-                            .gte("mnt_total", montoBuscado - TOLERANCIA_MONTO)
-                            .lte("mnt_total", montoBuscado + TOLERANCIA_MONTO)
-                            .limit(2);
+                            .limit(100);
 
-                        if (mMatch && mMatch.length === 1) {
-                            const v = mMatch[0];
-                            matchType = 'monto_unico';
-                            const scoring = calculateMatchScore(matchType, mov.fecha, v.fch_emis, montoBuscado, v.mnt_total);
-                            candidate = {
-                                id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
-                                fecha: v.fch_emis, monto: v.mnt_total, folio: v.folio,
-                                estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
-                                score: scoring.score, matchReason: scoring.reason
-                            };
+                        if (mMatch) {
+                            const matchingDocs = mMatch.filter(v => {
+                                const balance = v.saldo !== undefined && v.saldo !== null ? v.saldo : v.mnt_total;
+                                return Math.abs(balance - montoBuscado) <= TOLERANCIA_MONTO;
+                            });
+
+                            if (matchingDocs.length === 1) {
+                                const v = matchingDocs[0];
+                                matchType = 'monto_unico';
+                                const balance = v.saldo !== undefined && v.saldo !== null ? v.saldo : v.mnt_total;
+                                const scoring = calculateMatchScore(matchType, mov.fecha, v.fch_emis, montoBuscado, balance);
+                                candidate = {
+                                    id: v.id, tipo: 'venta', entidad: v.rzn_soc_recep || "Desconocido",
+                                    fecha: v.fch_emis, monto: balance, monto_total: v.mnt_total, folio: v.folio,
+                                    estado: v.estado_deuda || "Pendiente", documento_relacionado: v,
+                                    score: scoring.score, matchReason: scoring.reason
+                                };
+                            }
                         }
                     }
                 } else {
                     // ========== COMPRAS ==========
-                    // 1. Folio + Monto - INCLUIR PAGADAS NO BANCARIZADAS
+                    // 1. Folio + Monto (Matching against Balance)
                     if (foliosPossible.length > 0) {
                         const { data: fMatch } = await supabase.from("compras")
                             .select("*")
                             .eq("conciliado", false)
                             .in("folio", foliosPossible)
-                            .gte("monto_total", montoBuscado - TOLERANCIA_MONTO)
-                            .lte("monto_total", montoBuscado + TOLERANCIA_MONTO)
-                            .limit(2);
-                        if (fMatch && fMatch.length === 1) {
-                            const c = fMatch[0];
-                            matchType = 'folio_monto';
-                            const scoring = calculateMatchScore(matchType, mov.fecha, c.fecha_emision, montoBuscado, c.monto_total);
-                            candidate = {
-                                id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
-                                fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                                estado: c.estado_pago || "Pendiente", documento_relacionado: c,
-                                score: scoring.score, matchReason: scoring.reason
-                            };
+                            .limit(10); // Check multiple if needed
+
+                        if (fMatch) {
+                            const exactMatch = fMatch.find(c => {
+                                const balance = c.saldo !== undefined && c.saldo !== null ? c.saldo : c.monto_total;
+                                return Math.abs(balance - montoBuscado) <= TOLERANCIA_MONTO;
+                            });
+
+                            if (exactMatch) {
+                                const c = exactMatch;
+                                matchType = 'folio_monto';
+                                const balance = c.saldo !== undefined && c.saldo !== null ? c.saldo : c.monto_total;
+                                const scoring = calculateMatchScore(matchType, mov.fecha, c.fecha_emision, montoBuscado, balance);
+                                candidate = {
+                                    id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
+                                    fecha: c.fecha_emision, monto: balance, monto_total: c.monto_total, folio: c.folio,
+                                    estado: c.estado_pago || "Pendiente", documento_relacionado: c,
+                                    score: scoring.score, matchReason: scoring.reason
+                                };
+                            }
                         }
                     }
 
-                    // 2. RUT + Monto - INCLUIR PAGADAS NO BANCARIZADAS
+                    // 2. RUT + Monto (Matching against Balance)
                     if (!candidate && (rutBuscado || rutSinDV)) {
                         let query = supabase.from("compras").select("*")
-                            .eq("conciliado", false)
-                            .gte("monto_total", montoBuscado - TOLERANCIA_MONTO)
-                            .lte("monto_total", montoBuscado + TOLERANCIA_MONTO);
+                            .eq("conciliado", false);
 
                         if (rutBuscado) {
                             query = query.or(`rut_proveedor.eq.${rutBuscado},rut_proveedor.ilike.%${rutSinDV}%`);
                         }
 
-                        const { data: rMatch } = await query.limit(2);
-                        if (rMatch && rMatch.length === 1) {
-                            const c = rMatch[0];
-                            matchType = 'rut_monto';
-                            const scoring = calculateMatchScore(matchType, mov.fecha, c.fecha_emision, montoBuscado, c.monto_total);
-                            candidate = {
-                                id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
-                                fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                                estado: c.estado_pago || "Pendiente", documento_relacionado: c,
-                                score: scoring.score, matchReason: scoring.reason
-                            };
+                        const { data: rMatch } = await query.limit(50);
+                        if (rMatch) {
+                            const exactMatch = rMatch.find(c => {
+                                const balance = c.saldo !== undefined && c.saldo !== null ? c.saldo : c.monto_total;
+                                return Math.abs(balance - montoBuscado) <= TOLERANCIA_MONTO;
+                            });
+
+                            if (exactMatch) {
+                                const c = exactMatch;
+                                matchType = 'rut_monto';
+                                const balance = c.saldo !== undefined && c.saldo !== null ? c.saldo : c.monto_total;
+                                const scoring = calculateMatchScore(matchType, mov.fecha, c.fecha_emision, montoBuscado, balance);
+                                candidate = {
+                                    id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
+                                    fecha: c.fecha_emision, monto: balance, monto_total: c.monto_total, folio: c.folio,
+                                    estado: c.estado_pago || "Pendiente", documento_relacionado: c,
+                                    score: scoring.score, matchReason: scoring.reason
+                                };
+                            }
                         }
                     }
 
-                    // 3. Monto - INCLUIR PAGADAS NO BANCARIZADAS
+                    // 3. Monto (Matching against Balance)
                     if (!candidate) {
                         const { data: mMatch } = await supabase.from("compras")
                             .select("*")
                             .eq("conciliado", false)
-                            .gte("monto_total", montoBuscado - TOLERANCIA_MONTO)
-                            .lte("monto_total", montoBuscado + TOLERANCIA_MONTO)
-                            .limit(2);
+                            .limit(100);
 
-                        if (mMatch && mMatch.length === 1) {
-                            const c = mMatch[0];
-                            matchType = 'monto_unico';
-                            const scoring = calculateMatchScore(matchType, mov.fecha, c.fecha_emision, montoBuscado, c.monto_total);
-                            candidate = {
-                                id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
-                                fecha: c.fecha_emision, monto: c.monto_total, folio: c.folio,
-                                estado: c.estado_pago || "Pendiente", documento_relacionado: c,
-                                score: scoring.score, matchReason: scoring.reason
-                            };
+                        if (mMatch) {
+                            const matchingDocs = mMatch.filter(c => {
+                                const balance = c.saldo !== undefined && c.saldo !== null ? c.saldo : c.monto_total;
+                                return Math.abs(balance - montoBuscado) <= TOLERANCIA_MONTO;
+                            });
+
+                            if (matchingDocs.length === 1) {
+                                const c = matchingDocs[0];
+                                matchType = 'monto_unico';
+                                const balance = c.saldo !== undefined && c.saldo !== null ? c.saldo : c.monto_total;
+                                const scoring = calculateMatchScore(matchType, mov.fecha, c.fecha_emision, montoBuscado, balance);
+                                candidate = {
+                                    id: c.id, tipo: 'compra', entidad: c.razon_social || "Desconocido",
+                                    fecha: c.fecha_emision, monto: balance, monto_total: c.monto_total, folio: c.folio,
+                                    estado: c.estado_pago || "Pendiente", documento_relacionado: c,
+                                    score: scoring.score, matchReason: scoring.reason
+                                };
+                            }
                         }
                     }
                 }
@@ -1520,31 +1579,36 @@ Ejemplos:
             if (errMov) throw errMov;
 
             // 2. Actualizar Registro Relacionado (Venta o Compra)
-            if (item.estado !== "Pagada") {
-                if (item.tipo === "venta") {
-                    await supabase.from("ventas").update({
-                        estado_deuda: "Pagada",
-                        saldo: 0,
-                        conciliado: true,
-                        fecha_abono: new Date().toISOString().split("T")[0],
-                        monto_abono: item.monto
-                    }).eq("id", item.id);
+            const docData = item.documento_relacionado as any;
+            const montoMovimiento = Math.abs(mov.cargos || mov.abonos || 0);
 
-                    await supabase.from("abonos").insert({
-                        venta_id: item.id,
-                        monto_abono: item.monto,
-                        fecha_abono: new Date().toISOString().split("T")[0],
-                        tipo_abono: "Transferencia",
-                        detalle_abono: `Conciliación - Movimiento: ${mov.descripcion}`
-                    });
-                } else {
-                    await supabase.from("compras").update({
-                        estado_pago: "Pagada",
-                        saldo: 0,
-                        conciliado: true
-                    }).eq("id", item.id);
-                }
-            }
+            const saldoActual = (docData.saldo !== undefined && docData.saldo !== null) ? Number(docData.saldo) : Number(item.monto_total);
+            let nuevoSaldo = saldoActual - montoMovimiento;
+            if (nuevoSaldo < 0) nuevoSaldo = 0;
+
+            const esPagoTotal = nuevoSaldo <= 100;
+            const updateDoc: any = {
+                conciliado: esPagoTotal,
+                saldo: esPagoTotal ? 0 : nuevoSaldo,
+                [item.tipo === "venta" ? "estado_deuda" : "estado_pago"]: esPagoTotal ? "Pagada" : "Parcial"
+            };
+
+            await supabase
+                .from(item.tipo === "venta" ? "ventas" : "compras")
+                .update(updateDoc)
+                .eq("id", item.id);
+
+            // 3. Registrar Abono
+            const abonosTable = item.tipo === "venta" ? "abonos" : "compras_abonos";
+            const foreignKey = item.tipo === "venta" ? "venta_id" : "compra_id";
+
+            await supabase.from(abonosTable).insert({
+                [foreignKey]: item.id,
+                monto_abono: montoMovimiento,
+                fecha_abono: new Date().toISOString().split("T")[0],
+                tipo_abono: "Transferencia",
+                detalle_abono: `Conciliación Específica - Movimiento: ${mov.descripcion}`
+            });
 
             // Actualizar estado local
             setMovimientos(prev => prev.map(m =>
@@ -1589,31 +1653,36 @@ Ejemplos:
                     if (errMov) throw errMov;
 
                     // 2. Actualizar Registro Relacionado (Venta o Compra)
-                    if (match.estado !== "Pagada") {
-                        if (match.tipo === "venta") {
-                            await supabase.from("ventas").update({
-                                estado_deuda: "Pagada",
-                                saldo: 0,
-                                conciliado: true,
-                                fecha_abono: new Date().toISOString().split("T")[0],
-                                monto_abono: match.monto
-                            }).eq("id", match.id);
+                    const docData = match.documento_relacionado as any;
+                    const montoMovimiento = Math.abs(mov.cargos || mov.abonos || 0);
 
-                            await supabase.from("abonos").insert({
-                                venta_id: match.id,
-                                monto_abono: match.monto,
-                                fecha_abono: new Date().toISOString().split("T")[0],
-                                tipo_abono: "Transferencia",
-                                detalle_abono: `Conciliación Lote - Movimiento: ${mov.descripcion}`
-                            });
-                        } else {
-                            await supabase.from("compras").update({
-                                estado_pago: "Pagada",
-                                saldo: 0,
-                                conciliado: true
-                            }).eq("id", match.id);
-                        }
-                    }
+                    const saldoActual = (docData.saldo !== undefined && docData.saldo !== null) ? Number(docData.saldo) : Number(match.monto_total);
+                    let nuevoSaldo = saldoActual - montoMovimiento;
+                    if (nuevoSaldo < 0) nuevoSaldo = 0;
+
+                    const esPagoTotal = nuevoSaldo <= 100;
+                    const updateDoc: any = {
+                        conciliado: esPagoTotal,
+                        saldo: esPagoTotal ? 0 : nuevoSaldo,
+                        [match.tipo === "venta" ? "estado_deuda" : "estado_pago"]: esPagoTotal ? "Pagada" : "Parcial"
+                    };
+
+                    await supabase
+                        .from(match.tipo === "venta" ? "ventas" : "compras")
+                        .update(updateDoc)
+                        .eq("id", match.id);
+
+                    // 3. Registrar Abono
+                    const abonosTable = match.tipo === "venta" ? "abonos" : "compras_abonos";
+                    const foreignKey = match.tipo === "venta" ? "venta_id" : "compra_id";
+
+                    await supabase.from(abonosTable).insert({
+                        [foreignKey]: match.id,
+                        monto_abono: montoMovimiento,
+                        fecha_abono: new Date().toISOString().split("T")[0],
+                        tipo_abono: "Transferencia",
+                        detalle_abono: `Conciliación Lote - Movimiento: ${mov.descripcion}`
+                    });
                     exitosos++;
                 } catch (err) {
                     console.error("Error conciliando item en lote:", err);
@@ -2148,7 +2217,12 @@ Ejemplos:
                                                                 </div>
                                                             </div>
                                                             <div className="text-right flex items-center gap-3 ml-4">
-                                                                <div className="font-bold text-gray-900 dark:text-gray-100">{fmtMoney(item.monto)}</div>
+                                                                <div className="flex flex-col items-end">
+                                                                    <div className="font-bold text-gray-900 dark:text-gray-100">{fmtMoney(item.monto)}</div>
+                                                                    {item.monto_total > item.monto + 10 && (
+                                                                        <div className="text-[10px] text-gray-400">de {fmtMoney(item.monto_total)}</div>
+                                                                    )}
+                                                                </div>
                                                                 {!isSelected && (
                                                                     <Button size="sm" variant="default" className="bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => ejecutarConciliacion(item)}>
                                                                         Conciliar

@@ -82,3 +82,22 @@ create policy "Allow all access to authenticated users for banco_movimientos"
   to authenticated
   using (true)
   with check (true);
+
+-- 4. Tabla de Abonos de Compras (Historial de Pagos)
+create table if not exists compras_abonos (
+  id bigint primary key generated always as identity,
+  compra_id bigint references compras(id) on delete cascade,
+  monto_abono numeric not null,
+  fecha_abono date default current_date,
+  tipo_abono text,
+  detalle_abono text,
+  created_at timestamp with time zone default now()
+);
+
+alter table compras_abonos enable row level security;
+
+create policy "Allow all access to authenticated users for compras_abonos"
+  on compras_abonos for all
+  to authenticated
+  using (true)
+  with check (true);
