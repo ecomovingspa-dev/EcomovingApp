@@ -30,48 +30,44 @@ export default function CuentasPage() {
   const sectores = Array.from(new Set(cuentas.map((c) => c.sector).filter(Boolean)));
   const segmentos = Array.from(new Set(cuentas.map((c) => c.segmento).filter(Boolean)));
 
-  const totalPaginas = Math.ceil(cuentasFiltradas.length / filasPorPagina);
-  const indiceInicio = (paginaActual - 1) * filasPorPagina;
-  const indiceFin = indiceInicio + filasPorPagina;
-  const cuentasPaginadas = cuentasFiltradas.slice(indiceInicio, indiceFin);
+  const [totalRecords, setTotalRecords] = useState(0);
+
 
   useEffect(() => {
     cargarCuentas();
-  }, []);
-
-  useEffect(() => {
-    aplicarFiltros();
-    setPaginaActual(1);
-  }, [busqueda, filtroSector, filtroSegmento, filtroEstado, cuentas]);
+  }, [paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado]);
 
   const cargarCuentas = async () => {
     try {
       setCargando(true);
-      let todasLasCuentas: Cuenta[] = [];
-      let desde = 0;
-      const cantidad = 1000;
-      let hayMasRegistros = true;
+      setError("");
 
-      while (hayMasRegistros) {
-        const { data, error } = await supabase
-          .from("cuentas")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .range(desde, desde + cantidad - 1);
+      let query = supabase
+        .from("cuentas")
+        .select("*", { count: "exact" });
 
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          todasLasCuentas = [...todasLasCuentas, ...data];
-          desde += cantidad;
-          if (data.length < cantidad) hayMasRegistros = false;
-        } else {
-          hayMasRegistros = false;
-        }
+      if (busqueda) {
+        query = query.or(`cliente.ilike.%${busqueda}%,rut.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`);
+      }
+      if (filtroSector) {
+        query = query.eq("sector", filtroSector);
+      }
+      if (filtroSegmento) {
+        query = query.eq("segmento", filtroSegmento);
+      }
+      if (filtroEstado) {
+        query = query.eq("estado", filtroEstado);
       }
 
-      setCuentas(todasLasCuentas);
-      setCuentasFiltradas(todasLasCuentas);
+      const { data, error, count } = await query
+        .order("created_at", { ascending: false })
+        .range((paginaActual - 1) * filasPorPagina, paginaActual * filasPorPagina - 1);
+
+      if (error) throw error;
+
+      setCuentas(data || []);
+      setCuentasFiltradas(data || []); // Consistency for existing UI
+      if (count !== null) setTotalRecords(count);
     } catch (error: any) {
       console.error("Error:", error);
       setError("Error al cargar las cuentas");
@@ -80,22 +76,9 @@ export default function CuentasPage() {
     }
   };
 
-  const aplicarFiltros = () => {
-    let resultado = [...cuentas];
-    if (busqueda) {
-      const busquedaLower = busqueda.toLowerCase();
-      resultado = resultado.filter(
-        (cuenta) =>
-          cuenta.cliente?.toLowerCase().includes(busquedaLower) ||
-          cuenta.rut?.toLowerCase().includes(busquedaLower) ||
-          cuenta.ciudad?.toLowerCase().includes(busquedaLower)
-      );
-    }
-    if (filtroSector) resultado = resultado.filter((cuenta) => cuenta.sector === filtroSector);
-    if (filtroSegmento) resultado = resultado.filter((cuenta) => cuenta.segmento === filtroSegmento);
-    if (filtroEstado) resultado = resultado.filter((cuenta) => cuenta.estado === filtroEstado);
-    setCuentasFiltradas(resultado);
-  };
+  const totalPaginas = Math.ceil(totalRecords / filasPorPagina);
+  const cuentasPaginadas = cuentas; // Already paginated from server
+
 
   const actualizarCuentaInline = async (id: string, campo: keyof Cuenta, valor: string) => {
     const cuentaOriginal = cuentas.find(c => c.id === id);
