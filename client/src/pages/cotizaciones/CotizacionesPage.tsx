@@ -32,6 +32,9 @@ export default function CotizacionesPage() {
   const [cargando, setCargando] = useState(true);
   const [busqueda, setBusqueda] = useState("");
   const [mensaje, setMensaje] = useState("");
+  const [pagina, setPagina] = useState(0);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const PAGE_SIZE = 50;
 
   // State for the integrated form
   const [viewMode, setViewMode] = useState<"list" | "form">("list");
@@ -39,19 +42,12 @@ export default function CotizacionesPage() {
 
   useEffect(() => {
     cargarCotizaciones();
-  }, []);
-
-  useEffect(() => {
-    if (routeId) {
-      setSelectedId(routeId);
-      setViewMode("form");
-    }
-  }, [routeId]);
+  }, [pagina]); // Reload when page changes
 
   const cargarCotizaciones = async () => {
     setCargando(true);
     try {
-      const { data, error } = await supabase
+      const { data, error, count } = await supabase
         .from("cotizaciones")
         .select(
           `
@@ -70,16 +66,21 @@ export default function CotizacionesPage() {
             nombre
           )
         `,
+          { count: 'exact' }
         )
-        .order("numero_cotizacion", { ascending: false });
+        .order("numero_cotizacion", { ascending: false })
+        .range(pagina * PAGE_SIZE, (pagina + 1) * PAGE_SIZE - 1);
 
       if (error) throw error;
+
       const cotizacionesFormateadas = (data || []).map((item: any) => ({
         ...item,
         cuentas: Array.isArray(item.cuentas) ? item.cuentas[0] : item.cuentas,
         vendedores: Array.isArray(item.vendedores) ? item.vendedores[0] : item.vendedores,
       }));
+
       setCotizaciones(cotizacionesFormateadas);
+      if (count !== null) setTotalRecords(count);
     } catch (e: any) {
       console.error("Error al cargar:", e);
       setMensaje("Error al cargar cotizaciones: " + e.message);
@@ -87,6 +88,14 @@ export default function CotizacionesPage() {
       setCargando(false);
     }
   };
+
+
+  useEffect(() => {
+    if (routeId) {
+      setSelectedId(routeId);
+      setViewMode("form");
+    }
+  }, [routeId]);
 
   const handleEliminar = async (id: number) => {
     if (!confirm("¿Eliminar esta cotización?")) return;
@@ -199,7 +208,7 @@ export default function CotizacionesPage() {
             Cotizaciones
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Gestión de cotizaciones
+            Gestión de cotizaciones (Página {pagina + 1})
           </p>
         </div>
         <Button
@@ -225,7 +234,7 @@ export default function CotizacionesPage() {
                 ${new Intl.NumberFormat("es-CL").format(value.total)}
               </span>
               <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium mt-1">
-                {value.count} documentos
+                {value.count} docs pág.
               </span>
             </div>
           </div>
@@ -267,81 +276,113 @@ export default function CotizacionesPage() {
               : "No hay cotizaciones"}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-                <tr>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">N°</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Neto</th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">IVA</th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">MG</th>
-                  <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ganancia</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vendedor</th>
-                  <th className="px-4 py-3 text-center text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
-                  <th className="px-4 py-3 text-center text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acc.</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {cotizacionesFiltradas.map((cot) => (
-                  <tr key={cot.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="px-4 py-4 text-sm font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                      {cot.numero_cotizacion || "-"}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-900 dark:text-gray-100 font-medium">
-                      <div className="max-w-[220px] lg:max-w-none truncate lg:whitespace-normal">
-                        {cot.cuentas?.cliente || "-"}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm text-right text-gray-900 dark:text-gray-100 font-medium whitespace-nowrap">
-                      ${new Intl.NumberFormat("es-CL").format(cot.total_neto || 0)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-right text-gray-500 dark:text-gray-400 italic whitespace-nowrap">
-                      ${new Intl.NumberFormat("es-CL").format(cot.iva || 0)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-right text-gray-900 dark:text-gray-100 font-bold whitespace-nowrap">
-                      ${new Intl.NumberFormat("es-CL").format(cot.total || 0)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-right text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap">
-                      {cot.mg}%
-                    </td>
-                    <td className="px-4 py-4 text-sm text-right text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
-                      ${new Intl.NumberFormat("es-CL").format(cot.ganancias || 0)}
-                    </td>
-                    <td className="px-4 py-4 text-[13px] text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
-                      {cot.vendedores?.nombre || "-"}
-                    </td>
-                    <td className="px-4 py-4 text-center whitespace-nowrap">
-                      <span className={`px-3 py-1 text-[10px] rounded-full uppercase font-bold tracking-tight shadow-sm ${getEstadoColor(cot.estado_cotizacion)}`}>
-                        {cot.estado_cotizacion || "Sin estado"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-center whitespace-nowrap">
-                      <div className="flex justify-center gap-2">
-                        <button
-                          onClick={() => handleEdit(cot.id)}
-                          className="p-1.5 hover:bg-white dark:hover:bg-gray-800 rounded-lg shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-all group"
-                          title="Editar"
-                        >
-                          <Edit className="h-4 w-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
-                        </button>
-                        <button
-                          onClick={() => handleEliminar(cot.id)}
-                          className="p-1.5 hover:bg-white dark:hover:bg-gray-800 rounded-lg shadow-sm border border-transparent hover:border-red-200 dark:hover:border-red-900/50 transition-all group"
-                          title="Eliminar"
-                        >
-                          <Trash2 className="h-4 w-4 text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400" />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50/50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">N°</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cliente</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Neto</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">IVA</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">MG</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Ganancia</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Vendedor</th>
+                    <th className="px-4 py-3 text-center text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
+                    <th className="px-4 py-3 text-center text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acc.</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {cotizacionesFiltradas.map((cot) => (
+                    <tr key={cot.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="px-4 py-4 text-sm font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                        {cot.numero_cotizacion || "-"}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-900 dark:text-gray-100 font-medium">
+                        <div className="max-w-[220px] lg:max-w-none truncate lg:whitespace-normal">
+                          {cot.cuentas?.cliente || "-"}
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-right text-gray-900 dark:text-gray-100 font-medium whitespace-nowrap">
+                        ${new Intl.NumberFormat("es-CL").format(cot.total_neto || 0)}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-right text-gray-500 dark:text-gray-400 italic whitespace-nowrap">
+                        ${new Intl.NumberFormat("es-CL").format(cot.iva || 0)}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-right text-gray-900 dark:text-gray-100 font-bold whitespace-nowrap">
+                        ${new Intl.NumberFormat("es-CL").format(cot.total || 0)}
+                      </td>
+                      <td className="px-4 py-4 text-sm text-right text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap">
+                        {cot.mg}%
+                      </td>
+                      <td className="px-4 py-4 text-sm text-right text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
+                        ${new Intl.NumberFormat("es-CL").format(cot.ganancias || 0)}
+                      </td>
+                      <td className="px-4 py-4 text-[13px] text-gray-600 dark:text-gray-400 font-medium whitespace-nowrap">
+                        {cot.vendedores?.nombre || "-"}
+                      </td>
+                      <td className="px-4 py-4 text-center whitespace-nowrap">
+                        <span className={`px-3 py-1 text-[10px] rounded-full uppercase font-bold tracking-tight shadow-sm ${getEstadoColor(cot.estado_cotizacion)}`}>
+                          {cot.estado_cotizacion || "Sin estado"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-center whitespace-nowrap">
+                        <div className="flex justify-center gap-2">
+                          <button
+                            onClick={() => handleEdit(cot.id)}
+                            className="p-1.5 hover:bg-white dark:hover:bg-gray-800 rounded-lg shadow-sm border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-all group"
+                            title="Editar"
+                          >
+                            <Edit className="h-4 w-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+                          </button>
+                          <button
+                            onClick={() => handleEliminar(cot.id)}
+                            className="p-1.5 hover:bg-white dark:hover:bg-gray-800 rounded-lg shadow-sm border border-transparent hover:border-red-200 dark:hover:border-red-900/50 transition-all group"
+                            title="Eliminar"
+                          >
+                            <Trash2 className="h-4 w-4 text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Pagination Controls */}
+            <div className="px-4 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50/30 dark:bg-gray-900/30">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Mostrando {pagina * PAGE_SIZE + 1} a {Math.min((pagina + 1) * PAGE_SIZE, totalRecords)} de {totalRecords} cotizaciones
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagina(prev => Math.max(0, prev - 1))}
+                  disabled={pagina === 0 || cargando}
+                  className="h-8 dark:bg-gray-800 dark:border-gray-700"
+                >
+                  Anterior
+                </Button>
+                <div className="flex items-center px-4 text-sm font-medium">
+                  Página {pagina + 1}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagina(prev => prev + 1)}
+                  disabled={(pagina + 1) * PAGE_SIZE >= totalRecords || cargando}
+                  className="h-8 dark:bg-gray-800 dark:border-gray-700"
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>
   );
 }
+

@@ -88,7 +88,9 @@ export default function ComprasPage() {
 
     useEffect(() => {
         cargarCompras();
-    }, []);
+    }, [currentPage]);
+
+
 
     const calcularEstado = (
         saldo: number,
@@ -110,13 +112,29 @@ export default function ComprasPage() {
         return estadoActual || "Pendiente";
     };
 
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [allComprasForSummary, setAllComprasForSummary] = useState<any[]>([]);
+
     const cargarCompras = async () => {
         setCargando(true);
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from("compras")
-                .select("*")
-                .order("fecha_emision", { ascending: false });
+                .select("*", { count: "exact" });
+
+            if (filtroProveedor) {
+                query = query.ilike("razon_social", `%${filtroProveedor}%`);
+            }
+            if (filtroFolio) {
+                query = query.ilike("folio", `%${filtroFolio}%`);
+            }
+            if (filtroEstado !== "todos") {
+                query = query.eq("estado_pago", filtroEstado);
+            }
+
+            const { data, error, count } = await query
+                .order("fecha_emision", { ascending: false })
+                .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
 
             if (error) throw error;
 
@@ -131,12 +149,22 @@ export default function ComprasPage() {
             }));
 
             setCompras(comprasProcesadas);
+            if (count !== null) setTotalRecords(count);
+
+            // Fetch summary data separately for accuracy
+            const { data: sData } = await supabase
+                .from("compras")
+                .select("monto_total, saldo, fecha_vencimiento, estado_pago, fecha_emision");
+
+            if (sData) setAllComprasForSummary(sData);
+
         } catch (e) {
             console.error("Error cargando compras:", e);
         } finally {
             setCargando(false);
         }
     };
+
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -152,17 +180,17 @@ export default function ComprasPage() {
     };
 
     // Cálculos del dashboard
-    const summary = compras.reduce(
+    const summary = allComprasForSummary.reduce(
         (acc, compra) => {
             const estado = compra.estado_pago || "";
             const saldo = compra.saldo !== undefined ? compra.saldo : compra.monto_total;
 
             if (estado === "Pendiente") {
                 acc.pendientes.count++;
-                acc.pendientes.total += saldo;
+                acc.pendientes.total += saldo || 0;
             } else if (estado === "Vencida") {
                 acc.vencidas.count++;
-                acc.vencidas.total += saldo;
+                acc.vencidas.total += saldo || 0;
             }
             return acc;
         },
@@ -178,7 +206,7 @@ export default function ComprasPage() {
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    compras.forEach((compra) => {
+    allComprasForSummary.forEach((compra) => {
         if (compra.fecha_emision) {
             const parts = compra.fecha_emision.split("-"); // YYYY-MM-DD
             if (parts.length === 3) {
@@ -192,36 +220,13 @@ export default function ComprasPage() {
         }
     });
 
-    // Filtrado
-    const comprasFiltradas = compras
-        .filter((compra) => {
-            const matchProveedor =
-                filtroProveedor === "" ||
-                (compra.razon_social || "")
-                    .toLowerCase()
-                    .includes(filtroProveedor.toLowerCase());
-
-            const matchFolio =
-                filtroFolio === "" ||
-                String(compra.folio || "").includes(filtroFolio);
-
-            let matchEstado = true;
-            if (filtroEstado !== "todos") {
-                matchEstado = compra.estado_pago === filtroEstado;
-            }
-
-            return matchProveedor && matchFolio && matchEstado;
-        })
-        .sort((a, b) => {
-            return (new Date(b.fecha_emision || 0).getTime()) - (new Date(a.fecha_emision || 0).getTime());
-        });
+    // Filtrado - Now just using the already-filtered 'compras' from server
+    const comprasFiltradas = compras;
 
     // Paginación
-    const totalPages = Math.ceil(comprasFiltradas.length / ITEMS_PER_PAGE);
-    const paginatedCompras = comprasFiltradas.slice(
-        (currentPage - 1) * ITEMS_PER_PAGE,
-        currentPage * ITEMS_PER_PAGE
-    );
+    const totalPages = Math.ceil(totalRecords / ITEMS_PER_PAGE);
+    const paginatedCompras = compras; // Ya paginadas por el servidor
+
 
     const handlePageChange = (newPage: number) => {
         if (newPage >= 1 && newPage <= totalPages) {

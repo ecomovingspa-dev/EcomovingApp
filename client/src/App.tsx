@@ -1,59 +1,72 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import Layout from "./components/Layout";
-import Home from "./pages/Home";
-import CuentasPage from "./pages/cuentas/CuentasPage";
-import CuentaForm from "./pages/cuentas/CuentaForm";
-import ContactosPage from "./pages/contactos/ContactosPage";
-import ContactoForm from "./pages/contactos/ContactoForm";
-import CotizacionesPage from "./pages/cotizaciones/CotizacionesPage";
-import CotizacionSelector from "./pages/cotizaciones/CotizacionSelector";
-import CotizacionForm from "./pages/cotizaciones/CotizacionForm";
-import OportunidadesPage from "./pages/oportunidades/OportunidadesPage";
-import OportunidadForm from "./pages/oportunidades/OportunidadForm";
-import ConfiguracionKeywords from "./pages/oportunidades/ConfiguracionKeywords";
-import VentasPage from "./pages/ventas/VentasPage";
-import ComprasPage from "./pages/compras/ComprasPage";
-import ConciliacionPage from "./pages/conciliacion/ConciliacionPage";
-import Marketing from "./pages/marketing/marketing";
+
+// Lazy-loaded components
+const Home = lazy(() => import("./pages/Home"));
+const CuentasPage = lazy(() => import("./pages/cuentas/CuentasPage"));
+const CuentaForm = lazy(() => import("./pages/cuentas/CuentaForm"));
+const ContactosPage = lazy(() => import("./pages/contactos/ContactosPage"));
+const ContactoForm = lazy(() => import("./pages/contactos/ContactoForm"));
+const CotizacionesPage = lazy(() => import("./pages/cotizaciones/CotizacionesPage"));
+const CotizacionForm = lazy(() => import("./pages/cotizaciones/CotizacionForm"));
+const OportunidadesPage = lazy(() => import("./pages/oportunidades/OportunidadesPage"));
+const OportunidadForm = lazy(() => import("./pages/oportunidades/OportunidadForm"));
+const ConfiguracionKeywords = lazy(() => import("./pages/oportunidades/ConfiguracionKeywords"));
+const VentasPage = lazy(() => import("./pages/ventas/VentasPage"));
+const ComprasPage = lazy(() => import("./pages/compras/ComprasPage"));
+const ConciliacionPage = lazy(() => import("./pages/conciliacion/ConciliacionPage"));
+const Marketing = lazy(() => import("./pages/marketing/marketing"));
+
 
 // Build v1.0.1 - Marketing tabs cleaned (2026-01-28)
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          {/* Ventas */}
-          <Route path="ventas" element={<VentasPage />} />
-          {/* Compras */}
-          <Route path="compras" element={<ComprasPage />} />
-          {/* Conciliación */}
-          <Route path="conciliacion" element={<ConciliacionPage />} />
-          {/* Cuentas */}
-          <Route path="cuentas" element={<CuentasPage />} />
-          <Route path="cuentas/nueva" element={<CuentaForm />} />
-          {/* Contactos */}
-          <Route path="contactos" element={<ContactosPage />} />
-          <Route path="contactos/nuevo" element={<ContactoForm />} />
-          <Route path="contactos/:id" element={<ContactoForm />} />
-          {/* Cotizaciones */}
-          <Route path="cotizaciones" element={<CotizacionesPage />} />
-          <Route path="cotizaciones/nueva" element={<CotizacionForm />} />
-          <Route
-            path="cotizaciones/nueva/:cuentaId/:contactoId"
-            element={<CotizacionForm />}
-          />
-          <Route path="cotizaciones/:id" element={<CotizacionForm />} />
-          {/* Oportunidades */}
-          <Route path="oportunidades" element={<OportunidadesPage />} />
-          <Route path="oportunidades/nueva" element={<OportunidadForm />} />
-          <Route path="oportunidades/configuracion" element={<ConfiguracionKeywords />} />
-          <Route path="oportunidades/:id" element={<OportunidadForm />} />
-          {/* Marketing */}
-          <Route path="marketing" element={<Marketing />} />
-        </Route>
-      </Routes>
+      <Suspense fallback={
+        <div className="flex h-screen w-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+          <div className="flex flex-col items-center gap-4">
+            <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+            <p className="text-gray-500 dark:text-gray-400 font-medium">Cargando aplicación...</p>
+          </div>
+        </div>
+      }>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Home />} />
+            {/* Ventas */}
+            <Route path="ventas" element={<VentasPage />} />
+            {/* Compras */}
+            <Route path="compras" element={<ComprasPage />} />
+            {/* Conciliación */}
+            <Route path="conciliacion" element={<ConciliacionPage />} />
+            {/* Cuentas */}
+            <Route path="cuentas" element={<CuentasPage />} />
+            <Route path="cuentas/nueva" element={<CuentaForm />} />
+            {/* Contactos */}
+            <Route path="contactos" element={<ContactosPage />} />
+            <Route path="contactos/nuevo" element={<ContactoForm />} />
+            <Route path="contactos/:id" element={<ContactoForm />} />
+            {/* Cotizaciones */}
+            <Route path="cotizaciones" element={<CotizacionesPage />} />
+            <Route path="cotizaciones/nueva" element={<CotizacionForm />} />
+            <Route
+              path="cotizaciones/nueva/:cuentaId/:contactoId"
+              element={<CotizacionForm />}
+            />
+            <Route path="cotizaciones/:id" element={<CotizacionForm />} />
+            {/* Oportunidades */}
+            <Route path="oportunidades" element={<OportunidadesPage />} />
+            <Route path="oportunidades/nueva" element={<OportunidadForm />} />
+            <Route path="oportunidades/configuracion" element={<ConfiguracionKeywords />} />
+            <Route path="oportunidades/:id" element={<OportunidadForm />} />
+            {/* Marketing */}
+            <Route path="marketing" element={<Marketing />} />
+          </Route>
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   );
 }
+

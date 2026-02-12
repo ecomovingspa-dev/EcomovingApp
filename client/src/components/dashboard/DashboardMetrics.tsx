@@ -71,6 +71,11 @@ export default function DashboardMetrics() {
                 // Define the range: last 12 months
                 const months: DashboardData[] = [];
                 const now = new Date();
+                const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+                twelveMonthsAgo.setHours(0, 0, 0, 0);
+                const isoDate = twelveMonthsAgo.toISOString();
+                const dateOnly = twelveMonthsAgo.toISOString().split('T')[0];
+
                 for (let i = 11; i >= 0; i--) {
                     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
                     const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -90,7 +95,8 @@ export default function DashboardMetrics() {
                 const { data: cotizaciones, error: cotError } = await supabase
                     .from("cotizaciones")
                     .select("total_neto, ganancias, created_at, estado_cotizacion")
-                    .in("estado_cotizacion", ["Aprobada", "Cerrada", "Facturada", "Pagada"]);
+                    .in("estado_cotizacion", ["Aprobada", "Cerrada", "Facturada", "Pagada"])
+                    .gte("created_at", isoDate);
 
                 if (cotError) throw cotError;
 
@@ -98,14 +104,19 @@ export default function DashboardMetrics() {
                 const { data: compras, error: comError } = await supabase
                     .from("compras")
                     .select("monto_total, fecha_emision")
-                    .not("fecha_emision", "is", null);
+                    .not("fecha_emision", "is", null)
+                    .gte("fecha_emision", dateOnly);
 
                 if (comError) throw comError;
 
                 // 3. Fetch Ventas (Current Collections Status)
                 const { data: ventas, error: venError } = await supabase
                     .from("ventas")
-                    .select("saldo, fch_venc, anulada, mnt_total");
+                    .select("saldo, fch_venc, anulada, mnt_total")
+                    .eq("anulada", false)
+                    .gt("saldo", 0);
+
+
 
                 if (venError) throw venError;
 

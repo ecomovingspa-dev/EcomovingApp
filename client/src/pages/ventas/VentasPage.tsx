@@ -94,7 +94,8 @@ export default function VentasPage() {
 
   useEffect(() => {
     cargarVentas();
-  }, []);
+  }, [currentPage]);
+
 
   useEffect(() => {
     if (abonoOpen) {
@@ -132,17 +133,33 @@ export default function VentasPage() {
     return "Pendiente";
   };
 
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [allVentasForSummary, setAllVentasForSummary] = useState<Venta[]>([]);
+
   const cargarVentas = async () => {
     setCargando(true);
     try {
-      const { data, error } = await supabase
+      // 1. Prepare query for page data
+      let query = supabase
         .from("ventas")
-        .select("*")
-        .order("folio", { ascending: false });
+        .select("*", { count: "exact" });
+
+      if (filtroFolio) {
+        query = query.ilike("folio", `%${filtroFolio}%`);
+      }
+      if (filtroRazonSocial) {
+        query = query.ilike("rzn_soc_recep", `%${filtroRazonSocial}%`);
+      }
+      if (filtroEstado !== "todos") {
+        query = query.eq("estado_deuda", filtroEstado);
+      }
+
+      const { data, error, count } = await query
+        .order("folio", { ascending: false })
+        .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
 
       if (error) throw error;
 
-      // IMPORTANTE: Recalcular estado_deuda para cada venta al cargar
       const ventasConEstadoActualizado = (data || []).map((venta) => ({
         ...venta,
         estado_deuda: calcularEstado(
@@ -155,6 +172,16 @@ export default function VentasPage() {
       }));
 
       setVentas(ventasConEstadoActualizado);
+      if (count !== null) setTotalRecords(count);
+
+      // 2. Fetch summary data (only if needed or in background)
+      // Selecting only essential columns for summary logic to be fast
+      const { data: sData } = await supabase
+        .from("ventas")
+        .select("id, saldo, fch_venc, anulada, mnt_total, total_nc, fch_emis, estado_deuda");
+
+      if (sData) setAllVentasForSummary(sData as Venta[]);
+
     } catch (e) {
       console.error("Error cargando ventas:", e);
     } finally {
@@ -162,8 +189,12 @@ export default function VentasPage() {
     }
   };
 
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
   // Cálculos del dashboard - CORREGIDO
-  const summary = ventas.reduce(
+  const summary = allVentasForSummary.reduce(
     (acc, venta) => {
       const estado = venta.estado_deuda || "";
       const saldo = venta.saldo || 0;
@@ -184,21 +215,13 @@ export default function VentasPage() {
     },
   );
 
-  // Calcular totales mensuales en una pasada separada o integrar arriba si es posible
-  // Lo integramos calculando en el render para asegurar reactividad correcta o extendemos el reduce
-  // Mejor extendemos el reduce anterior
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-
-  ventas.forEach((venta) => {
-    // Sumar al acumulador mensual
+  // Calcular totales mensuales
+  allVentasForSummary.forEach((venta) => {
     if (venta.fch_emis) {
-      // Asumiendo formato YYYY-MM-DD
       const parts = venta.fch_emis.split("-");
       if (parts.length === 3) {
         const y = parseInt(parts[0]);
-        const m = parseInt(parts[1]) - 1; // 0-indexed
+        const m = parseInt(parts[1]) - 1;
         if (y === currentYear && m === currentMonth) {
           summary.mensual.count++;
           summary.mensual.total += venta.mnt_total || 0;
@@ -222,45 +245,21 @@ export default function VentasPage() {
     }
   };
 
-  // Filtrado
-  const ventasFiltradas = ventas
-    .filter((venta) => {
-      const matchRazonSocial =
-        filtroRazonSocial === "" ||
-        (venta.rzn_soc_recep || "")
-          .toLowerCase()
-          .includes(filtroRazonSocial.toLowerCase());
+  // Filtrado - Now just using the already-filtered 'ventas' from server
+  const ventasFiltradas = ventas;
 
-      const matchFolio =
-        filtroFolio === "" ||
-        String(venta.folio || "").includes(filtroFolio);
 
-      let matchEstado = true;
-      if (filtroEstado !== "todos") {
-        matchEstado = venta.estado_deuda === filtroEstado;
-      }
-
-      return matchRazonSocial && matchFolio && matchEstado;
-    })
-    .sort((a, b) => {
-      // Mantener orden descendente por folio después de filtrar
-      const folioA = parseInt(a.folio) || 0;
-      const folioB = parseInt(b.folio) || 0;
-      return folioB - folioA;
-    });
 
   // Paginación
-  const totalPages = Math.ceil(ventasFiltradas.length / ITEMS_PER_PAGE);
-  const paginatedVentas = ventasFiltradas.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE,
-  );
+  const totalPages = Math.ceil(totalRecords / ITEMS_PER_PAGE);
+  const paginatedVentas = ventas; // Ya paginadas por el servidor
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
     }
   };
+
 
   // ==================== SINCRONIZACIÓN ====================
 
