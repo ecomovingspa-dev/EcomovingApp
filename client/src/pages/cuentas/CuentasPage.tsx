@@ -26,16 +26,44 @@ export default function CuentasPage() {
   const [paginaActual, setPaginaActual] = useState(1);
   const filasPorPagina = 50;
 
-  // Obtener listas únicas de sectores y segmentos para los filtros
-  const sectores = Array.from(new Set(cuentas.map((c) => c.sector).filter(Boolean)));
-  const segmentos = Array.from(new Set(cuentas.map((c) => c.segmento).filter(Boolean)));
-
+  // Estados para opciones de filtros (se cargan una vez al inicio)
+  const [availableSectors, setAvailableSectors] = useState<string[]>([]);
+  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
   const [totalRecords, setTotalRecords] = useState(0);
+
+  // Determinar si hay algún filtro activo
+  const hayFiltroActivo = busqueda.trim().length >= 2 || filtroSector !== "" || filtroSegmento !== "" || filtroEstado !== "";
+
+  useEffect(() => {
+    cargarOpcionesFiltros();
+  }, []);
+
+  const cargarOpcionesFiltros = async () => {
+    try {
+      // Cargamos solo las columnas necesarias para los filtros, sin descargar toda la tabla
+      const { data } = await supabase.from("cuentas").select("sector, segmento");
+      if (data) {
+        setAvailableSectors(Array.from(new Set(data.map((c: any) => c.sector).filter(Boolean))));
+        setAvailableSegments(Array.from(new Set(data.map((c: any) => c.segmento).filter(Boolean))));
+      }
+    } catch (e) {
+      console.error("Error cargando opciones de filtros:", e);
+    }
+  };
+
 
 
   useEffect(() => {
-    cargarCuentas();
-  }, [paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado]);
+    if (hayFiltroActivo) {
+      cargarCuentas();
+    } else {
+      setCuentas([]);
+      setCuentasFiltradas([]);
+      setTotalRecords(0);
+      setCargando(false);
+    }
+  }, [paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, hayFiltroActivo]);
+
 
   const cargarCuentas = async () => {
     try {
@@ -162,8 +190,8 @@ export default function CuentasPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[
             { label: "Estado", val: filtroEstado, set: setFiltroEstado, opts: ["activo", "inactivo", "prospecto"] },
-            { label: "Sector", val: filtroSector, set: setFiltroSector, opts: sectores },
-            { label: "Segmento", val: filtroSegmento, set: setFiltroSegmento, opts: segmentos },
+            { label: "Sector", val: filtroSector, set: setFiltroSector, opts: availableSectors },
+            { label: "Segmento", val: filtroSegmento, set: setFiltroSegmento, opts: availableSegments },
           ].map((f, i) => (
             <div key={i}>
               <select
@@ -204,87 +232,101 @@ export default function CuentasPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-            {cuentasPaginadas.map((cuenta) => (
-              <tr key={cuenta.id} className="group hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors">
-                <td className="px-4 py-2 min-w-[450px]">
-                  <textarea
-                    defaultValue={cuenta.cliente || ""}
-                    onBlur={(e) => actualizarCuentaInline(cuenta.id, "cliente", e.target.value)}
-                    rows={2}
-                    className="w-full bg-transparent border-none rounded-lg px-2 py-1 text-sm font-bold text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all resize-none"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    defaultValue={cuenta.rut || ""}
-                    onBlur={(e) => actualizarCuentaInline(cuenta.id, "rut", e.target.value)}
-                    className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all font-mono"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <select
-                    value={cuenta.estado || "activo"}
-                    onChange={(e) => actualizarCuentaInline(cuenta.id, "estado", e.target.value)}
-                    className={`text-xs font-bold rounded-full px-4 py-1.5 border-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer ${cuenta.estado === "activo" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                      cuenta.estado === "prospecto" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
-                        "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400"
-                      }`}
-                  >
-                    <option value="activo">ACTIVO</option>
-                    <option value="prospecto">PROSPECTO</option>
-                    <option value="inactivo">INACTIVO</option>
-                  </select>
-                </td>
-                <td className="px-4 py-2 min-w-[120px]">
-                  <input
-                    defaultValue={cuenta.sector || ""}
-                    onBlur={(e) => actualizarCuentaInline(cuenta.id, "sector", e.target.value)}
-                    className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
-                  />
-                </td>
-                <td className="px-4 py-2 min-w-[150px]">
-                  <input
-                    defaultValue={cuenta.segmento || ""}
-                    onBlur={(e) => actualizarCuentaInline(cuenta.id, "segmento", e.target.value)}
-                    className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
-                  />
-                </td>
-                <td className="px-4 py-2 min-w-[120px]">
-                  <input
-                    defaultValue={cuenta.ciudad || ""}
-                    onBlur={(e) => actualizarCuentaInline(cuenta.id, "ciudad", e.target.value)}
-                    className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
-                  />
-                </td>
-
-                <td className="px-6 py-4 text-right">
-                  <div className="flex items-center justify-end gap-3">
-                    {guardandoId === cuenta.id ? (
-                      <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    )}
-
-                    <button
-                      onClick={() => setCuentaParaInvestigar(cuenta)}
-                      className="p-2 text-amber-500 hover:text-amber-600 transition-colors bg-amber-50 dark:bg-amber-900/20 rounded-lg"
-                      title="Investigar con Prospector IA"
+            {cuentasPaginadas.length > 0 ? (
+              cuentasPaginadas.map((cuenta) => (
+                <tr key={cuenta.id} className="group hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors">
+                  <td className="px-4 py-2 min-w-[450px]">
+                    <textarea
+                      defaultValue={cuenta.cliente || ""}
+                      onBlur={(e) => actualizarCuentaInline(cuenta.id, "cliente", e.target.value)}
+                      rows={2}
+                      className="w-full bg-transparent border-none rounded-lg px-2 py-1 text-sm font-bold text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all resize-none"
+                    />
+                  </td>
+                  <td className="px-4 py-2">
+                    <input
+                      defaultValue={cuenta.rut || ""}
+                      onBlur={(e) => actualizarCuentaInline(cuenta.id, "rut", e.target.value)}
+                      className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all font-mono"
+                    />
+                  </td>
+                  <td className="px-4 py-2">
+                    <select
+                      value={cuenta.estado || "activo"}
+                      onChange={(e) => actualizarCuentaInline(cuenta.id, "estado", e.target.value)}
+                      className={`text-xs font-bold rounded-full px-4 py-1.5 border-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer ${cuenta.estado === "activo" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
+                        cuenta.estado === "prospecto" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
+                          "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400"
+                        }`}
                     >
-                      <Zap className="h-4 w-4 fill-current" />
-                    </button>
+                      <option value="activo">ACTIVO</option>
+                      <option value="prospecto">PROSPECTO</option>
+                      <option value="inactivo">INACTIVO</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2 min-w-[120px]">
+                    <input
+                      defaultValue={cuenta.sector || ""}
+                      onBlur={(e) => actualizarCuentaInline(cuenta.id, "sector", e.target.value)}
+                      className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
+                    />
+                  </td>
+                  <td className="px-4 py-2 min-w-[150px]">
+                    <input
+                      defaultValue={cuenta.segmento || ""}
+                      onBlur={(e) => actualizarCuentaInline(cuenta.id, "segmento", e.target.value)}
+                      className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
+                    />
+                  </td>
+                  <td className="px-4 py-2 min-w-[120px]">
+                    <input
+                      defaultValue={cuenta.ciudad || ""}
+                      onBlur={(e) => actualizarCuentaInline(cuenta.id, "ciudad", e.target.value)}
+                      className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
+                    />
+                  </td>
 
-                    <button
-                      onClick={() => eliminarCuenta(cuenta.id)}
-                      className="p-2 text-gray-400 hover:text-red-500 transition-colors bg-gray-50 dark:bg-gray-700/50 rounded-lg"
-                      title="Eliminar Cuenta"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-3">
+                      {guardandoId === cuenta.id ? (
+                        <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="h-4 w-4 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      )}
 
+                      <button
+                        onClick={() => setCuentaParaInvestigar(cuenta)}
+                        className="p-2 text-amber-500 hover:text-amber-600 transition-colors bg-amber-50 dark:bg-amber-900/20 rounded-lg"
+                        title="Investigar con Prospector IA"
+                      >
+                        <Zap className="h-4 w-4 fill-current" />
+                      </button>
+
+                      <button
+                        onClick={() => eliminarCuenta(cuenta.id)}
+                        className="p-2 text-gray-400 hover:text-red-500 transition-colors bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                        title="Eliminar Cuenta"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={7} className="px-6 py-20 text-center">
+                  <div className="flex flex-col items-center justify-center space-y-4 text-gray-500 dark:text-gray-400">
+                    <Search className="h-12 w-12 opacity-20" />
+                    <div className="max-w-xs mx-auto">
+                      <p className="text-lg font-bold">Inicia una búsqueda</p>
+                      <p className="text-sm">Escribe al menos 2 caracteres o selecciona un filtro para ver las cuentas.</p>
+                    </div>
                   </div>
                 </td>
               </tr>
-            ))}
+            )}
           </tbody>
         </table>
       </div>
