@@ -99,15 +99,22 @@ export default function OportunidadesPage() {
   };
 
   const eliminarOportunidad = async (id: string) => {
-    if (!confirm("¿Eliminar esta oportunidad?")) return;
+    if (!window.confirm("¿Eliminar esta oportunidad?")) return;
 
     try {
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from("oportunidades")
-        .delete()
+        .delete({ count: "exact" })
         .eq("id", id);
 
       if (error) throw error;
+
+      if (count === 0) {
+        setMensaje("⚠️ No se pudo eliminar. Verifica los permisos (RLS) en Supabase.");
+        setTimeout(() => setMensaje(""), 5000);
+        return;
+      }
+
       setOportunidades(oportunidades.filter((op) => op.id !== id));
       setSeleccionados((prev) => {
         const next = new Set(prev);
@@ -117,15 +124,16 @@ export default function OportunidadesPage() {
       setMensaje("✅ Oportunidad eliminada");
       setTimeout(() => setMensaje(""), 3000);
     } catch (error: any) {
-      console.error("Error:", error);
-      alert("Error al eliminar: " + error.message);
+      console.error("Error eliminando oportunidad:", error);
+      setMensaje("❌ Error al eliminar: " + (error.message || "Error desconocido"));
+      setTimeout(() => setMensaje(""), 5000);
     }
   };
 
   const eliminarSeleccionadas = async () => {
     if (seleccionados.size === 0) return;
     if (
-      !confirm(
+      !window.confirm(
         `¿Estás seguro de que deseas eliminar las ${seleccionados.size} oportunidades seleccionadas?`,
       )
     )
@@ -133,22 +141,29 @@ export default function OportunidadesPage() {
 
     try {
       const idsAEliminar = Array.from(seleccionados);
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from("oportunidades")
-        .delete()
+        .delete({ count: "exact" })
         .in("id", idsAEliminar);
 
       if (error) throw error;
+
+      if (count === 0) {
+        setMensaje("⚠️ No se pudo eliminar. Verifica los permisos (RLS) en Supabase.");
+        setTimeout(() => setMensaje(""), 5000);
+        return;
+      }
 
       setOportunidades(
         oportunidades.filter((op) => !seleccionados.has(op.id)),
       );
       setSeleccionados(new Set());
-      setMensaje(`✅ ${idsAEliminar.length} oportunidades eliminadas`);
+      setMensaje(`✅ ${count} oportunidades eliminadas`);
       setTimeout(() => setMensaje(""), 4000);
     } catch (error: any) {
-      console.error("Error:", error);
-      alert("Error al eliminar seleccionadas: " + error.message);
+      console.error("Error eliminando seleccionadas:", error);
+      setMensaje("❌ Error al eliminar seleccionadas: " + (error.message || "Error desconocido"));
+      setTimeout(() => setMensaje(""), 5000);
     }
   };
 
@@ -222,7 +237,7 @@ export default function OportunidadesPage() {
 
   const limpiarVencidas = async () => {
     if (
-      !confirm(
+      !window.confirm(
         "¿Eliminar todas las oportunidades con fecha de cierre anterior a hoy?",
       )
     )
@@ -232,19 +247,26 @@ export default function OportunidadesPage() {
       setLimpiando(true);
       const hoy = new Date().toISOString();
 
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from("oportunidades")
-        .delete()
+        .delete({ count: "exact" })
         .lt("fecha_cierre", hoy);
 
       if (error) throw error;
 
-      setMensaje(`Oportunidades vencidas eliminadas`);
-      cargarOportunidades();
+      if (count === 0) {
+        setMensaje("⚠️ No hay oportunidades vencidas para eliminar, o los permisos (RLS) lo impiden.");
+        setTimeout(() => setMensaje(""), 5000);
+        return;
+      }
+
+      setMensaje(`✅ ${count} oportunidades vencidas eliminadas`);
+      await cargarOportunidades();
       setTimeout(() => setMensaje(""), 3000);
     } catch (error: any) {
-      console.error("Error:", error);
-      setMensaje("Error al limpiar: " + error.message);
+      console.error("Error limpiando vencidas:", error);
+      setMensaje("❌ Error al limpiar: " + (error.message || "Error desconocido"));
+      setTimeout(() => setMensaje(""), 5000);
     } finally {
       setLimpiando(false);
     }
@@ -311,13 +333,64 @@ export default function OportunidadesPage() {
             throw new Error("No se pudieron cargar las palabras clave de configuración");
           }
 
-          const PALABRAS_CLAVE = (keywordsDB || []).map((k) => k.keyword.toLowerCase());
+          const PALABRAS_CLAVE = (keywordsDB || []).map((k) => k.keyword);
 
           if (PALABRAS_CLAVE.length === 0) {
             setMensaje("⚠️ No hay palabras clave configuradas. Ve a configuración.");
             setTimeout(() => setMensaje(""), 4000);
             return;
           }
+
+          // --- MOTOR DE INTELIGENCIA COMERCIAL ---
+          const SINONIMOS: Record<string, string[]> = {
+            "mug": ["tazon", "tazones", "vaso", "termico", "termica", "jarro"],
+            "botella": ["caramayola", "hidratacion", "envase", "deportiva"],
+            "bolsa": ["mochila", "morral", "ecologica", "tnt", "tela", "notex"],
+            "lapiz": ["boligrafo", "escritura", "lapices", "portaminas"],
+            "agenda": ["cuaderno", "libreta", "notero", "bitacora"],
+            "regalo": ["presente", "souvenir", "merchandising", "publicitario", "corporativo"],
+            "polera": ["textil", "vestuario", "ropa", "pique", "algodon"]
+          };
+
+          const normalizeText = (text: string | null | undefined): string => {
+            if (!text) return "";
+            return text
+              .toString()
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .trim();
+          };
+
+          const calcularScore = (texto: string, keywords: string[]): { score: number, matches: string[] } => {
+            let score = 0;
+            let matchesEncontrados = new Set<string>();
+            const textoNorm = normalizeText(texto);
+
+            // Separar palabras positivas de exclusiones
+            const exclusiones = keywords.filter(k => k.startsWith("-")).map(k => normalizeText(k.substring(1)));
+            const positivas = keywords.filter(k => !k.startsWith("-"));
+
+            // 1. Verificar exclusiones primero (si hay una, fuera)
+            for (const excl of exclusiones) {
+              if (textoNorm.includes(excl)) return { score: -1, matches: [] };
+            }
+
+            // 2. Buscar palabras positivas y sus sinónimos
+            positivas.forEach(kw => {
+              const kwNorm = normalizeText(kw);
+              const variantes = [kwNorm, ...(SINONIMOS[kwNorm] || [])];
+
+              variantes.forEach(variante => {
+                if (textoNorm.includes(variante)) {
+                  matchesEncontrados.add(kw); // Guardamos la original para saber cuál gatilló
+                  score += (variante === kwNorm) ? 10 : 5; // Más puntos si es la palabra exacta
+                }
+              });
+            });
+
+            return { score, matches: Array.from(matchesEncontrados) };
+          };
 
           const oportunidadesFiltradas = jsonData
             .map((row) => {
@@ -354,15 +427,17 @@ export default function OportunidadesPage() {
               const estadoVal = getVal(["Estado"]);
               const claveVal = getVal(["Clave"]);
 
-              // Identificar palabras clave encontradas (Búsqueda por palabra completa para evitar falsos positivos)
-              const campos = [nombreVal || "", organismoVal || ""];
-              const textoCompleto = campos.join(" ").toLowerCase();
-              const keywordsEncontradas = PALABRAS_CLAVE.filter((kw) => {
-                const regex = new RegExp(`\\b${kw}\\b`, "i");
-                return regex.test(textoCompleto);
-              }).join(", ");
+              // Identificar palabras clave encontradas (Búsqueda Inteligente)
+              const resNombre = calcularScore(nombreVal || "", PALABRAS_CLAVE);
+              const resOrg = calcularScore(organismoVal || "", PALABRAS_CLAVE);
 
-              if (!keywordsEncontradas) return null;
+              // Si alguna tiene exclusión o ninguna tiene match, descartamos
+              if (resNombre.score === -1 || resOrg.score === -1) return null;
+
+              const totalScore = resNombre.score + resOrg.score;
+              const keywordsEncontradas = Array.from(new Set([...resNombre.matches, ...resOrg.matches])).join(", ");
+
+              if (totalScore <= 0) return null;
 
               let montoNum: number | null = null;
 
