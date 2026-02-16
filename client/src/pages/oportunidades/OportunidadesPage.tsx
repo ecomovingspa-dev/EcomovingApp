@@ -102,20 +102,14 @@ export default function OportunidadesPage() {
     if (!window.confirm("¿Eliminar esta oportunidad?")) return;
 
     try {
-      const { error, count } = await supabase
+      const { error } = await supabase
         .from("oportunidades")
-        .delete({ count: "exact" })
+        .delete()
         .eq("id", id);
 
       if (error) throw error;
 
-      if (count === 0) {
-        setMensaje("⚠️ No se pudo eliminar. Verifica los permisos (RLS) en Supabase.");
-        setTimeout(() => setMensaje(""), 5000);
-        return;
-      }
-
-      setOportunidades(oportunidades.filter((op) => op.id !== id));
+      setOportunidades((prev) => prev.filter((op) => op.id !== id));
       setSeleccionados((prev) => {
         const next = new Set(prev);
         next.delete(id);
@@ -141,24 +135,18 @@ export default function OportunidadesPage() {
 
     try {
       const idsAEliminar = Array.from(seleccionados);
-      const { error, count } = await supabase
+      const { error } = await supabase
         .from("oportunidades")
-        .delete({ count: "exact" })
+        .delete()
         .in("id", idsAEliminar);
 
       if (error) throw error;
 
-      if (count === 0) {
-        setMensaje("⚠️ No se pudo eliminar. Verifica los permisos (RLS) en Supabase.");
-        setTimeout(() => setMensaje(""), 5000);
-        return;
-      }
-
-      setOportunidades(
-        oportunidades.filter((op) => !seleccionados.has(op.id)),
+      setOportunidades((prev) =>
+        prev.filter((op) => !seleccionados.has(op.id)),
       );
       setSeleccionados(new Set());
-      setMensaje(`✅ ${count} oportunidades eliminadas`);
+      setMensaje(`✅ ${idsAEliminar.length} oportunidades eliminadas`);
       setTimeout(() => setMensaje(""), 4000);
     } catch (error: any) {
       console.error("Error eliminando seleccionadas:", error);
@@ -247,20 +235,14 @@ export default function OportunidadesPage() {
       setLimpiando(true);
       const hoy = new Date().toISOString();
 
-      const { error, count } = await supabase
+      const { error } = await supabase
         .from("oportunidades")
-        .delete({ count: "exact" })
+        .delete()
         .lt("fecha_cierre", hoy);
 
       if (error) throw error;
 
-      if (count === 0) {
-        setMensaje("⚠️ No hay oportunidades vencidas para eliminar, o los permisos (RLS) lo impiden.");
-        setTimeout(() => setMensaje(""), 5000);
-        return;
-      }
-
-      setMensaje(`✅ ${count} oportunidades vencidas eliminadas`);
+      setMensaje("✅ Oportunidades vencidas eliminadas");
       await cargarOportunidades();
       setTimeout(() => setMensaje(""), 3000);
     } catch (error: any) {
