@@ -99,15 +99,22 @@ export default function OportunidadesPage() {
   };
 
   const eliminarOportunidad = async (id: string) => {
-    if (!window.confirm("¿Eliminar esta oportunidad?")) return;
+    console.log("[DELETE] eliminarOportunidad llamada con id:", id);
+    if (!window.confirm("¿Eliminar esta oportunidad?")) {
+      console.log("[DELETE] Usuario cancelo el confirm");
+      return;
+    }
+    console.log("[DELETE] Usuario confirmo, ejecutando delete...");
 
     try {
-      const { error } = await supabase
+      const response = await supabase
         .from("oportunidades")
         .delete()
         .eq("id", id);
 
-      if (error) throw error;
+      console.log("[DELETE] Respuesta Supabase:", JSON.stringify(response));
+
+      if (response.error) throw response.error;
 
       setOportunidades((prev) => prev.filter((op) => op.id !== id));
       setSeleccionados((prev) => {
@@ -118,8 +125,8 @@ export default function OportunidadesPage() {
       setMensaje("✅ Oportunidad eliminada");
       setTimeout(() => setMensaje(""), 3000);
     } catch (error: any) {
-      console.error("Error eliminando oportunidad:", error);
-      setMensaje("❌ Error al eliminar: " + (error.message || "Error desconocido"));
+      console.error("[DELETE] Error:", error);
+      setMensaje("❌ Error al eliminar: " + (error.message || JSON.stringify(error)));
       setTimeout(() => setMensaje(""), 5000);
     }
   };
@@ -224,30 +231,37 @@ export default function OportunidadesPage() {
   };
 
   const limpiarVencidas = async () => {
+    console.log("[LIMPIAR] limpiarVencidas llamada");
     if (
       !window.confirm(
         "¿Eliminar todas las oportunidades con fecha de cierre anterior a hoy?",
       )
-    )
+    ) {
+      console.log("[LIMPIAR] Usuario cancelo");
       return;
+    }
+    console.log("[LIMPIAR] Usuario confirmo, ejecutando...");
 
     try {
       setLimpiando(true);
       const hoy = new Date().toISOString();
+      console.log("[LIMPIAR] Fecha corte:", hoy);
 
-      const { error } = await supabase
+      const response = await supabase
         .from("oportunidades")
         .delete()
         .lt("fecha_cierre", hoy);
 
-      if (error) throw error;
+      console.log("[LIMPIAR] Respuesta Supabase:", JSON.stringify(response));
+
+      if (response.error) throw response.error;
 
       setMensaje("✅ Oportunidades vencidas eliminadas");
       await cargarOportunidades();
       setTimeout(() => setMensaje(""), 3000);
     } catch (error: any) {
-      console.error("Error limpiando vencidas:", error);
-      setMensaje("❌ Error al limpiar: " + (error.message || "Error desconocido"));
+      console.error("[LIMPIAR] Error:", error);
+      setMensaje("❌ Error al limpiar: " + (error.message || JSON.stringify(error)));
       setTimeout(() => setMensaje(""), 5000);
     } finally {
       setLimpiando(false);
@@ -646,11 +660,11 @@ export default function OportunidadesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="ghost"
+          <button
+            type="button"
             onClick={limpiarVencidas}
             disabled={limpiando}
-            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/20 flex items-center gap-2"
+            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/20 flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
             {limpiando ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -658,17 +672,17 @@ export default function OportunidadesPage() {
               <RefreshCw className="h-4 w-4" />
             )}
             Limpiar Vencidas
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
+          <button
+            type="button"
             onClick={eliminarSeleccionadas}
             disabled={seleccionados.size === 0}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 flex items-center gap-2"
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
           >
             <Trash2 className="h-4 w-4" />
             Eliminar Seleccionadas {seleccionados.size > 0 && `(${seleccionados.size})`}
-          </Button>
+          </button>
 
           <Button
             variant="ghost"
@@ -983,10 +997,9 @@ export default function OportunidadesPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30"
+                          <button
+                            type="button"
+                            className="inline-flex items-center justify-center h-8 w-8 rounded-md text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
                             onClick={(e) => {
                               e.stopPropagation();
                               eliminarOportunidad(op.id);
@@ -994,7 +1007,7 @@ export default function OportunidadesPage() {
                             title="Eliminar esta fila"
                           >
                             <Trash2 className="h-4 w-4" />
-                          </Button>
+                          </button>
                         </td>
                       </tr>
                     ))
