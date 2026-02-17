@@ -61,7 +61,8 @@ export default function ContactosPage() {
   const [availableCuentas, setAvailableCuentas] = useState<{ id: string, cliente: string }[]>([]);
 
   // Determinar si hay algún filtro activo
-  const hayFiltroActivo = busqueda.trim().length >= 2 || filtroEstado !== "" || filtroCuentaId !== "" || filtroSegmento !== "" || filtroSector !== "";
+  // No restriction on loading, server-side pagination handles performance
+  const hayFiltroActivo = true;
 
   const navigate = useNavigate();
 
@@ -379,14 +380,6 @@ export default function ContactosPage() {
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mb-4"></div>
             <p className="text-gray-600 dark:text-gray-400">Cargando contactos...</p>
           </div>
-        ) : !hayFiltroActivo ? (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-20 text-center border border-gray-100 dark:border-gray-700">
-            <Search className="h-16 w-16 text-gray-200 dark:text-gray-700 mx-auto mb-6" />
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Inicia una búsqueda</h3>
-            <p className="text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
-              Escribe al menos 2 caracteres o selecciona un filtro para visualizar los contactos.
-            </p>
-          </div>
         ) : gruposFiltrados.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-20 text-center border border-gray-100 dark:border-gray-700">
             <Search className="h-16 w-16 text-gray-200 dark:text-gray-700 mx-auto mb-6" />
@@ -394,7 +387,7 @@ export default function ContactosPage() {
               No se encontraron resultados
             </p>
             <p className="text-gray-500 dark:text-gray-500 text-sm">
-              No hay contactos que coincidan con los filtros aplicados
+              Intenta ajustar los filtros o la búsqueda para encontrar lo que buscas.
             </p>
           </div>
         ) : (

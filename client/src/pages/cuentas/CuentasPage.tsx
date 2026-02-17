@@ -32,7 +32,8 @@ export default function CuentasPage() {
   const [totalRecords, setTotalRecords] = useState(0);
 
   // Determinar si hay algún filtro activo
-  const hayFiltroActivo = busqueda.trim().length >= 2 || filtroSector !== "" || filtroSegmento !== "" || filtroEstado !== "";
+  // No longer restricted, we use server-side pagination for performance
+  const hayFiltroActivo = true;
 
   useEffect(() => {
     cargarOpcionesFiltros();
@@ -320,8 +321,8 @@ export default function CuentasPage() {
                   <div className="flex flex-col items-center justify-center space-y-4 text-gray-500 dark:text-gray-400">
                     <Search className="h-12 w-12 opacity-20" />
                     <div className="max-w-xs mx-auto">
-                      <p className="text-lg font-bold">Inicia una búsqueda</p>
-                      <p className="text-sm">Escribe al menos 2 caracteres o selecciona un filtro para ver las cuentas.</p>
+                      <p className="text-lg font-bold">No se encontraron cuentas</p>
+                      <p className="text-sm">Intenta ajustar los filtros o la búsqueda para encontrar lo que buscas.</p>
                     </div>
                   </div>
                 </td>
@@ -360,16 +361,18 @@ export default function CuentasPage() {
       }
 
 
-      {cuentaParaInvestigar && (
-        <ProspectorIAModal
-          cuenta={cuentaParaInvestigar}
-          onClose={() => setCuentaParaInvestigar(null)}
-          onSuccess={() => {
-            setCuentaParaInvestigar(null);
-            cargarCuentas();
-          }}
-        />
-      )}
-    </div>
+      {
+        cuentaParaInvestigar && (
+          <ProspectorIAModal
+            cuenta={cuentaParaInvestigar}
+            onClose={() => setCuentaParaInvestigar(null)}
+            onSuccess={() => {
+              setCuentaParaInvestigar(null);
+              cargarCuentas();
+            }}
+          />
+        )
+      }
+    </div >
   );
 }
