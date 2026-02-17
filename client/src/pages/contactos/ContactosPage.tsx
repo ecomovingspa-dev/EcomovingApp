@@ -42,43 +42,112 @@ interface GrupoCliente {
 export default function ContactosPage() {
   const [contactos, setContactos] = useState<ContactoConCuenta[]>([]);
   const [gruposClientes, setGruposClientes] = useState<GrupoCliente[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [filtroSegmento, setFiltroSegmento] = useState("");
   const [filtroSector, setFiltroSector] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState("");
+  const [filtroCuentaId, setFiltroCuentaId] = useState("");
+
+  // Estados para paginación
+  const [paginaActual, setPaginaActual] = useState(1);
+  const filasPorPagina = 50;
+  const [totalRecords, setTotalRecords] = useState(0);
+
+  // Estados para opciones de filtros
+  const [availableSectors, setAvailableSectors] = useState<string[]>([]);
+  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
+  const [availableCuentas, setAvailableCuentas] = useState<{ id: string, cliente: string }[]>([]);
+
+  // Determinar si hay algún filtro activo
+  const hayFiltroActivo = busqueda.trim().length >= 2 || filtroEstado !== "" || filtroCuentaId !== "" || filtroSegmento !== "" || filtroSector !== "";
 
   const navigate = useNavigate();
 
   useEffect(() => {
-    cargarContactos();
+    cargarOpcionesFiltros();
   }, []);
+
+  const cargarOpcionesFiltros = async () => {
+    try {
+      const { data: qSectors } = await supabase.from("cuentas").select("sector, segmento");
+      if (qSectors) {
+        setAvailableSectors(Array.from(new Set(qSectors.map((c: any) => c.sector).filter(Boolean))));
+        setAvailableSegments(Array.from(new Set(qSectors.map((c: any) => c.segmento).filter(Boolean))));
+      }
+
+      const { data: qCuentas } = await supabase.from("cuentas").select("id, cliente").order("cliente");
+      if (qCuentas) {
+        setAvailableCuentas(qCuentas);
+      }
+    } catch (e) {
+      console.error("Error cargando opciones de filtros:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (hayFiltroActivo) {
+      cargarContactos();
+    } else {
+      setContactos([]);
+      setGruposClientes([]);
+      setTotalRecords(0);
+      setCargando(false);
+    }
+  }, [paginaActual, busqueda, filtroEstado, filtroCuentaId, filtroSegmento, filtroSector, hayFiltroActivo]);
 
   const cargarContactos = async () => {
     try {
       setCargando(true);
-      const { data, error } = await supabase
+      let query = supabase
         .from("contactos")
         .select(
           `
           *,
           cuentas:cuentas!contactos_cuenta_id_fkey(cliente, segmento, sector)
         `,
-        )
-        .order("created_at", { ascending: false });
+          { count: "exact" }
+        );
+
+      if (busqueda) {
+        query = query.or(`nombre.ilike.%${busqueda}%,correo.ilike.%${busqueda}%`);
+      }
+
+      if (filtroEstado) {
+        query = query.eq("estado", filtroEstado);
+      }
+
+      if (filtroCuentaId) {
+        query = query.eq("cuenta_id", filtroCuentaId);
+      }
+
+      if (filtroSegmento) {
+        query = query.filter("cuentas.segmento", "eq", filtroSegmento);
+      }
+
+      if (filtroSector) {
+        query = query.filter("cuentas.sector", "eq", filtroSector);
+      }
+
+      const { data, error, count } = await query
+        .order("created_at", { ascending: false })
+        .range((paginaActual - 1) * filasPorPagina, paginaActual * filasPorPagina - 1);
 
       if (error) throw error;
 
       const contactosData = data || [];
       setContactos(contactosData);
+      if (count !== null) setTotalRecords(count);
 
-      // Agrupar por cliente
+      // Agrupar por cliente para mantener la vista organizada
       const grupos = agruparPorCliente(contactosData);
       setGruposClientes(grupos);
     } catch (error: any) {
       console.error("Error al cargar contactos:", error);
       setMensaje("❌ Error al cargar contactos");
       setContactos([]);
+      setGruposClientes([]);
     } finally {
       setCargando(false);
     }
@@ -175,48 +244,11 @@ export default function ContactosPage() {
     }
   };
 
-  // Filtrar grupos
-  const gruposFiltrados = useMemo(() => {
-    const termino = busqueda.toLowerCase().trim();
+  // Los grupos ya están filtrados por el servidor ahora
+  const gruposFiltrados = gruposClientes;
 
-    return gruposClientes
-      .filter(grupo => {
-        // Filtro de segmento
-        if (filtroSegmento && grupo.segmento !== filtroSegmento) return false;
-        // Filtro de sector
-        if (filtroSector && grupo.sector !== filtroSector) return false;
-        return true;
-      })
-      .map(grupo => ({
-        ...grupo,
-        contactos: grupo.contactos.filter(contacto => {
-          if (!termino) return true;
-          return (
-            contacto.nombre.toLowerCase().includes(termino) ||
-            (contacto.cuentas?.cliente || "").toLowerCase().includes(termino) ||
-            (contacto.correo || "").toLowerCase().includes(termino)
-          );
-        })
-      }))
-      .filter(grupo => grupo.contactos.length > 0);
-  }, [gruposClientes, busqueda, filtroSegmento, filtroSector]);
-
-  // Obtener opciones únicas de segmentos y sectores
-  const segmentosUnicos = useMemo(() => {
-    const segmentos = contactos
-      .map((c) => c.cuentas?.segmento)
-      .filter((s): s is string => !!s);
-    return Array.from(new Set(segmentos)).sort();
-  }, [contactos]);
-
-  const sectoresUnicos = useMemo(() => {
-    const sectores = contactos
-      .map((c) => c.cuentas?.sector)
-      .filter((s): s is string => !!s);
-    return Array.from(new Set(sectores)).sort();
-  }, [contactos]);
-
-  const totalContactosFiltrados = gruposFiltrados.reduce((acc, g) => acc + g.contactos.length, 0);
+  const totalPaginas = Math.ceil(totalRecords / filasPorPagina);
+  const totalContactosFiltrados = totalRecords;
 
   return (
     <div className="space-y-6 dark:bg-gray-900 min-h-screen max-w-[1600px] mx-auto w-full">
@@ -252,28 +284,56 @@ export default function ContactosPage() {
       )}
 
       {/* Buscador y Filtros */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 space-y-4">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 space-y-6">
         {/* Buscador */}
-        <div className="flex items-center gap-2">
-          <Search className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
           <Input
-            placeholder="Buscar por nombre, cuenta o correo..."
+            placeholder="Buscar por nombre o correo (min. 2 caracteres)..."
             value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            className="border-none shadow-none focus-visible:ring-0 pl-2"
+            onChange={(e) => {
+              setBusqueda(e.target.value);
+              setPaginaActual(1);
+            }}
+            className="w-full border-none rounded-xl px-12 py-4 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 transition-all font-medium"
           />
         </div>
 
         {/* Filtros */}
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {/* Filtro Estado */}
+          <select
+            value={filtroEstado}
+            onChange={(e) => { setFiltroEstado(e.target.value); setPaginaActual(1); }}
+            className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+          >
+            <option value="">Estado: Todos</option>
+            <option value="activo">Activo</option>
+            <option value="inactivo">Inactivo</option>
+          </select>
+
+          {/* Filtro Cuenta */}
+          <select
+            value={filtroCuentaId}
+            onChange={(e) => { setFiltroCuentaId(e.target.value); setPaginaActual(1); }}
+            className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+          >
+            <option value="">Empresa: Todas</option>
+            {availableCuentas.map((cuenta) => (
+              <option key={cuenta.id} value={cuenta.id}>
+                {cuenta.cliente}
+              </option>
+            ))}
+          </select>
+
           {/* Filtro Segmento */}
           <select
             value={filtroSegmento}
-            onChange={(e) => setFiltroSegmento(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onChange={(e) => { setFiltroSegmento(e.target.value); setPaginaActual(1); }}
+            className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all font-medium"
           >
-            <option value="">Todos los segmentos</option>
-            {segmentosUnicos.map((segmento) => (
+            <option value="">Segmento: Todos</option>
+            {availableSegments.map((segmento) => (
               <option key={segmento} value={segmento}>
                 {segmento}
               </option>
@@ -283,32 +343,32 @@ export default function ContactosPage() {
           {/* Filtro Sector */}
           <select
             value={filtroSector}
-            onChange={(e) => setFiltroSector(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            onChange={(e) => { setFiltroSector(e.target.value); setPaginaActual(1); }}
+            className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all font-medium"
           >
-            <option value="">Todos los sectores</option>
-            {sectoresUnicos.map((sector) => (
+            <option value="">Sector: Todos</option>
+            {availableSectors.map((sector) => (
               <option key={sector} value={sector}>
                 {sector}
               </option>
             ))}
           </select>
 
-          {/* Botón Limpiar Filtros */}
-          {(filtroSegmento || filtroSector || busqueda) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setBusqueda("");
-                setFiltroSegmento("");
-                setFiltroSector("");
-              }}
-              className="dark:border-gray-600 dark:hover:bg-gray-700"
-            >
-              Limpiar filtros
-            </Button>
-          )}
+          {/* Botón Resetear */}
+          <Button
+            variant="outline"
+            onClick={() => {
+              setBusqueda("");
+              setFiltroEstado("");
+              setFiltroCuentaId("");
+              setFiltroSegmento("");
+              setFiltroSector("");
+              setPaginaActual(1);
+            }}
+            className="w-full border-none rounded-xl px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
+          >
+            Resetear
+          </Button>
         </div>
       </div>
 
@@ -319,27 +379,18 @@ export default function ContactosPage() {
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mb-4"></div>
             <p className="text-gray-600 dark:text-gray-400">Cargando contactos...</p>
           </div>
-        ) : contactos.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center border border-gray-200 dark:border-gray-700">
-            <Users className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400 font-medium mb-2">
-              No hay contactos registrados
+        ) : !hayFiltroActivo ? (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-20 text-center border border-gray-100 dark:border-gray-700">
+            <Search className="h-16 w-16 text-gray-200 dark:text-gray-700 mx-auto mb-6" />
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Inicia una búsqueda</h3>
+            <p className="text-gray-500 dark:text-gray-400 max-w-sm mx-auto">
+              Escribe al menos 2 caracteres o selecciona un filtro para visualizar los contactos.
             </p>
-            <p className="text-gray-500 dark:text-gray-500 text-sm mb-4">
-              Comienza agregando tu primer contacto
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/contactos/nuevo")}
-            >
-              <UserPlus className="mr-2 h-4 w-4" />
-              Crear primer contacto
-            </Button>
           </div>
         ) : gruposFiltrados.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center border border-gray-200 dark:border-gray-700">
-            <Search className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400 font-medium mb-2">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-20 text-center border border-gray-100 dark:border-gray-700">
+            <Search className="h-16 w-16 text-gray-200 dark:text-gray-700 mx-auto mb-6" />
+            <p className="text-gray-600 dark:text-gray-400 font-bold mb-2">
               No se encontraron resultados
             </p>
             <p className="text-gray-500 dark:text-gray-500 text-sm">
@@ -517,11 +568,36 @@ export default function ContactosPage() {
         )}
       </div>
 
+      {/* Paginación */}
+      {!cargando && totalPaginas > 1 && (
+        <div className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 px-6 py-4">
+          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            Página <span className="text-gray-900 dark:text-white">{paginaActual}</span> de <span className="text-gray-900 dark:text-white">{totalPaginas}</span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPaginaActual(p => Math.max(p - 1, 1))}
+              disabled={paginaActual === 1}
+              className="px-6 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl font-bold disabled:opacity-50 transition-all text-sm"
+            >
+              Anterior
+            </button>
+            <button
+              onClick={() => setPaginaActual(p => Math.min(p + 1, totalPaginas))}
+              disabled={paginaActual === totalPaginas}
+              className="px-6 py-2 bg-gray-100 dark:bg-gray-700 rounded-xl font-bold disabled:opacity-50 transition-all text-sm"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Info de resultados */}
       {!cargando && gruposFiltrados.length > 0 && (
-        <div className="p-4 bg-gray-50 dark:bg-gray-900/30 rounded-lg border border-gray-100 dark:border-gray-800 text-sm text-gray-500 dark:text-gray-400 flex justify-between">
-          <span>Mostrando {gruposFiltrados.length} empresa{gruposFiltrados.length !== 1 ? 's' : ''}</span>
-          <span>{totalContactosFiltrados} contacto{totalContactosFiltrados !== 1 ? 's' : ''}</span>
+        <div className="p-4 bg-gray-50 dark:bg-gray-900/30 rounded-xl border border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400 flex justify-between font-mono">
+          <span>Mostrando {gruposFiltrados.length} empresa{gruposFiltrados.length !== 1 ? 's' : ''} en esta página</span>
+          <span>Total: {totalRecords} contacto{totalRecords !== 1 ? 's' : ''} encontrados</span>
         </div>
       )}
     </div>
