@@ -52,13 +52,16 @@ export default function OportunidadesPage() {
   const [responsableSeleccionado, setResponsableSeleccionado] =
     useState("todos");
   const [paginaActual, setPaginaActual] = useState(1);
-  const [limpiando, setLimpiando] = useState(false);
-  const [procesando, setProcesando] = useState(false);
-  const [sincronizando, setSincronizando] = useState(false);
-  const [editandoVendedor, setEditandoVendedor] = useState<string | null>(null);
-  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const itemsPorPagina = 50;
+  const [filasPorPagina] = useState(50);
+  const [totalRecords, setTotalRecords] = useState(0);
+
+  // Stats state
+  const [stats, setStats] = useState({
+    comprasAgilesTotal: 0,
+    licitacionesTotal: 0,
+    ultimaHr: "--:--",
+    ultimaFecha: "--/--"
+  });
 
   const navigate = useNavigate();
   const { vendedores } = useVendedores();
@@ -73,23 +76,73 @@ export default function OportunidadesPage() {
 
   useEffect(() => {
     cargarOportunidades();
+  }, [paginaActual, busqueda, responsableSeleccionado]);
+
+  useEffect(() => {
+    cargarStats();
   }, []);
+
+  const cargarStats = async () => {
+    try {
+      const ahora = new Date();
+
+      // Get counts efficiently
+      // Note: We can't easily do group by without RPC, so we do two lightweight count queries
+      // or just one query if we accept approximations, but let's be precise as requested before
+
+      const { count: countAgiles } = await supabase
+        .from("oportunidades")
+        .select("id", { count: 'exact', head: true })
+        .like("id", "%COT26");
+
+      const { count: total } = await supabase
+        .from("oportunidades")
+        .select("id", { count: 'exact', head: true });
+
+      const countLicitaciones = (total || 0) - (countAgiles || 0);
+
+      setStats({
+        comprasAgilesTotal: countAgiles || 0,
+        licitacionesTotal: countLicitaciones > 0 ? countLicitaciones : 0,
+        ultimaHr: ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
+        ultimaFecha: ahora.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })
+      });
+    } catch (e) {
+      console.error("Error loading stats:", e);
+    }
+  };
 
   const cargarOportunidades = async () => {
     try {
       setCargando(true);
-      const { data, error } = await supabase
+
+      let query = supabase
         .from("oportunidades")
         .select(
           `
           *,
           vendedor:vendedores(nombre)
         `,
-        )
-        .order("fecha_cierre", { ascending: true });
+          { count: "exact" }
+        );
+
+      if (busqueda) {
+        query = query.or(`id.ilike.%${busqueda}%,organismo.ilike.%${busqueda}%,nombre.ilike.%${busqueda}%`);
+      }
+
+      if (responsableSeleccionado !== "todos") {
+        query = query.eq("vendedor_id", responsableSeleccionado);
+      }
+
+      const { data, error, count } = await query
+        .order("fecha_cierre", { ascending: true })
+        .range((paginaActual - 1) * filasPorPagina, paginaActual * filasPorPagina - 1);
 
       if (error) throw error;
+
       setOportunidades(data || []);
+      if (count !== null) setTotalRecords(count);
+
     } catch (error: any) {
       console.error("Error:", error);
       setMensaje("Error al cargar oportunidades: " + (error.message || error));
@@ -176,10 +229,10 @@ export default function OportunidadesPage() {
   };
 
   const toggleSeleccionarTodo = () => {
-    if (seleccionados.size === oportunidadesFiltradas.length) {
+    if (seleccionados.size === oportunidades.length) {
       setSeleccionados(new Set());
     } else {
-      setSeleccionados(new Set(oportunidadesFiltradas.map((op) => op.id)));
+      setSeleccionados(new Set(oportunidades.map((op) => op.id)));
     }
   };
 
@@ -555,45 +608,16 @@ export default function OportunidadesPage() {
     }
   };
 
-  const oportunidadesFiltradas = useMemo(() => {
-    return oportunidades.filter((op) => {
-      const matchBusqueda =
-        (op.id || "").toLowerCase().includes(busqueda.toLowerCase()) ||
-        (op.organismo || "").toLowerCase().includes(busqueda.toLowerCase()) ||
-        (op.nombre || "").toLowerCase().includes(busqueda.toLowerCase());
+  // Removed client-side filtering logic as it is now handled by server-side query
 
-      const matchResponsable =
-        responsableSeleccionado === "todos" ||
-        op.vendedor_id === responsableSeleccionado;
-
-      return matchBusqueda && matchResponsable;
-    });
-  }, [oportunidades, busqueda, responsableSeleccionado]);
-
-  const statsSincronizacion = useMemo(() => {
-    const ahora = new Date();
-    // Consideramos "hoy" desde las 00:00
-    const hoyInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-
-    // Filtrar las que terminan en COT26 (Compras Ágiles / Cotizaciones)
-    const comprasAgiles = oportunidades.filter(op => op.id.endsWith('COT26'));
-    const licitaciones = oportunidades.filter(op => !op.id.endsWith('COT26'));
-
-    return {
-      comprasAgilesTotal: comprasAgiles.length,
-      licitacionesTotal: licitaciones.length,
-      ultimaHr: ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-      ultimaFecha: ahora.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })
-    };
-  }, [oportunidades]);
+  // Stats are now loaded separately
 
   const totalPaginas = Math.ceil(
-    oportunidadesFiltradas.length / itemsPorPagina,
+    totalRecords / filasPorPagina,
   );
-  const oportunidadesPagina = oportunidadesFiltradas.slice(
-    (paginaActual - 1) * itemsPorPagina,
-    paginaActual * itemsPorPagina,
-  );
+
+  // oportunidadesPagina is simply oportunidades now, as fetching is PAGINATED
+  const oportunidadesPagina = oportunidades;
 
   useEffect(() => {
     setPaginaActual(1);
@@ -751,7 +775,11 @@ export default function OportunidadesPage() {
           <Input
             placeholder="Buscar por ID, organismo o nombre..."
             value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
+            onChange={(e) => {
+              setBusqueda(e.target.value);
+              // Wait for debounce or just set page to 1 on search change
+              if (paginaActual !== 1) setPaginaActual(1);
+            }}
             className="border-none shadow-none focus-visible:ring-0 pl-2 h-9 text-base dark:bg-gray-800 dark:text-gray-200 w-full"
             data-testid="input-busqueda-oportunidad"
           />
@@ -762,7 +790,7 @@ export default function OportunidadesPage() {
             <Clock className="h-4 w-4 text-blue-500" />
             <div className="flex flex-col">
               <span className="text-[10px] uppercase font-bold text-blue-400 dark:text-blue-500 leading-none">Última Actualización</span>
-              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">{statsSincronizacion.ultimaHr} hrs - {statsSincronizacion.ultimaFecha}</span>
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">{stats.ultimaHr} hrs - {stats.ultimaFecha}</span>
             </div>
           </div>
 
@@ -771,7 +799,7 @@ export default function OportunidadesPage() {
               <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 leading-none">Compras Ágiles</span>
               <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
-                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{statsSincronizacion.comprasAgilesTotal}</span>
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{stats.comprasAgilesTotal}</span>
               </div>
             </div>
 
@@ -779,7 +807,7 @@ export default function OportunidadesPage() {
               <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 leading-none">Licitaciones</span>
               <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
-                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{statsSincronizacion.licitacionesTotal}</span>
+                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{stats.licitacionesTotal}</span>
               </div>
             </div>
           </div>
@@ -839,8 +867,8 @@ export default function OportunidadesPage() {
                     <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">
                       <Checkbox
                         checked={
-                          oportunidadesFiltradas.length > 0 &&
-                          seleccionados.size === oportunidadesFiltradas.length
+                          oportunidades.length > 0 &&
+                          seleccionados.size === oportunidades.length
                         }
                         onCheckedChange={toggleSeleccionarTodo}
                         title="Seleccionar todo"
@@ -1043,12 +1071,12 @@ export default function OportunidadesPage() {
             {totalPaginas > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                 <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Mostrando {(paginaActual - 1) * itemsPorPagina + 1} a{" "}
+                  Mostrando {(paginaActual - 1) * filasPorPagina + 1} a{" "}
                   {Math.min(
-                    paginaActual * itemsPorPagina,
-                    oportunidadesFiltradas.length,
+                    paginaActual * filasPorPagina,
+                    totalRecords,
                   )}{" "}
-                  de {oportunidadesFiltradas.length}
+                  de {totalRecords}
                 </div>
                 <div className="flex gap-2">
                   <Button
