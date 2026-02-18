@@ -17,7 +17,7 @@ const VentasPage = lazy(() => import("./pages/ventas/VentasPage"));
 const ComprasPage = lazy(() => import("./pages/compras/ComprasPage"));
 const ConciliacionPage = lazy(() => import("./pages/conciliacion/ConciliacionPage"));
 const Marketing = lazy(() => import("./pages/marketing/marketing"));
-const OptimizarImagenesPage = lazy(() => import("./pages/admin/OptimizarImagenesPage"));
+
 
 
 // Build v1.0.1 - Marketing tabs cleaned (2026-01-28)
@@ -62,9 +62,6 @@ export default function App() {
             <Route path="oportunidades/nueva" element={<OportunidadForm />} />
             <Route path="oportunidades/configuracion" element={<ConfiguracionKeywords />} />
             <Route path="oportunidades/:id" element={<OportunidadForm />} />
-
-            {/* Admin Tools */}
-            <Route path="admin/optimizar" element={<OptimizarImagenesPage />} />
 
             {/* Marketing */}
             <Route path="marketing" element={<Marketing />} />
