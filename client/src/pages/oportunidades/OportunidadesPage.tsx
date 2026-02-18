@@ -23,6 +23,7 @@ import {
   Globe,
   Activity,
   Clock,
+  XCircle,
 } from "lucide-react";
 import { useRef } from "react";
 import { useVendedores } from "../../hooks/useVendedores";
@@ -997,6 +998,20 @@ export default function OportunidadesPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                          <button
+                            type="button"
+                            className={`inline-flex items-center justify-center h-8 w-8 rounded-md transition-colors cursor-pointer mr-1 ${estaDescartada(op.estado)
+                              ? "text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
+                              : "text-orange-500 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/30"
+                              }`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleEstadoDescartada(op.id, op.estado);
+                            }}
+                            title={estaDescartada(op.estado) ? "Restaurar oportunidad" : "Marcar como descartada"}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </button>
                           <button
                             type="button"
                             className="inline-flex items-center justify-center h-8 w-8 rounded-md text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
