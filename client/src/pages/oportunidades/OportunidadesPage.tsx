@@ -23,7 +23,7 @@ import {
   Globe,
   Activity,
   Clock,
-  XCircle,
+  EyeOff,
 } from "lucide-react";
 import { useRef } from "react";
 import { useVendedores } from "../../hooks/useVendedores";
@@ -894,7 +894,7 @@ export default function OportunidadesPage() {
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div
                             className={`font-medium text-sm truncate max-w-[150px] ${estaDescartada(op.estado)
-                              ? "text-gray-500 dark:text-gray-400"
+                              ? "text-gray-500 dark:text-gray-400 line-through decoration-gray-500"
                               : "text-gray-900 dark:text-gray-100"
                               }`}
                             title={op.id}
@@ -904,7 +904,7 @@ export default function OportunidadesPage() {
                         </td>
                         <td
                           className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400"
+                            ? "text-gray-500 dark:text-gray-400 line-through decoration-gray-500"
                             : "text-gray-900 dark:text-gray-100"
                             } whitespace-normal break-words leading-tight max-w-[400px]`}
                           title={op.organismo || ""}
@@ -913,7 +913,7 @@ export default function OportunidadesPage() {
                         </td>
                         <td
                           className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400"
+                            ? "text-gray-500 dark:text-gray-400 line-through decoration-gray-500"
                             : "text-gray-900 dark:text-gray-100"
                             } whitespace-normal break-words leading-tight max-w-[300px]`}
                           title={op.nombre || ""}
@@ -922,7 +922,7 @@ export default function OportunidadesPage() {
                         </td>
                         <td
                           className={`px-4 py-3 whitespace-nowrap text-sm ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400"
+                            ? "text-gray-500 dark:text-gray-400 line-through decoration-gray-500"
                             : estaVencida(op.fecha_cierre)
                               ? "text-red-600 dark:text-red-400 font-bold"
                               : "text-gray-700 dark:text-gray-300"
@@ -932,7 +932,7 @@ export default function OportunidadesPage() {
                         </td>
                         <td
                           className={`px-4 py-3 whitespace-nowrap text-sm text-right font-mono ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400"
+                            ? "text-gray-500 dark:text-gray-400 line-through decoration-gray-500"
                             : "text-gray-800 dark:text-gray-200"
                             }`}
                         >
@@ -940,7 +940,7 @@ export default function OportunidadesPage() {
                         </td>
                         <td
                           className={`px-4 py-3 text-xs italic ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400"
+                            ? "text-gray-500 dark:text-gray-400 line-through decoration-gray-500"
                             : "text-blue-600 dark:text-blue-400"
                             }`}
                           title={op.clave || ""}
@@ -1010,7 +1010,7 @@ export default function OportunidadesPage() {
                             }}
                             title={estaDescartada(op.estado) ? "Restaurar oportunidad" : "Marcar como descartada"}
                           >
-                            <XCircle className="h-4 w-4" />
+                            <EyeOff className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
