@@ -71,37 +71,39 @@ export default function OptimizarImagenesPage() {
         setCotizacionesProcesadas(0);
 
         try {
-            // 1. Contar total primero para saber cuántos lotes necesitamos
-            const { count, error: countError } = await supabase
-                .from("cotizaciones")
-                .select("*", { count: 'exact', head: true })
-                .not("items", "is", null);
+            // 1. Intentar contar (puede fallar en tablas grandes, así que manejamos el error)
+            let total = 0;
+            try {
+                // Usamos select('id') que es más liviano que '*'
+                const { count, error: countError } = await supabase
+                    .from("cotizaciones")
+                    .select("id", { count: 'exact', head: true })
+                    .not("items", "is", null);
 
-            if (countError) throw countError;
-
-            const total = count || 0;
-            setTotalCotizaciones(total);
-
-            if (total === 0) {
-                agregarLog("⚠️ No se encontraron cotizaciones para procesar.");
-                // Nos mantenemos en estado visible para mostrar el log
-                setFase("completado");
-                setProcesando(false);
-                return;
+                if (countError) {
+                    console.error("Error al contar:", countError);
+                    agregarLog(`⚠️ No se pudo obtener el total exacto (${JSON.stringify(countError)}). Se procesará sin barra de progreso exacta.`);
+                } else {
+                    total = count || 0;
+                    setTotalCotizaciones(total);
+                }
+            } catch (errCount) {
+                console.error("Excepción al contar:", errCount);
+                agregarLog("⚠️ Error calculando total. Se procederá a ciegas.");
             }
 
             setFase("optimizando");
-            agregarLog(`📊 Se encontraron ${total} cotizaciones. Iniciando optimización por lotes...`);
+            agregarLog(`🚀 Iniciando optimización... ${total > 0 ? `Total estimado: ${total} registros.` : ''}`);
 
             let procesados = 0;
             let espacioTotalAhorrado = 0;
             let totalImagenes = 0;
-            const BATCH_SIZE = 5; // Lote pequeño para evitar colapso de memoria
+            const BATCH_SIZE = 5;
+            let offset = 0;
+            let keepGoing = true;
 
-            // Iterar por lotes usando rangos
-            // Nota: offset es el índice de inicio
-            for (let offset = 0; offset < total; offset += BATCH_SIZE) {
-                // Pequeña pausa para permitir renderizado UI
+            while (keepGoing) {
+                // Pausa para UI
                 await new Promise(r => setTimeout(r, 50));
 
                 try {
@@ -109,11 +111,15 @@ export default function OptimizarImagenesPage() {
                         .from("cotizaciones")
                         .select("id, numero_cotizacion, items")
                         .not("items", "is", null)
-                        .range(offset, offset + BATCH_SIZE - 1); // Rango inclusivo
+                        .order('id', { ascending: true })
+                        .range(offset, offset + BATCH_SIZE - 1);
 
                     if (error) throw error;
 
-                    if (!cotizaciones || cotizaciones.length === 0) continue;
+                    if (!cotizaciones || cotizaciones.length === 0) {
+                        keepGoing = false;
+                        break;
+                    }
 
                     for (const cot of cotizaciones) {
                         let itemsModificados = false;
@@ -125,13 +131,13 @@ export default function OptimizarImagenesPage() {
                             if (item.imagen && typeof item.imagen === "string" && item.imagen.startsWith("data:image")) {
                                 const sizeOriginal = item.imagen.length;
 
-                                // Solo optimizar si pesa más de 50KB (aprox 68k chars base64)
+                                // Solo optimizar si pesa más de 50KB
                                 if (sizeOriginal > 68000) {
                                     try {
                                         const imagenOptimizada = await compressImageBase64(item.imagen);
                                         const sizeOptimizada = imagenOptimizada.length;
 
-                                        // Solo guardar si realmente hubo ahorro (al menos 10KB)
+                                        // Solo guardar si hay ahorro real (>10KB)
                                         if (sizeOptimizada < sizeOriginal - 10000) {
                                             nuevosItems[i] = { ...item, imagen: imagenOptimizada };
                                             itemsModificados = true;
@@ -141,8 +147,9 @@ export default function OptimizarImagenesPage() {
                                             setEspacioAhorrado(Math.round(espacioTotalAhorrado / 1024));
                                             setImagenesOptimizadas(totalImagenes);
                                         }
-                                    } catch (err) {
+                                    } catch (err: any) {
                                         console.error("Error optimizando imagen item", i, "cot", cot.id, err);
+                                        agregarLog(`⚠️ Error imagen: ${err.message || JSON.stringify(err)}`);
                                     }
                                 }
                             }
@@ -155,18 +162,22 @@ export default function OptimizarImagenesPage() {
                                 .eq("id", cot.id);
 
                             if (updateError) {
-                                agregarLog(`❌ Error al guardar ${cot.numero_cotizacion}: ${updateError.message}`);
+                                agregarLog(`❌ Error guardando ${cot.numero_cotizacion}: ${updateError.message}`);
                             }
                         }
 
                         procesados++;
                         setCotizacionesProcesadas(procesados);
-                        setProgreso((procesados / total) * 100);
+                        if (total > 0) setProgreso((procesados / total) * 100);
                     }
+
+                    offset += BATCH_SIZE;
 
                 } catch (batchError: any) {
                     console.error("Error en lote:", batchError);
-                    agregarLog(`⚠️ Error procesando lote ${offset}: ${batchError.message}`);
+                    agregarLog(`⚠️ Error lote ${offset}: ${batchError.message || JSON.stringify(batchError)}`);
+                    // Si falla un lote, intentamos saltarlo para no quedarnos pegados
+                    offset += BATCH_SIZE;
                 }
             }
 
@@ -175,7 +186,8 @@ export default function OptimizarImagenesPage() {
 
         } catch (e: any) {
             console.error(e);
-            agregarLog(`❌ Error crítico: ${e.message}`);
+            const msg = e.message || (typeof e === 'object' ? JSON.stringify(e) : String(e));
+            agregarLog(`❌ Error crítico: ${msg}`);
             setFase("error");
         } finally {
             setProcesando(false);
@@ -216,7 +228,7 @@ export default function OptimizarImagenesPage() {
                         <div className="space-y-4">
                             <div className="flex justify-between text-sm font-medium">
                                 <span>Progreso ({Math.round(progreso)}%)</span>
-                                <span>{cotizacionesProcesadas} / {totalCotizaciones} cotizaciones</span>
+                                <span>{cotizacionesProcesadas} {totalCotizaciones > 0 ? `/ ${totalCotizaciones}` : ''} cotizaciones</span>
                             </div>
                             <Progress value={progreso} className="h-3" />
 
