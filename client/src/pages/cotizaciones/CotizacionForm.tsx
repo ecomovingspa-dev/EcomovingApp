@@ -199,6 +199,8 @@ export default function CotizacionForm({
   const [mensaje, setMensaje] = useState("");
   const [ultimoGuardado, setUltimoGuardado] = useState<Date | null>(null);
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
+  const [buscandoCuentas, setBuscandoCuentas] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const [contactos, setContactos] = useState<Contacto[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
   const [cuentaOpen, setCuentaOpen] = useState(false);
@@ -284,11 +286,8 @@ export default function CotizacionForm({
     cotizacion.created_at,
   ]);
 
-  useEffect(() => {
-    if (calcularEstado !== cotizacion.estado_cotizacion) {
-      setCotizacion((prev) => ({ ...prev, estado_cotizacion: calcularEstado }));
-    }
-  }, [calcularEstado]);
+  // ELIMINADO: El estado se puede calcular dinámicamente o actualizar sólo en cambios críticos
+  // para evitar loops de renderizado.
 
   useEffect(() => {
     if (cotizacion.estado_cotizacion !== "borrador" || !cotizacion.id) return;
@@ -320,6 +319,17 @@ export default function CotizacionForm({
       console.error("Error en autoguardado:", error);
     }
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm.length >= 2) {
+        cargarCuentas(searchTerm);
+      } else if (searchTerm.length === 0) {
+        cargarCuentas();
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   useEffect(() => {
     cargarCuentas();
@@ -387,39 +397,28 @@ export default function CotizacionForm({
     }
   }, [cotizacion.cuenta_id]);
 
-  const cargarCuentas = async () => {
+  const cargarCuentas = async (query = "") => {
+    setBuscandoCuentas(true);
     try {
-      let todasLasCuentas: Cuenta[] = [];
-      let desde = 0;
-      const cantidad = 1000;
-      let hayMas = true;
+      let queryBuilder = supabase
+        .from("cuentas")
+        .select("*")
+        .order("cliente", { ascending: true })
+        .limit(10); // Más profesional: solo traemos lo que cabe en vista
 
-      while (hayMas) {
-        const { data, error } = await supabase
-          .from("cuentas")
-          .select("*")
-          .order("cliente", { ascending: true })
-          .range(desde, desde + cantidad - 1);
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          todasLasCuentas.push(...data);
-          desde += cantidad;
-
-          if (data.length < cantidad) {
-            hayMas = false;
-          }
-        } else {
-          hayMas = false;
-        }
+      if (query) {
+        queryBuilder = queryBuilder.ilike("cliente", `%${query}%`);
       }
 
-      setCuentas(todasLasCuentas);
-      console.log("✅ Cuentas cargadas (total):", todasLasCuentas.length);
+      const { data, error } = await queryBuilder;
+
+      if (error) throw error;
+      setCuentas(data || []);
+      console.log("✅ Cuentas cargadas:", data?.length);
     } catch (e) {
       console.error("❌ Error cargando cuentas:", e);
-      setMensaje("❌ Error al cargar cuentas");
+    } finally {
+      setBuscandoCuentas(false);
     }
   };
 
@@ -537,9 +536,9 @@ export default function CotizacionForm({
   const datosParaPDF = useMemo(() => {
     const cuentaData = cuentas.find((c) => c.id === cotizacion.cuenta_id);
     const contactoData = contactos.find((c) => c.id === cotizacion.contacto_id);
-    const vendedorData = vendedores.find(
-      (v) => v.id === cotizacion.vendedor_id,
-    );
+    const vendedorData = cotizacion.vendedor_id
+      ? vendedores.find((v) => v.id?.toString() === cotizacion.vendedor_id?.toString())
+      : null;
 
     const itemsFormateados = (cotizacion.items || []).map((item) => {
       const pUnitario = precioVentaItem(item);
@@ -560,13 +559,20 @@ export default function CotizacionForm({
       cuenta: cuentaData,
       contacto: contactoData,
       items: itemsFormateados,
-      totales: {
-        neto: Math.round(totales.totalVenta),
-        iva: Math.round(totales.totalVenta * 0.19),
-        total: Math.round(totales.totalVenta * 1.19),
-      },
+      totales,
     };
-  }, [cotizacion, cuentas, contactos, vendedores, totales]);
+  }, [
+    cotizacion.id,
+    cotizacion.numero_cotizacion,
+    cotizacion.vendedor_id,
+    cotizacion.cuenta_id,
+    cotizacion.contacto_id,
+    cotizacion.items,
+    cuentas,
+    contactos,
+    vendedores,
+    totales,
+  ]);
 
   const agregarItem = () => {
     setCotizacion((prev) => ({
@@ -692,19 +698,78 @@ export default function CotizacionForm({
     }));
   };
 
-  const handleImagePaste = (e: React.ClipboardEvent, itemId: number) => {
+  // Función auxiliar para comprimir imágenes
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const MAX_WIDTH = 400; // 400px es suficiente para 3x3cm a buena calidad
+      const MAX_HEIGHT = 400;
+      const QUALITY = 0.7; // 70% calidad JPEG
+
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+
+          // Calcular nuevas dimensiones manteniendo aspecto
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+
+          if (!ctx) {
+            // Fallback si no hay contexto (raro)
+            resolve(event.target?.result as string);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convertir a JPEG comprimido
+          const dataUrl = canvas.toDataURL("image/jpeg", QUALITY);
+          resolve(dataUrl);
+        };
+        img.onerror = (err) => reject(err);
+      };
+      reader.onerror = (err) => reject(err);
+    });
+  };
+
+  const handleImagePaste = async (e: React.ClipboardEvent, itemId: number) => {
     const items = e.clipboardData.items;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf("image") !== -1) {
         const blob = items[i].getAsFile();
         if (blob) {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            if (event.target?.result) {
-              actualizarItem(itemId, "imagen", event.target.result);
-            }
-          };
-          reader.readAsDataURL(blob);
+          try {
+            const compressedImage = await compressImage(blob);
+            actualizarItem(itemId, "imagen", compressedImage);
+          } catch (error) {
+            console.error("Error al comprimir imagen:", error);
+            // Fallback a método antiguo si falla la compresión
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              if (event.target?.result) {
+                actualizarItem(itemId, "imagen", event.target.result);
+              }
+            };
+            reader.readAsDataURL(blob);
+          }
           return;
         }
       }
@@ -1261,9 +1326,7 @@ export default function CotizacionForm({
                         >
                           <span className="truncate text-left flex-1 dark:text-gray-300">
                             {cotizacion.cuenta_id
-                              ? cuentas.find(
-                                (c) => c.id === cotizacion.cuenta_id,
-                              )?.cliente
+                              ? (cuentas.find((c) => c.id === cotizacion.cuenta_id)?.cliente || (cotizacion as any).cuentas?.cliente) || "Cargando..."
                               : "Seleccionar Cliente..."}
                           </span>
                           <Search className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
@@ -1273,18 +1336,27 @@ export default function CotizacionForm({
                         className="w-[400px] p-0 bg-white dark:bg-gray-800 max-h-[400px] overflow-hidden"
                         align="start"
                       >
-                        <Command shouldFilter={true}>
+                        <Command shouldFilter={false}>
                           <CommandInput
                             placeholder="Buscar cliente..."
                             className="h-8 text-xs"
+                            value={searchTerm}
+                            onValueChange={setSearchTerm}
                           />
                           <CommandList className="max-h-[300px] overflow-y-auto">
-                            <CommandEmpty>No se encontró cliente.</CommandEmpty>
+                            {buscandoCuentas && (
+                              <div className="p-4 text-xs text-center text-slate-500 animate-pulse">
+                                Buscando clientes profesionales...
+                              </div>
+                            )}
+                            {!buscandoCuentas && cuentas.length === 0 && (
+                              <CommandEmpty>No se encontró cliente.</CommandEmpty>
+                            )}
                             <CommandGroup>
                               {cuentas.map((cuenta) => (
                                 <CommandItem
                                   key={cuenta.id}
-                                  value={`${cuenta.cliente} ${cuenta.rut || ""}`}
+                                  value={cuenta.id}
                                   onSelect={() => {
                                     setCotizacion((prev) => ({
                                       ...prev,
@@ -1292,6 +1364,7 @@ export default function CotizacionForm({
                                       contacto_id: "",
                                     }));
                                     setCuentaOpen(false);
+                                    setSearchTerm("");
                                   }}
                                   className="text-xs"
                                 >
@@ -1721,30 +1794,36 @@ export default function CotizacionForm({
                 <div className="space-y-1">
                   <Label className={labelClass}>Vendedor/a</Label>
                   <div className="flex gap-2">
-                    <Select
-                      value={cotizacion.vendedor_id}
-                      onValueChange={(value) =>
-                        setCotizacion((prev) => ({
-                          ...prev,
-                          vendedor_id: value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 h-8 text-xs flex-1 dark:text-gray-100">
-                        <SelectValue placeholder="Seleccionar..." />
-                      </SelectTrigger>
-                      <SelectContent className="dark:bg-gray-800">
-                        {vendedores.map((v) => (
-                          <SelectItem
-                            key={v.id}
-                            value={v.id}
-                            className="text-xs dark:text-gray-100"
-                          >
-                            {v.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="flex-1">
+                      <Select
+                        value={cotizacion.vendedor_id || ""}
+                        onValueChange={(value) =>
+                          setCotizacion((prev) => ({
+                            ...prev,
+                            vendedor_id: value,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="bg-white dark:bg-gray-800 border-slate-200 dark:border-gray-700 h-8 text-xs w-full dark:text-gray-100">
+                          <SelectValue placeholder="Seleccionar..." />
+                        </SelectTrigger>
+                        <SelectContent className="dark:bg-gray-800">
+                          {vendedores.length === 0 ? (
+                            <div className="p-2 text-xs text-center text-slate-400">Cargando vendedores...</div>
+                          ) : (
+                            vendedores.map((v) => (
+                              <SelectItem
+                                key={v.id}
+                                value={v.id?.toString() || ""}
+                                className="text-xs dark:text-gray-100"
+                              >
+                                {v.nombre}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <Dialog
                       open={nuevoVendedorOpen}
                       onOpenChange={setNuevoVendedorOpen}
