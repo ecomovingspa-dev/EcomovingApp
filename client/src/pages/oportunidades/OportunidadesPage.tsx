@@ -187,22 +187,37 @@ export default function OportunidadesPage() {
     oportunidadId: string,
     estadoActual?: string,
   ) => {
-    try {
-      const nuevoEstado =
-        estadoActual?.toLowerCase() === "descartada"
-          ? "Publicada"
-          : "Descartada";
+    // 1. Calcular nuevo estado
+    const nuevoEstado =
+      estadoActual?.toLowerCase() === "descartada"
+        ? "Publicada"
+        : "Descartada";
 
+    // 2. Actualización Optimista: Actualizar UI inmediatamente
+    setOportunidades(prev => prev.map(op =>
+      op.id === oportunidadId ? { ...op, estado: nuevoEstado } : op
+    ));
+
+    try {
+      // 3. Llamada silenciosa a Supabase
       const { error } = await supabase
         .from("oportunidades")
         .update({ estado: nuevoEstado })
         .eq("id", oportunidadId);
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      await cargarOportunidades();
+      // NO recargamos toda la lista (cargarOportunidades) para evitar el "pestañazo"
+      // La UI ya está sincronizada con el estado optimista.
+
     } catch (error: any) {
       console.error("Error:", error);
+      // Revertir cambio en caso de error
+      setOportunidades(prev => prev.map(op =>
+        op.id === oportunidadId ? { ...op, estado: estadoActual } : op
+      ));
       setMensaje("❌ Error al cambiar estado: " + error.message);
       setTimeout(() => setMensaje(""), 3000);
     }
