@@ -559,7 +559,12 @@ export default function CotizacionForm({
       cuenta: cuentaData,
       contacto: contactoData,
       items: itemsFormateados,
-      totales,
+      totales: {
+        ...totales,
+        neto: totales.totalVenta,
+        iva: totales.totalVenta * 0.19,
+        total: totales.totalVenta * 1.19,
+      },
     };
   }, [
     cotizacion.id,
