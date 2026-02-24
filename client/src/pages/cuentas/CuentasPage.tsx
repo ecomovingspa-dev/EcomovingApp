@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, Zap } from "lucide-react";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, Zap, X } from "lucide-react";
 import ProspectorIAModal from "../../components/crm/ProspectorIAModal";
 
 export default function CuentasPage() {
@@ -18,6 +18,7 @@ export default function CuentasPage() {
 
   // Estados para filtros y búsqueda
   const [busqueda, setBusqueda] = useState("");
+  const [busquedaAplicada, setBusquedaAplicada] = useState("");
   const [filtroSector, setFiltroSector] = useState("");
   const [filtroSegmento, setFiltroSegmento] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
@@ -63,7 +64,7 @@ export default function CuentasPage() {
       setTotalRecords(0);
       setCargando(false);
     }
-  }, [paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, hayFiltroActivo]);
+  }, [paginaActual, busquedaAplicada, filtroSector, filtroSegmento, filtroEstado, hayFiltroActivo]);
 
 
   const cargarCuentas = async () => {
@@ -75,8 +76,8 @@ export default function CuentasPage() {
         .from("cuentas")
         .select("*", { count: "exact" });
 
-      if (busqueda) {
-        query = query.or(`cliente.ilike.%${busqueda}%,rut.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`);
+      if (busquedaAplicada) {
+        query = query.or(`cliente.ilike.%${busquedaAplicada}%,rut.ilike.%${busquedaAplicada}%,ciudad.ilike.%${busquedaAplicada}%`);
       }
       if (filtroSector) {
         query = query.eq("sector", filtroSector);
@@ -107,6 +108,20 @@ export default function CuentasPage() {
 
   const totalPaginas = Math.ceil(totalRecords / filasPorPagina);
   const cuentasPaginadas = cuentas; // Already paginated from server
+
+  const handleBuscar = () => {
+    setBusquedaAplicada(busqueda);
+    setPaginaActual(1);
+  };
+
+  const handleReset = () => {
+    setBusqueda("");
+    setBusquedaAplicada("");
+    setFiltroSector("");
+    setFiltroSegmento("");
+    setFiltroEstado("");
+    setPaginaActual(1);
+  };
 
 
   const actualizarCuentaInline = async (id: string, campo: keyof Cuenta, valor: string) => {
@@ -177,15 +192,34 @@ export default function CuentasPage() {
 
       {/* Buscador y Filtros */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6 space-y-6">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <input
-            type="text"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por cliente, RUT o ciudad..."
-            className="w-full border-none rounded-xl px-12 py-4 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 transition-all font-medium"
-          />
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleBuscar()}
+              placeholder="Buscar por cliente, RUT o ciudad..."
+              className="w-full border-none rounded-xl px-12 py-4 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+            />
+            {busqueda && (
+              <button
+                onClick={() => { setBusqueda(""); setBusquedaAplicada(""); }}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                title="Limpiar búsqueda"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={handleBuscar}
+            className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-blue-500/20 flex items-center gap-2"
+          >
+            <Search className="h-5 w-5" />
+            Buscar
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -208,7 +242,7 @@ export default function CuentasPage() {
             </div>
           ))}
           <button
-            onClick={() => { setBusqueda(""); setFiltroSector(""); setFiltroSegmento(""); setFiltroEstado(""); }}
+            onClick={handleReset}
             className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 rounded-xl font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
           >
             <RotateCcw className="h-4 w-4" /> Resetear
