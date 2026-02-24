@@ -142,11 +142,42 @@ export default function FabricaMensajes({ onSave }: { onSave: () => void }) {
         if (!activeImage) return;
         try {
             setProcesando(true);
-            setMensaje("🤖 Gemini está analizando tu producto en tono " + tono + "...");
+            setMensaje("🤖 Gemini está analizando tu producto...");
 
-            // Re-adjuntamos las instrucciones de formato junto con el tono para que la IA no las pierda
+            // --- NUEVO: BUSCAR METADATOS EN EL CATÁLOGO (CONEXIÓN WEB-APP) ---
+            let seoData = null;
+            try {
+                // Buscamos en el buffer por la URL de la imagen
+                const { data: products } = await supabase
+                    .from('agent_buffer')
+                    .select('*')
+                    .contains('images', [activeImage.url])
+                    .limit(1);
+
+                if (products && products.length > 0) {
+                    const p = products[0];
+                    seoData = {
+                        title: p.technical_specs?.seo_title || p.name,
+                        keywords: p.technical_specs?.seo_keywords || '',
+                        description: p.technical_specs?.seo_description || p.original_description || ''
+                    };
+                    console.log("✅ Metadatos encontrados para el producto:", seoData.title);
+                }
+            } catch (err) {
+                console.warn("No se pudieron cargar metadatos del catálogo:", err);
+            }
+
             const promptMaestro = `
 Analiza el producto en la imagen y genera una copia de marketing profesional en ESPAÑOL usando un TONO ${tono.toUpperCase()}.
+
+${seoData ? `
+### CONTEXTO DEL PRODUCTO (CATÁLOGO WEB):
+- Título Estratégico: "${seoData.title}"
+- Conceptos Clave: ${seoData.keywords}
+- Descripción del Producto: ${seoData.description}
+
+IMPORTANTE: Usa esta información técnica y comercial para que el texto sea preciso y no genérico.
+` : ''}
 
 ${tono === 'creativo' ? 'Instrucciones de tono: Sé audaz, usa metáforas y despierta la imaginación del cliente.' : ''}
 ${tono === 'elegante' ? 'Instrucciones de tono: Usa un lenguaje refinado, sofisticado, minimalista y exclusivo.' : ''}
@@ -169,7 +200,7 @@ Reglas CRÍTICAS:
 
             const result = await generateMarketingContent(activeImage.url, promptMaestro);
             setContenido(result);
-            setMensaje("✨ ¡Contenido generado con éxito!");
+            setMensaje(seoData ? "✨ ¡Contenido generado con datos del Catálogo!" : "✨ ¡Contenido generado con éxito!");
             setTimeout(() => setMensaje(""), 3000);
         } catch (err: any) {
             console.error(err);

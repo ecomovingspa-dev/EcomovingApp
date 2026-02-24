@@ -322,10 +322,6 @@ async function ejecutarMarketing(maxEmails: number): Promise<{
                 await axios.post('https://api.brevo.com/v3/smtp/email', {
                     sender: { name: "Ecomoving", email: "ventas@ecomoving.cl" },
                     to: [{ email: contact.correo }],
-                    bcc: [
-                        { email: "mario@ecomoving.cl", name: "Mario" },
-                        { email: "jimena@ecomoving.cl", name: "Jimena" }
-                    ],
                     subject: messageData.asunto,
                     htmlContent: finalHtml,
                     textContent: messageData.cuerpodetalle || "Ver correo en formato HTML"

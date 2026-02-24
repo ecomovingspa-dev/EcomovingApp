@@ -20,9 +20,6 @@ import {
   ChevronRight,
   Loader2,
   Settings,
-  Globe,
-  Activity,
-  Clock,
   EyeOff,
 } from "lucide-react";
 import { useRef } from "react";
@@ -54,7 +51,6 @@ export default function OportunidadesPage() {
   const [paginaActual, setPaginaActual] = useState(1);
   const [limpiando, setLimpiando] = useState(false);
   const [procesando, setProcesando] = useState(false);
-  const [sincronizando, setSincronizando] = useState(false);
   const [editandoVendedor, setEditandoVendedor] = useState<string | null>(null);
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -281,29 +277,6 @@ export default function OportunidadesPage() {
       setTimeout(() => setMensaje(""), 5000);
     } finally {
       setLimpiando(false);
-    }
-  };
-
-  const sincronizarMercadoPublico = async () => {
-    try {
-      setSincronizando(true);
-      setMensaje("🌐 Sincronizando con Mercado Público... Esto puede tardar unos segundos.");
-
-      const response = await fetch('/api/sync-mercadopublico');
-      const result = await response.json();
-
-      if (!response.ok) throw new Error(result.error || "Error en la sincronización");
-
-      const msg = result.message || `Sincronización exitosa: ${result.coincidencias} encontradas, ${result.nuevas_procesadas} nuevas.`;
-      setMensaje(`✅ ${msg}`);
-      await cargarOportunidades();
-      setTimeout(() => setMensaje(""), 10000); // Dar más tiempo para leer logs si hay
-
-    } catch (error: any) {
-      console.error("Error sync:", error);
-      setMensaje("❌ Error al sincronizar: " + error.message);
-    } finally {
-      setSincronizando(false);
     }
   };
 
@@ -585,23 +558,6 @@ export default function OportunidadesPage() {
     });
   }, [oportunidades, busqueda, responsableSeleccionado]);
 
-  const statsSincronizacion = useMemo(() => {
-    const ahora = new Date();
-    // Consideramos "hoy" desde las 00:00
-    const hoyInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-
-    // Filtrar las que terminan en COT26 (Compras Ágiles / Cotizaciones)
-    const comprasAgiles = oportunidades.filter(op => op.id.endsWith('COT26'));
-    const licitaciones = oportunidades.filter(op => !op.id.endsWith('COT26'));
-
-    return {
-      comprasAgilesTotal: comprasAgiles.length,
-      licitacionesTotal: licitaciones.length,
-      ultimaHr: ahora.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }),
-      ultimaFecha: ahora.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' })
-    };
-  }, [oportunidades]);
-
   const totalPaginas = Math.ceil(
     oportunidadesFiltradas.length / itemsPorPagina,
   );
@@ -716,20 +672,6 @@ export default function OportunidadesPage() {
 
           <Button
             variant="ghost"
-            onClick={sincronizarMercadoPublico}
-            disabled={sincronizando}
-            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20 flex items-center gap-2"
-          >
-            {sincronizando ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Globe className="h-4 w-4" />
-            )}
-            Sincronizar MP
-          </Button>
-
-          <Button
-            variant="ghost"
             size="icon"
             onClick={() => navigate("/oportunidades/configuracion")}
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
@@ -772,33 +714,6 @@ export default function OportunidadesPage() {
           />
         </div>
 
-        <div className="flex-shrink-0 flex items-center gap-4 bg-blue-50/50 dark:bg-blue-900/10 px-4 py-2 rounded-lg border border-blue-100/50 dark:border-blue-900/20 order-3 sm:order-2">
-          <div className="flex items-center gap-2 border-r border-blue-200 dark:border-blue-800 pr-4">
-            <Clock className="h-4 w-4 text-blue-500" />
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase font-bold text-blue-400 dark:text-blue-500 leading-none">Última Actualización</span>
-              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">{statsSincronizacion.ultimaHr} hrs - {statsSincronizacion.ultimaFecha}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 leading-none">Compras Ágiles</span>
-              <div className="flex items-center gap-1.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
-                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{statsSincronizacion.comprasAgilesTotal}</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col">
-              <span className="text-[10px] uppercase font-bold text-gray-400 dark:text-gray-500 leading-none">Licitaciones</span>
-              <div className="flex items-center gap-1.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-blue-500"></div>
-                <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{statsSincronizacion.licitacionesTotal}</span>
-              </div>
-            </div>
-          </div>
-        </div>
 
         <div className="flex items-center gap-2 ml-auto order-2 sm:order-3">
           <span className="text-sm text-gray-600 dark:text-gray-400">
