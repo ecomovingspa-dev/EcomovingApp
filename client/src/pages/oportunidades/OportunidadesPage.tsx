@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,10 +22,10 @@ import {
   Settings,
   EyeOff,
 } from "lucide-react";
-import { useRef } from "react";
-import { useVendedores } from "../../hooks/useVendedores";
+import { useVendedores } from "@/hooks/useVendedores";
 import { Checkbox } from "@/components/ui/checkbox";
 import * as XLSX from "xlsx";
+import { OportunidadRow } from "./OportunidadRow";
 
 interface Oportunidad {
   id: string;
@@ -68,33 +68,31 @@ export default function OportunidadesPage() {
     })),
   ];
 
-  useEffect(() => {
-    cargarOportunidades();
-  }, []);
-
-  const cargarOportunidades = async () => {
+  const cargarOportunidades = useCallback(async () => {
     try {
       setCargando(true);
       const { data, error } = await supabase
         .from("oportunidades")
-        .select(
-          `
+        .select(`
           *,
           vendedor:vendedores(nombre)
-        `,
-        )
+        `)
         .order("fecha_cierre", { ascending: true });
 
       if (error) throw error;
       setOportunidades(data || []);
     } catch (error: any) {
-      console.error("Error:", error);
-      setMensaje("Error al cargar oportunidades: " + (error.message || error));
+      console.error("Error cargando oportunidades:", error);
+      setMensaje("❌ Error al cargar datos: " + (error.message || "Error de red"));
       setOportunidades([]);
     } finally {
       setCargando(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    cargarOportunidades();
+  }, [cargarOportunidades]);
 
   const eliminarOportunidad = async (id: string) => {
     console.log("[DELETE] eliminarOportunidad llamada con id:", id);
@@ -224,14 +222,10 @@ export default function OportunidadesPage() {
     oportunidadId: string,
     vendedorId: string,
   ) => {
-    // 1. Encontrar el nombre del vendedor para la actualización optimista
     const vendedorElegido = vendedores.find(v => v.id === vendedorId);
     const nombreVendedor = vendedorElegido ? vendedorElegido.nombre : null;
 
-    // 2. Guardar estado previo para revertir en caso de error
-    const opAnterior = oportunidades.find(o => o.id === oportunidadId);
-
-    // 3. Actualización Optimista inmediata
+    // Actualización Optimista
     setOportunidades(prev => prev.map(op =>
       op.id === oportunidadId
         ? {
@@ -242,7 +236,6 @@ export default function OportunidadesPage() {
         : op
     ));
 
-    // Cerramos el modo edición inmediatamente para evitar conflictos de UI
     setEditandoVendedor(null);
 
     try {
@@ -252,18 +245,11 @@ export default function OportunidadesPage() {
         .eq("id", oportunidadId);
 
       if (error) throw error;
-
-      setMensaje("✅ Vendedor asignado correctamente");
-      setTimeout(() => setMensaje(""), 3000);
+      // No necesitamos recargar, la actualización optimista ya cubrió la UI
     } catch (error: any) {
-      console.error("Error:", error);
-      // Revertir en caso de fallo
-      if (opAnterior) {
-        setOportunidades(prev => prev.map(op =>
-          op.id === oportunidadId ? opAnterior : op
-        ));
-      }
-      setMensaje("❌ Error al asignar vendedor: " + error.message);
+      console.error("Error actualizando vendedor:", error);
+      await cargarOportunidades(); // Revertir a estado real de DB
+      setMensaje("❌ Error al asignar vendedor");
     }
   };
 
@@ -862,164 +848,21 @@ export default function OportunidadesPage() {
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {oportunidadesPagina.length > 0 ? (
                     oportunidadesPagina.map((op) => (
-                      <tr
+                      <OportunidadRow
                         key={op.id}
-                        className={`transition-colors border-b border-gray-100 dark:border-gray-800/50 ${estaDescartada(op.estado)
-                          ? "bg-gray-100 dark:bg-gray-900/50 opacity-60 hover:opacity-100"
-                          : estaVencida(op.fecha_cierre)
-                            ? "bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40"
-                            : "bg-white dark:bg-transparent hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                          }`}
-                      >
-                        <td className="px-4 py-3 text-center">
-                          <Checkbox
-                            checked={seleccionados.has(op.id)}
-                            onCheckedChange={() => toggleSeleccion(op.id)}
-                            className="cursor-pointer"
-                          />
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <div
-                            className={`font-medium text-sm truncate max-w-[150px] ${estaDescartada(op.estado)
-                              ? "text-gray-500 dark:text-gray-400 line-through decoration-[3px] decoration-gray-400 dark:decoration-white"
-                              : "text-gray-900 dark:text-gray-100"
-                              }`}
-                            title={op.id}
-                          >
-                            {op.id}
-                          </div>
-                        </td>
-                        <td
-                          className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400 line-through decoration-[3px] decoration-gray-400 dark:decoration-white"
-                            : "text-gray-900 dark:text-gray-100"
-                            } whitespace-normal break-words leading-tight max-w-[400px]`}
-                          title={op.organismo || ""}
-                        >
-                          {op.organismo || "-"}
-                        </td>
-                        <td
-                          className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400 line-through decoration-[3px] decoration-gray-400 dark:decoration-white"
-                            : "text-gray-900 dark:text-gray-100"
-                            } whitespace-normal break-words leading-tight max-w-[300px]`}
-                          title={op.nombre || ""}
-                        >
-                          {op.nombre || "-"}
-                        </td>
-                        <td
-                          className={`px-4 py-3 whitespace-nowrap text-sm ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400 line-through decoration-[3px] decoration-gray-400 dark:decoration-white"
-                            : estaVencida(op.fecha_cierre)
-                              ? "text-red-600 dark:text-red-400 font-bold"
-                              : "text-gray-700 dark:text-gray-300"
-                            }`}
-                        >
-                          {formatearFecha(op.fecha_cierre)}
-                        </td>
-                        <td
-                          className={`px-4 py-3 whitespace-nowrap text-sm text-right font-mono ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400 line-through decoration-[3px] decoration-gray-400 dark:decoration-white"
-                            : "text-gray-800 dark:text-gray-200"
-                            }`}
-                        >
-                          {formatearMonto(op.monto_disponible)}
-                        </td>
-                        <td
-                          className={`px-4 py-3 text-xs italic ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400 line-through decoration-[3px] decoration-gray-400 dark:decoration-white"
-                            : "text-blue-600 dark:text-blue-400"
-                            }`}
-                          title={op.clave || ""}
-                        >
-                          <div className="whitespace-normal leading-tight min-w-[120px]">
-                            {op.clave || "-"}
-                          </div>
-                        </td>
-                        <td
-                          className={`px-4 py-3 whitespace-nowrap text-sm cursor-pointer ${estaDescartada(op.estado)
-                            ? "text-gray-500 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600"
-                            : "text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/40"
-                            }`}
-                          onClick={() => setEditandoVendedor(op.id)}
-                        >
-                          <div className="flex-1">
-                            {editandoVendedor === op.id ? (
-                              <Select
-                                value={op.vendedor_id || "sin-asignar"}
-                                onValueChange={(value) =>
-                                  actualizarVendedor(
-                                    op.id,
-                                    value === "sin-asignar" ? "" : value,
-                                  )
-                                }
-                                open={true}
-                                onOpenChange={(open) =>
-                                  !open && setEditandoVendedor(null)
-                                }
-                              >
-                                <SelectTrigger className="h-8 w-full bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-                                  <SelectValue placeholder="Seleccionar" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                                  <SelectItem value="sin-asignar">
-                                    Sin asignar
-                                  </SelectItem>
-                                  {vendedores.map((v) => (
-                                    <SelectItem key={v.id} value={v.id}>
-                                      {v.nombre}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium text-blue-600 dark:text-blue-400">
-                                  {(() => {
-                                    if (!op.vendedor) return "-";
-                                    if (Array.isArray(op.vendedor)) {
-                                      return op.vendedor[0]?.nombre || "-";
-                                    }
-                                    return (op.vendedor as any).nombre || "-";
-                                  })()}
-                                </span>
-                                {!estaDescartada(op.estado) && (
-                                  <span className="text-[10px] text-blue-500 opacity-0 group-hover:opacity-100">
-                                    ✏️
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
-                          <button
-                            type="button"
-                            className={`inline-flex items-center justify-center h-8 w-8 rounded-md transition-colors cursor-pointer mr-1 ${estaDescartada(op.estado)
-                              ? "text-gray-500 hover:text-gray-700 hover:bg-gray-200 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700"
-                              : "text-orange-500 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/30"
-                              }`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleEstadoDescartada(op.id, op.estado);
-                            }}
-                            title={estaDescartada(op.estado) ? "Restaurar oportunidad" : "Marcar como descartada"}
-                          >
-                            <EyeOff className="h-4 w-4" />
-                          </button>
-                          <button
-                            type="button"
-                            className="inline-flex items-center justify-center h-8 w-8 rounded-md text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              eliminarOportunidad(op.id);
-                            }}
-                            title="Eliminar esta fila"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
+                        op={op}
+                        vendedores={vendedores}
+                        seleccionada={seleccionados.has(op.id)}
+                        onToggleSeleccion={toggleSeleccion}
+                        onActualizarVendedor={actualizarVendedor}
+                        onToggleEstado={toggleEstadoDescartada}
+                        onEliminar={eliminarOportunidad}
+                        onEditar={(id) => navigate(`/oportunidades/${id}`)}
+                        formatearFecha={formatearFecha}
+                        formatearMonto={formatearMonto}
+                        getEstadoColor={getEstadoColor}
+                        estaDescartada={estaDescartada}
+                      />
                     ))
                   ) : (
                     <tr>

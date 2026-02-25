@@ -1,0 +1,151 @@
+import { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
+
+interface Vendedor {
+    id: string;
+    nombre: string;
+}
+
+interface Oportunidad {
+    id: string;
+    nombre?: string;
+    fecha_cierre?: string;
+    organismo?: string;
+    monto_disponible?: number;
+    estado?: string;
+    clave?: string;
+    vendedor_id?: string | null;
+    vendedor?: { nombre: string } | { nombre: string }[] | null;
+}
+
+interface OportunidadRowProps {
+    op: Oportunidad;
+    vendedores: Vendedor[];
+    seleccionada: boolean;
+    onToggleSeleccion: (id: string) => void;
+    onActualizarVendedor: (id: string, vendedorId: string) => void;
+    onToggleEstado: (id: string, estadoActual?: string) => void;
+    onEliminar: (id: string) => void;
+    onEditar: (id: string) => void;
+    formatearFecha: (f: any) => string;
+    formatearMonto: (m: any) => string;
+    getEstadoColor: (e: any) => string;
+    estaDescartada: (e: any) => boolean;
+}
+
+export function OportunidadRow({
+    op,
+    vendedores,
+    seleccionada,
+    onToggleSeleccion,
+    onActualizarVendedor,
+    onToggleEstado,
+    onEliminar,
+    onEditar,
+    formatearFecha,
+    formatearMonto,
+    getEstadoColor,
+    estaDescartada,
+}: OportunidadRowProps) {
+    const [editando, setEditando] = useState(false);
+
+    const handleVendedorChange = (val: string) => {
+        onActualizarVendedor(op.id, val === "sin-asignar" ? "" : val);
+        setEditando(false);
+    };
+
+    return (
+        <tr className="hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors group border-b border-gray-100 dark:border-gray-800">
+            <td className="px-4 py-3 text-center">
+                <Checkbox
+                    checked={seleccionada}
+                    onCheckedChange={() => onToggleSeleccion(op.id)}
+                />
+            </td>
+            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-500 dark:text-gray-400">
+                <span className="cursor-pointer hover:text-blue-600" onClick={() => onEditar(op.id)}>
+                    {op.id}
+                </span>
+            </td>
+            <td className={`px-4 py-3 text-sm font-medium ${estaDescartada(op.estado) ? "text-gray-400 line-through opacity-50" : "text-gray-900 dark:text-gray-100"}`}>
+                <div className="whitespace-normal leading-tight max-w-[200px]" title={op.organismo}>
+                    {op.organismo || "-"}
+                </div>
+            </td>
+            <td className={`px-4 py-3 text-sm ${estaDescartada(op.estado) ? "text-gray-400 line-through opacity-50" : "text-gray-700 dark:text-gray-300"}`}>
+                <div className="whitespace-normal leading-tight max-w-[250px]" title={op.nombre}>
+                    {op.nombre || "-"}
+                </div>
+            </td>
+            <td className={`px-4 py-3 whitespace-nowrap text-sm ${estaDescartada(op.estado) ? "text-gray-400 opacity-50" : "text-gray-600 dark:text-gray-400"}`}>
+                {formatearFecha(op.fecha_cierre)}
+            </td>
+            <td className={`px-4 py-3 whitespace-nowrap ${estaDescartada(op.estado) ? "opacity-50" : ""}`}>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${getEstadoColor(op.estado)}`}>
+                    {op.estado || "Publicada"}
+                </span>
+            </td>
+            <td className={`px-4 py-3 whitespace-nowrap text-sm text-right font-mono ${estaDescartada(op.estado) ? "text-gray-400 line-through opacity-50" : "text-gray-800 dark:text-gray-200"}`}>
+                {formatearMonto(op.monto_disponible)}
+            </td>
+            <td className={`px-4 py-3 text-xs italic ${estaDescartada(op.estado) ? "text-gray-400 opacity-50" : "text-blue-600 dark:text-blue-400"}`}>
+                <div className="whitespace-normal leading-tight min-w-[120px]">
+                    {op.clave || "-"}
+                </div>
+            </td>
+            <td className="px-4 py-3 whitespace-nowrap text-sm">
+                {editando ? (
+                    <Select
+                        value={op.vendedor_id || "sin-asignar"}
+                        onValueChange={handleVendedorChange}
+                        onOpenChange={(open) => !open && setEditando(false)}
+                    >
+                        <SelectTrigger className="h-8 w-full bg-white dark:bg-gray-800">
+                            <SelectValue placeholder="Seleccionar" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="sin-asignar">Sin asignar</SelectItem>
+                            {vendedores.map((v) => (
+                                <SelectItem key={v.id} value={v.id}>{v.nombre}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                ) : (
+                    <div className="flex items-center gap-2 cursor-pointer py-1" onClick={() => setEditando(true)}>
+                        <span className="font-medium text-blue-600 dark:text-blue-400">
+                            {(() => {
+                                if (!op.vendedor) return "-";
+                                if (Array.isArray(op.vendedor)) return op.vendedor[0]?.nombre || "-";
+                                return (op.vendedor as any).nombre || "-";
+                            })()}
+                        </span>
+                        {!estaDescartada(op.estado) && <span className="text-[10px] opacity-0 group-hover:opacity-100">✏️</span>}
+                    </div>
+                )}
+            </td>
+            <td className="px-4 py-3 whitespace-nowrap text-right">
+                <div className="flex justify-end gap-1">
+                    <button
+                        onClick={() => onToggleEstado(op.id, op.estado)}
+                        className={`h-8 w-8 rounded flex items-center justify-center transition-colors ${estaDescartada(op.estado) ? "text-gray-400 hover:bg-gray-100" : "text-orange-500 hover:bg-orange-50"}`}
+                        title={estaDescartada(op.estado) ? "Recuperar" : "Descartar"}
+                    >
+                        <EyeOff className="h-4 w-4" />
+                    </button>
+                    <button
+                        onClick={() => onEliminar(op.id)}
+                        className="h-8 w-8 rounded flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors"
+                        title="Eliminar"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </button>
+                </div>
+            </td>
+        </tr>
+    );
+}
+
+import { EyeOff } from "lucide-react";
