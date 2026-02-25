@@ -38,7 +38,7 @@ interface Oportunidad {
   vendedor_id?: string;
   vendedor?: {
     nombre: string;
-  };
+  } | { nombre: string }[];
 }
 
 export default function OportunidadesPage() {
@@ -223,6 +223,27 @@ export default function OportunidadesPage() {
     oportunidadId: string,
     vendedorId: string,
   ) => {
+    // 1. Encontrar el nombre del vendedor para la actualización optimista
+    const vendedorElegido = vendedores.find(v => v.id === vendedorId);
+    const nombreVendedor = vendedorElegido ? vendedorElegido.nombre : null;
+
+    // 2. Guardar estado previo para revertir en caso de error
+    const opAnterior = oportunidades.find(o => o.id === oportunidadId);
+
+    // 3. Actualización Optimista inmediata
+    setOportunidades(prev => prev.map(op =>
+      op.id === oportunidadId
+        ? {
+          ...op,
+          vendedor_id: vendedorId || null,
+          vendedor: nombreVendedor ? { nombre: nombreVendedor } : null
+        }
+        : op
+    ));
+
+    // Cerramos el modo edición inmediatamente para evitar conflictos de UI
+    setEditandoVendedor(null);
+
     try {
       const { error } = await supabase
         .from("oportunidades")
@@ -232,13 +253,16 @@ export default function OportunidadesPage() {
       if (error) throw error;
 
       setMensaje("✅ Vendedor asignado correctamente");
-      await cargarOportunidades();
       setTimeout(() => setMensaje(""), 3000);
     } catch (error: any) {
       console.error("Error:", error);
+      // Revertir en caso de fallo
+      if (opAnterior) {
+        setOportunidades(prev => prev.map(op =>
+          op.id === oportunidadId ? opAnterior : op
+        ));
+      }
       setMensaje("❌ Error al asignar vendedor: " + error.message);
-    } finally {
-      setEditandoVendedor(null);
     }
   };
 
@@ -474,6 +498,26 @@ export default function OportunidadesPage() {
                     const day = d.padStart(2, "0");
                     const time = h || "00:00";
                     fechaCierre = `${year}-${month}-${day}T${time}${time.split(":").length === 2 ? ":00" : ""}`;
+                  } else {
+                    // Si no coincide con el regex, intentar parseo nativo
+                    try {
+                      const d = new Date(fechaStr);
+                      if (!isNaN(d.getTime())) {
+                        fechaCierre = d.toISOString();
+                      }
+                    } catch (e) {
+                      console.warn("Error parseando fecha string:", fechaStr);
+                    }
+                  }
+                } else if (typeof fechaCierre === "number") {
+                  // Manejo de fechas de Excel (números)
+                  try {
+                    const excelDate = new Date((fechaCierre - 25569) * 86400 * 1000);
+                    if (!isNaN(excelDate.getTime())) {
+                      fechaCierre = excelDate.toISOString();
+                    }
+                  } catch (e) {
+                    console.warn("Error parseando fecha número Excel:", fechaCierre);
                   }
                 }
               }
@@ -545,10 +589,13 @@ export default function OportunidadesPage() {
 
   const oportunidadesFiltradas = useMemo(() => {
     return oportunidades.filter((op) => {
+      const searchLower = busqueda.toLowerCase().trim();
+      if (!searchLower) return (responsableSeleccionado === "todos" || op.vendedor_id === responsableSeleccionado);
+
       const matchBusqueda =
-        (op.id || "").toLowerCase().includes(busqueda.toLowerCase()) ||
-        (op.organismo || "").toLowerCase().includes(busqueda.toLowerCase()) ||
-        (op.nombre || "").toLowerCase().includes(busqueda.toLowerCase());
+        (op.id?.toString() || "").toLowerCase().includes(searchLower) ||
+        (op.organismo?.toString() || "").toLowerCase().includes(searchLower) ||
+        (op.nombre?.toString() || "").toLowerCase().includes(searchLower);
 
       const matchResponsable =
         responsableSeleccionado === "todos" ||
@@ -570,10 +617,11 @@ export default function OportunidadesPage() {
     setPaginaActual(1);
   }, [busqueda, responsableSeleccionado]);
 
-  const formatearFecha = (fecha?: string) => {
+  const formatearFecha = (fecha?: any) => {
     if (!fecha) return "-";
     try {
       const date = new Date(fecha);
+      if (isNaN(date.getTime())) return String(fecha);
       return date.toLocaleDateString("es-CL", {
         year: "numeric",
         month: "2-digit",
@@ -583,7 +631,7 @@ export default function OportunidadesPage() {
         hour12: false,
       });
     } catch (e) {
-      return fecha;
+      return String(fecha);
     }
   };
 
@@ -917,7 +965,15 @@ export default function OportunidadesPage() {
                               </Select>
                             ) : (
                               <div className="flex items-center gap-2">
-                                <span>{op.vendedor?.nombre || "-"}</span>
+                                <span className="font-medium text-blue-600 dark:text-blue-400">
+                                  {(() => {
+                                    if (!op.vendedor) return "-";
+                                    if (Array.isArray(op.vendedor)) {
+                                      return op.vendedor[0]?.nombre || "-";
+                                    }
+                                    return (op.vendedor as any).nombre || "-";
+                                  })()}
+                                </span>
                                 {!estaDescartada(op.estado) && (
                                   <span className="text-[10px] text-blue-500 opacity-0 group-hover:opacity-100">
                                     ✏️
