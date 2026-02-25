@@ -111,7 +111,7 @@ export default function ConfiguracionKeywords() {
                             Motor de Búsqueda y Exclusiones
                         </h1>
                         <p className="text-gray-500 dark:text-gray-400 text-sm">
-                            Agrega palabras clave para buscar, o usa un menos (-) al inicio para prohibir términos (Ej: -salud).
+                            Gestiona palabras y frases. Usa un menos (-) para excluir (Ej: -salud o -bolsa de cemento).
                         </p>
                     </div>
                 </div>
@@ -131,7 +131,7 @@ export default function ConfiguracionKeywords() {
                         <Input
                             value={nuevaKeyword}
                             onChange={(e) => setNuevaKeyword(e.target.value)}
-                            placeholder="Ej: agendas (incluir) o -salud (excluir)..."
+                            placeholder="Ej: mochila (incluir) o -bolsa de cemento (excluir frase)..."
                             className="pl-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:ring-emerald-500"
                             disabled={guardando}
                         />
