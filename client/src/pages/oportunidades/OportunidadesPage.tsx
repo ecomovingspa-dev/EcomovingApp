@@ -351,17 +351,7 @@ export default function OportunidadesPage() {
             return;
           }
 
-          // --- MOTOR DE INTELIGENCIA COMERCIAL ---
-          const SINONIMOS: Record<string, string[]> = {
-            "mug": ["tazon", "tazones", "vaso", "termico", "termica", "jarro"],
-            "botella": ["caramayola", "hidratacion", "envase", "deportiva"],
-            "bolsa": ["mochila", "morral", "ecologica", "tnt", "tela", "notex"],
-            "lapiz": ["boligrafo", "escritura", "lapices", "portaminas"],
-            "agenda": ["cuaderno", "libreta", "notero", "bitacora"],
-            "regalo": ["presente", "souvenir", "merchandising", "publicitario", "corporativo"],
-            "polera": ["textil", "vestuario", "ropa", "pique", "algodon"]
-          };
-
+          // --- MOTOR DE BÚSQUEDA EXACTA (PROTOCOL-DRIVEN) ---
           const normalizeText = (text: string | null | undefined): string => {
             if (!text) return "";
             return text
@@ -386,17 +376,14 @@ export default function OportunidadesPage() {
               if (textoNorm.includes(excl)) return { score: -1, matches: [] };
             }
 
-            // 2. Buscar palabras positivas y sus sinónimos
+            // 2. Buscar palabras positivas (MATCH ESTRICTO)
             positivas.forEach(kw => {
               const kwNorm = normalizeText(kw);
-              const variantes = [kwNorm, ...(SINONIMOS[kwNorm] || [])];
-
-              variantes.forEach(variante => {
-                if (textoNorm.includes(variante)) {
-                  matchesEncontrados.add(kw); // Guardamos la original para saber cuál gatilló
-                  score += (variante === kwNorm) ? 10 : 5; // Más puntos si es la palabra exacta
-                }
-              });
+              // Solo match si la palabra exacta o frase exacta está presente
+              if (textoNorm.includes(kwNorm)) {
+                matchesEncontrados.add(kw);
+                score += 10;
+              }
             });
 
             return { score, matches: Array.from(matchesEncontrados) };
