@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, EyeOff } from "lucide-react";
 
 interface Vendedor {
     id: string;
@@ -147,5 +146,3 @@ export function OportunidadRow({
         </tr>
     );
 }
-
-import { EyeOff } from "lucide-react";

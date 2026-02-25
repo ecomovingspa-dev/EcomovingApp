@@ -108,10 +108,10 @@ export default function ConfiguracionKeywords() {
                     </Button>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 italic">
-                            Configuración de Palabras Clave
+                            Motor de Búsqueda y Exclusiones
                         </h1>
                         <p className="text-gray-500 dark:text-gray-400 text-sm">
-                            Gestiona los términos que activan el filtrado en la importación de Excel.
+                            Agrega palabras clave para buscar, o usa un menos (-) al inicio para prohibir términos (Ej: -salud).
                         </p>
                     </div>
                 </div>
@@ -131,7 +131,7 @@ export default function ConfiguracionKeywords() {
                         <Input
                             value={nuevaKeyword}
                             onChange={(e) => setNuevaKeyword(e.target.value)}
-                            placeholder="Ej: agendas, mochilas, personalizado..."
+                            placeholder="Ej: agendas (incluir) o -salud (excluir)..."
                             className="pl-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 focus:ring-emerald-500"
                             disabled={guardando}
                         />
