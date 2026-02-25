@@ -358,7 +358,9 @@ export default function OportunidadesPage() {
               .toString()
               .toLowerCase()
               .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[\u0300-\u036f]/g, "") // Eliminar tildes
+              .replace(/[\/\-\.,_]/g, " ")     // Neutralización de símbolos: /, -, ., ,, _ por espacio
+              .replace(/\s+/g, " ")            // Colapsar múltiples espacios
               .trim();
           };
 
