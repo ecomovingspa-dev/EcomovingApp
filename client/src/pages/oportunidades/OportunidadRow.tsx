@@ -56,6 +56,10 @@ export function OportunidadRow({
         setEditando(false);
     };
 
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+    };
+
     return (
         <tr className="hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors group border-b border-gray-100 dark:border-gray-800">
             <td className="px-4 py-3 text-center">
@@ -65,7 +69,11 @@ export function OportunidadRow({
                 />
             </td>
             <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-500 dark:text-gray-400">
-                <span className="cursor-pointer hover:text-blue-600" onClick={() => onEditar(op.id)}>
+                <span
+                    className="cursor-pointer hover:text-blue-600 select-all"
+                    onClick={() => copyToClipboard(op.id)}
+                    title="Click para copiar ID"
+                >
                     {op.id}
                 </span>
             </td>
@@ -82,18 +90,8 @@ export function OportunidadRow({
             <td className={`px-4 py-3 whitespace-nowrap text-sm ${estaDescartada(op.estado) ? "text-gray-400 opacity-50" : "text-gray-600 dark:text-gray-400"}`}>
                 {formatearFecha(op.fecha_cierre)}
             </td>
-            <td className={`px-4 py-3 whitespace-nowrap ${estaDescartada(op.estado) ? "opacity-50" : ""}`}>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${getEstadoColor(op.estado)}`}>
-                    {op.estado || "Publicada"}
-                </span>
-            </td>
             <td className={`px-4 py-3 whitespace-nowrap text-sm text-right font-mono ${estaDescartada(op.estado) ? "text-gray-400 line-through opacity-50" : "text-gray-800 dark:text-gray-200"}`}>
                 {formatearMonto(op.monto_disponible)}
-            </td>
-            <td className={`px-4 py-3 text-xs italic ${estaDescartada(op.estado) ? "text-gray-400 opacity-50" : "text-blue-600 dark:text-blue-400"}`}>
-                <div className="whitespace-normal leading-tight min-w-[120px]">
-                    {op.clave || "-"}
-                </div>
             </td>
             <td className="px-4 py-3 whitespace-nowrap text-sm">
                 {editando ? (
