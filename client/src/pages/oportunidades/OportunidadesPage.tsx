@@ -35,10 +35,10 @@ interface Oportunidad {
   monto_disponible?: number;
   estado?: string;
   clave?: string;
-  vendedor_id?: string;
+  vendedor_id?: string | null;
   vendedor?: {
     nombre: string;
-  } | { nombre: string }[];
+  } | { nombre: string }[] | null;
 }
 
 export default function OportunidadesPage() {
@@ -596,7 +596,7 @@ export default function OportunidadesPage() {
 
       return matchBusqueda && matchResponsable;
     });
-  }, [oportunidades, busqueda, responsableSeleccionado]);
+  }, [oportunidades, busqueda, responsableSeleccionado, verDescartadas]);
 
   const totalPaginas = Math.ceil(
     oportunidadesFiltradas.length / itemsPorPagina,

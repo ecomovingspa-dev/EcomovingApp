@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../../lib/supabase";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
+import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
     Plus,
     Trash2,
@@ -62,7 +62,9 @@ export default function ConfiguracionKeywords() {
 
             if (error) throw error;
 
-            setKeywords(prev => [...prev, data[0]].sort((a, b) => a.keyword.localeCompare(b.keyword)));
+            if (data && data.length > 0) {
+                setKeywords(prev => [...prev, data[0]].sort((a, b) => (a.keyword || "").localeCompare(b.keyword || "")));
+            }
             setNuevaKeyword("");
             setMensaje("✅ Palabra agregada");
             setTimeout(() => setMensaje(""), 3000);
