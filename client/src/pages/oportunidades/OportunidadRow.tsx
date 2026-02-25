@@ -93,6 +93,11 @@ export function OportunidadRow({
             <td className={`px-4 py-3 whitespace-nowrap text-sm text-right font-mono ${estaDescartada(op.estado) ? "text-gray-400 line-through opacity-50" : "text-gray-800 dark:text-gray-200"}`}>
                 {formatearMonto(op.monto_disponible)}
             </td>
+            <td className={`px-4 py-3 text-xs italic ${estaDescartada(op.estado) ? "text-gray-400 opacity-50" : "text-blue-600 dark:text-blue-400"}`}>
+                <div className="whitespace-normal leading-tight min-w-[120px]">
+                    {op.clave || "-"}
+                </div>
+            </td>
             <td className="px-4 py-3 whitespace-nowrap text-sm">
                 {editando ? (
                     <Select
