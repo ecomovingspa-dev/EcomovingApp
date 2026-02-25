@@ -53,6 +53,7 @@ export default function OportunidadesPage() {
   const [procesando, setProcesando] = useState(false);
   const [editandoVendedor, setEditandoVendedor] = useState<string | null>(null);
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
+  const [verDescartadas, setVerDescartadas] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsPorPagina = 50;
 
@@ -589,6 +590,9 @@ export default function OportunidadesPage() {
 
   const oportunidadesFiltradas = useMemo(() => {
     return oportunidades.filter((op) => {
+      // Filtro de desahogo: Ocultar descartadas por defecto
+      if (!verDescartadas && op.estado?.toLowerCase() === "descartada") return false;
+
       const searchLower = busqueda.toLowerCase().trim();
       if (!searchLower) return (responsableSeleccionado === "todos" || op.vendedor_id === responsableSeleccionado);
 
@@ -763,28 +767,44 @@ export default function OportunidadesPage() {
         </div>
 
 
-        <div className="flex items-center gap-2 ml-auto order-2 sm:order-3">
-          <span className="text-sm text-gray-600 dark:text-gray-400">
-            Responsable:
-          </span>
-          <Select
-            value={responsableSeleccionado}
-            onValueChange={setResponsableSeleccionado}
-          >
-            <SelectTrigger
-              className="w-[180px]"
-              data-testid="select-responsable"
+        <div className="flex items-center gap-6 ml-auto order-2 sm:order-3">
+          <div className="flex items-center gap-2 cursor-pointer group" onClick={() => setVerDescartadas(!verDescartadas)}>
+            <Checkbox
+              id="ver-descartadas"
+              checked={verDescartadas}
+              onCheckedChange={(checked) => setVerDescartadas(!!checked)}
+            />
+            <label
+              htmlFor="ver-descartadas"
+              className="text-sm font-medium text-gray-600 dark:text-gray-400 cursor-pointer group-hover:text-blue-600 transition-colors"
             >
-              <SelectValue placeholder="Seleccionar" />
-            </SelectTrigger>
-            <SelectContent>
-              {RESPONSABLES.map((r) => (
-                <SelectItem key={r.value} value={r.value}>
-                  {r.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+              Ver Descartadas
+            </label>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              Responsable:
+            </span>
+            <Select
+              value={responsableSeleccionado}
+              onValueChange={setResponsableSeleccionado}
+            >
+              <SelectTrigger
+                className="w-[180px]"
+                data-testid="select-responsable"
+              >
+                <SelectValue placeholder="Seleccionar" />
+              </SelectTrigger>
+              <SelectContent>
+                {RESPONSABLES.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -1061,7 +1081,7 @@ export default function OportunidadesPage() {
           </>
         )
         }
-      </div >
-    </div >
+      </div>
+    </div>
   );
 }
