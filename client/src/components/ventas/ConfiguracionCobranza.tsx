@@ -214,11 +214,11 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                         {cargando ? (
                             <div className="flex justify-center p-4"><Loader2 className="animate-spin h-5 w-5 text-gray-400" /></div>
                         ) : reglas.map((regla) => (
-                            <button
+                            <div
                                 key={regla.id}
                                 onClick={() => setSelectedReglaId(regla.id)}
                                 className={cn(
-                                    "w-full text-left px-3 py-3 rounded-md text-xs font-medium transition-all flex items-center justify-between group outline-none focus:ring-2 focus:ring-slate-500/20",
+                                    "w-full text-left px-3 py-3 rounded-md text-xs font-medium transition-all flex items-center justify-between group outline-none focus:ring-2 focus:ring-slate-500/20 cursor-pointer",
                                     selectedReglaId === regla.id
                                         ? "bg-white dark:bg-[#1f2937] text-slate-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700 select-none"
                                         : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-gray-200"
@@ -237,7 +237,7 @@ export function ConfiguracionCobranza({ open, onOpenChange }: Props) {
                                     </button>
                                     {selectedReglaId === regla.id && <ChevronRight className="h-3 w-3 opacity-50" />}
                                 </div>
-                            </button>
+                            </div>
                         ))}
                     </div>
                 </div>
