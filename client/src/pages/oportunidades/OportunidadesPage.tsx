@@ -51,7 +51,6 @@ export default function OportunidadesPage() {
   const [paginaActual, setPaginaActual] = useState(1);
   const [limpiando, setLimpiando] = useState(false);
   const [procesando, setProcesando] = useState(false);
-  const [editandoVendedor, setEditandoVendedor] = useState<string | null>(null);
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
   const [verDescartadas, setVerDescartadas] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -94,23 +93,16 @@ export default function OportunidadesPage() {
     cargarOportunidades();
   }, [cargarOportunidades]);
 
-  const eliminarOportunidad = async (id: string) => {
-    console.log("[DELETE] eliminarOportunidad llamada con id:", id);
-    if (!window.confirm("¿Eliminar esta oportunidad?")) {
-      console.log("[DELETE] Usuario cancelo el confirm");
-      return;
-    }
-    console.log("[DELETE] Usuario confirmo, ejecutando delete...");
+  const eliminarOportunidad = useCallback(async (id: string) => {
+    if (!window.confirm("¿Eliminar esta oportunidad?")) return;
 
     try {
-      const response = await supabase
+      const { error } = await supabase
         .from("oportunidades")
         .delete()
         .eq("id", id);
 
-      console.log("[DELETE] Respuesta Supabase:", JSON.stringify(response));
-
-      if (response.error) throw response.error;
+      if (error) throw error;
 
       setOportunidades((prev) => prev.filter((op) => op.id !== id));
       setSeleccionados((prev) => {
@@ -119,13 +111,11 @@ export default function OportunidadesPage() {
         return next;
       });
       setMensaje("✅ Oportunidad eliminada");
-      setTimeout(() => setMensaje(""), 3000);
     } catch (error: any) {
-      console.error("[DELETE] Error:", error);
-      setMensaje("❌ Error al eliminar: " + (error.message || JSON.stringify(error)));
-      setTimeout(() => setMensaje(""), 5000);
+      console.error("Error:", error);
+      setMensaje("❌ Error al eliminar: " + (error.message || "Error"));
     }
-  };
+  }, []);
 
   const eliminarSeleccionadas = async () => {
     if (seleccionados.size === 0) return;
@@ -158,7 +148,7 @@ export default function OportunidadesPage() {
     }
   };
 
-  const toggleSeleccion = (id: string) => {
+  const toggleSeleccion = useCallback((id: string) => {
     setSeleccionados((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -168,64 +158,56 @@ export default function OportunidadesPage() {
       }
       return next;
     });
-  };
+  }, []);
 
-  const toggleSeleccionarTodo = () => {
-    if (seleccionados.size === oportunidadesFiltradas.length) {
-      setSeleccionados(new Set());
-    } else {
-      setSeleccionados(new Set(oportunidadesFiltradas.map((op) => op.id)));
-    }
-  };
+  const toggleSeleccionarTodo = useCallback(() => {
+    setSeleccionados((prev) => {
+      if (prev.size === oportunidadesFiltradas.length) {
+        return new Set();
+      } else {
+        return new Set(oportunidadesFiltradas.map((op) => op.id));
+      }
+    });
+  }, [oportunidadesFiltradas]);
 
-  const toggleEstadoDescartada = async (
+  const toggleEstadoDescartada = useCallback(async (
     oportunidadId: string,
     estadoActual?: string,
   ) => {
-    // 1. Calcular nuevo estado
     const nuevoEstado =
       estadoActual?.toLowerCase() === "descartada"
         ? "Publicada"
         : "Descartada";
 
-    // 2. Actualización Optimista: Actualizar UI inmediatamente
     setOportunidades(prev => prev.map(op =>
       op.id === oportunidadId ? { ...op, estado: nuevoEstado } : op
     ));
 
     try {
-      // 3. Llamada silenciosa a Supabase
       const { error } = await supabase
         .from("oportunidades")
         .update({ estado: nuevoEstado })
         .eq("id", oportunidadId);
 
-      if (error) {
-        throw error;
-      }
-
-      // NO recargamos toda la lista (cargarOportunidades) para evitar el "pestañazo"
-      // La UI ya está sincronizada con el estado optimista.
-
+      if (error) throw error;
     } catch (error: any) {
       console.error("Error:", error);
-      // Revertir cambio en caso de error
       setOportunidades(prev => prev.map(op =>
         op.id === oportunidadId ? { ...op, estado: estadoActual } : op
       ));
       setMensaje("❌ Error al cambiar estado: " + error.message);
-      setTimeout(() => setMensaje(""), 3000);
     }
-  };
+  }, []);
 
-  const actualizarVendedor = async (
+  const actualizarVendedor = useCallback(async (
     oportunidadId: string,
     vendedorId: string,
   ) => {
-    const vendedorElegido = vendedores.find(v => v.id === vendedorId);
+    // Blindaje de búsqueda de vendedor
+    const vendedorElegido = vendedores?.find(v => v.id === vendedorId);
     const nombreVendedor = vendedorElegido ? vendedorElegido.nombre : null;
 
-    // Actualización Optimista
+    // Actualización Optimista con blindaje de nulos
     setOportunidades(prev => prev.map(op =>
       op.id === oportunidadId
         ? {
@@ -236,7 +218,6 @@ export default function OportunidadesPage() {
         : op
     ));
 
-    setEditandoVendedor(null);
 
     try {
       const { error } = await supabase
@@ -245,13 +226,12 @@ export default function OportunidadesPage() {
         .eq("id", oportunidadId);
 
       if (error) throw error;
-      // No necesitamos recargar, la actualización optimista ya cubrió la UI
     } catch (error: any) {
       console.error("Error actualizando vendedor:", error);
-      await cargarOportunidades(); // Revertir a estado real de DB
+      cargarOportunidades(); // Revertir a estado real de DB por seguridad
       setMensaje("❌ Error al asignar vendedor");
     }
-  };
+  }, [vendedores, cargarOportunidades]);
 
   const limpiarVencidas = async () => {
     console.log("[LIMPIAR] limpiarVencidas llamada");
@@ -658,12 +638,12 @@ export default function OportunidadesPage() {
             Gestión de oportunidades de negocio
           </p>
         </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
             onClick={limpiarVencidas}
             disabled={limpiando}
-            className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/20 flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+            className="text-orange-600 border-orange-200 hover:bg-orange-50 dark:text-orange-400 dark:border-orange-900/30 dark:hover:bg-orange-900/20 flex items-center gap-2"
           >
             {limpiando ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -671,41 +651,39 @@ export default function OportunidadesPage() {
               <RefreshCw className="h-4 w-4" />
             )}
             Limpiar Vencidas
-          </button>
-
-          <button
-            type="button"
-            onClick={eliminarSeleccionadas}
-            disabled={seleccionados.size === 0}
-            className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20 flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-          >
-            <Trash2 className="h-4 w-4" />
-            Eliminar Seleccionadas {seleccionados.size > 0 && `(${seleccionados.size})`}
-          </button>
+          </Button>
 
           <Button
-            variant="ghost"
+            variant="outline"
+            onClick={eliminarSeleccionadas}
+            disabled={seleccionados.size === 0}
+            className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900/30 dark:hover:bg-red-900/20 flex items-center gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Eliminar ({seleccionados.size})
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => navigate("/oportunidades/configuracion")}
+            className="text-gray-600 border-gray-200 hover:bg-gray-50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-800 flex items-center gap-2"
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+
+          <Button
             onClick={() => fileInputRef.current?.click()}
             disabled={procesando}
-            className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:text-emerald-300 dark:hover:bg-emerald-900/20 flex items-center gap-2"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 shadow-sm"
           >
             {procesando ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Upload className="h-4 w-4" />
             )}
-            Subir Archivo
+            Subir Excel
           </Button>
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/oportunidades/configuracion")}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            title="Configurar palabras clave"
-          >
-            <Settings className="h-5 w-5" />
-          </Button>
           <input
             type="file"
             ref={fileInputRef}
@@ -914,6 +892,6 @@ export default function OportunidadesPage() {
         )
         }
       </div>
-    </div>
+    </div >
   );
 }

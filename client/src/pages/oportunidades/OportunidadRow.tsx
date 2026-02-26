@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, EyeOff } from "lucide-react";
@@ -28,14 +28,13 @@ interface OportunidadRowProps {
     onActualizarVendedor: (id: string, vendedorId: string) => void;
     onToggleEstado: (id: string, estadoActual?: string) => void;
     onEliminar: (id: string) => void;
-    onEditar: (id: string) => void;
     formatearFecha: (f: any) => string;
     formatearMonto: (m: any) => string;
     getEstadoColor: (e: any) => string;
     estaDescartada: (e: any) => boolean;
 }
 
-export function OportunidadRow({
+export const OportunidadRow = memo(function OportunidadRow({
     op,
     vendedores,
     seleccionada,
@@ -43,7 +42,6 @@ export function OportunidadRow({
     onActualizarVendedor,
     onToggleEstado,
     onEliminar,
-    onEditar,
     formatearFecha,
     formatearMonto,
     getEstadoColor,
@@ -52,8 +50,7 @@ export function OportunidadRow({
     const [editando, setEditando] = useState(false);
 
     const handleVendedorChange = (val: string) => {
-        onActualizarVendedor(op.id, val === "sin-asignar" ? "" : val);
-        setEditando(false);
+        onActualizarVendedor(op.id, val === "sin-assignar" || val === "sin-asignar" ? "" : val);
     };
 
     const copyToClipboard = (text: string) => {
@@ -105,12 +102,12 @@ export function OportunidadRow({
                         onValueChange={handleVendedorChange}
                         onOpenChange={(open) => !open && setEditando(false)}
                     >
-                        <SelectTrigger className="h-8 w-full bg-white dark:bg-gray-800">
+                        <SelectTrigger className="h-8 w-full bg-white dark:bg-gray-900">
                             <SelectValue placeholder="Seleccionar" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
                             <SelectItem value="sin-asignar">Sin asignar</SelectItem>
-                            {vendedores.map((v) => (
+                            {vendedores?.map((v) => (
                                 <SelectItem key={v.id} value={v.id}>{v.nombre}</SelectItem>
                             ))}
                         </SelectContent>
@@ -132,14 +129,14 @@ export function OportunidadRow({
                 <div className="flex justify-end gap-1">
                     <button
                         onClick={() => onToggleEstado(op.id, op.estado)}
-                        className={`h-8 w-8 rounded flex items-center justify-center transition-colors ${estaDescartada(op.estado) ? "text-gray-400 hover:bg-gray-100" : "text-orange-500 hover:bg-orange-50"}`}
+                        className={`h-8 w-8 rounded flex items-center justify-center transition-colors ${estaDescartada(op.estado) ? "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" : "text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20"}`}
                         title={estaDescartada(op.estado) ? "Recuperar" : "Descartar"}
                     >
                         <EyeOff className="h-4 w-4" />
                     </button>
                     <button
                         onClick={() => onEliminar(op.id)}
-                        className="h-8 w-8 rounded flex items-center justify-center text-red-500 hover:bg-red-50 transition-colors"
+                        className="h-8 w-8 rounded flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         title="Eliminar"
                     >
                         <Trash2 className="h-4 w-4" />
@@ -148,4 +145,4 @@ export function OportunidadRow({
             </td>
         </tr>
     );
-}
+});

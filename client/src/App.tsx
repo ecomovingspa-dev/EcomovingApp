@@ -59,9 +59,7 @@ export default function App() {
             <Route path="cotizaciones/:id" element={<CotizacionForm />} />
             {/* Oportunidades */}
             <Route path="oportunidades" element={<OportunidadesPage />} />
-            <Route path="oportunidades/nueva" element={<OportunidadForm />} />
             <Route path="oportunidades/configuracion" element={<ConfiguracionKeywords />} />
-            <Route path="oportunidades/:id" element={<OportunidadForm />} />
 
             {/* Marketing */}
             <Route path="marketing" element={<Marketing />} />
