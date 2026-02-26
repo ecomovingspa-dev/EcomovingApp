@@ -162,13 +162,15 @@ export default function OportunidadesPage() {
 
   const toggleSeleccionarTodo = useCallback(() => {
     setSeleccionados((prev) => {
-      if (prev.size === oportunidadesFiltradas.length) {
+      // Usaremos oportunidades del estado directamente aquí para evitar dependencia circular
+      // de oportunidadesFiltradas que es inicializado más abajo
+      if (prev.size === oportunidades.length) {
         return new Set();
       } else {
-        return new Set(oportunidadesFiltradas.map((op) => op.id));
+        return new Set(oportunidades.map((op) => op.id));
       }
     });
-  }, [oportunidadesFiltradas]);
+  }, [oportunidades]);
 
   const toggleEstadoDescartada = useCallback(async (
     oportunidadId: string,
