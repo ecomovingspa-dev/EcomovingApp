@@ -51,7 +51,6 @@ export default function OportunidadesPage() {
   const [paginaActual, setPaginaActual] = useState(1);
   const [limpiando, setLimpiando] = useState(false);
   const [procesando, setProcesando] = useState(false);
-  const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
   const [verDescartadas, setVerDescartadas] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsPorPagina = 50;
@@ -105,11 +104,6 @@ export default function OportunidadesPage() {
       if (error) throw error;
 
       setOportunidades((prev) => prev.filter((op) => op.id !== id));
-      setSeleccionados((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
       setMensaje("✅ Oportunidad eliminada");
     } catch (error: any) {
       console.error("Error:", error);
@@ -117,60 +111,7 @@ export default function OportunidadesPage() {
     }
   }, []);
 
-  const eliminarSeleccionadas = async () => {
-    if (seleccionados.size === 0) return;
-    if (
-      !window.confirm(
-        `¿Estás seguro de que deseas eliminar las ${seleccionados.size} oportunidades seleccionadas?`,
-      )
-    )
-      return;
 
-    try {
-      const idsAEliminar = Array.from(seleccionados);
-      const { error } = await supabase
-        .from("oportunidades")
-        .delete()
-        .in("id", idsAEliminar);
-
-      if (error) throw error;
-
-      setOportunidades((prev) =>
-        prev.filter((op) => !seleccionados.has(op.id)),
-      );
-      setSeleccionados(new Set());
-      setMensaje(`✅ ${idsAEliminar.length} oportunidades eliminadas`);
-      setTimeout(() => setMensaje(""), 4000);
-    } catch (error: any) {
-      console.error("Error eliminando seleccionadas:", error);
-      setMensaje("❌ Error al eliminar seleccionadas: " + (error.message || "Error desconocido"));
-      setTimeout(() => setMensaje(""), 5000);
-    }
-  };
-
-  const toggleSeleccion = useCallback((id: string) => {
-    setSeleccionados((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const toggleSeleccionarTodo = useCallback(() => {
-    setSeleccionados((prev) => {
-      // Usaremos oportunidades del estado directamente aquí para evitar dependencia circular
-      // de oportunidadesFiltradas que es inicializado más abajo
-      if (prev.size === oportunidades.length) {
-        return new Set();
-      } else {
-        return new Set(oportunidades.map((op) => op.id));
-      }
-    });
-  }, [oportunidades]);
 
   const toggleEstadoDescartada = useCallback(async (
     oportunidadId: string,
@@ -655,15 +596,7 @@ export default function OportunidadesPage() {
             Limpiar Vencidas
           </Button>
 
-          <Button
-            variant="outline"
-            onClick={eliminarSeleccionadas}
-            disabled={seleccionados.size === 0}
-            className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-900/30 dark:hover:bg-red-900/20 flex items-center gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            Eliminar ({seleccionados.size})
-          </Button>
+
 
           <Button
             variant="outline"
@@ -789,16 +722,6 @@ export default function OportunidadesPage() {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-900">
                   <tr>
-                    <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">
-                      <Checkbox
-                        checked={
-                          oportunidadesFiltradas.length > 0 &&
-                          seleccionados.size === oportunidadesFiltradas.length
-                        }
-                        onCheckedChange={toggleSeleccionarTodo}
-                        title="Seleccionar todo"
-                      />
-                    </th>
                     <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">
                       ID
                     </th>
@@ -832,8 +755,6 @@ export default function OportunidadesPage() {
                         key={op.id}
                         op={op}
                         vendedores={vendedores}
-                        seleccionada={seleccionados.has(op.id)}
-                        onToggleSeleccion={toggleSeleccion}
                         onActualizarVendedor={actualizarVendedor}
                         onToggleEstado={toggleEstadoDescartada}
                         onEliminar={eliminarOportunidad}
@@ -847,7 +768,7 @@ export default function OportunidadesPage() {
                   ) : (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={8}
                         className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
                       >
                         No se encontraron oportunidades

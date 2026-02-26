@@ -1,5 +1,4 @@
 import { useState, memo } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, EyeOff } from "lucide-react";
 
@@ -23,8 +22,6 @@ interface Oportunidad {
 interface OportunidadRowProps {
     op: Oportunidad;
     vendedores: Vendedor[];
-    seleccionada: boolean;
-    onToggleSeleccion: (id: string) => void;
     onActualizarVendedor: (id: string, vendedorId: string) => void;
     onToggleEstado: (id: string, estadoActual?: string) => void;
     onEliminar: (id: string) => void;
@@ -37,8 +34,6 @@ interface OportunidadRowProps {
 export const OportunidadRow = memo(function OportunidadRow({
     op,
     vendedores,
-    seleccionada,
-    onToggleSeleccion,
     onActualizarVendedor,
     onToggleEstado,
     onEliminar,
@@ -59,12 +54,6 @@ export const OportunidadRow = memo(function OportunidadRow({
 
     return (
         <tr className="hover:bg-gray-50/80 dark:hover:bg-gray-800/50 transition-colors group border-b border-gray-100 dark:border-gray-800">
-            <td className="px-4 py-3 text-center">
-                <Checkbox
-                    checked={seleccionada}
-                    onCheckedChange={() => onToggleSeleccion(op.id)}
-                />
-            </td>
             <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-500 dark:text-gray-400">
                 <span
                     className="cursor-pointer hover:text-blue-600 select-all"
