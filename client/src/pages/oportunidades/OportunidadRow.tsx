@@ -97,21 +97,18 @@ export const OportunidadRow = memo(function OportunidadRow({
             </td>
             <td className="px-4 py-3 whitespace-nowrap text-sm">
                 {editando ? (
-                    <Select
+                    <select
+                        className="h-8 w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-md text-sm px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500 transition-shadow text-gray-700 dark:text-gray-300"
                         value={op.vendedor_id || "sin-asignar"}
-                        onValueChange={handleVendedorChange}
-                        onOpenChange={(open) => !open && setEditando(false)}
+                        onChange={(e) => handleVendedorChange(e.target.value)}
+                        onBlur={() => setEditando(false)}
+                        autoFocus
                     >
-                        <SelectTrigger className="h-8 w-full bg-white dark:bg-gray-900">
-                            <SelectValue placeholder="Seleccionar" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
-                            <SelectItem value="sin-asignar">Sin asignar</SelectItem>
-                            {vendedores?.map((v) => (
-                                <SelectItem key={v.id} value={v.id}>{v.nombre}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
+                        <option value="sin-asignar">Sin asignar</option>
+                        {vendedores?.map((v) => (
+                            <option key={v.id} value={v.id}>{v.nombre}</option>
+                        ))}
+                    </select>
                 ) : (
                     <div className="flex items-center gap-2 cursor-pointer py-1" onClick={() => setEditando(true)}>
                         <span className="font-medium text-blue-600 dark:text-blue-400">
