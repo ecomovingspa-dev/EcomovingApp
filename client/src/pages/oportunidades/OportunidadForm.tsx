@@ -73,9 +73,17 @@ export default function OportunidadForm() {
       if (error) throw error;
 
       if (data) {
+        // Blindaje para <input type="datetime-local"> que requiere formato YYYY-MM-DDTHH:mm
+        let fechaParaInput = "";
+        if (data.fecha_cierre) {
+          fechaParaInput = String(data.fecha_cierre)
+            .replace(" ", "T") // Cambia el espacio por T
+            .substring(0, 16); // Corta los segundos (HH:mm:ss -> HH:mm)
+        }
+
         setForm({
           nombre: data.nombre || "",
-          fecha_cierre: data.fecha_cierre || "",
+          fecha_cierre: fechaParaInput,
           organismo: data.organismo || "",
           monto_disponible: data.monto_disponible?.toString() || "",
           estado: data.estado || "abierta",
@@ -102,7 +110,8 @@ export default function OportunidadForm() {
 
       const datos = {
         nombre: form.nombre || null,
-        fecha_cierre: form.fecha_cierre || null,
+        // Limpiamos la "T" que introduce el navegador para mantener guardado el formato limpio
+        fecha_cierre: form.fecha_cierre ? form.fecha_cierre.replace("T", " ") : null,
         organismo: form.organismo || null,
         monto_disponible: form.monto_disponible
           ? parseFloat(form.monto_disponible)
@@ -169,8 +178,8 @@ export default function OportunidadForm() {
       {mensaje && (
         <div
           className={`p-4 rounded-lg font-medium border ${mensaje.includes("Error")
-              ? "bg-red-50 text-red-700 border-red-200"
-              : "bg-green-50 text-green-700 border-green-200"
+            ? "bg-red-50 text-red-700 border-red-200"
+            : "bg-green-50 text-green-700 border-green-200"
             }`}
         >
           {mensaje}
