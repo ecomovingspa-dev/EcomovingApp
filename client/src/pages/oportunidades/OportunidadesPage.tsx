@@ -379,52 +379,51 @@ export default function OportunidadesPage() {
                 }
               }
 
-              // Lógica de normalización de fecha y hora (Dato SENSIBLE)
-              let fechaCierre = fechaVal;
-              if (fechaCierre) {
-                if (fechaCierre instanceof Date) {
-                  fechaCierre = fechaCierre.toISOString();
-                } else if (typeof fechaCierre === "string") {
-                  const fechaStr = fechaCierre.trim();
-                  const match = fechaStr.match(
-                    /^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?:\s+(\d{1,2}:\d{1,2}(?::\d{1,2})?))?/,
-                  );
+              // Obedeciendo directriz estricta del Jefe de Operaciones: 
+              // Cero interpretaciones, cero rescates. Se lee y se copia como texto puro.
+              let fechaCierreStr: string | null = null;
 
-                  if (match) {
-                    let [, d, m, y, h] = match;
-                    const year = y.length === 2 ? `20${y}` : y;
-                    const month = m.padStart(2, "0");
-                    const day = d.padStart(2, "0");
-                    const time = h || "00:00";
-                    fechaCierre = `${year}-${month}-${day}T${time}${time.split(":").length === 2 ? ":00" : ""}`;
-                  } else {
-                    // Si no coincide con el regex, intentar parseo nativo
-                    try {
-                      const d = new Date(fechaStr);
-                      if (!isNaN(d.getTime())) {
-                        fechaCierre = d.toISOString();
-                      }
-                    } catch (e) {
-                      console.warn("Error parseando fecha string:", fechaStr);
-                    }
-                  }
-                } else if (typeof fechaCierre === "number") {
-                  // Manejo de fechas de Excel (números)
+              if (fechaVal) {
+                if (typeof fechaVal === "number") {
+                  // If Excel serial number (default raw formatting for dates)
                   try {
-                    const excelDate = new Date((fechaCierre - 25569) * 86400 * 1000);
-                    if (!isNaN(excelDate.getTime())) {
-                      fechaCierre = excelDate.toISOString();
+                    // Convert Excel date to JS Date using UTC math (25569 = Jan 1 1970)
+                    const parsed = XLSX.SSF.parse_date_code(fechaVal);
+                    if (parsed) {
+                      const yr = String(parsed.y).padStart(4, "0");
+                      const mo = String(parsed.m).padStart(2, "0");
+                      const dy = String(parsed.d).padStart(2, "0");
+                      const hr = String(parsed.H).padStart(2, "0");
+                      const mi = String(parsed.M).padStart(2, "0");
+                      const sc = String(parsed.S).padStart(2, "0");
+                      fechaCierreStr = `${yr}-${mo}-${dy} ${hr}:${mi}:${sc}`;
                     }
                   } catch (e) {
-                    console.warn("Error parseando fecha número Excel:", fechaCierre);
+                    fechaCierreStr = String(fechaVal).trim();
                   }
+                } else if (fechaVal instanceof Date) {
+                  // Formato YYYY-MM-DD HH:mm:ss sin Z
+                  const yr = String(fechaVal.getFullYear()).padStart(4, "0");
+                  const mo = String(fechaVal.getMonth() + 1).padStart(2, "0");
+                  const dy = String(fechaVal.getDate()).padStart(2, "0");
+                  const hr = String(fechaVal.getHours()).padStart(2, "0");
+                  const mi = String(fechaVal.getMinutes()).padStart(2, "0");
+                  fechaCierreStr = `${yr}-${mo}-${dy} ${hr}:${mi}:00`;
+                } else {
+                  // Se asegura que sea texto plano y se le quita la Z u otros indicios de Timezone
+                  fechaCierreStr = String(fechaVal)
+                    .trim()
+                    .replace(/T/g, " ")
+                    .replace(/\.\d{3}Z$/i, "")
+                    .replace(/Z$/i, "")
+                    .replace(/\+00:00$/i, "");
                 }
               }
 
               return {
                 id: (idVal || "").toString().trim() || null,
                 nombre: (nombreVal || "").toString().trim() || null,
-                fecha_cierre: fechaCierre || null,
+                fecha_cierre: fechaCierreStr || null,
                 organismo: (organismoVal || "").toString().trim() || null,
                 monto_disponible: montoNum,
                 estado: (estadoVal || "Publicada").toString().trim(),
@@ -521,19 +520,30 @@ export default function OportunidadesPage() {
 
   const formatearFecha = (fecha?: any) => {
     if (!fecha) return "-";
+
+    // Tratamiento Estricto de Texto Plano para evitar desface de zona horaria (JS Date shift)
+    const dateStr = String(fecha).trim();
+
     try {
-      const date = new Date(fecha);
-      if (isNaN(date.getTime())) return String(fecha);
-      return date.toLocaleDateString("es-CL", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-      });
+      // 1. Caso de timestamp ISO devuelto por Supabase: "2026-03-06T15:00:00"
+      if (dateStr.includes("T")) {
+        const [datePart, timePart] = dateStr.split("T");
+        const [year, month, day] = datePart.split("-");
+        const time = timePart.substring(0, 5); // Consigue HH:mm
+        return `${day}/${month}/${year} ${time}`;
+      }
+
+      // 2. Caso de string directo con espacio: "2026-03-06 15:00:00"
+      const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})/);
+      if (match) {
+        const [_, year, month, day, hour, minute] = match;
+        return `${day}/${month}/${year} ${hour}:${minute}`;
+      }
+
+      // 3. Fallback en caso de que sea otro formato (no se usa new Date para no aplicar offset)
+      return dateStr;
     } catch (e) {
-      return String(fecha);
+      return dateStr;
     }
   };
 
@@ -562,7 +572,18 @@ export default function OportunidadesPage() {
 
   const estaVencida = (fechaCierre?: string) => {
     if (!fechaCierre) return false;
-    return new Date(fechaCierre) < new Date();
+    try {
+      // Comparamos sin usar horas para no desfasar por timezone
+      const hoy = new Date();
+      const hoyStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(hoy.getDate()).padStart(2, "0")}`;
+
+      // Extraemos la fecha del string fechaCierre (ej: "2026-03-06T15:00" o "2026-03-06 15:00")
+      const fechaCierreStr = String(fechaCierre).replace("T", " ").split(" ")[0];
+
+      return fechaCierreStr < hoyStr;
+    } catch {
+      return false;
+    }
   };
 
   const estaDescartada = (estado?: string) => {
