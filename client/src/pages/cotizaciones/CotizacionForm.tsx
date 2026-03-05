@@ -534,8 +534,11 @@ export default function CotizacionForm({
   }, [cotizacion.items]);
 
   const datosParaPDF = useMemo(() => {
-    const cuentaData = cuentas.find((c) => c.id === cotizacion.cuenta_id);
-    const contactoData = contactos.find((c) => c.id === cotizacion.contacto_id);
+    // ✅ FIX: Usar cotizacion.cuentas/contactos (cargados por cargarCotizacion) como
+    // fuente primaria. El array `cuentas` es solo para búsqueda (limit 10) y puede
+    // no contener la cuenta seleccionada, causando "No especificado" en el PDF.
+    const cuentaData = (cotizacion.cuentas as any) || cuentas.find((c) => c.id === cotizacion.cuenta_id);
+    const contactoData = (cotizacion.contactos as any) || contactos.find((c) => c.id === cotizacion.contacto_id);
     const vendedorData = cotizacion.vendedor_id
       ? vendedores.find((v) => v.id?.toString() === cotizacion.vendedor_id?.toString())
       : null;
@@ -572,6 +575,8 @@ export default function CotizacionForm({
     cotizacion.vendedor_id,
     cotizacion.cuenta_id,
     cotizacion.contacto_id,
+    cotizacion.cuentas,
+    cotizacion.contactos,
     cotizacion.items,
     cuentas,
     contactos,
