@@ -28,7 +28,7 @@ interface MarketingMessage {
     created_at?: string;
 }
 
-export default function ListaContenidos({ onNew }: { onNew: () => void }) {
+export default function ListaContenidos() {
     const [mensajes, setMensajes] = useState<MarketingMessage[]>([]);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState("");
@@ -155,14 +155,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                         Secuencia programada de correos automatizados.
                     </p>
                 </div>
-                <Button
-                    onClick={onNew}
-                    variant="outline"
-                    className="border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 flex items-center gap-2"
-                >
-                    <Plus className="h-4 w-4" />
-                    Nuevo Mensaje (IA)
-                </Button>
+
             </div>
 
             {error && (
@@ -182,9 +175,7 @@ export default function ListaContenidos({ onNew }: { onNew: () => void }) {
                     <div className="py-20 text-center">
                         <Mail className="h-16 w-16 text-gray-200 dark:text-gray-700 mx-auto mb-4" />
                         <p className="text-gray-500 dark:text-gray-400 text-sm">La secuencia está vacía.</p>
-                        <Button variant="link" onClick={onNew} className="text-indigo-600 mt-2 text-sm">
-                            Crear tu primer contenido con IA
-                        </Button>
+
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
