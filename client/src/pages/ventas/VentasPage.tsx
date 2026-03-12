@@ -826,8 +826,8 @@ export default function VentasPage() {
 
         {/* Filtros */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-            <div className="space-y-1.5">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+            <div className="space-y-1.5 md:col-span-2">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Buscar por Razón Social
               </Label>
@@ -907,7 +907,7 @@ export default function VentasPage() {
               </Select>
             </div>
             {(filtroRazonSocial || filtroFolio || filtroEstado !== "todos") && (
-              <div className="md:col-span-3 flex justify-end mt-1">
+              <div className="md:col-span-5 flex justify-end mt-1">
                 <Button
                   variant="ghost"
                   size="sm"
