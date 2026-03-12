@@ -156,11 +156,11 @@ export default function VentasPage() {
       if (filtroEstado !== "todos") {
         const hoyStr = new Date().toISOString().split("T")[0];
         if (filtroEstado === "Vencida") {
-          query = query.gt("saldo", 0).lt("fch_venc", hoyStr).or("anulada.is.null,anulada.eq.false");
+          query = query.gt("saldo", 0).lt("fch_venc", hoyStr).not("anulada", "eq", true);
         } else if (filtroEstado === "Pendiente") {
-          query = query.gt("saldo", 0).gte("fch_venc", hoyStr).or("anulada.is.null,anulada.eq.false");
+          query = query.gt("saldo", 0).gte("fch_venc", hoyStr).not("anulada", "eq", true);
         } else if (filtroEstado === "Pagada") {
-          query = query.lte("saldo", 0).or("anulada.is.null,anulada.eq.false");
+          query = query.lte("saldo", 0).not("anulada", "eq", true);
         } else if (filtroEstado === "Anulada") {
           query = query.or(`anulada.eq.true,mnt_total.eq.total_nc`);
         }
