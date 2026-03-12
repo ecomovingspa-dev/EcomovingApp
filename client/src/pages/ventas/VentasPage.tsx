@@ -154,7 +154,16 @@ export default function VentasPage() {
         query = query.ilike("rzn_soc_recep", `%${filtroRazonSocial}%`);
       }
       if (filtroEstado !== "todos") {
-        query = query.eq("estado_deuda", filtroEstado);
+        const hoyStr = new Date().toISOString().split("T")[0];
+        if (filtroEstado === "Vencida") {
+          query = query.gt("saldo", 0).lt("fch_venc", hoyStr).eq("anulada", false);
+        } else if (filtroEstado === "Pendiente") {
+          query = query.gt("saldo", 0).gte("fch_venc", hoyStr).eq("anulada", false);
+        } else if (filtroEstado === "Pagada") {
+          query = query.lte("saldo", 0).eq("anulada", false);
+        } else if (filtroEstado === "Anulada") {
+          query = query.or(`anulada.eq.true,mnt_total.eq.total_nc`);
+        }
       }
       if (filtroAnio !== "todos") {
         query = query.gte("fch_emis", `${filtroAnio}-01-01`).lte("fch_emis", `${filtroAnio}-12-31`);
@@ -202,7 +211,13 @@ export default function VentasPage() {
   // Cálculos del dashboard - CORREGIDO
   const summary = allVentasForSummary.reduce(
     (acc, venta) => {
-      const estado = venta.estado_deuda || "";
+      const estado = calcularEstado(
+        venta.saldo || 0,
+        venta.fch_venc,
+        venta.anulada || false,
+        venta.mnt_total,
+        venta.total_nc || 0
+      );
       const saldo = venta.saldo || 0;
 
       if (estado === "Pendiente") {
