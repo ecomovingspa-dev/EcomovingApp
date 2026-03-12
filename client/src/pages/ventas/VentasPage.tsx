@@ -27,8 +27,6 @@ import {
   Settings,
   Settings2,
   Check,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ConfiguracionCobranza } from "@/components/ventas/ConfiguracionCobranza";
@@ -1457,37 +1455,31 @@ export default function VentasPage() {
         )}
 
         {/* Paginación */}
-        {!cargando && totalRecords > ITEMS_PER_PAGE && (
-          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50/30 dark:bg-gray-800/30">
-            <div className="text-sm text-gray-500 dark:text-gray-400 font-medium">
-              Mostrando <span className="text-gray-900 dark:text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> a{" "}
-              <span className="text-gray-900 dark:text-white">{Math.min(currentPage * ITEMS_PER_PAGE, totalRecords)}</span>{" "}
-              de <span className="text-gray-900 dark:text-white font-bold">{totalRecords}</span> facturas
+        {!cargando && ventasFiltradas.length > ITEMS_PER_PAGE && (
+          <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1} a{" "}
+              {Math.min(currentPage * ITEMS_PER_PAGE, ventasFiltradas.length)}{" "}
+              de {ventasFiltradas.length} facturas
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="h-8 gap-1 border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 transition-all font-semibold"
+                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-300"
               >
-                <ChevronLeft className="h-4 w-4" />
                 Anterior
-              </Button>
-              <div className="flex items-center px-3 text-sm font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800/50">
+              </button>
+              <div className="flex items-center px-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 Página {currentPage} de {totalPages}
               </div>
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="h-8 gap-1 border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-700 transition-all font-semibold"
+                className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700 dark:text-gray-300"
               >
                 Siguiente
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+              </button>
             </div>
           </div>
         )}
