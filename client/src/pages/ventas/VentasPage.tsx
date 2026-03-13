@@ -95,7 +95,7 @@ export default function VentasPage() {
 
   useEffect(() => {
     cargarVentas();
-  }, [currentPage, filtroEstado, filtroAnio]);
+  }, [currentPage, filtroEstado, filtroAnio, filtroRazonSocial, filtroFolio]);
 
 
   useEffect(() => {
