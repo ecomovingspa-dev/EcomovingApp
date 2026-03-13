@@ -151,7 +151,16 @@ export default function VentasPage() {
         query = query.ilike("rzn_soc_recep", `%${filtroRazonSocial}%`);
       }
       if (filtroEstado !== "todos") {
-        query = query.eq("estado_deuda", filtroEstado);
+        const hoyStr = new Date().toISOString().split("T")[0];
+        if (filtroEstado === "Vencida") {
+          query = query.gt("saldo", 0).lt("fch_venc", hoyStr);
+        } else if (filtroEstado === "Pendiente") {
+          query = query.gt("saldo", 0).gte("fch_venc", hoyStr);
+        } else if (filtroEstado === "Pagada") {
+          query = query.lte("saldo", 0);
+        } else if (filtroEstado === "Anulada") {
+          query = query.or(`mnt_total.eq.total_nc`);
+        }
       }
 
       const { data, error, count } = await query
