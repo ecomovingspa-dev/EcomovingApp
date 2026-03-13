@@ -152,7 +152,10 @@ export default function VentasPage() {
         query = query.ilike("rzn_soc_recep", `%${filtroRazonSocial}%`);
       }
       if (filtroEstado !== "todos") {
-        const hoyStr = new Date().toISOString().split("T")[0];
+        // Usar fecha local para consistencia con calcularEstado
+        const d = new Date();
+        const hoyStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        
         if (filtroEstado === "Vencida") {
           query = query.gt("saldo", 0).lt("fch_venc", hoyStr);
         } else if (filtroEstado === "Pendiente") {
@@ -169,7 +172,7 @@ export default function VentasPage() {
       }
 
       const { data, error, count } = await query
-        .order("id", { ascending: false })
+        .order("folio", { ascending: false })
         .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
 
       if (error) throw error;
@@ -207,11 +210,17 @@ export default function VentasPage() {
   const currentMonth = now.getMonth();
   const currentYear = now.getFullYear();
 
-  // Cálculos del dashboard - CORREGIDO
+  // Cálculos del dashboard - SINCRONIZADO CON FILTROS
   const summary = allVentasForSummary.reduce(
     (acc, venta) => {
-      const estado = venta.estado_deuda || "";
+      // Usar la misma lógica dinámica que el buscador
       const saldo = venta.saldo || 0;
+      const mntTotal = venta.mnt_total || 0;
+      const totalNc = venta.total_nc || 0;
+      const anulada = venta.anulada || false;
+      const fchVenc = venta.fch_venc;
+
+      const estado = calcularEstado(saldo, fchVenc, anulada, mntTotal, totalNc);
 
       if (estado === "Pendiente") {
         acc.pendientes.count++;
@@ -873,7 +882,7 @@ export default function VentasPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 w-[140px]">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Año
               </Label>
@@ -891,12 +900,11 @@ export default function VentasPage() {
                   <SelectItem value="todos">Todos</SelectItem>
                   <SelectItem value="2026">2026</SelectItem>
                   <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2024">2024</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 w-[140px]">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Estado
               </Label>
@@ -922,8 +930,8 @@ export default function VentasPage() {
                 </SelectContent>
               </Select>
             </div>
-            {(filtroRazonSocial || filtroFolio || filtroEstado !== "todos") && (
-              <div className="md:col-span-3 flex justify-end mt-1">
+            {(filtroRazonSocial || filtroFolio || filtroEstado !== "todos" || filtroAnio !== "todos") && (
+              <div className="md:col-span-4 flex justify-center mt-2">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -931,12 +939,13 @@ export default function VentasPage() {
                     setFiltroRazonSocial("");
                     setFiltroFolio("");
                     setFiltroEstado("todos");
+                    setFiltroAnio("todos");
                     setCurrentPage(1);
                   }}
-                  className="text-gray-500 hover:text-red-600 transition-colors"
+                  className="text-gray-500 hover:text-red-600 transition-colors flex items-center gap-2"
                 >
-                  <X className="h-4 w-4 mr-1.5" />
-                  Limpiar filtros aplicados
+                  <X className="h-4 w-4" />
+                  Limpiar filtros
                 </Button>
               </div>
             )}
