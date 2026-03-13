@@ -63,6 +63,7 @@ export default function VentasPage() {
   const [filtroRazonSocial, setFiltroRazonSocial] = useState("");
   const [filtroFolio, setFiltroFolio] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<string>("todos");
+  const [filtroAnio, setFiltroAnio] = useState<string>("todos");
 
   // Cobranza
   const [cobranzaOpen, setCobranzaOpen] = useState<number | null>(null);
@@ -94,7 +95,7 @@ export default function VentasPage() {
 
   useEffect(() => {
     cargarVentas();
-  }, [currentPage]);
+  }, [currentPage, filtroEstado, filtroAnio]);
 
 
   useEffect(() => {
@@ -163,8 +164,12 @@ export default function VentasPage() {
         }
       }
 
+      if (filtroAnio !== "todos") {
+        query = query.gte("fch_emis", `${filtroAnio}-01-01`).lte("fch_emis", `${filtroAnio}-12-31`);
+      }
+
       const { data, error, count } = await query
-        .order("folio", { ascending: false })
+        .order("id", { ascending: false })
         .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
 
       if (error) throw error;
@@ -870,27 +875,23 @@ export default function VentasPage() {
 
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Filtrar por Estado
+                Año
               </Label>
               <Select
-                value={filtroEstado}
+                value={filtroAnio}
                 onValueChange={(value) => {
-                  setFiltroEstado(value);
+                  setFiltroAnio(value);
                   setCurrentPage(1);
                 }}
               >
-                <SelectTrigger className="h-10 border-gray-200 focus:ring-blue-500 transition-all">
-                  <div className="flex items-center">
-                    <Filter className="h-4 w-4 mr-2 text-gray-400" />
-                    <SelectValue placeholder="Todos los estados" />
-                  </div>
+                <SelectTrigger className="h-10 border-gray-200">
+                  <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos los estados</SelectItem>
-                  <SelectItem value="Pendiente">Pendiente</SelectItem>
-                  <SelectItem value="Pagada">Pagada</SelectItem>
-                  <SelectItem value="Vencida">Vencida</SelectItem>
-                  <SelectItem value="Anulada">Anulada</SelectItem>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="2026">2026</SelectItem>
+                  <SelectItem value="2025">2025</SelectItem>
+                  <SelectItem value="2024">2024</SelectItem>
                 </SelectContent>
               </Select>
             </div>
