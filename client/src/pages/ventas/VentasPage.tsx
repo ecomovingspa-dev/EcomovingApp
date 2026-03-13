@@ -845,7 +845,7 @@ export default function VentasPage() {
 
         {/* Filtros */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+          <div className="grid grid-cols-1 md:grid-cols-[1.5fr_1fr_120px_140px_auto] gap-4 items-end">
             <div className="space-y-1.5">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Razon Social
@@ -882,7 +882,7 @@ export default function VentasPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5 w-[140px]">
+            <div className="space-y-1.5">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Año
               </Label>
@@ -904,7 +904,7 @@ export default function VentasPage() {
               </Select>
             </div>
 
-            <div className="space-y-1.5 w-[140px]">
+            <div className="space-y-1.5">
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Estado
               </Label>
@@ -930,8 +930,8 @@ export default function VentasPage() {
                 </SelectContent>
               </Select>
             </div>
-            {(filtroRazonSocial || filtroFolio || filtroEstado !== "todos" || filtroAnio !== "todos") && (
-              <div className="md:col-span-4 flex justify-center mt-2">
+            <div className="pb-0.5">
+              {(filtroRazonSocial || filtroFolio || filtroEstado !== "todos" || filtroAnio !== "todos") ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -942,13 +942,16 @@ export default function VentasPage() {
                     setFiltroAnio("todos");
                     setCurrentPage(1);
                   }}
-                  className="text-gray-500 hover:text-red-600 transition-colors flex items-center gap-2"
+                  className="text-gray-400 hover:text-red-500 transition-colors h-10 px-2 flex items-center justify-center gap-2"
+                  title="Limpiar todos los filtros"
                 >
-                  <X className="h-4 w-4" />
-                  Limpiar filtros
+                  <RefreshCw className="h-4 w-4" />
+                  <span className="text-xs font-medium uppercase tracking-wider">Limpiar</span>
                 </Button>
-              </div>
-            )}
+              ) : (
+                <div className="h-10 w-20" /> // Spacer for layout consistency
+              )}
+            </div>
           </div>
         </div>
 
