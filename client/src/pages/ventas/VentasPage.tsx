@@ -172,6 +172,7 @@ export default function VentasPage() {
       }
 
       const { data, error, count } = await query
+        .order("fch_emis", { ascending: false })
         .order("folio", { ascending: false })
         .range((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE - 1);
 
@@ -1483,7 +1484,7 @@ export default function VentasPage() {
         )}
 
         {/* Paginación */}
-        {!cargando && ventasFiltradas.length > ITEMS_PER_PAGE && (
+        {!cargando && totalRecords > ITEMS_PER_PAGE && (
           <div className="px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
             <div className="text-sm text-gray-500 dark:text-gray-400">
               Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1} a{" "}
