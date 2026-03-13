@@ -63,7 +63,6 @@ export default function VentasPage() {
   const [filtroRazonSocial, setFiltroRazonSocial] = useState("");
   const [filtroFolio, setFiltroFolio] = useState("");
   const [filtroEstado, setFiltroEstado] = useState<string>("todos");
-  const [filtroAnio, setFiltroAnio] = useState<string>("todos");
 
   // Cobranza
   const [cobranzaOpen, setCobranzaOpen] = useState<number | null>(null);
@@ -95,7 +94,7 @@ export default function VentasPage() {
 
   useEffect(() => {
     cargarVentas();
-  }, [currentPage, filtroEstado, filtroFolio, filtroRazonSocial, filtroAnio]);
+  }, [currentPage]);
 
 
   useEffect(() => {
@@ -153,9 +152,6 @@ export default function VentasPage() {
       }
       if (filtroEstado !== "todos") {
         query = query.eq("estado_deuda", filtroEstado);
-      }
-      if (filtroAnio !== "todos") {
-        query = query.gte("fch_emis", `${filtroAnio}-01-01`).lte("fch_emis", `${filtroAnio}-12-31`);
       }
 
       const { data, error, count } = await query
@@ -861,23 +857,6 @@ export default function VentasPage() {
                   className="pl-10 h-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500 transition-all"
                 />
               </div>
-            </div>
-
-            {/* Filtro Año */}
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Año
-              </Label>
-              <Select value={filtroAnio} onValueChange={(val) => { setFiltroAnio(val); setCurrentPage(1); }}>
-                <SelectTrigger className="h-10 border-gray-200 focus:ring-blue-500 transition-all">
-                  <SelectValue placeholder="Año" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="2025">2025</SelectItem>
-                  <SelectItem value="2026">2026</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <div className="space-y-1.5">
