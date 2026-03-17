@@ -20,7 +20,9 @@ import {
     Info,
     FileText,
     Calendar,
-    DollarSign
+    DollarSign,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 import { askGeminiAboutImage } from "../../lib/gemini";
 import { Button } from "@/components/ui/button";
@@ -95,6 +97,9 @@ interface Coincidencia {
 
 /** Tolerancia de monto para matching (en pesos) */
 const TOLERANCIA_MONTO = 5;
+
+/** Cantidad de movimientos por página */
+const ITEMS_PER_PAGE = 50;
 
 /** Palabras bancarias comunes que no identifican a un cliente/proveedor */
 const BANK_NOISE = new Set([
@@ -220,6 +225,10 @@ export default function ConciliacionPage() {
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [categorias, setCategorias] = useState<string[]>([]);
+    
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalRecords, setTotalRecords] = useState(0);
 
     // Upload Summary Dialog State
     const [uploadSummaryOpen, setUploadSummaryOpen] = useState(false);
@@ -239,6 +248,7 @@ export default function ConciliacionPage() {
     const [coincidencias, setCoincidencias] = useState<Coincidencia[]>([]);
     const [searchingMatch, setSearchingMatch] = useState(false);
     const [matchTab, setMatchTab] = useState("sugerencias"); // sugerencias | manual
+    const [foliosCache, setFoliosCache] = useState<Record<string, string>>({});
     const [preconciliacionOpen, setPreconciliacionOpen] = useState(false);
     const [preconciliacionesEncontradas, setPreconciliacionesEncontradas] = useState<{ mov: BancoMovimiento; match: Coincidencia }[]>([]);
     const [isPreconciliating, setIsPreconciliating] = useState(false);
@@ -374,11 +384,17 @@ Ejemplos:
 
     useEffect(() => {
         if (selectedPeriod) {
-            cargarMovimientos(selectedPeriod);
+            cargarMovimientos(selectedPeriod, currentPage);
         } else {
             setMovimientos([]);
+            setTotalRecords(0);
         }
-    }, [selectedPeriod]);
+    }, [selectedPeriod, currentPage, searchQuery]);
+
+    // Reset page when period or search changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedPeriod, searchQuery]);
 
     const cargarCartolas = async () => {
         try {
@@ -399,13 +415,13 @@ Ejemplos:
         }
     };
 
-    const cargarMovimientos = async (periodo: string) => {
+    const cargarMovimientos = async (periodo: string, page: number = 1) => {
         if (!periodo) return;
         setLoading(true);
         try {
-            let query = supabase.from("banco_movimientos").select("*");
+            let query = supabase.from("banco_movimientos").select("*", { count: 'exact' });
 
-            // Si no es "Mostrar todos", filtrar por período
+            // 1. Filtro por Período
             if (periodo !== "__ALL__") {
                 const [year, month] = periodo.split('-');
                 const startDate = `${periodo}-01`;
@@ -415,10 +431,64 @@ Ejemplos:
                 query = query.gte("fecha", startDate).lt("fecha", endDate);
             }
 
-            const { data, error } = await query.order("fecha", { ascending: false });
+            // 2. Filtro por Búsqueda (Texto)
+            if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase().trim();
+                // Filtros especiales por estado en la query
+                if (q === 'conciliado' || q === 'conciliados') {
+                    query = query.eq('estado', 'conciliado');
+                } else if (q === 'pendiente' || q === 'pendientes') {
+                    query = query.eq('estado', 'pendiente');
+                } else {
+                    // Búsqueda general por texto (ilike)
+                    query = query.or(`descripcion.ilike.%${q}%,bci_nombre.ilike.%${q}%,bci_rut.ilike.%${q}%,bci_comentario_transferencia.ilike.%${q}%,numero_documento.ilike.%${q}%,tipo_gasto.ilike.%${q}%`);
+                }
+            }
+
+            // 3. Paginación y Orden
+            const from = (page - 1) * ITEMS_PER_PAGE;
+            const to = from + ITEMS_PER_PAGE - 1;
+
+            const { data, error, count } = await query
+                .order("fecha", { ascending: false })
+                .range(from, to);
 
             if (error) throw error;
+            
             setMovimientos(data || []);
+            setTotalRecords(count || 0);
+
+            // 4. Cargar Folios en Lote para el Caché
+            const conciliados = (data || []).filter(m => m.estado === 'conciliado' && m.conciliado_id);
+            if (conciliados.length > 0) {
+                const ventasIds = [...new Set(conciliados
+                    .filter(m => m.tipo_conciliacion === 'venta' || m.tipo_conciliacion === 'multiple')
+                    .map(m => m.conciliado_id))];
+                const comprasIds = [...new Set(conciliados
+                    .filter(m => m.tipo_conciliacion === 'compra')
+                    .map(m => m.conciliado_id))];
+
+                const newCache = { ...foliosCache };
+                let changed = false;
+
+                if (ventasIds.length > 0) {
+                    const { data: vData } = await supabase.from('ventas').select('id, folio').in('id', ventasIds);
+                    vData?.forEach(v => {
+                        newCache[`venta:${v.id}`] = v.folio;
+                        newCache[`multiple:${v.id}`] = v.folio;
+                        changed = true;
+                    });
+                }
+
+                if (comprasIds.length > 0) {
+                    const { data: cData } = await supabase.from('compras').select('id, folio').in('id', comprasIds);
+                    cData?.forEach(c => {
+                        newCache[`compra:${c.id}`] = c.folio;
+                        changed = true;
+                    });
+                }
+                if (changed) setFoliosCache(newCache);
+            }
         } catch (error) {
             console.error("Error loading movimientos:", error);
         } finally {
@@ -1083,8 +1153,6 @@ Ejemplos:
                 const docData = doc.documento_relacionado as any;
                 const saldoActual = (docData.saldo !== undefined && docData.saldo !== null) ? Number(docData.saldo) : Number(doc.monto);
 
-                // En selección múltiple, asumimos que 'doc.monto' es lo que el usuario quiere aplicar a ese doc.
-                // Si el doc.monto es igual al saldo del doc, se paga completo.
                 let nuevoSaldo = saldoActual - doc.monto;
                 if (nuevoSaldo < 0) nuevoSaldo = 0;
                 const esPagoTotal = nuevoSaldo <= 100;
@@ -1099,17 +1167,39 @@ Ejemplos:
                     updateDoc.fecha_abono = new Date().toISOString().split("T")[0];
                     updateDoc.monto_abono = doc.monto;
 
-                    await supabase.from("ventas").update(updateDoc).eq("id", doc.id);
-                    await supabase.from("abonos").insert({
+                    const { error: errVenta } = await supabase.from("ventas").update(updateDoc).eq("id", doc.id);
+                    if (errVenta) {
+                        console.error(`Error actualizando venta ${doc.id}:`, errVenta);
+                         throw new Error(`Error actualizando venta ${doc.folio}: ${errVenta.message}`);
+                    }
+
+                    const { error: errAbono } = await supabase.from("abonos").insert({
                         venta_id: doc.id,
                         monto_abono: doc.monto,
                         fecha_abono: new Date().toISOString().split("T")[0],
                         tipo_abono: "Transferencia",
                         detalle_abono: `Conciliación Múltiple - Movimiento: ${selectedMovimiento.descripcion}`
                     });
+                    if (errAbono) {
+                         console.error(`Error insertando abono para venta ${doc.id}:`, errAbono);
+                         throw new Error(`Error insertando pago para venta ${doc.folio}: ${errAbono.message}`);
+                    }
                 } else {
                     updateDoc.estado_pago = esPagoTotal ? "Pagada" : "Parcial";
-                    await supabase.from("compras").update(updateDoc).eq("id", doc.id);
+                    const { error: errCompra } = await supabase.from("compras").update(updateDoc).eq("id", doc.id);
+                    if (errCompra) {
+                        console.error(`Error actualizando compra ${doc.id}:`, errCompra);
+                        throw new Error(`Error actualizando compra ${doc.folio}: ${errCompra.message}`);
+                    }
+
+                    // También se registra abono en compras si existe la tabla
+                    await supabase.from("compras_abonos").insert({
+                        compra_id: doc.id,
+                        monto_abono: doc.monto,
+                        fecha_abono: new Date().toISOString().split("T")[0],
+                        tipo_abono: "Transferencia",
+                        detalle_abono: `Conciliación Múltiple - Movimiento: ${selectedMovimiento.descripcion}`
+                    }).catch(e => console.warn("Aviso: No se pudo registrar abono en compras:", e));
                 }
             }
 
@@ -1226,20 +1316,29 @@ Ejemplos:
                         nuevoEstadoDoc = 'Parcial'; // Tiene abonos pero no está pagada
                     }
 
-                    await supabase.from(tabla).update({
+                    const { error: errUpdate } = await supabase.from(tabla).update({
                         [campoEstado]: nuevoEstadoDoc,
                         saldo: Math.min(nuevoSaldo, montoTotal),
                         conciliado: false
                     }).eq('id', mov.conciliado_id);
 
+                    if (errUpdate) {
+                        console.error("Error revertiendo documento:", errUpdate);
+                        throw new Error(`Error al restaurar saldo del documento: ${errUpdate.message}`);
+                    }
+
                     // NUEVO: Eliminar el registro del abono/pago histórico
                     const tablaAbonos = (tabla === 'ventas') ? 'abonos' : 'compras_abonos';
                     const campoFK = (tabla === 'ventas') ? 'venta_id' : 'compra_id';
 
-                    await supabase.from(tablaAbonos)
+                    const { error: errDel } = await supabase.from(tablaAbonos)
                         .delete()
                         .eq(campoFK, mov.conciliado_id)
                         .ilike('detalle_abono', `%${mov.descripcion}%`);
+                    
+                    if (errDel) {
+                        console.warn("Aviso: No se pudo eliminar el detalle del abono:", errDel);
+                    }
                 }
             }
 
@@ -1602,22 +1701,33 @@ Ejemplos:
                 [item.tipo === "venta" ? "estado_deuda" : "estado_pago"]: esPagoTotal ? "Pagada" : "Parcial"
             };
 
-            await supabase
+            const { error: errDoc } = await supabase
                 .from(item.tipo === "venta" ? "ventas" : "compras")
                 .update(updateDoc)
                 .eq("id", item.id);
+
+            if (errDoc) {
+                console.error(`Error actualizando documento ${item.id}:`, errDoc);
+                throw errDoc;
+            }
 
             // 3. Registrar Abono
             const abonosTable = item.tipo === "venta" ? "abonos" : "compras_abonos";
             const foreignKey = item.tipo === "venta" ? "venta_id" : "compra_id";
 
-            await supabase.from(abonosTable).insert({
+            const { error: errAbono } = await supabase.from(abonosTable).insert({
                 [foreignKey]: item.id,
                 monto_abono: montoMovimiento,
                 fecha_abono: new Date().toISOString().split("T")[0],
                 tipo_abono: "Transferencia",
                 detalle_abono: `Conciliación Específica - Movimiento: ${mov.descripcion}`
             });
+
+            if (errAbono) {
+                console.error(`Error insertando abono para ${item.tipo} ${item.id}:`, errAbono);
+                // No lanzamos error para no revertir lo ya hecho, pero avisamos
+                alert(`Advertencia: El movimiento se concilió pero no se pudo registrar el detalle del pago: ${errAbono.message}`);
+            }
 
             // Actualizar estado local
             setMovimientos(prev => prev.map(m =>
@@ -1676,22 +1786,31 @@ Ejemplos:
                         [match.tipo === "venta" ? "estado_deuda" : "estado_pago"]: esPagoTotal ? "Pagada" : "Parcial"
                     };
 
-                    await supabase
+                    const { error: errDoc } = await supabase
                         .from(match.tipo === "venta" ? "ventas" : "compras")
                         .update(updateDoc)
                         .eq("id", match.id);
+
+                    if (errDoc) {
+                        console.error(`Error actualizando documento ${match.id} en lote:`, errDoc);
+                        throw errDoc;
+                    }
 
                     // 3. Registrar Abono
                     const abonosTable = match.tipo === "venta" ? "abonos" : "compras_abonos";
                     const foreignKey = match.tipo === "venta" ? "venta_id" : "compra_id";
 
-                    await supabase.from(abonosTable).insert({
+                    const { error: errAbono } = await supabase.from(abonosTable).insert({
                         [foreignKey]: match.id,
                         monto_abono: montoMovimiento,
                         fecha_abono: new Date().toISOString().split("T")[0],
                         tipo_abono: "Transferencia",
                         detalle_abono: `Conciliación Lote - Movimiento: ${mov.descripcion}`
                     });
+
+                    if (errAbono) {
+                        console.warn(`Error insertando abono para ${match.tipo} ${match.id} en lote:`, errAbono);
+                    }
                     exitosos++;
                 } catch (err) {
                     console.error("Error conciliando item en lote:", err);
@@ -1701,7 +1820,7 @@ Ejemplos:
 
             setPreconciliacionOpen(false);
             // Recargar movimientos para ver cambios reales de la base de datos
-            if (selectedPeriod) await cargarMovimientos(selectedPeriod);
+            if (selectedPeriod) await cargarMovimientos(selectedPeriod, currentPage);
 
             alert(`Proceso terminado.\nÉxito: ${exitosos}\nErrores: ${errores}`);
 
@@ -1713,33 +1832,16 @@ Ejemplos:
         }
     };
 
-    // Filtrar movimientos por búsqueda (incluyendo estado)
+    // Los movimientos ya vienen filtrados desde el servidor (Supabase)
     const movimientosFiltrados = useMemo(() => {
-        if (!searchQuery.trim()) return movimientos;
-        const query = searchQuery.toLowerCase().trim();
+        return movimientos;
+    }, [movimientos]);
 
-        // Filtros especiales por estado
-        if (query === 'conciliado' || query === 'conciliados') {
-            return movimientos.filter(m => m.estado === 'conciliado');
-        }
-        if (query === 'pendiente' || query === 'pendientes') {
-            return movimientos.filter(m => m.estado === 'pendiente');
-        }
-        if (query === 'preconciliado' || query === 'preconciliados') {
-            return movimientos.filter(m => m.preconciliado_match);
-        }
-
-        return movimientos.filter(m =>
-            m.descripcion?.toLowerCase().includes(query) ||
-            m.bci_nombre?.toLowerCase().includes(query) ||
-            m.bci_rut?.toLowerCase().includes(query) ||
-            m.bci_comentario_transferencia?.toLowerCase().includes(query) ||
-            m.numero_documento?.toLowerCase().includes(query) ||
-            m.fecha?.includes(query) ||
-            m.estado?.toLowerCase().includes(query) ||
-            m.tipo_gasto?.toLowerCase().includes(query)
-        );
-    }, [movimientos, searchQuery]);
+    const getFolioFromCache = (mov: BancoMovimiento) => {
+        if (!mov.conciliado_id) return "-";
+        const key = `${mov.tipo_conciliacion}:${mov.conciliado_id}`;
+        return foliosCache[key] ? (mov.tipo_conciliacion === 'multiple' ? `Múltiple (ex: ${foliosCache[key]})` : foliosCache[key]) : `#${mov.conciliado_id}`;
+    };
 
     const fmtMoney = (amount: number) => {
         return amount.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
@@ -2055,9 +2157,9 @@ Ejemplos:
                                                                     </div>
                                                                     {mov.conciliado_id && (
                                                                         <div className="flex items-center justify-between text-sm">
-                                                                            <span className="text-gray-500">ID Documento:</span>
+                                                                            <span className="text-gray-500">Folio:</span>
                                                                             <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-indigo-600 dark:text-indigo-400">
-                                                                                #{mov.conciliado_id}
+                                                                                {getFolioFromCache(mov)}
                                                                             </span>
                                                                         </div>
                                                                     )}
@@ -2096,6 +2198,42 @@ Ejemplos:
                     </Table>
                 </div>
             </Card>
+
+            {/* Paginación */}
+            {!loading && totalRecords > ITEMS_PER_PAGE && (
+                <div className="px-6 py-4 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-lg shadow-sm flex items-center justify-between">
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
+                        Página <span className="font-semibold text-gray-900 dark:text-white">{currentPage}</span> de <span className="font-semibold text-gray-900 dark:text-white">{Math.ceil(totalRecords / ITEMS_PER_PAGE)}</span>
+                        <span className="ml-2">({totalRecords} movimientos)</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                setCurrentPage(prev => Math.max(1, prev - 1));
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            disabled={currentPage === 1}
+                            className="text-gray-600 dark:text-gray-300"
+                        >
+                            <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                setCurrentPage(prev => Math.min(Math.ceil(totalRecords / ITEMS_PER_PAGE), prev + 1));
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }}
+                            disabled={currentPage >= Math.ceil(totalRecords / ITEMS_PER_PAGE)}
+                            className="text-gray-600 dark:text-gray-300"
+                        >
+                            Siguiente <ChevronRight className="h-4 w-4 ml-1" />
+                        </Button>
+                    </div>
+                </div>
+            )}
 
             {/* Dialog Conciliacion */}
             <Dialog open={conciliarOpen} onOpenChange={setConciliarOpen}>
