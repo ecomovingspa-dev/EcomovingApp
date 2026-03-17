@@ -82,6 +82,7 @@ export default function VentasPage() {
     tipo_abono: "",
     detalle_abono: "",
     monto_abono: "",
+    gasto_factoring: "",
   });
   const [guardandoAbono, setGuardandoAbono] = useState(false);
   const [abonosHistorial, setAbonosHistorial] = useState<any[]>([]);
@@ -450,11 +451,11 @@ export default function VentasPage() {
 
       const { data: abonos } = await supabase
         .from("abonos")
-        .select("monto_abono")
+        .select("monto_abono, gasto_factoring")
         .eq("venta_id", ventaExistente.id);
 
       const sumAbonos =
-        abonos?.reduce((sum, a) => sum + (a.monto_abono || 0), 0) || 0;
+        abonos?.reduce((sum, a) => sum + (a.monto_abono || 0) + (a.gasto_factoring || 0), 0) || 0;
       const nuevoSaldo = ventaExistente.mnt_total - nuevoTotalNc - sumAbonos;
 
       updates.saldo = nuevoSaldo;
@@ -577,6 +578,7 @@ export default function VentasPage() {
       tipo_abono: "",
       detalle_abono: "",
       monto_abono: "",
+      gasto_factoring: "",
     });
     setAbonoOpen(venta.id);
   };
@@ -593,17 +595,23 @@ export default function VentasPage() {
       const montoAbono = abonoForm.monto_abono
         ? parseFloat(abonoForm.monto_abono)
         : 0;
-      if (montoAbono <= 0) {
-        alert("El monto del abono debe ser mayor a 0");
+      
+      const gastoFactoring = abonoForm.gasto_factoring
+        ? parseFloat(abonoForm.gasto_factoring)
+        : 0;
+
+      if (montoAbono <= 0 && gastoFactoring <= 0) {
+        alert("El monto del abono o el gasto factoring debe ser mayor a 0");
         return;
       }
 
-      const nuevoSaldo = Math.max(0, venta.saldo - montoAbono);
+      const nuevoSaldo = Math.max(0, venta.saldo - montoAbono - gastoFactoring);
       const nuevoEstado = nuevoSaldo === 0 ? "Pagada" : venta.estado_deuda;
 
       const { error: errorAbono } = await supabase.from("abonos").insert({
         venta_id: ventaId,
         monto_abono: montoAbono,
+        gasto_factoring: gastoFactoring,
         fecha_abono:
           abonoForm.fecha_abono || new Date().toISOString().split("T")[0],
         tipo_abono: abonoForm.tipo_abono || "transferencia",
@@ -631,6 +639,7 @@ export default function VentasPage() {
         tipo_abono: "",
         detalle_abono: "",
         monto_abono: "",
+        gasto_factoring: "",
       });
 
       alert(
@@ -1255,6 +1264,11 @@ export default function VentasPage() {
                                         <div>
                                           <div className="font-medium text-gray-800 dark:text-gray-200">
                                             ${abono.monto_abono?.toLocaleString()}
+                                            {abono.gasto_factoring > 0 && (
+                                              <span className="text-[10px] text-blue-500 ml-1">
+                                                (+ ${abono.gasto_factoring.toLocaleString()} Fact.)
+                                              </span>
+                                            )}
                                           </div>
                                           <div className="text-[10px] text-gray-500 dark:text-gray-400">
                                             {abono.fecha_abono}
@@ -1329,6 +1343,9 @@ export default function VentasPage() {
                                       <SelectItem value="nota_credito">
                                         Nota de Crédito
                                       </SelectItem>
+                                      <SelectItem value="factoring">
+                                        Factoring
+                                      </SelectItem>
                                       <SelectItem value="otro">Otro</SelectItem>
                                     </SelectContent>
                                   </Select>
@@ -1353,6 +1370,31 @@ export default function VentasPage() {
                                     />
                                   </div>
                                 </div>
+                                {abonoForm.tipo_abono === "factoring" && (
+                                  <div className="space-y-1">
+                                    <Label className="text-[10px] uppercase text-gray-500 font-semibold">
+                                      Gasto Factoring
+                                    </Label>
+                                    <div className="relative">
+                                      <DollarSign className="absolute left-2 top-2 h-3.5 w-3.5 text-gray-400" />
+                                      <Input
+                                        type="number"
+                                        value={abonoForm.gasto_factoring}
+                                        onChange={(e) =>
+                                          setAbonoForm((prev) => ({
+                                            ...prev,
+                                            gasto_factoring: e.target.value,
+                                          }))
+                                        }
+                                        className="h-8 text-xs pl-7 border-blue-200 bg-blue-50/30"
+                                        placeholder="0"
+                                      />
+                                    </div>
+                                    <p className="text-[9px] text-blue-600 italic px-1">
+                                      El total pagado será Abono + Gasto Factoring
+                                    </p>
+                                  </div>
+                                )}
                                 <div className="space-y-1">
                                   <Label className="text-[10px] uppercase text-gray-500 font-semibold">
                                     Detalle
