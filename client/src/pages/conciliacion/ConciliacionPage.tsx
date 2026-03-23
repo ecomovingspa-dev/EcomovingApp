@@ -498,15 +498,22 @@ Ejemplos:
 
     const cargarCategorias = async () => {
         try {
+            console.log("Banco: Intentando cargar categorías desde 'banco_categorias'...");
             const { data, error } = await supabase
                 .from("banco_categorias")
                 .select("nombre")
                 .order("nombre", { ascending: true });
 
-            if (error) throw error;
-            setCategorias(data?.map(c => c.nombre) || []);
+            if (error) {
+                console.error("Banco: Error al cargar categorías:", error);
+                throw error;
+            }
+            
+            const list = data?.map(c => c.nombre) || [];
+            console.log("Banco: Categorías encontradas:", list.length, list);
+            setCategorias(list);
         } catch (error) {
-            console.error("Error loading categorias:", error);
+            console.error("Banco: Error fatal cargando categorias:", error);
         }
     };
 
@@ -878,6 +885,7 @@ Ejemplos:
         setConciliarOpen(true);
         setMatchTab("sugerencias");
         setMultipleSelectedDocs([]);
+        cargarCategorias(); // Proactive reload of categories
         buscarSugerencias(mov);
     };
 
@@ -1900,7 +1908,7 @@ Ejemplos:
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         <ArrowRightLeft className="h-8 w-8 text-indigo-600" />
                         Conciliación Bancaria
-                        <span className="text-[10px] bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full font-mono font-normal">v1.2-fixed</span>
+                        <span className="text-[10px] bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full font-mono font-normal">v1.2-fixed-v2</span>
                     </h1>
                 </div>
 
