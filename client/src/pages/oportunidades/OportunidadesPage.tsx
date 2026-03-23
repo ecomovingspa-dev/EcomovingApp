@@ -417,6 +417,16 @@ export default function OportunidadesPage() {
                     .replace(/\.\d{3}Z$/i, "")
                     .replace(/Z$/i, "")
                     .replace(/\+00:00$/i, "");
+
+                  // --- FIX: Normalización de formato DD/MM/YYYY para PostgreSQL ---
+                  // Si detectamos el formato chileno/latino, lo convertimos a ISO (YYYY-MM-DD)
+                  // para evitar el error "date/time field value out of range"
+                  if (fechaCierreStr.match(/^\d{1,2}\/\d{1,2}\/\d{4}/)) {
+                    const [datePart, ...timeParts] = fechaCierreStr.split(" ");
+                    const [day, month, year] = datePart.split("/");
+                    const timePart = timeParts.join(" ");
+                    fechaCierreStr = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}${timePart ? " " + timePart : ""}`;
+                  }
                 }
               }
 
