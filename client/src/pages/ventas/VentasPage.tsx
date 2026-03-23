@@ -451,7 +451,7 @@ export default function VentasPage() {
 
       const { data: abonos } = await supabase
         .from("abonos")
-        .select("monto_abono, gasto_factoring")
+        .select("*")
         .eq("venta_id", ventaExistente.id);
 
       const sumAbonos =
@@ -608,15 +608,23 @@ export default function VentasPage() {
       const nuevoSaldo = Math.max(0, venta.saldo - montoAbono - gastoFactoring);
       const nuevoEstado = nuevoSaldo === 0 ? "Pagada" : venta.estado_deuda;
 
-      const { error: errorAbono } = await supabase.from("abonos").insert({
+      // Construir objeto de inserción dinámicamente
+      const insertData: any = {
         venta_id: ventaId,
         monto_abono: montoAbono,
-        gasto_factoring: gastoFactoring,
-        fecha_abono:
-          abonoForm.fecha_abono || new Date().toISOString().split("T")[0],
+        fecha_abono: abonoForm.fecha_abono || new Date().toISOString().split("T")[0],
         tipo_abono: abonoForm.tipo_abono || "transferencia",
         detalle_abono: abonoForm.detalle_abono || "",
-      });
+      };
+
+      // Solo incluimos gasto_factoring si tiene un valor real para evitar errores de esquema
+      if (gastoFactoring > 0) {
+        insertData.gasto_factoring = gastoFactoring;
+      }
+
+      const { error: errorAbono } = await supabase
+        .from("abonos")
+        .insert(insertData);
 
       if (errorAbono) throw errorAbono;
 

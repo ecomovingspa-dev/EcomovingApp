@@ -499,7 +499,7 @@ Ejemplos:
     const cargarCategorias = async () => {
         try {
             const { data, error } = await supabase
-                .from("banco_categorias_gasto")
+                .from("banco_categorias")
                 .select("nombre")
                 .order("nombre", { ascending: true });
 
@@ -528,7 +528,7 @@ Ejemplos:
             // If it's a new category, add it to the list and database
             if (tipoGasto && !categorias.includes(tipoGasto)) {
                 await supabase
-                    .from("banco_categorias_gasto")
+                    .from("banco_categorias")
                     .insert({ nombre: tipoGasto });
 
                 setCategorias(prev => [...prev, tipoGasto].sort());
@@ -1164,8 +1164,6 @@ Ejemplos:
 
                 if (doc.tipo === 'venta') {
                     updateDoc.estado_deuda = esPagoTotal ? "Pagada" : "Parcial";
-                    updateDoc.fecha_abono = new Date().toISOString().split("T")[0];
-                    updateDoc.monto_abono = doc.monto;
 
                     const { error: errVenta } = await supabase.from("ventas").update(updateDoc).eq("id", doc.id);
                     if (errVenta) {
@@ -1209,6 +1207,16 @@ Ejemplos:
                     ? { ...m, estado: "conciliado", tipo_conciliacion: "multiple", conciliado_id: multipleSelectedDocs[0].id }
                     : m
             ));
+
+            // Populate cache with the first document's folio for reference
+            if (multipleSelectedDocs.length > 0) {
+                const firstDoc = multipleSelectedDocs[0];
+                setFoliosCache(prev => ({
+                    ...prev,
+                    [`multiple:${firstDoc.id}`]: String(firstDoc.folio)
+                }));
+            }
+
             alert("¡Conciliación múltiple exitosa!");
         } catch (error: any) {
             alert("Error: " + error.message);
@@ -1277,6 +1285,12 @@ Ejemplos:
                     ? { ...m, estado: "conciliado", tipo_conciliacion: item.tipo, conciliado_id: item.id }
                     : m
             ));
+
+            // Populate cache immediately so the Folio is visible
+            setFoliosCache(prev => ({
+                ...prev,
+                [`${item.tipo}:${item.id}`]: String(item.folio)
+            }));
 
             setSelectedMovimiento(null);
             alert("¡Conciliación exitosa!");
@@ -1736,6 +1750,12 @@ Ejemplos:
                     : m
             ));
 
+            // Populate cache immediately
+            setFoliosCache(prev => ({
+                ...prev,
+                [`${item.tipo}:${item.id}`]: String(item.folio)
+            }));
+
             alert("¡Conciliado exitosamente!");
         } catch (e: any) {
             console.error("Error conciliando:", e);
@@ -1839,8 +1859,34 @@ Ejemplos:
 
     const getFolioFromCache = (mov: BancoMovimiento) => {
         if (!mov.conciliado_id) return "-";
-        const key = `${mov.tipo_conciliacion}:${mov.conciliado_id}`;
-        return foliosCache[key] ? (mov.tipo_conciliacion === 'multiple' ? `Múltiple (ex: ${foliosCache[key]})` : foliosCache[key]) : `#${mov.conciliado_id}`;
+        
+        const key = `${mov.tipo_conciliacion || 'venta'}:${mov.conciliado_id}`;
+        const folio = foliosCache[key];
+        
+        // Si ya está en el caché, lo devolvemos
+        if (folio) {
+            if (mov.tipo_conciliacion === 'multiple') {
+                return `Múltiple (ex: ${folio})`;
+            }
+            return folio;
+        }
+
+        // FALLBACK INTELIGENTE (Mapping): Si no está en el caché, intentamos extraerlo de la glosa/comentarios
+        // que vienen directamente del banco, tal como sugiere el usuario ("Factura 3420" en la descripción).
+        const textToSearch = `${mov.descripcion} ${mov.bci_glosa_detalle || ''} ${mov.bci_comentario_transferencia || ''} ${mov.numero_documento || ''}`;
+        
+        // Regex para buscar "Factura [numero]", "Factura N° [numero]", etc.
+        const matches = textToSearch.match(/Factura\s*N?°?\s*(\d+)/i) || 
+                       textToSearch.match(/Factura\s*(\d+)/i) ||
+                       textToSearch.match(/Folio\s*(\d+)/i) ||
+                       textToSearch.match(/DTE\s*(\d+)/i);
+        
+        if (matches && matches[1]) {
+            return matches[1];
+        }
+
+        // Si falló la extracción y no está en caché, mostramos el ID como último recurso
+        return `#${mov.conciliado_id}`;
     };
 
     const fmtMoney = (amount: number) => {
@@ -2006,8 +2052,9 @@ Ejemplos:
                     <Table>
                         <TableHeader className="bg-gray-100 dark:bg-gray-800">
                             <TableRow>
+                                <TableHead className="w-[5ch]">ID</TableHead>
                                 <TableHead className="w-[100px]">Fecha</TableHead>
-                                <TableHead className="min-w-[300px]">Descripción</TableHead>
+                                <TableHead className="min-w-[250px]">Descripción</TableHead>
                                 <TableHead className="w-[150px]">Tipo de Gasto</TableHead>
                                 <TableHead className="text-right text-red-600 w-[120px]">Cargos</TableHead>
                                 <TableHead className="text-right text-green-600 w-[120px]">Abonos</TableHead>
@@ -2019,14 +2066,14 @@ Ejemplos:
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center py-10">
+                                    <TableCell colSpan={9} className="text-center py-10">
                                         <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500" />
                                         <p className="mt-2 text-gray-500">Cargando movimientos...</p>
                                     </TableCell>
                                 </TableRow>
                             ) : movimientosFiltrados.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={8} className="text-center py-10 text-gray-500">
+                                    <TableCell colSpan={9} className="text-center py-10 text-gray-500">
                                         {searchQuery ? "No hay movimientos que coincidan con la búsqueda" : selectedPeriod ? "Este período no tiene movimientos" : "Sube una cartola para comenzar"}
                                     </TableCell>
                                 </TableRow>
@@ -2042,8 +2089,9 @@ Ejemplos:
                                                     : ''
                                         }
                                     >
+                                        <TableCell className="text-xs text-gray-400 font-mono">{mov.id}</TableCell>
                                         <TableCell className="font-medium whitespace-nowrap">{mov.fecha}</TableCell>
-                                        <TableCell className="whitespace-normal break-words py-4 leading-relaxed min-w-[300px]">
+                                        <TableCell className="whitespace-normal break-words py-4 leading-relaxed min-w-[250px]">
                                             <div className="flex flex-col gap-1">
                                                 <span className="font-bold text-gray-900 dark:text-gray-100">{mov.descripcion}</span>
                                                 {mov.bci_nombre && (
@@ -2082,7 +2130,7 @@ Ejemplos:
                                         </TableCell>
                                         <TableCell className="text-center">
                                             {mov.estado === 'conciliado' ? (
-                                                <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200 border-none">
+                                                <Badge variant="default" className="bg-green-600 text-white hover:bg-green-700 border-none">
                                                     <Check className="w-3 h-3 mr-1" /> Conciliado
                                                 </Badge>
                                             ) : mov.preconciliado_match ? (

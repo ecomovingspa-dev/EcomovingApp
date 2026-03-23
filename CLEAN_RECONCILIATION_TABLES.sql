@@ -8,6 +8,6 @@ TRUNCATE TABLE banco_movimientos RESTART IDENTITY CASCADE;
 TRUNCATE TABLE banco_cartolas RESTART IDENTITY CASCADE;
 
 -- Opcional: Si deseas limpiar también las categorías de gasto personalizadas (descomenta si quieres)
--- TRUNCATE TABLE banco_categorias_gasto RESTART IDENTITY CASCADE;
+-- TRUNCATE TABLE banco_categorias RESTART IDENTITY CASCADE;
 
 COMMENT ON TABLE banco_movimientos IS 'Tabla limpia para nueva carga de cartolas detalladas BCI';

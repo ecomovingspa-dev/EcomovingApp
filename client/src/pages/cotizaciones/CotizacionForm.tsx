@@ -977,7 +977,7 @@ export default function CotizacionForm({
     }
   };
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent, stayAfterSave: boolean = false) => {
     if (e) e.preventDefault();
     if (!cotizacion.cuenta_id) {
       setMensaje("⚠️ Debe seleccionar una cuenta (cliente)");
@@ -1051,23 +1051,37 @@ export default function CotizacionForm({
           .eq("id", id);
         if (error) throw error;
         setMensaje("✅ Cotización actualizada");
+        setUltimoGuardado(new Date());
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("cotizaciones")
-          .insert([dataCotizacion]);
+          .insert([dataCotizacion])
+          .select()
+          .single();
         if (error) throw error;
         setMensaje("✅ Cotización creada");
+        setUltimoGuardado(new Date());
+
+        if (stayAfterSave && data?.id) {
+          // Si nos quedamos, debemos navegar a la URL de edición para que los siguientes guardados sean updates
+          navigate(`/cotizaciones/${data.id}`, { replace: true });
+        }
       }
 
       if (onSave) onSave();
 
-      setTimeout(() => {
-        if (onClose) {
-          onClose();
-        } else {
-          navigate("/cotizaciones");
-        }
-      }, 1500);
+      if (!stayAfterSave) {
+        setTimeout(() => {
+          if (onClose) {
+            onClose();
+          } else {
+            navigate("/cotizaciones");
+          }
+        }, 1500);
+      } else {
+        // Si nos quedamos, ocultamos el mensaje después de un momento
+        setTimeout(() => setMensaje(""), 3000);
+      }
     } catch (error: any) {
       console.error("Error:", error);
       setMensaje("❌ Error: " + error.message);
@@ -1144,7 +1158,7 @@ export default function CotizacionForm({
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => handleSubmit()}
+                onClick={() => onClose ? onClose() : navigate("/cotizaciones")}
                 className="hover:bg-slate-100 dark:hover:bg-gray-700 rounded-full"
               >
                 <ArrowLeft className="h-5 w-5 text-slate-600 dark:text-gray-300" />
@@ -1234,20 +1248,33 @@ export default function CotizacionForm({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => handleSubmit()}
+                  onClick={() => navigate("/cotizaciones")}
                   className="text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200"
                 >
                   Regresar
                 </Button>
-                <Button
-                  onClick={handleSubmit}
-                  disabled={guardando}
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md shadow-blue-200"
-                >
-                  {getIconoBoton()}
-                  {getTextoBoton()}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => handleSubmit(e, true)}
+                    disabled={guardando}
+                    className="border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                    title="Guardar sin salir"
+                  >
+                    <Save className="h-4 w-4 mr-1.5" />
+                    Guardar
+                  </Button>
+                  <Button
+                    onClick={(e) => handleSubmit(e, false)}
+                    disabled={guardando}
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md shadow-blue-200"
+                  >
+                    {getIconoBoton()}
+                    {getTextoBoton()}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

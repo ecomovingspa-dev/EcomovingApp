@@ -6,7 +6,7 @@
 -- comisiones bancarias, impuestos, etc.)
 -- 
 -- NO MODIFICA ninguna tabla existente.
--- REUTILIZA banco_categorias_gasto existente.
+-- REUTILIZA banco_categorias existente.
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS conciliaciones_manuales (
