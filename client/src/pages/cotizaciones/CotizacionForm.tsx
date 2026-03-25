@@ -28,6 +28,7 @@ const CATEGORIAS = [
 export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClose, onSave }: CotizacionFormProps) {
   const { id: paramId } = useParams();
   const id = propId || paramId;
+  console.log("[CotizacionForm] Rendering with ID:", id, { propId, paramId });
   
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -267,7 +268,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
           </Button>
           <div>
             <h1 className="text-4xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
-               {id ? `EDITOR COTIZACIÓN ${cotizacion.numero_cotizacion}` : "NUEVA REQUERIMIENTO COMERCIAL"}
+               {id ? `EDITOR COTIZACIÓN ${cotizacion.numero_cotizacion || "(Cargando...)"}` : "NUEVA REQUERIMIENTO COMERCIAL"}
             </h1>
             <p className="text-gray-500 dark:text-gray-400 font-medium">Configure los detalles técnicos y financieros de la propuesta.</p>
           </div>
