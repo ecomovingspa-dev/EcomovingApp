@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cotizacion, Item, SubCosto, Cuenta, Contacto } from "../../types";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,10 @@ const CATEGORIAS = [
   { id: "tecnologia", label: "Tecnología / USB", icon: "🔋" },
 ];
 
-export default function CotizacionForm({ id, cuentaId, contactoId, onClose, onSave }: CotizacionFormProps) {
+export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClose, onSave }: CotizacionFormProps) {
+  const { id: paramId } = useParams();
+  const id = propId || paramId;
+  
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
