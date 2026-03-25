@@ -172,10 +172,55 @@ export default function CotizacionesPage() {
     navigate(`/cotizaciones/${id}`, { replace: true });
   };
 
-  const handleNueva = () => {
-    setSelectedId(undefined);
-    setViewMode("form");
-    navigate("/cotizaciones/nueva", { replace: true });
+  const handleNueva = async () => {
+    setCargando(true);
+    try {
+      // Cálculo del número correlativo inmediato
+      const { count } = await supabase.from("cotizaciones").select("id", { count: 'exact', head: true });
+      const nextNum = (count || 0) + 5126;
+      const numero = `COT-2026-${nextNum}`;
+
+      const { data, error } = await supabase
+        .from("cotizaciones")
+        .insert([{ 
+           numero_cotizacion: numero,
+           estado_cotizacion: 'Borrador',
+           items: [],
+           total: 0,
+           total_neto: 0,
+           iva: 0,
+           costo_total: 0,
+           mg: 0,
+           ganancias: 0,
+           id_mercado_publico: ''
+        }])
+        .select()
+        .single();
+      
+      if (error) {
+         // Si falla por columna, intentamos sin las nuevas
+         if (error.message.toLowerCase().includes("fecha") || error.message.toLowerCase().includes("mercado")) {
+            const { data: retryData, error: retryError } = await supabase
+              .from("cotizaciones")
+              .insert([{ numero_cotizacion: numero, estado_cotizacion: 'Borrador', items: [] }])
+              .select().single();
+            if (retryError) throw retryError;
+            setSelectedId(String(retryData.id));
+         } else {
+            throw error;
+         }
+      } else {
+        setSelectedId(String(data.id));
+      }
+      
+      setViewMode("form");
+      navigate(`/cotizaciones/${selectedId}`, { replace: true });
+    } catch (e: any) {
+      console.error("Error al crear:", e);
+      setMensaje("Error al crear cotización rápida: " + e.message);
+    } finally {
+      setCargando(false);
+    }
   };
 
   const handleCerrarForm = () => {

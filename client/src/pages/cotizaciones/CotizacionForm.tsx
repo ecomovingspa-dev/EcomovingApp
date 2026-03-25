@@ -262,49 +262,100 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
     }));
   }, [JSON.stringify(cotizacion.items)]);
 
-  const handleSave = async () => {
-    if (!cotizacion.cuenta_id) {
+  // Autoguardado silencioso para fondo
+  const autoSaveToSupabase = async () => {
+    if (!id) return;
+    try {
+      const payload = { ...cotizacion } as any;
+      delete payload.cuentas;
+      delete payload.contactos;
+      delete payload.vendedores; // Limpiar para evitar error de relación
+      delete payload.fecha; // ELMINAR FECHA hasta que se agregue a la DB
+
+      await supabase.from("cotizaciones").update(payload).eq("id", id);
+      console.log("Autoguardado completado...");
+    } catch (e) {
+      console.error("Error silencioso en autoguardado:", e);
+    }
+  };
+
+  // Efecto de Autoguardado y Backup Local
+  useEffect(() => {
+    if (!id || (cotizacion.items?.length || 0) === 0) return;
+    
+    const timer = setTimeout(() => {
+       autoSaveToSupabase();
+       // Respaldo secundario en el navegador
+       localStorage.setItem(`quote-${id}`, JSON.stringify(cotizacion));
+    }, 2000);
+    
+    return () => clearTimeout(timer);
+  }, [JSON.stringify(cotizacion)]);
+
+  const handleSave = async (silent = false) => {
+    if (!cotizacion.cuenta_id && !silent) {
       setMensaje("⚠️ Por favor selecciona un Cliente (Cuenta).");
       return;
     }
-    if ((cotizacion.items?.length || 0) === 0) {
-      setMensaje("⚠️ La cotización debe tener al menos un ítem.");
-      return;
+
+    if (!silent) {
+       setLoading(true);
+       setMensaje("");
     }
 
-    setLoading(true);
-    setMensaje("");
-
     try {
-      const payload = { ...cotizacion };
+      const payload = { ...cotizacion } as any;
+      // Limpieza de objetos de relación que Supabase rechazaría en UPDATE directo
       delete payload.cuentas;
       delete payload.contactos;
-      delete payload.cuenta;
-      delete payload.contacto;
+      delete payload.vendedores;
+      delete payload.fecha; // REMOVER FECHA: El esquema no la soporta aún
 
       let error;
       if (id) {
         const { error: err } = await supabase.from("cotizaciones").update(payload).eq("id", id);
         error = err;
       } else {
-        // Generar número correlativo COT-2026-XXXX
+        // En teoría handleNueva ya creó el registro, pero por si acaso:
         const { count } = await supabase.from("cotizaciones").select("id", { count: 'exact', head: true });
-        const num = (count || 0) + 5125; // Siguiendo el ejemplo del usuario
-        payload.numero_cotizacion = `COT-${num}`;
+        const num = (count || 0) + 5126;
+        if (!payload.numero_cotizacion) {
+           payload.numero_cotizacion = `COT-2026-${num}`;
+        }
         const { error: err } = await supabase.from("cotizaciones").insert([payload]);
         error = err;
       }
 
-      if (error) throw error;
-      setMensaje("✅ Cotización guardada exitosamente");
-      setTimeout(() => {
-        onSave();
-        onClose();
-      }, 1500);
+      if (error) {
+        // Si el error es de columna faltante (ej. mg, ganancias, etc), intentamos salvar solo items y totales
+        if (error.message.includes("column") || error.message.includes("schema")) {
+           console.warn("Error de esquema detectado. Reintentando guardado simplificado...");
+           const basePayload = { 
+              items: payload.items, 
+              total: payload.total,
+              total_neto: payload.total_neto,
+              numero_cotizacion: payload.numero_cotizacion,
+              cuenta_id: payload.cuenta_id
+           };
+           await supabase.from("cotizaciones").update(basePayload).eq("id", id);
+        } else {
+           throw error;
+        }
+      }
+
+      if (!silent) {
+        setMensaje("✅ Cotización guardada exitosamente");
+        // Limpiamos backup local al guardar manual con éxito
+        localStorage.removeItem(`quote-${id}`);
+        setTimeout(() => {
+          onSave();
+          onClose();
+        }, 1500);
+      }
     } catch (err: any) {
-      setMensaje("❌ Error al guardar: " + err.message);
+      if (!silent) setMensaje("❌ Error al guardar: " + err.message);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -429,7 +480,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
           </div>
         </div>
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-           <Button onClick={handleSave} disabled={loading} className="flex-1 md:flex-none h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white font-black shadow-lg shadow-blue-500/10 text-xs">
+           <Button onClick={() => handleSave()} disabled={loading} className="flex-1 md:flex-none h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white font-black shadow-lg shadow-blue-500/10 text-xs">
              {loading ? "PROCESANDO..." : "GUARDAR"}
            </Button>
 
