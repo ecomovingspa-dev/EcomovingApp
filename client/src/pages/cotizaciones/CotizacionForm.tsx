@@ -56,21 +56,53 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   const [cuentaSearch, setCuentaSearch] = useState("");
   const [contactoSearch, setContactoSearch] = useState("");
 
-  const filteredCuentas = useMemo(() => {
-    const search = (cuentaSearch || "").trim().toLowerCase();
-    if (!cuentas) return [];
-    return cuentas
-      .filter(c => c && c.cliente && c.cliente.toLowerCase().startsWith(search))
-      .slice(0, 100);
-  }, [cuentas, cuentaSearch]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      buscarCuentas(cuentaSearch);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [cuentaSearch]);
 
-  const filteredContactos = useMemo(() => {
-    const search = (contactoSearch || "").trim().toLowerCase();
-    if (!contactos) return [];
-    return contactos
-      .filter(c => c && c.nombre && c.nombre.toLowerCase().startsWith(search))
-      .slice(0, 100);
-  }, [contactos, contactoSearch]);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      buscarContactos(contactoSearch);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [contactoSearch]);
+
+  const buscarCuentas = async (search: string) => {
+    try {
+      let query = supabase.from("cuentas").select("id, cliente").order("cliente").limit(100);
+      if (search) {
+        query = query.ilike("cliente", `%${search}%`);
+      }
+      const { data } = await query;
+      setCuentas(data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const buscarContactos = async (search: string) => {
+    try {
+      if (!cotizacion.cuenta_id && !search) return;
+      let query = supabase.from("contactos").select("id, nombre").order("nombre").limit(100);
+      
+      // Si hay cuenta seleccionada, filtrar por ella. Si no, permitir búsqueda global si hay texto.
+      if (cotizacion.cuenta_id) {
+        query = query.eq("cuenta_id", cotizacion.cuenta_id);
+      }
+      
+      if (search) {
+        query = query.ilike("nombre", `%${search}%`);
+      }
+      
+      const { data } = await query;
+      setContactos(data || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -467,7 +499,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[400px] p-0 z-[9999]">
-                    <Command>
+                    <Command shouldFilter={false}>
                       <CommandInput 
                         placeholder="Buscar cliente..." 
                         value={cuentaSearch}
@@ -475,11 +507,11 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                       />
                       <CommandList className="max-h-[400px] overflow-y-auto">
                         <CommandEmpty>No se encontró el cliente.</CommandEmpty>
-                        <CommandGroup heading="Clientes Disponibles">
-                          {filteredCuentas.map((c) => (
+                        <CommandGroup heading="Resultados">
+                          {cuentas.map((c) => (
                             <CommandItem
                               key={c.id}
-                              value={c.cliente}
+                              value={c.id}
                               onSelect={() => {
                                 handleAccountChange(c.id);
                                 setOpenCuenta(false);
@@ -520,7 +552,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[300px] p-0 z-[9999]">
-                    <Command>
+                    <Command shouldFilter={false}>
                       <CommandInput 
                         placeholder="Buscar contacto..." 
                         value={contactoSearch}
@@ -528,11 +560,11 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                       />
                       <CommandList className="max-h-[400px] overflow-y-auto">
                         <CommandEmpty>No se encontró el contacto.</CommandEmpty>
-                        <CommandGroup heading="Contactos Disponibles">
-                          {filteredContactos.map((c) => (
+                        <CommandGroup heading="Resultados">
+                          {contactos.map((c) => (
                             <CommandItem
                               key={c.id}
-                              value={c.nombre}
+                              value={c.id}
                               onSelect={() => {
                                 setCotizacion(prev => ({ ...prev, contacto_id: c.id }));
                                 setOpenContacto(false);
