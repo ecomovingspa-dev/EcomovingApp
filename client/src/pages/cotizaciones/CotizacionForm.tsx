@@ -536,9 +536,33 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
           
           {/* Tarjeta de Cliente */}
           <section className="bg-white dark:bg-gray-900 p-8 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm space-y-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-8 w-2 bg-blue-600 rounded-full"></div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">CLIENTE Y EJECUCIÓN</h2>
+            <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-2 bg-blue-600 rounded-full"></div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">CLIENTE Y EJECUCIÓN</h2>
+              </div>
+              
+              <div className="flex flex-wrap gap-3">
+                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">FECHA:</label>
+                  <input 
+                    type="date"
+                    value={cotizacion.fecha || ""}
+                    onChange={(e) => setCotizacion(prev => ({ ...prev, fecha: e.target.value }))}
+                    className="bg-transparent border-none text-[11px] font-black text-blue-600 focus:ring-0 p-0 w-28 uppercase"
+                  />
+                </div>
+                <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800 px-3 py-1.5 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-tighter">ID MERCADO:</label>
+                  <input 
+                    type="text"
+                    value={cotizacion.id_mercado_publico || ""}
+                    onChange={(e) => setCotizacion(prev => ({ ...prev, id_mercado_publico: e.target.value }))}
+                    placeholder="ID Licitación"
+                    className="bg-transparent border-none text-[11px] font-black text-blue-600 focus:ring-0 p-0 w-32 placeholder:text-gray-300 uppercase"
+                  />
+                </div>
+              </div>
             </div>
             
             {/* Fila 1: Principales (3 Columnas) */}
