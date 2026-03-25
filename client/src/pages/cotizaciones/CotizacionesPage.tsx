@@ -182,23 +182,35 @@ export default function CotizacionesPage() {
       const numero = `COT-2026-${nextNum}`;
 
       let dataId: string | null = null;
+      const baseDraft = { 
+        numero_cotizacion: numero,
+        estado_cotizacion: 'Borrador',
+        items: [],
+        total: 0,
+        total_neto: 0,
+        iva: 0,
+        costo_total: 0,
+        mg: 0,
+        ganancias: 0,
+        id_mercado_publico: ''
+      };
+
       const { data, error } = await supabase
         .from("cotizaciones")
-        .insert([{ 
-           numero_cotizacion: numero,
-           estado_cotizacion: 'Borrador',
-           items: [],
-           id_mercado_publico: ''
-        }])
+        .insert([baseDraft])
         .select('id')
         .single();
       
       if (error) {
-         // Si falla por columna, intentamos sin las nuevas
-         if (error.message.toLowerCase().includes("fecha") || error.message.toLowerCase().includes("mercado")) {
+         // Si falla por columna faltante (ej. id_mercado_publico o fecha)
+         if (error.message.toLowerCase().includes("column") || error.message.toLowerCase().includes("schema")) {
+            const retryDraft = { ...baseDraft };
+            delete (retryDraft as any).id_mercado_publico;
+            delete (retryDraft as any).fecha;
+            
             const { data: retryData, error: retryError } = await supabase
               .from("cotizaciones")
-              .insert([{ numero_cotizacion: numero, estado_cotizacion: 'Borrador', items: [] }])
+              .insert([retryDraft])
               .select('id').single();
             if (retryError) throw retryError;
             dataId = String(retryData.id);
