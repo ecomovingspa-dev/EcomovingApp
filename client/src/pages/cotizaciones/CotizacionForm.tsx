@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cotizacion, Item, SubCosto, Cuenta, Contacto } from "../../types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Trash2, Save, X, Image as ImageIcon, Box, FileText, ChevronDown, ChevronUp, Layers, MousePointer2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import BotonExportarPDF from "./CotizacionPDF";
 
 interface CotizacionFormProps {
   id?: string;
@@ -28,7 +28,6 @@ const CATEGORIAS = [
 export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClose, onSave }: CotizacionFormProps) {
   const { id: paramId } = useParams();
   const id = propId || paramId;
-  console.log("[CotizacionForm] Rendering with ID:", id, { propId, paramId });
   
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -268,12 +267,25 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
           </Button>
           <div>
             <h1 className="text-4xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
-               {id ? `EDITOR COTIZACIÓN ${cotizacion.numero_cotizacion || "(Cargando...)"}` : "NUEVA REQUERIMIENTO COMERCIAL"}
+               {id ? `EDITOR COTIZACIÓN ${cotizacion.numero_cotizacion || ""}` : "NUEVA REQUERIMIENTO COMERCIAL"}
             </h1>
             <p className="text-gray-500 dark:text-gray-400 font-medium">Configure los detalles técnicos y financieros de la propuesta.</p>
           </div>
         </div>
-        <div className="flex gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+           {id && (
+             <BotonExportarPDF
+               cotizacion={cotizacion}
+               cuenta={cuentas.find(c => c.id === cotizacion.cuenta_id)}
+               contacto={contactos.find(c => c.id === cotizacion.contacto_id)}
+               items={cotizacion.items || []}
+               totales={{ 
+                 neto: cotizacion.total_neto || 0, 
+                 iva: cotizacion.iva || 0, 
+                 total: cotizacion.total || 0 
+               }}
+             />
+           )}
            <Button variant="outline" onClick={onClose} className="flex-1 md:flex-none h-12 px-8 font-bold text-gray-700 dark:text-gray-300">
              CANCELAR
            </Button>
