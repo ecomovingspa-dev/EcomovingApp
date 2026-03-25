@@ -4,7 +4,10 @@ import { supabase } from "../../lib/supabase";
 import type { Cotizacion, Item, SubCosto, Cuenta, Contacto } from "../../types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Save, X, Image as ImageIcon, Box, FileText, ChevronDown, ChevronUp, Layers, MousePointer2, ArrowLeft, Copy } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { Plus, Trash2, Save, X, Image as ImageIcon, Box, FileText, ChevronDown, ChevronUp, Layers, MousePointer2, ArrowLeft, Copy, Check, ChevronsUpDown } from "lucide-react";
 import BotonExportarPDF from "./CotizacionPDF";
 
 interface CotizacionFormProps {
@@ -47,6 +50,9 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
     ganancias: 0,
     fecha: new Date().toISOString().split("T")[0],
   });
+
+  const [openCuenta, setOpenCuenta] = useState(false);
+  const [openContacto, setOpenContacto] = useState(false);
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -426,28 +432,100 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
             
             {/* Fila 1: Principales (3 Columnas) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 flex flex-col">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Cuenta (Razón Social)</label>
-                <select 
-                  value={cotizacion.cuenta_id} 
-                  onChange={(e) => handleAccountChange(e.target.value)}
-                  className="w-full h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                >
-                  <option value="">Seleccione Cliente...</option>
-                  {cuentas.map(c => <option key={c.id} value={c.id}>{c.cliente}</option>)}
-                </select>
+                <Popover open={openCuenta} onOpenChange={setOpenCuenta}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openCuenta}
+                      className="w-full h-11 justify-between bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all text-sm"
+                    >
+                      {cotizacion.cuenta_id
+                        ? cuentas.find((c) => c.id === cotizacion.cuenta_id)?.cliente
+                        : "Seleccione Cliente..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0 z-[9999]">
+                    <Command>
+                      <CommandInput placeholder="Buscar cliente..." />
+                      <CommandList>
+                        <CommandEmpty>No se encontró el cliente.</CommandEmpty>
+                        <CommandGroup>
+                          {cuentas.map((c) => (
+                            <CommandItem
+                              key={c.id}
+                              value={c.cliente}
+                              onSelect={() => {
+                                handleAccountChange(c.id);
+                                setOpenCuenta(false);
+                              }}
+                              className="text-xs font-bold"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  cotizacion.cuenta_id === c.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {c.cliente}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 flex flex-col">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Contacto Directo</label>
-                <select 
-                  value={cotizacion.contacto_id} 
-                  onChange={(e) => setCotizacion(prev => ({ ...prev, contacto_id: e.target.value }))}
-                  className="w-full h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
-                >
-                  <option value="">Seleccione Contacto...</option>
-                  {contactos.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.cargo || ""})</option>)}
-                </select>
+                <Popover open={openContacto} onOpenChange={setOpenContacto}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openContacto}
+                      className="w-full h-11 justify-between bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all text-sm"
+                    >
+                      {cotizacion.contacto_id
+                        ? contactos.find((c) => c.id === cotizacion.contacto_id)?.nombre
+                        : "Seleccione Contacto..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0 z-[9999]">
+                    <Command>
+                      <CommandInput placeholder="Buscar contacto..." />
+                      <CommandList>
+                        <CommandEmpty>No se encontró el contacto.</CommandEmpty>
+                        <CommandGroup>
+                          {contactos.map((c) => (
+                            <CommandItem
+                              key={c.id}
+                              value={c.nombre}
+                              onSelect={() => {
+                                setCotizacion(prev => ({ ...prev, contacto_id: c.id }));
+                                setOpenContacto(false);
+                              }}
+                              className="text-xs font-bold"
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  cotizacion.contacto_id === c.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {c.nombre}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div className="space-y-1.5">
