@@ -59,14 +59,14 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   const filteredCuentas = useMemo(() => {
     if (!cuentaSearch) return cuentas;
     return cuentas.filter(c => 
-      c.cliente.toLowerCase().includes(cuentaSearch.toLowerCase())
+      c.cliente.toLowerCase().startsWith(cuentaSearch.toLowerCase())
     );
   }, [cuentas, cuentaSearch]);
 
   const filteredContactos = useMemo(() => {
     if (!contactoSearch) return contactos;
     return contactos.filter(c => 
-      c.nombre.toLowerCase().includes(contactoSearch.toLowerCase())
+      c.nombre.toLowerCase().startsWith(contactoSearch.toLowerCase())
     );
   }, [contactos, contactoSearch]);
 
