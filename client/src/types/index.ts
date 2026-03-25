@@ -41,10 +41,14 @@ export interface SubCosto {
 export interface Item {
   id: number;
   descripcion: string;
-  imagen?: string; // URL de la imagen
+  imagen?: string; // URL de la imagen (miniatura)
   cantidad: number;
   margen: number; // Porcentaje de margen (%)
   subcostos: SubCosto[];
+  // Campos para Propuesta Técnica Premium
+  categoria_producto?: string; // e.g., "botellas", "morrales", "mugs", "totes"
+  especificaciones_tecnicas?: string; // Párrafo descriptivo técnico
+  imagenes_secundarias?: string[]; // URLs de los 3 marcos manuales
 }
 
 // Tipos para Cotizaciones
