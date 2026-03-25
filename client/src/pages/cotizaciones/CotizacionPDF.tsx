@@ -69,7 +69,9 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
 
         // Watermark if Borrador
         if (cotizacion.estado_cotizacion?.toLowerCase() === "borrador") {
-          doc.saveGraphicsState();
+          const hasGraphicsState = typeof doc.saveGraphicsState === "function";
+          if (hasGraphicsState) doc.saveGraphicsState();
+          
           doc.setTextColor(245, 245, 245);
           doc.setFontSize(70);
           doc.setFont("helvetica", "bold");
@@ -78,7 +80,8 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
             align: "center",
             angle: 45,
           });
-          doc.restoreGraphicsState();
+          
+          if (hasGraphicsState) doc.restoreGraphicsState();
         }
 
         // Footer
@@ -143,7 +146,7 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
         bodyStyles: { fontSize: 9, minCellHeight: 18, valign: "middle" },
         columnStyles: {
           0: { cellWidth: 20 },
-          1: { cellWidth: 80 },
+          1: { cellWidth: 70 }, // Ajustado de 80 a 70 para no exceder márgenes (Total: 175mm < 180mm)
           2: { cellWidth: 15, halign: "center" },
           3: { cellWidth: 35, halign: "right" },
           4: { cellWidth: 35, halign: "right" }
@@ -171,12 +174,12 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       });
 
       // SECCIÓN FINAL (TOTALES Y BANCO)
-      const lastY = (doc as any).lastAutoTable.finalY || yPos + 40;
+      const lastY = (doc as any).lastAutoTable?.finalY || yPos + 40;
       
       // Chequeo de espacio para el bloque final (aprox 60mm)
       if (lastY + 60 > pageHeight - 25) {
         doc.addPage();
-        drawCommonElements(doc, (doc as any).internal.getNumberOfPages());
+        drawCommonElements(doc, doc.getNumberOfPages());
         yPos = 35;
       } else {
         yPos = lastY + 10;
@@ -222,7 +225,7 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       
     } catch (err) {
       console.error("Fatal PDF Error:", err);
-      alert("Hubo un error al generar el PDF. Si el problema persiste, verifique que los datos de la cotización sean válidos.");
+      alert("Error crítico al generar el PDF. Esto puede ocurrir por imágenes corruptas o falta de memoria en el navegador. Intente guardar la cotización primero.");
     }
   };
 
