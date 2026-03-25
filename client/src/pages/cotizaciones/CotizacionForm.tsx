@@ -424,89 +424,93 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">CLIENTE Y EJECUCIÓN</h2>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">Cuenta (Razón Social)</label>
+            {/* Fila 1: Principales (3 Columnas) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Cuenta (Razón Social)</label>
                 <select 
                   value={cotizacion.cuenta_id} 
                   onChange={(e) => handleAccountChange(e.target.value)}
-                  className="w-full h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                  className="w-full h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                 >
                   <option value="">Seleccione Cliente...</option>
                   {cuentas.map(c => <option key={c.id} value={c.id}>{c.cliente}</option>)}
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">Contacto Directo</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Contacto Directo</label>
                 <select 
                   value={cotizacion.contacto_id} 
                   onChange={(e) => setCotizacion(prev => ({ ...prev, contacto_id: e.target.value }))}
-                  className="w-full h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                  className="w-full h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                 >
                   <option value="">Seleccione Contacto...</option>
                   {contactos.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.cargo || ""})</option>)}
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">Vendedor Asignado</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Vendedor Asignado</label>
                 <select 
                   value={cotizacion.vendedor_id} 
                   onChange={(e) => setCotizacion(prev => ({ ...prev, vendedor_id: e.target.value }))}
-                  className="w-full h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                  className="w-full h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                 >
                   <option value="">Seleccione Vendedor...</option>
                   {vendedores.map(v => <option key={v.id} value={v.id}>{v.nombre}</option>)}
                 </select>
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">Validez de Oferta</label>
-                <Input 
-                  value={cotizacion.validez_oferta} 
-                  onChange={(e) => setCotizacion(prev => ({ ...prev, validez_oferta: e.target.value }))}
-                  className="h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold"
-                  placeholder="Ej: 30 días"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">Tiempo de Entrega</label>
+            {/* Fila 2: Operativa (5 Columnas) */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Tiempo de Entrega</label>
                 <Input 
                   value={cotizacion.tiempo_entrega} 
                   onChange={(e) => setCotizacion(prev => ({ ...prev, tiempo_entrega: e.target.value }))}
-                  className="h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold"
+                  className="h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-sm"
                   placeholder="Ej: 5 a 10 días"
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">N° Orden de Compra</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Validez de Oferta</label>
+                <Input 
+                  value={cotizacion.validez_oferta} 
+                  onChange={(e) => setCotizacion(prev => ({ ...prev, validez_oferta: e.target.value }))}
+                  className="h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-sm"
+                  placeholder="Ej: 30 días"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">N° Orden de Compra</label>
                 <Input 
                   value={cotizacion.nro_oc} 
                   onChange={(e) => setCotizacion(prev => ({ ...prev, nro_oc: e.target.value }))}
-                  className="h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold"
+                  className="h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-sm"
                   placeholder="Número OC"
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">Guía de Despacho</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Guía de Despacho</label>
                 <Input 
                   value={cotizacion.nro_guia} 
                   onChange={(e) => setCotizacion(prev => ({ ...prev, nro_guia: e.target.value }))}
-                  className="h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold"
+                  className="h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-sm"
                   placeholder="Número de Guía"
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">N° Factura</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">N° Factura</label>
                 <Input 
                   value={cotizacion.nro_factura} 
                   onChange={(e) => setCotizacion(prev => ({ ...prev, nro_factura: e.target.value }))}
-                  className="h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold"
+                  className="h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-sm"
                   placeholder="Número de Factura"
                 />
               </div>
@@ -528,75 +532,78 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                 <div key={item.id} className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden animate-in slide-in-from-right-4 duration-500" style={{ animationDelay: `${idx * 100}ms` }}>
                   
                   {/* Item Header (Venta y General) Compacto */}
-                   <div className="p-5 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 relative">
-                     <Button 
-                       variant="ghost" 
-                       onClick={() => removeItem(item.id)} 
-                       className="absolute top-3 right-6 h-10 w-10 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl z-20 group"
-                     >
-                        <Trash2 className="h-5 w-5 group-hover:scale-110 transition-transform" />
-                     </Button>
+                    <div className="p-6 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 relative min-h-[160px]">
+                      <Button 
+                        variant="ghost" 
+                        onClick={() => removeItem(item.id)} 
+                        className="absolute top-4 right-4 h-9 w-9 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl z-20 group"
+                      >
+                         <Trash2 className="h-4.5 w-4.5 group-hover:scale-110 transition-transform" />
+                      </Button>
 
-                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pr-12">
-                      {/* Descripción Autoajustable - MÁS ANCHA */}
-                      <div className="md:col-span-6 space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descripción Comercial</label>
-                        <textarea 
-                          value={item.descripcion}
-                          onChange={(e) => updateItem(item.id, { descripcion: e.target.value })}
-                          onInput={(e) => {
-                            const target = e.target as HTMLTextAreaElement;
-                            target.style.height = 'auto';
-                            target.style.height = target.scrollHeight + 'px';
-                          }}
-                          className="w-full min-h-[100px] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 font-bold placeholder:text-gray-300 rounded-2xl px-5 py-4 resize-none overflow-hidden text-sm leading-relaxed shadow-inner"
-                          placeholder="Describe aquí el producto o servicio detalladamente..."
-                          style={{ height: 'auto' }}
-                        />
-                      </div>
-
-                      <div className="md:col-span-1 space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cant.</label>
-                        <Input 
-                          type="number"
-                          value={item.cantidad}
-                          onChange={(e) => updateItem(item.id, { cantidad: Number(e.target.value) })}
-                          className="h-12 bg-white dark:bg-gray-900 border-none font-black text-center text-blue-600 px-1"
-                        />
-                      </div>
-
-                      <div className="md:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic text-right block">Unit. Venta</label>
-                        <div className="h-12 flex items-center justify-end px-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-xs font-black text-emerald-600">
-                          {(() => {
-                             const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
-                             const neto = costo / (1 - (item.margen || 0)/100);
-                             const unit = (item.cantidad || 0) > 0 ? neto / item.cantidad : 0;
-                             return `$${Math.round(unit).toLocaleString("es-CL")}`;
-                          })()}
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pr-12">
+                        {/* Columna Izquierda: Descripción Comercial */}
+                        <div className="lg:col-span-6 space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descripción Comercial</label>
+                          <textarea 
+                            value={item.descripcion}
+                            onChange={(e) => updateItem(item.id, { descripcion: e.target.value })}
+                            onInput={(e) => {
+                              const target = e.target as HTMLTextAreaElement;
+                              target.style.height = 'auto';
+                              target.style.height = target.scrollHeight + 'px';
+                            }}
+                            className="w-full min-h-[120px] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 font-bold placeholder:text-gray-300 rounded-2xl px-5 py-4 resize-none overflow-hidden text-sm leading-relaxed shadow-inner"
+                            placeholder="Describe aquí el producto o servicio detalladamente..."
+                            style={{ height: 'auto' }}
+                          />
                         </div>
-                      </div>
 
-                      <div className="md:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic text-right block">Subtotal Neto</label>
-                        <div className="h-12 flex items-center justify-end px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs font-black text-emerald-500">
-                          {(() => {
-                             const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
-                             const neto = costo / (1 - (item.margen || 0)/100);
-                             return `$${Math.round(neto).toLocaleString("es-CL")}`;
-                          })()}
+                        {/* Columna Derecha: Bloque de Valores Financieros */}
+                        <div className="lg:col-span-6 grid grid-cols-4 gap-3">
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center block">Cant.</label>
+                             <Input 
+                               type="number"
+                               value={item.cantidad}
+                               onChange={(e) => updateItem(item.id, { cantidad: Number(e.target.value) })}
+                               className="h-14 bg-white dark:bg-gray-900 border-none font-black text-center text-blue-600 px-1 text-base shadow-sm"
+                             />
+                          </div>
+
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right block italic">Unit. Venta</label>
+                             <div className="h-14 flex items-center justify-end px-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-xs font-black text-emerald-600 shadow-sm border border-gray-100/50 dark:border-gray-700/50">
+                               {(() => {
+                                  const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
+                                  const neto = costo / (1 - (item.margen || 0)/100);
+                                  const unit = (item.cantidad || 0) > 0 ? neto / item.cantidad : 0;
+                                  return `$${Math.round(unit).toLocaleString("es-CL")}`;
+                               })()}
+                             </div>
+                          </div>
+
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right block italic">Subtotal Neto</label>
+                             <div className="h-14 flex items-center justify-end px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs font-black text-emerald-500 shadow-sm">
+                               {(() => {
+                                  const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
+                                  const neto = costo / (1 - (item.margen || 0)/100);
+                                  return `$${Math.round(neto).toLocaleString("es-CL")}`;
+                               })()}
+                             </div>
+                          </div>
+
+                          <div className="space-y-2">
+                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center block">MG %</label>
+                             <Input 
+                               type="number"
+                               value={item.margen}
+                               onChange={(e) => updateItem(item.id, { margen: Number(e.target.value) })}
+                               className="h-14 bg-white dark:bg-gray-900 border-none font-bold text-blue-500 text-center px-1 text-base shadow-sm"
+                             />
+                          </div>
                         </div>
-                      </div>
-
-                      <div className="md:col-span-1 space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center block">MG %</label>
-                        <Input 
-                          type="number"
-                          value={item.margen}
-                          onChange={(e) => updateItem(item.id, { margen: Number(e.target.value) })}
-                          className="h-12 bg-white dark:bg-gray-900 border-none font-bold text-blue-500 text-center px-1"
-                        />
-                      </div>
                     </div>
                    </div>
 
