@@ -267,10 +267,6 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       setMensaje("⚠️ Por favor selecciona un Cliente (Cuenta).");
       return;
     }
-    if (!cotizacion.contacto_id) {
-      setMensaje("⚠️ Por favor selecciona un Contacto Directo.");
-      return;
-    }
     if ((cotizacion.items?.length || 0) === 0) {
       setMensaje("⚠️ La cotización debe tener al menos un ítem.");
       return;
