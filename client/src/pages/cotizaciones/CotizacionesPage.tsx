@@ -174,6 +174,7 @@ export default function CotizacionesPage() {
 
   const handleNueva = async () => {
     setCargando(true);
+    let newId = "";
     try {
       // Cálculo del número correlativo inmediato
       const { count } = await supabase.from("cotizaciones").select("id", { count: 'exact', head: true });
@@ -205,16 +206,19 @@ export default function CotizacionesPage() {
               .insert([{ numero_cotizacion: numero, estado_cotizacion: 'Borrador', items: [] }])
               .select().single();
             if (retryError) throw retryError;
-            setSelectedId(String(retryData.id));
+            newId = String(retryData.id);
          } else {
             throw error;
          }
       } else {
-        setSelectedId(String(data.id));
+        newId = String(data.id);
       }
       
-      setViewMode("form");
-      navigate(`/cotizaciones/${selectedId}`, { replace: true });
+      if (newId) {
+        setSelectedId(newId);
+        setViewMode("form");
+        navigate(`/cotizaciones/${newId}`, { replace: true });
+      }
     } catch (e: any) {
       console.error("Error al crear:", e);
       setMensaje("Error al crear cotización rápida: " + e.message);
