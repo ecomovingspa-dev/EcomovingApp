@@ -620,8 +620,32 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                       </Button>
 
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pr-12">
-                        {/* Columna Izquierda: Descripción Comercial */}
-                        <div className="lg:col-span-6 space-y-2">
+                        {/* Columna Izquierda 1: Thumbnail de Imagen */}
+                        <div className="lg:col-span-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 px-1">Imagen Principal</label>
+                          <div className="aspect-square bg-blue-50 dark:bg-blue-900/10 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-blue-400/50 dark:hover:border-blue-700/50 transition-all shadow-inner">
+                            {item.imagen ? (
+                              <img src={item.imagen} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="text-center p-2">
+                                <ImageIcon className="h-6 w-6 text-gray-300 mx-auto mb-1" />
+                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Subir Foto</p>
+                              </div>
+                            )}
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              onChange={(e) => handleImageUpload(item.id, -1, e)}
+                              className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                            />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                              <p className="text-[10px] font-black text-white uppercase tracking-widest">Cambiar</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Columna Izquierda 2: Descripción Comercial */}
+                        <div className="lg:col-span-5 space-y-2">
                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descripción Comercial</label>
                           <textarea 
                             value={item.descripcion}
@@ -632,13 +656,13 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                               target.style.height = target.scrollHeight + 'px';
                             }}
                             className="w-full min-h-[120px] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 font-bold placeholder:text-gray-300 rounded-2xl px-5 py-4 resize-none overflow-hidden text-sm leading-relaxed shadow-inner"
-                            placeholder="Describe aquí el producto o servicio detalladamente..."
+                            placeholder="Describe aquí el producto o servicio..."
                             style={{ height: 'auto' }}
                           />
                         </div>
 
                         {/* Columna Derecha: Bloque de Valores Financieros */}
-                        <div className="lg:col-span-6 grid grid-cols-4 gap-3">
+                        <div className="lg:col-span-5 grid grid-cols-4 gap-2">
                           <div className="space-y-2">
                              <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center block">Cant.</label>
                              <Input 
@@ -651,7 +675,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
                           <div className="space-y-2">
                              <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right block italic">Unit. Venta</label>
-                             <div className="h-14 flex items-center justify-end px-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-xs font-black text-emerald-600 shadow-sm border border-gray-100/50 dark:border-gray-700/50">
+                             <div className="h-14 flex items-center justify-end px-3 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-xs font-black text-emerald-600 shadow-sm border border-gray-100/50 dark:border-gray-700/50 leading-none">
                                {(() => {
                                   const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
                                   const neto = costo / (1 - (item.margen || 0)/100);
@@ -663,7 +687,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
                           <div className="space-y-2">
                              <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right block italic">Subtotal Neto</label>
-                             <div className="h-14 flex items-center justify-end px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs font-black text-emerald-500 shadow-sm">
+                             <div className="h-14 flex items-center justify-end px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs font-black text-emerald-500 shadow-sm leading-none">
                                {(() => {
                                   const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
                                   const neto = costo / (1 - (item.margen || 0)/100);
@@ -817,26 +841,6 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                                <ImageIcon className="h-3 w-3" /> MARCOS DE IMAGEN (PROPUESTA)
                              </div>
                              <div className="grid grid-cols-2 gap-3">
-                               {/* Miniatura Principal */}
-                               <div className="aspect-square bg-blue-50 dark:bg-blue-900/20 rounded-2xl border-2 border-dashed border-blue-200 dark:border-blue-800 flex flex-col items-center justify-center p-2 relative overflow-hidden group">
-                                    {item.imagen ? (
-                                      <img src={item.imagen} className="w-full h-full object-cover rounded-xl" />
-                                    ) : (
-                                      <div className="text-center">
-                                        <div className="text-blue-600 font-black text-[9px] uppercase mb-1 tracking-tighter">Principal</div>
-                                        <ImageIcon className="h-5 w-5 text-blue-300 mx-auto" />
-                                      </div>
-                                    )}
-                                    <input 
-                                      type="file" accept="image/*" 
-                                      onChange={(e) => handleImageUpload(item.id, -1, e)}
-                                      className="absolute inset-0 opacity-0 cursor-pointer" 
-                                    />
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <p className="text-[9px] font-black text-white uppercase">Cambiar</p>
-                                    </div>
-                               </div>
-
                                {/* 3 Marcos Manuales */}
                                {(item.imagenes_secundarias || ["", "", ""]).map((img, iIdx) => (
                                  <div key={iIdx} className="aspect-video bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-2 relative overflow-hidden group">
