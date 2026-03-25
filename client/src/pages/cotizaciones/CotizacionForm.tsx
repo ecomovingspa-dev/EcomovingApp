@@ -165,7 +165,22 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   };
 
   const removeItem = (iid: number) => {
-    setCotizacion(prev => ({ ...prev, items: (prev.items || []).filter(it => it.id !== iid) }));
+    setCotizacion(prev => ({
+      ...prev,
+      items: (prev.items || []).filter(it => it.id !== iid)
+    }));
+  };
+
+  const duplicateItem = (item: any) => {
+    const newItem = {
+      ...item,
+      id: Date.now() + Math.random(),
+      subcostos: (item.subcostos || []).map((sc: any) => ({ ...sc, id: Math.random() }))
+    };
+    setCotizacion(prev => ({
+      ...prev,
+      items: [...(prev.items || []), newItem]
+    }));
   };
 
   const updateItem = (iid: number, updates: Partial<Item>) => {
@@ -667,18 +682,10 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
              </div>
 
              {(cotizacion.items || []).map((item, idx) => (
-                <div key={item.id} className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden animate-in slide-in-from-right-4 duration-500" style={{ animationDelay: `${idx * 100}ms` }}>
+                <div key={item.id} className="bg-white dark:bg-gray-900 rounded-[2.5rem] md:rounded-[20px] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden animate-in slide-in-from-right-4 duration-500" style={{ animationDelay: `${idx * 100}ms` }}>
                   
                   {/* Item Header (Venta y General) Compacto */}
-                    <div className="p-6 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 relative min-h-[160px]">
-                      <Button 
-                        variant="ghost" 
-                        onClick={() => removeItem(item.id)} 
-                        className="absolute top-4 right-4 h-9 w-9 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl z-20 group"
-                      >
-                         <Trash2 className="h-4.5 w-4.5 group-hover:scale-110 transition-transform" />
-                      </Button>
-
+                    <div className="p-5 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 relative">
                       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pr-12">
                         {/* Columna Izquierda 1: Thumbnail de Imagen */}
                         <div className="lg:col-span-2">
@@ -725,61 +732,87 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                           </div>
                           <textarea 
                             value={item.descripcion}
+                            ref={(el) => {
+                              if (el) {
+                                el.style.height = 'auto';
+                                el.style.height = el.scrollHeight + 'px';
+                              }
+                            }}
                             onChange={(e) => updateItem(item.id, { descripcion: e.target.value })}
                             onInput={(e) => {
                               const target = e.target as HTMLTextAreaElement;
                               target.style.height = 'auto';
                               target.style.height = target.scrollHeight + 'px';
                             }}
-                            className="w-full min-h-[120px] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 font-bold placeholder:text-gray-300 rounded-2xl px-5 py-4 resize-none overflow-hidden text-sm leading-relaxed shadow-inner"
+                            className="w-full min-h-[100px] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 font-bold placeholder:text-gray-300 rounded-2xl px-5 py-3 resize-none overflow-hidden text-sm leading-relaxed shadow-inner"
                             placeholder="Describe aquí el producto o servicio..."
-                            style={{ height: 'auto' }}
                           />
                         </div>
 
-                        {/* Columna Derecha: Bloque de Valores Financieros */}
-                        <div className="lg:col-span-5 grid grid-cols-4 gap-2">
-                          <div className="space-y-2">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center block">Cant.</label>
-                             <Input 
-                               type="number"
-                               value={item.cantidad}
-                               onChange={(e) => updateItem(item.id, { cantidad: Number(e.target.value) })}
-                               className="h-14 bg-white dark:bg-gray-900 border-none font-black text-center text-blue-600 px-1 text-base shadow-sm"
-                             />
+                        {/* Columna Derecha: Bloque de Valores Financieros y Acciones */}
+                        <div className="lg:col-span-5 space-y-4 pt-1">
+                          <div className="grid grid-cols-4 gap-2">
+                            <div className="space-y-1">
+                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center block">Cant.</label>
+                               <Input 
+                                 type="number"
+                                 value={item.cantidad}
+                                 onChange={(e) => updateItem(item.id, { cantidad: Number(e.target.value) })}
+                                 className="h-12 bg-white dark:bg-gray-900 border-none font-black text-center text-blue-600 px-1 text-sm shadow-sm"
+                               />
+                            </div>
+
+                            <div className="space-y-1">
+                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right block italic">Unit. Venta</label>
+                               <div className="h-12 flex items-center justify-end px-3 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-[11px] font-black text-emerald-600 shadow-sm border border-gray-100/50 dark:border-gray-700/50 leading-none">
+                                 {(() => {
+                                    const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
+                                    const neto = costo / (1 - (item.margen || 0)/100);
+                                    const unit = (item.cantidad || 0) > 0 ? neto / item.cantidad : 0;
+                                    return `$${Math.round(unit).toLocaleString("es-CL")}`;
+                                 })()}
+                               </div>
+                            </div>
+
+                            <div className="space-y-1">
+                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right block italic">Subtotal Neto</label>
+                               <div className="h-12 flex items-center justify-end px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[11px] font-black text-emerald-500 shadow-sm leading-none">
+                                 {(() => {
+                                    const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
+                                    const neto = costo / (1 - (item.margen || 0)/100);
+                                    return `$${Math.round(neto).toLocaleString("es-CL")}`;
+                                 })()}
+                               </div>
+                            </div>
+
+                            <div className="space-y-1">
+                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center block">MG %</label>
+                               <Input 
+                                 type="number"
+                                 value={item.margen}
+                                 onChange={(e) => updateItem(item.id, { margen: Number(e.target.value) })}
+                                 className="h-12 bg-white dark:bg-gray-900 border-none font-bold text-blue-500 text-center px-1 text-sm shadow-sm"
+                               />
+                            </div>
                           </div>
 
-                          <div className="space-y-2">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right block italic">Unit. Venta</label>
-                             <div className="h-14 flex items-center justify-end px-3 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-xs font-black text-emerald-600 shadow-sm border border-gray-100/50 dark:border-gray-700/50 leading-none">
-                               {(() => {
-                                  const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
-                                  const neto = costo / (1 - (item.margen || 0)/100);
-                                  const unit = (item.cantidad || 0) > 0 ? neto / item.cantidad : 0;
-                                  return `$${Math.round(unit).toLocaleString("es-CL")}`;
-                               })()}
-                             </div>
-                          </div>
-
-                          <div className="space-y-2">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right block italic">Subtotal Neto</label>
-                             <div className="h-14 flex items-center justify-end px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs font-black text-emerald-500 shadow-sm leading-none">
-                               {(() => {
-                                  const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
-                                  const neto = costo / (1 - (item.margen || 0)/100);
-                                  return `$${Math.round(neto).toLocaleString("es-CL")}`;
-                               })()}
-                             </div>
-                          </div>
-
-                          <div className="space-y-2">
-                             <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center block">MG %</label>
-                             <Input 
-                               type="number"
-                               value={item.margen}
-                               onChange={(e) => updateItem(item.id, { margen: Number(e.target.value) })}
-                               className="h-14 bg-white dark:bg-gray-900 border-none font-bold text-blue-500 text-center px-1 text-base shadow-sm"
-                             />
+                          <div className="flex justify-end items-center gap-3">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => duplicateItem(item)}
+                              className="h-8 px-3 text-[10px] font-bold text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg flex items-center gap-2"
+                            >
+                               <Copy className="h-3 w-3" /> DUPLICAR ÍTEM
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => removeItem(item.id)} 
+                              className="h-8 px-3 text-[10px] font-bold text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg flex items-center gap-2"
+                            >
+                               <Trash2 className="h-3.5 w-3.5" /> ELIMINAR
+                            </Button>
                           </div>
                         </div>
                     </div>
