@@ -56,28 +56,22 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   const [cuentaSearch, setCuentaSearch] = useState("");
   const [contactoSearch, setContactoSearch] = useState("");
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      buscarCuentas(cuentaSearch);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [cuentaSearch]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      buscarContactos(contactoSearch);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [contactoSearch]);
-
-  const buscarCuentas = async (search: string) => {
+  const buscarCuentas = async (search: string, explicitId?: string) => {
     try {
       let query = supabase.from("cuentas").select("id, cliente").order("cliente").limit(100);
       if (search) {
         query = query.ilike("cliente", `%${search}%`);
       }
       const { data } = await query;
-      setCuentas(data || []);
+      let finalData = data || [];
+
+      // Si tenemos un ID explícito (ej: de la cotización cargada) y no está en los 100 primeros, lo traemos
+      if (explicitId && !finalData.some(c => c.id === explicitId)) {
+        const { data: specific } = await supabase.from("cuentas").select("id, cliente").eq("id", explicitId).single();
+        if (specific) finalData = [specific, ...finalData];
+      }
+
+      setCuentas(finalData);
     } catch (err) {
       console.error(err);
     }
@@ -85,12 +79,12 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
   const buscarContactos = async (search: string) => {
     try {
-      if (!cotizacion.cuenta_id && !search) return;
+      const cid = cotizacion.cuenta_id;
+      if (!cid && !search) return;
       let query = supabase.from("contactos").select("id, nombre").order("nombre").limit(100);
       
-      // Si hay cuenta seleccionada, filtrar por ella. Si no, permitir búsqueda global si hay texto.
-      if (cotizacion.cuenta_id) {
-        query = query.eq("cuenta_id", cotizacion.cuenta_id);
+      if (cid) {
+        query = query.eq("cuenta_id", cid);
       }
       
       if (search) {
@@ -103,6 +97,20 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      buscarCuentas(cuentaSearch, cotizacion.cuenta_id);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [cuentaSearch]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      buscarContactos(contactoSearch);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [contactoSearch, cotizacion.cuenta_id]);
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -133,9 +141,10 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       const { data, error } = await supabase.from("cotizaciones").select("*").eq("id", id).single();
       if (error) throw error;
       setCotizacion(data);
+      
+      // Aseguramos que el cliente de la cotización esté cargado en la lista
       if (data.cuenta_id) {
-        const { data: conts } = await supabase.from("contactos").select("*").eq("cuenta_id", data.cuenta_id);
-        setContactos(conts || []);
+        buscarCuentas("", data.cuenta_id);
       }
     } catch (err: any) {
       setMensaje("Error: " + err.message);
@@ -254,8 +263,16 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   }, [JSON.stringify(cotizacion.items)]);
 
   const handleSave = async () => {
-    if (!cotizacion.cuenta_id || !cotizacion.contacto_id || (cotizacion.items?.length || 0) === 0) {
-      setMensaje("⚠️ Por favor completa los campos requeridos y añade al menos un ítem.");
+    if (!cotizacion.cuenta_id) {
+      setMensaje("⚠️ Por favor selecciona un Cliente (Cuenta).");
+      return;
+    }
+    if (!cotizacion.contacto_id) {
+      setMensaje("⚠️ Por favor selecciona un Contacto Directo.");
+      return;
+    }
+    if ((cotizacion.items?.length || 0) === 0) {
+      setMensaje("⚠️ La cotización debe tener al menos un ítem.");
       return;
     }
 
