@@ -474,42 +474,61 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
           <div className="absolute -bottom-10 -left-10 h-40 w-40 bg-emerald-500/10 rounded-full blur-3xl"></div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 items-center relative z-10">
-            <div className="space-y-1">
-              <h2 className="text-[10px] font-black tracking-[0.2em] text-blue-400 uppercase flex items-center gap-2 mb-2">
-                 <Box className="h-3 w-3" /> Resumen Global
-              </h2>
-              <div className="text-3xl font-black text-gray-100 tracking-tighter">${new Intl.NumberFormat("es-CL").format(cotizacion.total || 0)}</div>
-              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Valor Total (Inc. IVA)</p>
+            {/* RESUMEN COSTOS (IZQUIERDA) */}
+            <div className="space-y-1 border-r border-white/5 pr-4">
+              <div className="flex justify-between items-center text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">
+                <span>COSTO OPERATIVO</span>
+                <span className="text-gray-500">NETO / IVA</span>
+              </div>
+              <div className="flex items-baseline gap-3">
+                <h3 className="text-4xl font-black tracking-tighter text-gray-100 italic">
+                  ${new Intl.NumberFormat("es-CL").format(Math.round((cotizacion.costo_total || 0) * 1.19))}
+                </h3>
+                <div className="flex flex-col text-[9px] font-black text-gray-500 leading-none space-y-0.5">
+                   <div className="flex justify-between gap-2"><span>${Math.round(cotizacion.costo_total || 0).toLocaleString("es-CL")}</span><span className="text-[7px] opacity-30">NET</span></div>
+                   <div className="flex justify-between gap-2"><span>${Math.round((cotizacion.costo_total || 0) * 0.19).toLocaleString("es-CL")}</span><span className="text-[7px] opacity-30">IVA</span></div>
+                </div>
+              </div>
+              <p className="text-[9px] font-bold text-gray-600 uppercase tracking-widest">Total Inversión (Bruto)</p>
             </div>
 
-            <div className="h-full border-l border-white/5 pl-6 hidden lg:block">
-              <span className="text-gray-400 font-bold text-[10px] tracking-tight uppercase block mb-1">Costo Industrial</span>
-              <span className="text-lg font-medium tracking-tight text-gray-200">${new Intl.NumberFormat("es-CL").format(cotizacion.costo_total || 0)}</span>
+            {/* UTILIDAD CENTRAL */}
+            <div className="lg:pl-4">
+              <span className="text-gray-500 font-black text-[9px] tracking-widest uppercase block mb-1">Utilidad Estimada</span>
+              <span className="text-2xl font-black tracking-tight text-emerald-400">+ ${new Intl.NumberFormat("es-CL").format(cotizacion.ganancias || 0)}</span>
+              <p className="text-[8px] font-bold text-gray-600 uppercase tracking-tighter">Resultado Neto de Operación</p>
             </div>
             
-            <div className="h-full border-l border-white/5 pl-6 hidden lg:block">
-              <span className="text-gray-400 font-bold text-[10px] tracking-tight uppercase block mb-1">Utilidad (Neto)</span>
-              <span className="text-lg font-medium tracking-tight text-emerald-400">+ ${new Intl.NumberFormat("es-CL").format(cotizacion.ganancias || 0)}</span>
-            </div>
-
-            <div className="h-full border-l border-white/5 pl-6 hidden lg:block">
-              <span className="text-gray-400 font-bold text-[10px] tracking-tight uppercase block mb-1">Margen / Ítems</span>
+            <div className="h-full border-l border-white/5 pl-8 hidden lg:block">
+              <span className="text-gray-500 font-black text-[9px] tracking-widest uppercase block mb-1">Margen Comercial</span>
               <div className="flex items-center gap-2">
-                <span className="text-lg font-black text-blue-400">{cotizacion.mg}</span>
-                <span className="text-gray-600">/</span>
-                <span className="text-lg font-bold text-gray-300">{(cotizacion.items || []).length} ítems</span>
+                <span className="text-2xl font-black text-blue-500">{cotizacion.mg}</span>
+                <span className="text-[9px] font-bold text-gray-600">RENTABILIDAD</span>
               </div>
             </div>
 
-            <div className="lg:pl-6 space-y-1">
+            <div className="h-full border-l border-white/5 pl-8 hidden lg:block">
+              <span className="text-gray-500 font-black text-[9px] tracking-widest uppercase block mb-1">Volumen Ítems</span>
+              <span className="text-2xl font-black text-gray-400 tracking-tighter">{(cotizacion.items || []).length}</span>
+              <p className="text-[8px] font-bold text-gray-600 uppercase tracking-tighter">Productos en Oferta</p>
+            </div>
+
+            {/* RESUMEN VENTAS (DERECHA) */}
+            <div className="lg:pl-8 space-y-1 border-l border-white/5">
               <div className="flex justify-between items-center text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">
-                <span>NETO PROPUESTA</span>
-                <span className="text-gray-500">IVA 19%</span>
+                <span>OFERTA COMERCIAL</span>
+                <span className="text-gray-500">NETO / IVA</span>
               </div>
-              <div className="flex justify-between items-baseline gap-4">
-                <h3 className="text-3xl font-black tracking-tighter">${new Intl.NumberFormat("es-CL").format(cotizacion.total_neto || 0)}</h3>
-                <span className="text-gray-500 font-bold text-xs italic">${new Intl.NumberFormat("es-CL").format(cotizacion.iva || 0)}</span>
+              <div className="flex items-baseline gap-3">
+                <h3 className="text-4xl font-black tracking-tighter text-gray-100 italic">
+                  ${new Intl.NumberFormat("es-CL").format(cotizacion.total || 0)}
+                </h3>
+                <div className="flex flex-col text-[9px] font-black text-gray-500 leading-none space-y-0.5">
+                   <div className="flex justify-between gap-2"><span>${Math.round(cotizacion.total_neto || 0).toLocaleString("es-CL")}</span><span className="text-[7px] opacity-30">NET</span></div>
+                   <div className="flex justify-between gap-2"><span>${Math.round(cotizacion.iva || 0).toLocaleString("es-CL")}</span><span className="text-[7px] opacity-30">IVA</span></div>
+                </div>
               </div>
+              <p className="text-[9px] font-bold text-gray-600 uppercase tracking-widest text-right">Total Propuesta (Bruto)</p>
             </div>
           </div>
         </section>
