@@ -34,7 +34,7 @@ export interface SubCosto {
   cantidad: number;
   precio_unitario: number;
   descuento: number; // Porcentaje o monto según tu lógica (ajusta si es %)
-  valor: number; // Calculado: (cantidad * precio_unitario) * (1 - descuento/100) o similar
+  valor?: number; // Calculado: (cantidad * precio_unitario) * (1 - descuento/100) o similar
 }
 
 // Tipos para Ítems de Cotización

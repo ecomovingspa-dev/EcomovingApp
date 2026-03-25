@@ -351,6 +351,17 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
         {/* Lado Inferior: Configuración e Ítems Full-Width */}
         <div className="space-y-8">
+          <style dangerouslySetInnerHTML={{ __html: `
+            input[type=number]::-webkit-inner-spin-button, 
+            input[type=number]::-webkit-outer-spin-button { 
+              -webkit-appearance: none; 
+              margin: 0; 
+            }
+            input[type=number] {
+              -moz-appearance: textfield;
+            }
+          `}} />
+          
           <script dangerouslySetInnerHTML={{ __html: `
             function autoResize(el) {
               el.style.height = 'auto';
@@ -469,10 +480,18 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                 <div key={item.id} className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden animate-in slide-in-from-right-4 duration-500" style={{ animationDelay: `${idx * 100}ms` }}>
                   
                   {/* Item Header (Venta y General) Compacto */}
-                  <div className="p-5 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 flex justify-between items-start gap-4">
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6">
-                      {/* Descripción Autoajustable */}
-                      <div className="md:col-span-4 space-y-2">
+                   <div className="p-5 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 relative">
+                     <Button 
+                       variant="ghost" 
+                       onClick={() => removeItem(item.id)} 
+                       className="absolute top-4 right-4 h-8 w-8 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg z-10"
+                     >
+                        <Trash2 className="h-4 w-4" />
+                     </Button>
+
+                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pr-10">
+                      {/* Descripción Autoajustable - MÁS ANCHA */}
+                      <div className="md:col-span-6 space-y-2">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descripción Comercial</label>
                         <textarea 
                           value={item.descripcion}
@@ -482,25 +501,25 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                             target.style.height = 'auto';
                             target.style.height = target.scrollHeight + 'px';
                           }}
-                          className="w-full min-h-[48px] bg-white dark:bg-gray-900 border-none font-bold placeholder:text-gray-300 rounded-xl px-4 py-3 resize-none overflow-hidden text-sm"
+                          className="w-full min-h-[48px] bg-white dark:bg-gray-900 border-none font-bold placeholder:text-gray-300 rounded-xl px-4 py-3 resize-none overflow-hidden text-sm leading-tight"
                           placeholder="Mochila Corporativa..."
                           style={{ height: 'auto' }}
                         />
                       </div>
 
-                      <div className="md:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cantidad</label>
+                      <div className="md:col-span-1 space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cant.</label>
                         <Input 
                           type="number"
                           value={item.cantidad}
                           onChange={(e) => updateItem(item.id, { cantidad: Number(e.target.value) })}
-                          className="h-12 bg-white dark:bg-gray-900 border-none font-black text-center text-blue-600"
+                          className="h-12 bg-white dark:bg-gray-900 border-none font-black text-center text-blue-600 px-1"
                         />
                       </div>
 
                       <div className="md:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic">Unit. Venta (Neto)</label>
-                        <div className="h-12 flex items-center px-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-sm font-black text-emerald-600">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic text-right block">Unit. Venta</label>
+                        <div className="h-12 flex items-center justify-end px-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-xs font-black text-emerald-600">
                           {(() => {
                              const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
                              const neto = costo / (1 - (item.margen || 0)/100);
@@ -511,8 +530,8 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                       </div>
 
                       <div className="md:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic">Subtotal Neto</label>
-                        <div className="h-12 flex items-center px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm font-black text-emerald-500">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic text-right block">Subtotal Neto</label>
+                        <div className="h-12 flex items-center justify-end px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs font-black text-emerald-500">
                           {(() => {
                              const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
                              const neto = costo / (1 - (item.margen || 0)/100);
@@ -521,20 +540,17 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                         </div>
                       </div>
 
-                      <div className="md:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Márgen (%)</label>
+                      <div className="md:col-span-1 space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center block">MG %</label>
                         <Input 
                           type="number"
                           value={item.margen}
                           onChange={(e) => updateItem(item.id, { margen: Number(e.target.value) })}
-                          className="h-12 bg-white dark:bg-gray-900 border-none font-bold text-blue-500 text-center"
+                          className="h-12 bg-white dark:bg-gray-900 border-none font-bold text-blue-500 text-center px-1"
                         />
                       </div>
                     </div>
-                    <Button variant="ghost" onClick={() => removeItem(item.id)} className="h-10 w-10 text-red-500 hover:bg-red-50 rounded-xl mt-6">
-                       <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                   </div>
 
                   {/* Pestañas de Item Compactas */}
                   <div className="px-6 pt-3 border-b border-gray-100 dark:border-gray-800 flex gap-6">
