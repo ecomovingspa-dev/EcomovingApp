@@ -312,11 +312,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
     }
   };
 
-  // Image Treatment (Resize/Compress)
-  const handleImageUpload = (iid: number, index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  const processImageFile = (file: File, callback: (dataUrl: string) => void) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
@@ -331,18 +327,55 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
         
         // Exportar a JPEG de baja calidad
         const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-        
-        // Actualizar item
+        callback(dataUrl);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleImageUpload = (iid: number, index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    processImageFile(file, (dataUrl) => {
+      if (index === -1) {
+        updateItem(iid, { imagen: dataUrl });
+      } else {
         const item = cotizacion.items?.find(it => it.id === iid);
         if (item) {
           const imgs = [...(item.imagenes_secundarias || ["", "", ""])];
           imgs[index] = dataUrl;
           updateItem(iid, { imagenes_secundarias: imgs });
         }
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+      }
+    });
+  };
+
+  const handlePaste = (iid: number, index: number, e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf("image") !== -1) {
+        const file = items[i].getAsFile();
+        if (file) {
+          processImageFile(file, (dataUrl) => {
+            if (index === -1) {
+              updateItem(iid, { imagen: dataUrl });
+            } else {
+              const item = cotizacion.items?.find(it => it.id === iid);
+              if (item) {
+                const imgs = [...(item.imagenes_secundarias || ["", "", ""])];
+                imgs[index] = dataUrl;
+                updateItem(iid, { imagenes_secundarias: imgs });
+              }
+            }
+          });
+        }
+        break;
+      }
+    }
   };
 
   const handleDuplicar = async () => {
@@ -707,13 +740,17 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                         {/* Columna Izquierda 1: Thumbnail de Imagen */}
                         <div className="lg:col-span-2">
                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 px-1">Imagen Principal</label>
-                          <div className="aspect-square bg-blue-50 dark:bg-blue-900/10 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-blue-400/50 dark:hover:border-blue-700/50 transition-all shadow-inner">
+                          <div 
+                            onPaste={(e) => handlePaste(item.id, -1, e)}
+                            tabIndex={0}
+                            className="aspect-square bg-blue-50 dark:bg-blue-900/10 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-blue-400/50 dark:hover:border-blue-700/50 transition-all shadow-inner focus:ring-2 focus:ring-blue-500 outline-none"
+                          >
                             {item.imagen ? (
                               <img src={item.imagen} className="w-full h-full object-cover" />
                             ) : (
                               <div className="text-center p-2">
                                 <ImageIcon className="h-6 w-6 text-gray-300 mx-auto mb-1" />
-                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Subir Foto</p>
+                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Subir / Pegar</p>
                               </div>
                             )}
                             <input 
@@ -723,7 +760,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                               className="absolute inset-0 opacity-0 cursor-pointer z-20"
                             />
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                              <p className="text-[10px] font-black text-white uppercase tracking-widest">Cambiar</p>
+                              <p className="text-[10px] font-black text-white uppercase tracking-widest">Cambiar o Ctrl+V</p>
                             </div>
                           </div>
                         </div>
@@ -960,7 +997,12 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                              <div className="grid grid-cols-2 gap-3">
                                {/* 3 Marcos Manuales */}
                                {(item.imagenes_secundarias || ["", "", ""]).map((img, iIdx) => (
-                                 <div key={iIdx} className="aspect-video bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-2 relative overflow-hidden group">
+                                 <div 
+                                    key={iIdx} 
+                                    onPaste={(e) => handlePaste(item.id, iIdx, e)}
+                                    tabIndex={0}
+                                    className="aspect-video bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-2 relative overflow-hidden group focus:ring-2 focus:ring-indigo-500 outline-none"
+                                 >
                                     {img ? (
                                       <img src={img} className="w-full h-full object-cover rounded-xl" />
                                     ) : (
@@ -972,7 +1014,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                                       className="absolute inset-0 opacity-0 cursor-pointer" 
                                     />
                                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-center px-1">
-                                      <p className="text-[8px] font-black text-white uppercase">M{iIdx + 2}</p>
+                                      <p className="text-[8px] font-black text-white uppercase">M{iIdx + 2} (O pegar)</p>
                                     </div>
                                     {img && <div className="absolute top-1 right-1 bg-gray-800 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold">Slot {iIdx+2}</div>}
                                  </div>
