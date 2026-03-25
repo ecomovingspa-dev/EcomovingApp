@@ -762,6 +762,10 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 px-1">Imagen Principal</label>
                           <div 
                             onPaste={(e) => handlePaste(item.id, -1, e)}
+                            onClick={(e) => {
+                              const input = e.currentTarget.querySelector('input');
+                              if (input) input.click();
+                            }}
                             tabIndex={0}
                             className="aspect-square bg-blue-50 dark:bg-blue-900/10 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-blue-400/50 dark:hover:border-blue-700/50 transition-all shadow-inner focus:ring-2 focus:ring-blue-500 outline-none"
                           >
@@ -777,10 +781,10 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                               type="file" 
                               accept="image/*" 
                               onChange={(e) => handleImageUpload(item.id, -1, e)}
-                              className="absolute inset-0 opacity-0 cursor-pointer z-20"
+                              className="hidden"
                             />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                              <p className="text-[10px] font-black text-white uppercase tracking-widest">Cambiar o Ctrl+V</p>
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                              <p className="text-[10px] font-black text-white uppercase tracking-widest">Click o Ctrl+V</p>
                             </div>
                           </div>
                         </div>
@@ -1020,8 +1024,12 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                                  <div 
                                     key={iIdx} 
                                     onPaste={(e) => handlePaste(item.id, iIdx, e)}
+                                    onClick={(e) => {
+                                      const input = e.currentTarget.querySelector('input');
+                                      if (input) input.click();
+                                    }}
                                     tabIndex={0}
-                                    className="aspect-video bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-2 relative overflow-hidden group focus:ring-2 focus:ring-indigo-500 outline-none"
+                                    className="aspect-video bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-2 relative overflow-hidden group focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
                                  >
                                     {img ? (
                                       <img src={img} className="w-full h-full object-cover rounded-xl" />
@@ -1031,10 +1039,10 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                                     <input 
                                       type="file" accept="image/*" 
                                       onChange={(e) => handleImageUpload(item.id, iIdx, e)}
-                                      className="absolute inset-0 opacity-0 cursor-pointer" 
+                                      className="hidden" 
                                     />
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-center px-1">
-                                      <p className="text-[8px] font-black text-white uppercase">M{iIdx + 2} (O pegar)</p>
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-center px-1 pointer-events-none">
+                                      <p className="text-[8px] font-black text-white uppercase truncate">Click o Pegar M{iIdx + 2}</p>
                                     </div>
                                     {img && <div className="absolute top-1 right-1 bg-gray-800 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold">Slot {iIdx+2}</div>}
                                  </div>
