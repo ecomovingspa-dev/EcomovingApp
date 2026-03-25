@@ -270,8 +270,8 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
         return { ...rest };
       });
 
-      const { data: countData } = await supabase.from("cotizaciones").select("id", { count: 'exact', head: true });
-      const num = (countData || 0) + 5126;
+      const { count } = await supabase.from("cotizaciones").select("*", { count: 'exact', head: true });
+      const num = ((count as any) || 0) + 5126;
 
       const duplicado = {
         ...payload,
@@ -532,12 +532,12 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                      <Button 
                        variant="ghost" 
                        onClick={() => removeItem(item.id)} 
-                       className="absolute top-4 right-4 h-8 w-8 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg z-10"
+                       className="absolute top-3 right-6 h-10 w-10 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl z-20 group"
                      >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-5 w-5 group-hover:scale-110 transition-transform" />
                      </Button>
 
-                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pr-10">
+                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4 pr-12">
                       {/* Descripción Autoajustable - MÁS ANCHA */}
                       <div className="md:col-span-6 space-y-2">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descripción Comercial</label>
@@ -549,8 +549,8 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                             target.style.height = 'auto';
                             target.style.height = target.scrollHeight + 'px';
                           }}
-                          className="w-full min-h-[48px] bg-white dark:bg-gray-900 border-none font-bold placeholder:text-gray-300 rounded-xl px-4 py-3 resize-none overflow-hidden text-sm leading-tight"
-                          placeholder="Mochila Corporativa..."
+                          className="w-full min-h-[100px] bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 font-bold placeholder:text-gray-300 rounded-2xl px-5 py-4 resize-none overflow-hidden text-sm leading-relaxed shadow-inner"
+                          placeholder="Describe aquí el producto o servicio detalladamente..."
                           style={{ height: 'auto' }}
                         />
                       </div>
