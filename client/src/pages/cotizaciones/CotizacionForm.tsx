@@ -58,15 +58,17 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
   const filteredCuentas = useMemo(() => {
     if (!cuentaSearch) return cuentas;
+    const search = cuentaSearch.trim().toLowerCase();
     return cuentas.filter(c => 
-      c.cliente.toLowerCase().startsWith(cuentaSearch.toLowerCase())
+      c.cliente.trim().toLowerCase().startsWith(search)
     );
   }, [cuentas, cuentaSearch]);
 
   const filteredContactos = useMemo(() => {
     if (!contactoSearch) return contactos;
+    const search = contactoSearch.trim().toLowerCase();
     return contactos.filter(c => 
-      c.nombre.toLowerCase().startsWith(contactoSearch.toLowerCase())
+      c.nombre.trim().toLowerCase().startsWith(search)
     );
   }, [contactos, contactoSearch]);
 
@@ -78,7 +80,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   const cargarDatosIniciales = async () => {
     try {
       const [{ data: ctas }, { data: vends }] = await Promise.all([
-        supabase.from("cuentas").select("id, cliente").order("cliente"),
+        supabase.from("cuentas").select("id, cliente").order("cliente").limit(10000),
         supabase.from("vendedores").select("id, nombre").order("nombre"),
       ]);
       setCuentas(ctas || []);
