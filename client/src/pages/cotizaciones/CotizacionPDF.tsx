@@ -129,13 +129,30 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       yPos += 10;
 
       // TABLA DE PRODUCTOS
-      const tableData = items.map(item => ({
-        descripcion: item.descripcion || "Sin descripción",
-        cantidad: (item.cantidad || 0).toString(),
-        precio: `$${Math.round(item.precio_unitario || 0).toLocaleString("es-CL")}`,
-        subtotal: `$${Math.round(item.subtotal || 0).toLocaleString("es-CL")}`,
-        imagen: item.imagen || null,
-      }));
+      const tableData = items.map(item => {
+        // Cálculo del costo total del item basado en sus subcostos
+        const costoBaseItem = (item.subcostos || []).reduce((acc: number, sc: any) => {
+          const valorSubCosto = (sc.cantidad || 0) * (sc.precio_unitario || 0) * (1 - (sc.descuento || 0) / 100);
+          return acc + valorSubCosto;
+        }, 0);
+
+        // Cálculo del precio de venta (neto) aplicando el margen
+        // precio_venta = costo / (1 - margen/100)
+        const margen = item.margen || 0;
+        const netoItem = costoBaseItem / (1 - margen / 100);
+        
+        // Precio unitario para el PDF: netoItem / cantidad
+        const cantidad = item.cantidad || 1;
+        const precioUnitario = netoItem / cantidad;
+
+        return {
+          descripcion: item.descripcion || "Sin descripción",
+          cantidad: (item.cantidad || 0).toString(),
+          precio: `$${Math.round(precioUnitario || 0).toLocaleString("es-CL")}`,
+          subtotal: `$${Math.round(netoItem || 0).toLocaleString("es-CL")}`,
+          imagen: item.imagen || null,
+        };
+      });
 
       autoTable(doc, {
         startY: yPos,
