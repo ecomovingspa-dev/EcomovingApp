@@ -4,7 +4,7 @@ import { supabase } from "../../lib/supabase";
 import type { Cotizacion, Item, SubCosto, Cuenta, Contacto } from "../../types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, Save, X, Image as ImageIcon, Box, FileText, ChevronDown, ChevronUp, Layers, MousePointer2 } from "lucide-react";
+import { Plus, Trash2, Save, X, Image as ImageIcon, Box, FileText, ChevronDown, ChevronUp, Layers, MousePointer2, ArrowLeft, Copy } from "lucide-react";
 import BotonExportarPDF from "./CotizacionPDF";
 
 interface CotizacionFormProps {
@@ -257,41 +257,89 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
     reader.readAsDataURL(file);
   };
 
+  const handleDuplicar = async () => {
+    if (!id) return;
+    try {
+      setLoading(true);
+      setMensaje("⏳ Generando duplicado...");
+      const { id: _, numero_cotizacion: __, created_at: ___, ...payload } = cotizacion;
+      
+      // Limpiar IDs de ítems para forzar nuevos
+      const newItems = (cotizacion.items || []).map(it => {
+        const { id, ...rest } = it;
+        return { ...rest };
+      });
+
+      const { data: countData } = await supabase.from("cotizaciones").select("id", { count: 'exact', head: true });
+      const num = (countData || 0) + 5126;
+
+      const duplicado = {
+        ...payload,
+        numero_cotizacion: `COT-${num}`,
+        estado_cotizacion: "Borrador",
+        items: newItems,
+        fecha: new Date().toISOString().split("T")[0]
+      };
+
+      const { error } = await supabase.from("cotizaciones").insert([duplicado]);
+      if (error) throw error;
+      
+      setMensaje("✅ Cotización duplicada exitosamente");
+      setTimeout(() => {
+        onSave();
+        onClose();
+      }, 1500);
+    } catch (err: any) {
+      setMensaje("❌ Error al duplicar: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-[1400px] mx-auto p-4 md:p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header Premium */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-gray-200 dark:border-gray-800 pb-8">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" onClick={onClose} className="rounded-full h-12 w-12 p-0 hover:bg-gray-100 dark:hover:bg-gray-800">
-            <X className="h-6 w-6" />
+          <Button variant="ghost" onClick={onClose} className="rounded-full h-10 w-10 p-0 hover:bg-gray-100 dark:hover:bg-gray-800">
+            <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-4xl font-black text-gray-900 dark:text-gray-100 tracking-tight">
-               {id ? `EDITOR COTIZACIÓN ${cotizacion.numero_cotizacion || ""}` : "NUEVA REQUERIMIENTO COMERCIAL"}
+            <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight uppercase">
+               {id ? `COTIZACIÓN ${cotizacion.numero_cotizacion || ""}` : "NUEVO REQUERIMIENTO COMERCIAL"}
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 font-medium">Configure los detalles técnicos y financieros de la propuesta.</p>
+            <p className="text-gray-500 dark:text-gray-400 text-xs font-medium">Configure los detalles técnicos y financieros de la propuesta.</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+           <Button onClick={handleSave} disabled={loading} className="flex-1 md:flex-none h-10 px-6 bg-blue-600 hover:bg-blue-700 text-white font-black shadow-lg shadow-blue-500/10 text-xs">
+             {loading ? "PROCESANDO..." : "GUARDAR"}
+           </Button>
+
            {id && (
-             <BotonExportarPDF
-               cotizacion={cotizacion}
-               cuenta={cuentas.find(c => c.id === cotizacion.cuenta_id)}
-               contacto={contactos.find(c => c.id === cotizacion.contacto_id)}
-               items={cotizacion.items || []}
-               totales={{ 
-                 neto: cotizacion.total_neto || 0, 
-                 iva: cotizacion.iva || 0, 
-                 total: cotizacion.total || 0 
-               }}
-             />
+             <>
+               <BotonExportarPDF
+                 cotizacion={cotizacion}
+                 cuenta={cuentas.find(c => c.id === cotizacion.cuenta_id)}
+                 contacto={contactos.find(c => c.id === cotizacion.contacto_id)}
+                 items={cotizacion.items || []}
+                 totales={{ 
+                   neto: cotizacion.total_neto || 0, 
+                   iva: cotizacion.iva || 0, 
+                   total: cotizacion.total || 0 
+                 }}
+               />
+               
+               <Button 
+                 variant="outline" 
+                 onClick={handleDuplicar} 
+                 disabled={loading}
+                 className="flex-1 md:flex-none h-10 px-6 border-gray-200 dark:border-gray-800 font-black text-gray-600 dark:text-gray-400 text-xs flex items-center gap-2"
+               >
+                 <Copy className="h-3.5 w-3.5" /> DUPLICAR COTIZACIÓN
+               </Button>
+             </>
            )}
-           <Button variant="outline" onClick={onClose} className="flex-1 md:flex-none h-12 px-8 font-bold text-gray-700 dark:text-gray-300">
-             CANCELAR
-           </Button>
-           <Button onClick={handleSave} disabled={loading} className="flex-1 md:flex-none h-12 px-10 bg-blue-600 hover:bg-blue-700 text-white font-black shadow-lg shadow-blue-500/20">
-             {loading ? "PROCESANDO..." : "GUARDAR Y VALIDAR"}
-           </Button>
         </div>
       </div>
 
