@@ -1,11 +1,12 @@
-// v1.1.0 - Removed Fabrica de Contenidos and Fabrica de Brochures tabs
+// v1.2.0 - Added Trazabilidad Brevo tab
 import { useState } from "react";
 import ContactosMarketing from "./ContactosMarketing";
 import ListaContenidos from "./ListaContenidos";
-import { Users, Library } from "lucide-react";
+import TrazabilidadBrevo from "./TrazabilidadBrevo";
+import { Users, Library, BarChart3 } from "lucide-react";
 
 export default function Marketing() {
-  const [tabActiva, setTabActiva] = useState<"monitor" | "biblioteca">("monitor");
+  const [tabActiva, setTabActiva] = useState<"monitor" | "biblioteca" | "trazabilidad">("monitor");
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -35,12 +36,25 @@ export default function Marketing() {
             <span className="hidden sm:inline">Tabla de Contenidos</span>
             <span className="sm:hidden">Biblioteca</span>
           </button>
+
+          <button
+            onClick={() => setTabActiva("trazabilidad")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold transition-all ${tabActiva === "trazabilidad"
+              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-500/30 shadow-sm"
+              : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 border border-transparent"
+              }`}
+          >
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Trazabilidad Brevo</span>
+            <span className="sm:hidden">Brevo</span>
+          </button>
         </div>
 
         {/* Tab Content */}
         <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
           {tabActiva === "monitor" && <ContactosMarketing />}
           {tabActiva === "biblioteca" && <ListaContenidos />}
+          {tabActiva === "trazabilidad" && <TrazabilidadBrevo />}
         </div>
       </div>
     </div >

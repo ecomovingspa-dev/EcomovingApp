@@ -292,23 +292,10 @@ async function ejecutarMarketing(maxEmails: number): Promise<{
                     .eq('activo', true)
                     .maybeSingle();
 
-                // Reiniciar secuencia si no hay mensaje
+                // Si no hay mensaje, simplemente saltamos (pausamos) para este contacto
+                // hasta que se cree el contenido para su etapa actual.
                 if (!messageData) {
-                    const { data: firstMsg } = await supabase
-                        .from('marketing')
-                        .select('*')
-                        .eq('nombre_envio', 1)
-                        .eq('activo', true)
-                        .maybeSingle();
-
-                    if (firstMsg) {
-                        messageData = firstMsg;
-                        contact.indice_secuencia = 1;
-                    }
-                }
-
-                if (!messageData) {
-                    report.errors.push(`Sin contenido para secuencia ${contact.indice_secuencia}`);
+                    console.log(`  ⏸️ Pausado: Sin contenido para etapa ${etapaActual} (${contact.correo})`);
                     continue;
                 }
 

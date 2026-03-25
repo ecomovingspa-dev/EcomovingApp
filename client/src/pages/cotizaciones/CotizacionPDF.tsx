@@ -19,300 +19,220 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
   totales,
 }) => {
   const generarPDF = async () => {
-    const doc = new jsPDF();
-
-    const pageWidth = doc.internal.pageSize.width;
-    const pageHeight = doc.internal.pageSize.height;
-
-    // HEADER
-    const logoUrl =
-      "https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo.png";
-
     try {
-      const logoImg = new Image();
-      logoImg.crossOrigin = "anonymous";
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      const pageHeight = doc.internal.pageSize.height;
+      const margin = 15;
 
-      await new Promise((resolve, reject) => {
-        logoImg.onload = resolve;
-        logoImg.onerror = reject;
-        logoImg.src = logoUrl;
-      });
+      const logoUrl = "https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo.png";
+      let logoImg: HTMLImageElement | null = null;
 
-      const logoHeight = 14.4;
-      const logoWidth = (370 / 206) * logoHeight;
-      doc.addImage(logoImg, "PNG", 15, 10, logoWidth, logoHeight);
-    } catch (error) {
-      doc.setTextColor(0, 150, 136);
-      doc.setFontSize(20);
-      doc.setFont("helvetica", "bold");
-      doc.text("ECOMOVING", 15, 20);
+      try {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = logoUrl;
+        });
+        logoImg = img;
+      } catch (e) {
+        console.warn("Logo failed to load, using placeholder:", e);
+      }
 
-      doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139);
-      doc.setFont("helvetica", "normal");
-      doc.text("SPA", 15, 25);
-    }
+      // Função auxiliar para desenhar o header e footer em cada página
+      const drawCommonElements = (doc: any, pageNumber: number) => {
+        // Logo ou Título
+        if (logoImg) {
+          const logoHeight = 12;
+          const logoWidth = (370 / 206) * logoHeight;
+          doc.addImage(logoImg, "PNG", margin, 10, logoWidth, logoHeight);
+        } else {
+          doc.setTextColor(0, 150, 136);
+          doc.setFontSize(18);
+          doc.setFont("helvetica", "bold");
+          doc.text("ECOMOVING SPA", margin, 20);
+        }
 
-    // Cotización y Fecha
-    const cotizacionX = pageWidth - 60;
-    const cotizacionY = 10;
+        // Título de la cotización
+        doc.setTextColor(30, 41, 59);
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "normal");
+        const nroCot = cotizacion.numero_cotizacion || "BORRADOR";
+        doc.text(`Cotización: ${nroCot}`, pageWidth - margin, 15, { align: "right" });
+        
+        const fechaDoc = (cotizacion.fecha || cotizacion.created_at)
+          ? new Date(cotizacion.fecha || cotizacion.created_at).toLocaleDateString("es-CL")
+          : new Date().toLocaleDateString("es-CL");
+        doc.text(`Fecha: ${fechaDoc}`, pageWidth - margin, 20, { align: "right" });
 
-    doc.setTextColor(30, 41, 59);
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      "Cotización: " + (cotizacion.numero_cotizacion || "BORRADOR"),
-      cotizacionX,
-      cotizacionY,
-    );
+        // Watermark if Borrador
+        if (cotizacion.estado_cotizacion?.toLowerCase() === "borrador") {
+          doc.saveGraphicsState();
+          doc.setTextColor(245, 245, 245);
+          doc.setFontSize(70);
+          doc.setFont("helvetica", "bold");
+          // Calculamos el centro para rotación
+          doc.text("BORRADOR", pageWidth / 2, pageHeight / 2, {
+            align: "center",
+            angle: 45,
+          });
+          doc.restoreGraphicsState();
+        }
 
-    const fechaCreacion = cotizacion.created_at
-      ? new Date(cotizacion.created_at).toLocaleDateString("es-CL")
-      : new Date().toLocaleDateString("es-CL");
-    const fechaCotizacion = cotizacion.fecha
-      ? new Date(cotizacion.fecha).toLocaleDateString("es-CL")
-      : fechaCreacion;
-    doc.text("Fecha: " + fechaCotizacion, cotizacionX, cotizacionY + 5);
+        // Footer
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.5);
+        doc.line(margin, pageHeight - 20, pageWidth - margin, pageHeight - 20);
 
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.5);
-    doc.line(15, 35, pageWidth - 15, 35);
-
-    // MARCA DE AGUA BORRADOR
-    if (cotizacion.estado_cotizacion === "borrador") {
-      doc.setTextColor(241, 245, 249);
-      doc.setFontSize(60);
-      doc.setFont("helvetica", "bold");
-      doc.text("BORRADOR", pageWidth / 2, pageHeight / 2, {
-        align: "center",
-        angle: 45,
-      });
-    }
-
-    // INFORMACIÓN DEL CLIENTE
-    let yPos = 40;
-    const lineHeight = 7;
-    const fontSize = 10;
-
-    const col1X = 15;
-    const col2X = 80;
-    const col3X = 145;
-
-    doc.setFontSize(fontSize);
-    doc.setTextColor(30, 41, 59);
-    doc.setFont("helvetica", "normal");
-
-    // Fila 1: Cliente, Contacto
-    const clienteText = `Cliente: ${cuenta?.cliente || "No especificado"}`;
-    doc.text(clienteText, col1X, yPos);
-
-    const contactoText = `Contacto: ${contacto?.nombre || "No especificado"}`;
-    doc.text(contactoText, col3X, yPos);
-
-    // Fila 2: Vendedor/a, Correo, Cel
-    yPos += lineHeight;
-
-    const vendedorText = `Vendedor/a: ${cotizacion.vendedor_nombre || "Sin asignar"}`;
-    doc.text(vendedorText, col1X, yPos);
-
-    if (cotizacion.vendedor_correo) {
-      const correoText = `Correo: ${cotizacion.vendedor_correo}`;
-      doc.text(correoText, col2X, yPos);
-    }
-
-    if (cotizacion.vendedor_celular) {
-      const celText = `Cel: ${cotizacion.vendedor_celular}`;
-      doc.text(celText, col3X, yPos);
-    }
-
-    // Fila 3: Tiempo de entrega, Validez
-    yPos += lineHeight;
-
-    const tiempoText = `Tiempo de entrega: ${cotizacion.tiempo_entrega || "No especificado"}`;
-    doc.text(tiempoText, col1X, yPos);
-
-    const validezText = `Validez: ${cotizacion.validez_oferta || "No especificado"}`;
-    doc.text(validezText, col3X, yPos);
-
-    // Línea separadora
-    yPos += 6;
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.5);
-    doc.line(15, yPos, pageWidth - 15, yPos);
-    yPos += 5;
-
-    // TABLA DE PRODUCTOS
-
-    const tableData: any[] = [];
-
-    for (const item of items) {
-      const row: any = {
-        descripcion: item.descripcion,
-        cantidad: item.cantidad.toString(),
-        precio: `$${Math.round(item.precio_unitario).toLocaleString("es-CL")}`,
-        subtotal: `$${Math.round(item.subtotal).toLocaleString("es-CL")}`,
-        imagen: item.imagen || null,
+        doc.setFontSize(9);
+        doc.setTextColor(148, 163, 184);
+        doc.text(
+          "ECOMOVING SPA - www.ecomoving.cl - ventas@ecomoving.cl",
+          pageWidth / 2,
+          pageHeight - 12,
+          { align: "center" }
+        );
+        doc.text(`Página ${pageNumber}`, pageWidth - margin, pageHeight - 12, { align: "right" });
       };
-      tableData.push(row);
-    }
 
-    autoTable(doc, {
-      startY: yPos,
-      head: [["", "Descripción", "Cant.", "Precio Unit.", "Subtotal"]],
-      body: tableData.map((row) => [
-        "",
-        row.descripcion,
-        row.cantidad,
-        row.precio,
-        row.subtotal,
-      ]),
-      theme: "grid",
-      headStyles: {
-        fillColor: [0, 150, 136], // Color turquesa del logo Ecomoving
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        fontSize: 9,
-        halign: "left",
-      },
-      bodyStyles: {
-        fontSize: 9,
-        textColor: [30, 41, 59],
-        minCellHeight: 15,
-        fillColor: [255, 255, 255], // Fondo blanco para todas las filas
-      },
-      columnStyles: {
-        0: { cellWidth: 18 },
-        1: { cellWidth: 75 },
-        2: { cellWidth: 18, halign: "center" },
-        3: { cellWidth: 32, halign: "right" },
-        4: { cellWidth: 35, halign: "right" },
-      },
-      alternateRowStyles: {
-        fillColor: [255, 255, 255], // También blanco para filas alternas (sin alternancia)
-      },
-      margin: { left: 15, right: 15 },
-      didDrawCell: (data) => {
-        if (data.column.index === 0 && data.section === "body") {
-          const item = tableData[data.row.index];
-          if (item.imagen) {
-            try {
-              doc.addImage(
-                item.imagen,
-                "PNG",
-                data.cell.x + 2,
-                data.cell.y + 2,
-                14,
-                14,
-              );
-            } catch (e) {
-              // Ignorar error de imagen
+      // Header inicial da primeira página
+      drawCommonElements(doc, 1);
+
+      // INFORMACIÓN DEL CLIENTE
+      let yPos = 35;
+      const lineHeight = 6;
+      doc.setFontSize(10);
+      doc.setTextColor(30, 41, 59);
+      doc.setFont("helvetica", "bold");
+      doc.text("INFORMACIÓN DEL CLIENTE", margin, yPos);
+      yPos += 5;
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 7;
+
+      doc.setFont("helvetica", "normal");
+      doc.text(`Cliente: ${cuenta?.cliente || "No especificado"}`, margin, yPos);
+      doc.text(`Contacto: ${contacto?.nombre || "No especificado"}`, pageWidth / 2 + 10, yPos);
+      yPos += lineHeight;
+      doc.text(`Vendedor/a: ${cotizacion.vendedor_nombre || "Sin asignar"}`, margin, yPos);
+      doc.text(`Validez: ${cotizacion.validez_oferta || "No especificado"}`, pageWidth / 2 + 10, yPos);
+      yPos += lineHeight;
+      doc.text(`Entrega: ${cotizacion.tiempo_entrega || "No especificado"}`, margin, yPos);
+      if (cotizacion.vendedor_correo) {
+        doc.text(`Correo: ${cotizacion.vendedor_correo}`, pageWidth / 2 + 10, yPos);
+      }
+      yPos += 10;
+
+      // TABLA DE PRODUCTOS
+      const tableData = items.map(item => ({
+        descripcion: item.descripcion || "Sin descripción",
+        cantidad: (item.cantidad || 0).toString(),
+        precio: `$${Math.round(item.precio_unitario || 0).toLocaleString("es-CL")}`,
+        subtotal: `$${Math.round(item.subtotal || 0).toLocaleString("es-CL")}`,
+        imagen: item.imagen || null,
+      }));
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [["", "Descripción", "Cant.", "Precio Unit.", "Subtotal"]],
+        body: tableData.map(row => ["", row.descripcion, row.cantidad, row.precio, row.subtotal]),
+        theme: "grid",
+        headStyles: { fillColor: [0, 150, 136], fontStyle: "bold", fontSize: 9 },
+        bodyStyles: { fontSize: 9, minCellHeight: 18, valign: "middle" },
+        columnStyles: {
+          0: { cellWidth: 20 },
+          1: { cellWidth: 80 },
+          2: { cellWidth: 15, halign: "center" },
+          3: { cellWidth: 35, halign: "right" },
+          4: { cellWidth: 35, halign: "right" }
+        },
+        margin: { left: margin, right: margin, top: 25 },
+        didDrawPage: (data) => {
+          // Si no es la primera página, dibujar elementos comunes
+          if (data.pageNumber > 1) {
+            drawCommonElements(doc, data.pageNumber);
+          }
+        },
+        didDrawCell: (data) => {
+          if (data.column.index === 0 && data.section === "body") {
+            const item = tableData[data.row.index];
+            if (item.imagen) {
+              try {
+                const format = item.imagen.includes("image/png") ? "PNG" : "JPEG";
+                doc.addImage(item.imagen, format, data.cell.x + 2, data.cell.y + 2, 16, 14);
+              } catch (e) {
+                console.error("Image draw error:", e);
+              }
             }
           }
         }
-      },
-    });
+      });
 
-    // Línea separadora antes de totales
-    const finalY = (doc as any).lastAutoTable.finalY || yPos + 40;
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.5);
-    doc.line(15, finalY + 5, pageWidth - 15, finalY + 5);
+      // SECCIÓN FINAL (TOTALES Y BANCO)
+      const lastY = (doc as any).lastAutoTable.finalY || yPos + 40;
+      
+      // Chequeo de espacio para el bloque final (aprox 60mm)
+      if (lastY + 60 > pageHeight - 25) {
+        doc.addPage();
+        drawCommonElements(doc, (doc as any).internal.getNumberOfPages());
+        yPos = 35;
+      } else {
+        yPos = lastY + 10;
+      }
 
-    // DATOS BANCARIOS, ECOMOVING Y TOTALES
-    let totalesY = finalY + 10;
-    const totalesCol1X = 15;
-    const totalesCol2X = 80;
-    const totalesCol3X = 145;
-    const dataFontSize = 10;
+      // Línea divisora
+      doc.setDrawColor(226, 232, 240);
+      doc.line(margin, yPos - 5, pageWidth - margin, yPos - 5);
 
-    doc.setFontSize(dataFontSize);
-    doc.setTextColor(30, 41, 59);
-    doc.setFont("helvetica", "normal");
+      // Bloque de datos bancários y totales (2 colunas)
+      const col2X = 110;
+      
+      // Col 1: Banco y Ecomoving
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.text("DATOS PARA TRANSFERENCIA", margin, yPos);
+      doc.setFont("helvetica", "normal");
+      doc.text("Banco BCI - Cuenta Corriente", margin, yPos + 5);
+      doc.text("Nro: 13750780", margin, yPos + 9);
+      doc.text("Ecomoving SPA - 77.567.348-6", margin, yPos + 13);
+      doc.text("cobranza@ecomoving.cl", margin, yPos + 17);
 
-    // Columna 1: Datos Bancarios
-    doc.text("Datos Bancarios:", totalesCol1X, totalesY);
-    totalesY += 5;
-    doc.text("Banco BCI", totalesCol1X, totalesY);
-    totalesY += 4;
-    doc.text("Cuenta Corriente:", totalesCol1X, totalesY);
-    totalesY += 4;
-    doc.text("13750780", totalesCol1X, totalesY);
-    totalesY += 4;
-    doc.text("cobranza@ecomoving.cl", totalesCol1X, totalesY);
+      // Col 2: Totales
+      doc.setFont("helvetica", "normal");
+      doc.text("Subtotal Neto:", col2X, yPos);
+      doc.text(`$${Math.round(totales?.neto || 0).toLocaleString("es-CL")}`, pageWidth - margin, yPos, { align: "right" });
+      
+      doc.text("IVA (19%):", col2X, yPos + 5);
+      doc.text(`$${Math.round(totales?.iva || 0).toLocaleString("es-CL")}`, pageWidth - margin, yPos + 5, { align: "right" });
+      
+      doc.setLineWidth(0.5);
+      doc.line(col2X, yPos + 8, pageWidth - margin, yPos + 8);
+      
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "bold");
+      doc.text("TOTAL:", col2X, yPos + 14);
+      doc.text(`$${Math.round(totales?.total || 0).toLocaleString("es-CL")}`, pageWidth - margin, yPos + 14, { align: "right" });
 
-    // Columna 2: Ecomoving SPA
-    totalesY = finalY + 10;
-    doc.text("Ecomoving SPA", totalesCol2X, totalesY);
-    totalesY += 4;
-    doc.text("77.567.348-6", totalesCol2X, totalesY);
-    totalesY += 4;
-    doc.text("Servicios de Publicidad", totalesCol2X, totalesY);
-    totalesY += 4;
-    doc.text("Las Golondrinas 3761,", totalesCol2X, totalesY);
-    totalesY += 4;
-    doc.text("Macul", totalesCol2X, totalesY);
-
-    // Columna 3: Totales
-    totalesY = finalY + 10;
-    doc.text("Subtotal:", totalesCol3X, totalesY);
-    doc.text(
-      `$${Math.round(totales.neto).toLocaleString("es-CL")}`,
-      pageWidth - 15,
-      totalesY,
-      { align: "right" },
-    );
-
-    totalesY += 5;
-    doc.text("IVA (19%):", totalesCol3X, totalesY);
-    doc.text(
-      `$${Math.round(totales.iva).toLocaleString("es-CL")}`,
-      pageWidth - 15,
-      totalesY,
-      { align: "right" },
-    );
-
-    totalesY += 3;
-    doc.setDrawColor(30, 41, 59);
-    doc.setLineWidth(0.5);
-    doc.line(totalesCol3X, totalesY, pageWidth - 15, totalesY);
-
-    totalesY += 5;
-    doc.setFontSize(12);
-    doc.text("TOTAL:", totalesCol3X, totalesY);
-    doc.text(
-      `$${Math.round(totales.total).toLocaleString("es-CL")}`,
-      pageWidth - 15,
-      totalesY,
-      { align: "right" },
-    );
-
-    // FOOTER
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineWidth(0.5);
-    doc.line(15, pageHeight - 20, pageWidth - 15, pageHeight - 20);
-
-    doc.setFontSize(10);
-    doc.setTextColor(100, 116, 139);
-    doc.setFont("helvetica", "normal");
-    doc.text(
-      "ECOMOVING SPA - www.ecomoving.cl - ventas@ecomoving.cl",
-      pageWidth / 2,
-      pageHeight - 12,
-      { align: "center" },
-    );
-
-    // GUARDAR PDF
-    const nombreArchivo = `Cotizacion_${cotizacion.numero_cotizacion || "BORRADOR"}_${cuenta?.cliente?.replace(/\s+/g, "_") || "Cliente"}.pdf`;
-    doc.save(nombreArchivo);
+      // Guardar PDF
+      const cleanCliente = (cuenta?.cliente || "Cliente").replace(/[^a-zA-Z0-9]/g, "_").substring(0, 30);
+      const cleanNumero = (cotizacion.numero_cotizacion || "BORRADOR").replace(/[^a-zA-Z0-9]/g, "_");
+      doc.save(`Cotizacion_${cleanNumero}_${cleanCliente}.pdf`);
+      
+    } catch (err) {
+      console.error("Fatal PDF Error:", err);
+      alert("Hubo un error al generar el PDF. Si el problema persiste, verifique que los datos de la cotización sean válidos.");
+    }
   };
 
   return (
     <button
       onClick={generarPDF}
-      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors h-8"
+      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg shadow-sm hover:shadow-md hover:bg-slate-50 transition-all h-9"
     >
       <FileDown className="h-4 w-4" />
-      PDF
+      Exportar PDF
     </button>
   );
 };
