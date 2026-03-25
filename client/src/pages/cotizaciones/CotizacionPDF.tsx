@@ -67,22 +67,8 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
           : new Date().toLocaleDateString("es-CL");
         doc.text(`Fecha: ${fechaDoc}`, pageWidth - margin, 20, { align: "right" });
 
-        // Watermark if Borrador
-        if (cotizacion.estado_cotizacion?.toLowerCase() === "borrador") {
-          const hasGraphicsState = typeof doc.saveGraphicsState === "function";
-          if (hasGraphicsState) doc.saveGraphicsState();
-          
-          doc.setTextColor(245, 245, 245);
-          doc.setFontSize(70);
-          doc.setFont("helvetica", "bold");
-          // Calculamos el centro para rotación
-          doc.text("BORRADOR", pageWidth / 2, pageHeight / 2, {
-            align: "center",
-            angle: 45,
-          });
-          
-          if (hasGraphicsState) doc.restoreGraphicsState();
-        }
+        // Removido bloque de marca de agua BORRADOR por petición del usuario
+
 
         // Footer
         doc.setDrawColor(226, 232, 240);
