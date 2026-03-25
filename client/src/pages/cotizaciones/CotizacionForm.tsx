@@ -100,7 +100,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       descripcion: "",
       cantidad: 1,
       margen: 25,
-      subcostos: [{ id: Date.now() + 1, proveedor: "", cantidad: 1, precio_unitario: 0, descuento: 0, valor: 0 }],
+      subcostos: [{ id: Date.now() + 1, proveedor: "", codigo: "", cantidad: 1, precio_unitario: 0, descuento: 0 }],
       categoria_producto: "botellas",
       especificaciones_tecnicas: "",
       imagenes_secundarias: ["", "", ""]
@@ -124,7 +124,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       ...prev,
       items: (prev.items || []).map(it => it.id === iid ? {
         ...it,
-        subcostos: [...it.subcostos, { id: Date.now(), proveedor: "", cantidad: 1, precio_unitario: 0, descuento: 0, valor: 0 }]
+        subcostos: [...it.subcostos, { id: Date.now(), proveedor: "", codigo: "", cantidad: 1, precio_unitario: 0, descuento: 0 }]
       } : it)
     }));
   };
@@ -351,6 +351,12 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
         {/* Lado Inferior: Configuración e Ítems Full-Width */}
         <div className="space-y-8">
+          <script dangerouslySetInnerHTML={{ __html: `
+            function autoResize(el) {
+              el.style.height = 'auto';
+              el.style.height = el.scrollHeight + 'px';
+            }
+          `}} />
           
           {/* Tarjeta de Cliente */}
           <section className="bg-white dark:bg-gray-900 p-8 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm space-y-6">
@@ -462,35 +468,66 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
              {(cotizacion.items || []).map((item, idx) => (
                 <div key={item.id} className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden animate-in slide-in-from-right-4 duration-500" style={{ animationDelay: `${idx * 100}ms` }}>
                   
-                  {/* Item Header */}
+                  {/* Item Header (Venta y General) */}
                   <div className="p-8 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 flex justify-between items-start gap-6">
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-6">
-                      <div className="md:col-span-2 space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descripción Comercial del Producto</label>
-                        <Input 
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6">
+                      {/* Descripción Autoajustable */}
+                      <div className="md:col-span-4 space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descripción Comercial</label>
+                        <textarea 
                           value={item.descripcion}
                           onChange={(e) => updateItem(item.id, { descripcion: e.target.value })}
-                          className="h-12 bg-white dark:bg-gray-900 border-none font-bold placeholder:text-gray-300"
-                          placeholder="Ej: Mochila Corporativa Premium Tech"
+                          onInput={(e) => {
+                            const target = e.target as HTMLTextAreaElement;
+                            target.style.height = 'auto';
+                            target.style.height = target.scrollHeight + 'px';
+                          }}
+                          className="w-full min-h-[48px] bg-white dark:bg-gray-900 border-none font-bold placeholder:text-gray-300 rounded-xl px-4 py-3 resize-none overflow-hidden text-sm"
+                          placeholder="Mochila Corporativa..."
+                          style={{ height: 'auto' }}
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Categoría (Propuesta)</label>
-                        <select 
-                          value={item.categoria_producto}
-                          onChange={(e) => updateItem(item.id, { categoria_producto: e.target.value })}
-                          className="w-full h-12 bg-white dark:bg-gray-900 border-none rounded-xl px-3 font-bold"
-                        >
-                          {CATEGORIAS.map(cat => <option key={cat.id} value={cat.id}>{cat.icon} {cat.label}</option>)}
-                        </select>
+
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cantidad</label>
+                        <Input 
+                          type="number"
+                          value={item.cantidad}
+                          onChange={(e) => updateItem(item.id, { cantidad: Number(e.target.value) })}
+                          className="h-12 bg-white dark:bg-gray-900 border-none font-black text-center text-blue-600"
+                        />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Márgen Sugerido (%)</label>
+
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic">Unit. Venta (Neto)</label>
+                        <div className="h-12 flex items-center px-4 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-sm font-black text-emerald-600">
+                          {(() => {
+                             const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
+                             const neto = costo / (1 - (item.margen || 0)/100);
+                             const unit = (item.cantidad || 0) > 0 ? neto / item.cantidad : 0;
+                             return `$${Math.round(unit).toLocaleString("es-CL")}`;
+                          })()}
+                        </div>
+                      </div>
+
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest italic">Subtotal Neto</label>
+                        <div className="h-12 flex items-center px-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-sm font-black text-emerald-500">
+                          {(() => {
+                             const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
+                             const neto = costo / (1 - (item.margen || 0)/100);
+                             return `$${Math.round(neto).toLocaleString("es-CL")}`;
+                          })()}
+                        </div>
+                      </div>
+
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Márgen (%)</label>
                         <Input 
                           type="number"
                           value={item.margen}
                           onChange={(e) => updateItem(item.id, { margen: Number(e.target.value) })}
-                          className="h-12 bg-white dark:bg-gray-900 border-none font-bold text-blue-600 text-center"
+                          className="h-12 bg-white dark:bg-gray-900 border-none font-bold text-blue-500 text-center"
                         />
                       </div>
                     </div>
@@ -499,130 +536,177 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                     </Button>
                   </div>
 
-                  {/* Detalle Técnico / Propuesta */}
-                  <div className="p-8 space-y-8">
-                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                       {/* Especificaciones Técnicas */}
-                       <div className="space-y-3">
-                         <div className="flex items-center gap-2 text-[11px] font-black text-gray-400 uppercase">
-                           <FileText className="h-3 w-3" /> PÁRRAFO DE ESPECIFICACIONES (PARA PROPUESTA)
-                         </div>
-                         <textarea 
-                           value={item.especificaciones_tecnicas}
-                           onChange={(e) => updateItem(item.id, { especificaciones_tecnicas: e.target.value })}
-                           className="w-full min-h-[140px] p-5 bg-gray-50 dark:bg-gray-800 border-none rounded-3xl text-sm font-medium leading-relaxed"
-                           placeholder="Este párrafo aparecerá en la página dedicada del ítem dentro del PDF Premium..."
-                         />
-                       </div>
+                  {/* Pestañas de Item */}
+                  <div className="px-8 pt-4 border-b border-gray-100 dark:border-gray-800 flex gap-6">
+                    <button 
+                      onClick={() => updateItem(item.id, { _activeTab: 'costos' })}
+                      className={`pb-4 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${(!item._activeTab || item._activeTab === 'costos') ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                    >
+                      Costos y Estructura
+                    </button>
+                    <button 
+                      onClick={() => updateItem(item.id, { _activeTab: 'marketing' })}
+                      className={`pb-4 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${item._activeTab === 'marketing' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                    >
+                      Marketing y Propuesta
+                    </button>
+                  </div>
 
-                       {/* Gestión de Imágenes Propuesta (4 marcos) */}
-                       <div className="space-y-4">
-                         <div className="flex items-center gap-2 text-[11px] font-black text-gray-400 uppercase">
-                           <ImageIcon className="h-3 w-3" /> MARCOS DE IMAGEN (1 MINIATURA + 3 MANUALES)
-                         </div>
-                         <div className="grid grid-cols-2 gap-3">
-                           {/* Miniatura Principal */}
-                           <div className="aspect-square bg-blue-50 dark:bg-blue-900/20 rounded-2xl border-2 border-dashed border-blue-200 dark:border-blue-800 flex flex-col items-center justify-center p-2 relative overflow-hidden group">
-                                {item.imagen ? (
-                                  <img src={item.imagen} className="w-full h-full object-cover rounded-xl" />
-                                ) : (
-                                  <div className="text-center">
-                                    <div className="text-blue-600 font-black text-xs uppercase mb-1">Thumbnail</div>
-                                    <ImageIcon className="h-6 w-6 text-blue-300 mx-auto" />
-                                  </div>
-                                )}
-                                <input 
-                                  type="file" accept="image/*" 
-                                  onChange={(e) => {
-                                    const reader = new FileReader();
-                                    reader.onload = (ev) => updateItem(item.id, { imagen: ev.target?.result as string });
-                                    if (e.target.files?.[0]) reader.readAsDataURL(e.target.files[0]);
-                                  }}
-                                  className="absolute inset-0 opacity-0 cursor-pointer" 
-                                />
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <p className="text-[10px] font-black text-white">SUBIR PRINCIPAL</p>
-                                </div>
-                                {item.imagen && <div className="absolute top-1 right-1 bg-blue-600 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold">MARCO 1</div>}
-                           </div>
-
-                           {/* 3 Marcos Manuales */}
-                           {(item.imagenes_secundarias || ["", "", ""]).map((img, iIdx) => (
-                             <div key={iIdx} className="aspect-video bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-2 relative overflow-hidden group">
-                                {img ? (
-                                  <img src={img} className="w-full h-full object-cover rounded-xl" />
-                                ) : (
-                                  <ImageIcon className="h-5 w-5 text-gray-300" />
-                                )}
-                                <input 
-                                  type="file" accept="image/*" 
-                                  onChange={(e) => handleImageUpload(item.id, iIdx, e)}
-                                  className="absolute inset-0 opacity-0 cursor-pointer" 
-                                />
-                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-center p-2">
-                                  <p className="text-[9px] font-black text-white">MARCO {iIdx + 2}<br/>(TRATAMIENTO AUTO)</p>
-                                </div>
-                             </div>
-                           ))}
-                         </div>
-                         <p className="text-[10px] text-gray-400 font-medium italic">* Las imágenes se comprimen automáticamente a JPEG Web-Ready para PDF.</p>
-                       </div>
-                     </div>
-
-                     {/* SubCostos (Proveedores) */}
-                     <div className="space-y-4">
-                       <div className="flex justify-between items-center">
-                          <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest">Estructura de Costeo (Proveedores)</label>
-                          <Button variant="ghost" onClick={() => addSubCosto(item.id)} className="h-8 text-[11px] font-black hover:text-blue-600">
-                             + AÑADIR PROVEEDOR / ACCESORIO
-                          </Button>
-                       </div>
-                       <div className="space-y-2">
-                         {item.subcostos.map(sc => (
-                            <div key={sc.id} className="flex flex-wrap md:flex-nowrap gap-4 items-end bg-gray-50/50 dark:bg-gray-800/20 p-4 rounded-2xl">
-                               <div className="flex-1 space-y-1">
-                                 <label className="text-[9px] font-bold text-gray-400 uppercase">Proveedor / Detalle Insumo</label>
-                                 <Input 
-                                   value={sc.proveedor}
-                                   onChange={(e) => updateSubCosto(item.id, sc.id, { proveedor: e.target.value })}
-                                   className="h-10 bg-white dark:bg-gray-900 border-none font-medium text-xs shadow-sm"
-                                   placeholder="Nombre del proveedor o servicio"
-                                 />
-                               </div>
-                               <div className="w-20 space-y-1">
-                                 <label className="text-[9px] font-bold text-gray-400 uppercase">Cant.</label>
-                                 <Input 
-                                   type="number"
-                                   value={sc.cantidad}
-                                   onChange={(e) => updateSubCosto(item.id, sc.id, { cantidad: Number(e.target.value) })}
-                                   className="h-10 bg-white dark:bg-gray-900 border-none font-bold text-xs text-center"
-                                 />
-                               </div>
-                               <div className="w-28 space-y-1">
-                                 <label className="text-[9px] font-bold text-gray-400 uppercase">Unit. ($)</label>
-                                 <Input 
-                                   type="number"
-                                   value={sc.precio_unitario}
-                                   onChange={(e) => updateSubCosto(item.id, sc.id, { precio_unitario: Number(e.target.value) })}
-                                   className="h-10 bg-white dark:bg-gray-900 border-none font-black text-xs text-right text-emerald-600"
-                                 />
-                               </div>
-                               <div className="w-20 space-y-1">
-                                 <label className="text-[9px] font-bold text-gray-400 uppercase">Desc. %</label>
-                                 <Input 
-                                   type="number"
-                                   value={sc.descuento}
-                                   onChange={(e) => updateSubCosto(item.id, sc.id, { descuento: Number(e.target.value) })}
-                                   className="h-10 bg-white dark:bg-gray-900 border-none font-bold text-xs text-center text-red-400"
-                                 />
-                               </div>
-                               <Button variant="ghost" onClick={() => removeSubCosto(item.id, sc.id)} className="h-10 w-10 text-gray-300 hover:text-red-500 pb-0">
-                                  <X className="h-4 w-4" />
+                  <div className="p-8">
+                    {(!item._activeTab || item._activeTab === 'costos') ? (
+                      <div className="space-y-6 animate-in fade-in duration-300">
+                         {/* SECCIÓN COSTOS (SUBCOSTOS) */}
+                         <div className="space-y-4">
+                            <div className="flex justify-between items-center mb-2">
+                               <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                 <Plus className="h-4 w-4" /> Análisis de Costos Industriales
+                               </h4>
+                               <Button variant="outline" size="sm" onClick={() => addSubCosto(item.id)} className="h-9 px-4 rounded-xl font-bold border-dashed text-[10px]">
+                                 + AÑADIR COSTO / INSUMO
                                </Button>
                             </div>
-                         ))}
-                       </div>
-                     </div>
+                            
+                            <div className="space-y-2">
+                               {(item.subcostos || []).map(sc => (
+                                 <div key={sc.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-gray-50/50 dark:bg-gray-800/20 p-4 rounded-2xl border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-colors">
+                                    <div className="md:col-span-3 space-y-1">
+                                      <label className="text-[9px] font-bold text-gray-400 uppercase">Proveedor / Detalle</label>
+                                      <Input 
+                                        value={sc.proveedor}
+                                        onChange={(e) => updateSubCosto(item.id, sc.id, { proveedor: e.target.value })}
+                                        className="h-10 bg-white dark:bg-gray-900 border-none font-medium text-xs shadow-sm px-3"
+                                        placeholder="Nombre..."
+                                      />
+                                    </div>
+                                    <div className="md:col-span-2 space-y-1">
+                                      <label className="text-[9px] font-bold text-gray-400 uppercase">Código</label>
+                                      <Input 
+                                        value={sc.codigo}
+                                        onChange={(e) => updateSubCosto(item.id, sc.id, { codigo: e.target.value })}
+                                        className="h-10 bg-white dark:bg-gray-900 border-none font-black text-xs text-blue-400 px-3 uppercase"
+                                        placeholder="SKU"
+                                      />
+                                    </div>
+                                    <div className="md:col-span-1 space-y-1">
+                                      <label className="text-[9px] font-bold text-gray-400 uppercase text-center block">Cant.</label>
+                                      <Input 
+                                        type="number"
+                                        value={sc.cantidad}
+                                        onChange={(e) => updateSubCosto(item.id, sc.id, { cantidad: Number(e.target.value) })}
+                                        className="h-10 bg-white dark:bg-gray-900 border-none font-bold text-xs text-center"
+                                      />
+                                    </div>
+                                    <div className="md:col-span-2 space-y-1">
+                                      <label className="text-[9px] font-bold text-gray-400 uppercase text-right block">Unit. ($)</label>
+                                      <Input 
+                                        type="number"
+                                        value={sc.precio_unitario}
+                                        onChange={(e) => updateSubCosto(item.id, sc.id, { precio_unitario: Number(e.target.value) })}
+                                        className="h-10 bg-white dark:bg-gray-900 border-none font-black text-xs text-right text-emerald-600"
+                                      />
+                                    </div>
+                                    <div className="md:col-span-1 space-y-1">
+                                      <label className="text-[9px] font-bold text-gray-400 uppercase text-center block">Desc. %</label>
+                                      <Input 
+                                        type="number"
+                                        value={sc.descuento}
+                                        onChange={(e) => updateSubCosto(item.id, sc.id, { descuento: Number(e.target.value) })}
+                                        className="h-10 bg-white dark:bg-gray-900 border-none font-bold text-xs text-center text-red-400"
+                                      />
+                                    </div>
+                                    <div className="md:col-span-2 space-y-1">
+                                      <label className="text-[9px] font-bold text-gray-400 uppercase text-right block">Subtotal</label>
+                                      <div className="h-10 flex items-center justify-end px-3 bg-white dark:bg-gray-900 rounded-lg text-xs font-black text-gray-500">
+                                        ${Math.round((sc.cantidad || 0) * (sc.precio_unitario || 0) * (1 - (sc.descuento || 0)/100)).toLocaleString("es-CL")}
+                                      </div>
+                                    </div>
+                                    <div className="md:col-span-1 flex justify-center">
+                                      <Button variant="ghost" onClick={() => removeSubCosto(item.id, sc.id)} className="h-10 w-10 text-gray-300 hover:text-red-500 p-0">
+                                         <X className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                 </div>
+                               ))}
+                            </div>
+                         </div>
+                      </div>
+                    ) : (
+                      <div className="animate-in slide-in-from-left-4 duration-500 space-y-8">
+                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
+                           {/* Especificaciones Técnicas */}
+                           <div className="space-y-4">
+                             <div className="flex justify-between items-center">
+                               <div className="flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                                 <FileText className="h-3 w-3" /> PÁRRAFO DE ESPECIFICACIONES
+                               </div>
+                               <div className="w-48">
+                                 <select 
+                                   value={item.categoria_producto}
+                                   onChange={(e) => updateItem(item.id, { categoria_producto: e.target.value })}
+                                   className="w-full h-8 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-none rounded-lg px-2 text-[9px] font-black uppercase"
+                                 >
+                                   {CATEGORIAS.map(cat => <option key={cat.id} value={cat.id}>{cat.icon} {cat.label}</option>)}
+                                 </select>
+                               </div>
+                             </div>
+                             <textarea 
+                               value={item.especificaciones_tecnicas}
+                               onChange={(e) => updateItem(item.id, { especificaciones_tecnicas: e.target.value })}
+                               className="w-full min-h-[160px] p-5 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl text-sm font-medium leading-relaxed"
+                               placeholder="Detalles sobre materiales, impresión, etc..."
+                             />
+                           </div>
+
+                           {/* Bilder Marketing */}
+                           <div className="space-y-4">
+                             <div className="flex items-center gap-2 text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+                               <ImageIcon className="h-3 w-3" /> MARCOS DE IMAGEN (PROPUESTA)
+                             </div>
+                             <div className="grid grid-cols-2 gap-3">
+                               {/* Miniatura Principal */}
+                               <div className="aspect-square bg-blue-50 dark:bg-blue-900/20 rounded-2xl border-2 border-dashed border-blue-200 dark:border-blue-800 flex flex-col items-center justify-center p-2 relative overflow-hidden group">
+                                    {item.imagen ? (
+                                      <img src={item.imagen} className="w-full h-full object-cover rounded-xl" />
+                                    ) : (
+                                      <div className="text-center">
+                                        <div className="text-blue-600 font-black text-[9px] uppercase mb-1 tracking-tighter">Principal</div>
+                                        <ImageIcon className="h-5 w-5 text-blue-300 mx-auto" />
+                                      </div>
+                                    )}
+                                    <input 
+                                      type="file" accept="image/*" 
+                                      onChange={(e) => handleImageUpload(item.id, -1, e)}
+                                      className="absolute inset-0 opacity-0 cursor-pointer" 
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <p className="text-[9px] font-black text-white uppercase">Cambiar</p>
+                                    </div>
+                               </div>
+
+                               {/* 3 Marcos Manuales */}
+                               {(item.imagenes_secundarias || ["", "", ""]).map((img, iIdx) => (
+                                 <div key={iIdx} className="aspect-video bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-2 relative overflow-hidden group">
+                                    {img ? (
+                                      <img src={img} className="w-full h-full object-cover rounded-xl" />
+                                    ) : (
+                                      <ImageIcon className="h-4 w-4 text-gray-300" />
+                                    )}
+                                    <input 
+                                      type="file" accept="image/*" 
+                                      onChange={(e) => handleImageUpload(item.id, iIdx, e)}
+                                      className="absolute inset-0 opacity-0 cursor-pointer" 
+                                    />
+                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-center px-1">
+                                      <p className="text-[8px] font-black text-white uppercase">M{iIdx + 2}</p>
+                                    </div>
+                                    {img && <div className="absolute top-1 right-1 bg-gray-800 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold">Slot {iIdx+2}</div>}
+                                 </div>
+                               ))}
+                             </div>
+                           </div>
+                         </div>
+                      </div>
+                    )}
                   </div>
                 </div>
              ))}

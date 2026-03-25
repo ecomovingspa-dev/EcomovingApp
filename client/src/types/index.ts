@@ -49,6 +49,7 @@ export interface Item {
   categoria_producto?: string; // e.g., "botellas", "morrales", "mugs", "totes"
   especificaciones_tecnicas?: string; // Párrafo descriptivo técnico
   imagenes_secundarias?: string[]; // URLs de los 3 marcos manuales
+  _activeTab?: string; // Estado de UI: 'costos' | 'marketing'
 }
 
 // Tipos para Cotizaciones
