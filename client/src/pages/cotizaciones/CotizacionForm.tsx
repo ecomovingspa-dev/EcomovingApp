@@ -1090,18 +1090,6 @@ export default function CotizacionForm({
     }
   };
 
-  const getTextoBoton = () => {
-    if (guardando) return "Guardando...";
-    if (cotizacion.estado_cotizacion === "borrador") return "Guardar y Enviar";
-    return "Guardar y Volver al Listado";
-  };
-
-  const getIconoBoton = () => {
-    if (guardando) return <span className="animate-spin mr-2">⏳</span>;
-    if (cotizacion.estado_cotizacion === "borrador")
-      return <Send className="mr-2 h-4 w-4" />;
-    return <Save className="mr-2 h-4 w-4" />;
-  };
 
   const tiempoDesdeGuardado = () => {
     if (!ultimoGuardado) return "";
@@ -1245,34 +1233,15 @@ export default function CotizacionForm({
                   Presentación
                 </Button>
                 <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1"></div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate("/cotizaciones")}
-                  className="text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200"
-                >
-                  Regresar
-                </Button>
                 <div className="flex items-center gap-2">
                   <Button
-                    variant="outline"
-                    size="sm"
                     onClick={(e) => handleSubmit(e, true)}
                     disabled={guardando}
-                    className="border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                    title="Guardar sin salir"
+                    className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-medium shadow-md shadow-blue-200 dark:shadow-blue-900/40 gap-2 h-9"
+                    title="Guardar cambios"
                   >
-                    <Save className="h-4 w-4 mr-1.5" />
-                    Guardar
-                  </Button>
-                  <Button
-                    onClick={(e) => handleSubmit(e, false)}
-                    disabled={guardando}
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md shadow-blue-200"
-                  >
-                    {getIconoBoton()}
-                    {getTextoBoton()}
+                    <Save className="h-4 w-4" />
+                    {guardando ? "Guardando..." : "Guardar Cotización"}
                   </Button>
                 </div>
               </div>
