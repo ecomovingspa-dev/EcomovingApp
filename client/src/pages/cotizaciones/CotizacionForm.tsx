@@ -359,13 +359,13 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">CLIENTE Y EJECUCIÓN</h2>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">Cuenta (Razón Social)</label>
                 <select 
                   value={cotizacion.cuenta_id} 
                   onChange={(e) => handleAccountChange(e.target.value)}
-                  className="w-full h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all"
+                  className="w-full h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                 >
                   <option value="">Seleccione Cliente...</option>
                   {cuentas.map(c => <option key={c.id} value={c.id}>{c.cliente}</option>)}
@@ -377,11 +377,73 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                 <select 
                   value={cotizacion.contacto_id} 
                   onChange={(e) => setCotizacion(prev => ({ ...prev, contacto_id: e.target.value }))}
-                  className="w-full h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all"
+                  className="w-full h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
                 >
                   <option value="">Seleccione Contacto...</option>
-                  {contactos.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.cargo})</option>)}
+                  {contactos.map(c => <option key={c.id} value={c.id}>{c.nombre} ({c.cargo || ""})</option>)}
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">Vendedor Asignado</label>
+                <select 
+                  value={cotizacion.vendedor_id} 
+                  onChange={(e) => setCotizacion(prev => ({ ...prev, vendedor_id: e.target.value }))}
+                  className="w-full h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                >
+                  <option value="">Seleccione Vendedor...</option>
+                  {vendedores.map(v => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">Validez de Oferta</label>
+                <Input 
+                  value={cotizacion.validez_oferta} 
+                  onChange={(e) => setCotizacion(prev => ({ ...prev, validez_oferta: e.target.value }))}
+                  className="h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold"
+                  placeholder="Ej: 30 días"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">Tiempo de Entrega</label>
+                <Input 
+                  value={cotizacion.tiempo_entrega} 
+                  onChange={(e) => setCotizacion(prev => ({ ...prev, tiempo_entrega: e.target.value }))}
+                  className="h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold"
+                  placeholder="Ej: 5 a 10 días"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">N° Orden de Compra</label>
+                <Input 
+                  value={cotizacion.nro_oc} 
+                  onChange={(e) => setCotizacion(prev => ({ ...prev, nro_oc: e.target.value }))}
+                  className="h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold"
+                  placeholder="Número OC"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">Guía de Despacho</label>
+                <Input 
+                  value={cotizacion.nro_guia} 
+                  onChange={(e) => setCotizacion(prev => ({ ...prev, nro_guia: e.target.value }))}
+                  className="h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold"
+                  placeholder="Número de Guía"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[11px] font-black text-gray-400 uppercase tracking-[0.1em]">N° Factura</label>
+                <Input 
+                  value={cotizacion.nro_factura} 
+                  onChange={(e) => setCotizacion(prev => ({ ...prev, nro_factura: e.target.value }))}
+                  className="h-14 bg-gray-50 dark:bg-gray-800 border-none rounded-2xl px-5 font-bold"
+                  placeholder="Número de Factura"
+                />
               </div>
             </div>
           </section>
