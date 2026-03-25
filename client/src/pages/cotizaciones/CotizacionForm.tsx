@@ -705,8 +705,24 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                         </div>
 
                         {/* Columna Izquierda 2: Descripción Comercial */}
-                        <div className="lg:col-span-5 space-y-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descripción Comercial</label>
+                        <div className="lg:col-span-10 lg:col-start-3 xl:col-span-5 xl:col-start-3 space-y-2">
+                          <div className="flex justify-between items-center px-1">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Descripción Comercial</label>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black text-gray-300 uppercase">Propuesta:</span>
+                              <select 
+                                value={item.categoria_producto}
+                                onChange={(e) => updateItem(item.id, { categoria_producto: e.target.value })}
+                                className="bg-transparent text-indigo-500 font-black text-[10px] uppercase border-none p-0 focus:ring-0 cursor-pointer hover:text-indigo-600 transition-colors"
+                              >
+                                {CATEGORIAS.map(cat => (
+                                  <option key={cat.id} value={cat.id} className="text-gray-900 bg-white">
+                                    {cat.icon} {cat.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
                           <textarea 
                             value={item.descripcion}
                             onChange={(e) => updateItem(item.id, { descripcion: e.target.value })}
@@ -872,21 +888,12 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                       <div className="animate-in slide-in-from-left-4 duration-500 space-y-8">
                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
                            {/* Especificaciones Técnicas */}
-                           <div className="space-y-4">
-                             <div className="flex justify-between items-center">
-                               <div className="flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest">
-                                 <FileText className="h-3 w-3" /> PÁRRAFO DE ESPECIFICACIONES
-                               </div>
-                               <div className="w-48">
-                                 <select 
-                                   value={item.categoria_producto}
-                                   onChange={(e) => updateItem(item.id, { categoria_producto: e.target.value })}
-                                   className="w-full h-8 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 border-none rounded-lg px-2 text-[9px] font-black uppercase"
-                                 >
-                                   {CATEGORIAS.map(cat => <option key={cat.id} value={cat.id}>{cat.icon} {cat.label}</option>)}
-                                 </select>
-                               </div>
-                             </div>
+                            <div className="space-y-4">
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+                                  <FileText className="h-3 w-3" /> PÁRRAFO DE ESPECIFICACIONES
+                                </div>
+                              </div>
                              <textarea 
                                value={item.especificaciones_tecnicas}
                                onChange={(e) => updateItem(item.id, { especificaciones_tecnicas: e.target.value })}
