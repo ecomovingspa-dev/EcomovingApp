@@ -468,8 +468,8 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
              {(cotizacion.items || []).map((item, idx) => (
                 <div key={item.id} className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden animate-in slide-in-from-right-4 duration-500" style={{ animationDelay: `${idx * 100}ms` }}>
                   
-                  {/* Item Header (Venta y General) */}
-                  <div className="p-8 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 flex justify-between items-start gap-6">
+                  {/* Item Header (Venta y General) Compacto */}
+                  <div className="p-5 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 flex justify-between items-start gap-4">
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-12 gap-6">
                       {/* Descripción Autoajustable */}
                       <div className="md:col-span-4 space-y-2">
@@ -531,98 +531,103 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                         />
                       </div>
                     </div>
-                    <Button variant="ghost" onClick={() => removeItem(item.id)} className="h-12 w-12 text-red-500 hover:bg-red-50 rounded-2xl">
-                       <Trash2 className="h-5 w-5" />
+                    <Button variant="ghost" onClick={() => removeItem(item.id)} className="h-10 w-10 text-red-500 hover:bg-red-50 rounded-xl mt-6">
+                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
 
-                  {/* Pestañas de Item */}
-                  <div className="px-8 pt-4 border-b border-gray-100 dark:border-gray-800 flex gap-6">
+                  {/* Pestañas de Item Compactas */}
+                  <div className="px-6 pt-3 border-b border-gray-100 dark:border-gray-800 flex gap-6">
                     <button 
                       onClick={() => updateItem(item.id, { _activeTab: 'costos' })}
-                      className={`pb-4 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${(!item._activeTab || item._activeTab === 'costos') ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                      className={`pb-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${(!item._activeTab || item._activeTab === 'costos') ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
                     >
                       Costos y Estructura
                     </button>
                     <button 
                       onClick={() => updateItem(item.id, { _activeTab: 'marketing' })}
-                      className={`pb-4 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${item._activeTab === 'marketing' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                      className={`pb-3 text-[10px] font-black uppercase tracking-widest transition-all border-b-2 ${item._activeTab === 'marketing' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
                     >
                       Marketing y Propuesta
                     </button>
                   </div>
 
-                  <div className="p-8">
+                  <div className="p-5">
                     {(!item._activeTab || item._activeTab === 'costos') ? (
                       <div className="space-y-6 animate-in fade-in duration-300">
-                         {/* SECCIÓN COSTOS (SUBCOSTOS) */}
-                         <div className="space-y-4">
-                            <div className="flex justify-between items-center mb-2">
-                               <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                                 <Plus className="h-4 w-4" /> Análisis de Costos Industriales
+                         {/* SECCIÓN COSTOS ESTILIZADA */}
+                         <div className="space-y-2">
+                            <div className="flex justify-between items-center mb-4">
+                               <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                 <Plus className="h-3 w-3" /> ESTRUCTURA DE COSTOS
                                </h4>
-                               <Button variant="outline" size="sm" onClick={() => addSubCosto(item.id)} className="h-9 px-4 rounded-xl font-bold border-dashed text-[10px]">
-                                 + AÑADIR COSTO / INSUMO
+                               <Button variant="outline" size="sm" onClick={() => addSubCosto(item.id)} className="h-8 px-3 rounded-lg font-bold border-dashed text-[9px]">
+                                 + AÑADIR COSTO
                                </Button>
                             </div>
                             
-                            <div className="space-y-2">
+                            {/* Header de Columnas Subcostos */}
+                            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 px-4 mb-1">
+                               <div className="md:col-span-3 text-[9px] font-black text-gray-400 uppercase tracking-tighter">Proveedor / Detalle</div>
+                               <div className="md:col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-tighter">Código SKU</div>
+                               <div className="md:col-span-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center">Cant.</div>
+                               <div className="md:col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right">Unit. ($)</div>
+                               <div className="md:col-span-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center">Desc %</div>
+                               <div className="md:col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right">Subtotal</div>
+                               <div className="md:col-span-1"></div>
+                            </div>
+
+                            <div className="space-y-1">
                                {(item.subcostos || []).map(sc => (
-                                 <div key={sc.id} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-gray-50/50 dark:bg-gray-800/20 p-4 rounded-2xl border border-transparent hover:border-gray-200 dark:hover:border-gray-700 transition-colors">
-                                    <div className="md:col-span-3 space-y-1">
-                                      <label className="text-[9px] font-bold text-gray-400 uppercase">Proveedor / Detalle</label>
+                                 <div key={sc.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-gray-50/30 dark:bg-gray-800/10 p-2 px-4 rounded-xl border border-transparent hover:border-blue-100 dark:hover:border-blue-900/30 hover:bg-blue-50/30 transition-all group">
+                                    <div className="md:col-span-3">
                                       <Input 
                                         value={sc.proveedor}
                                         onChange={(e) => updateSubCosto(item.id, sc.id, { proveedor: e.target.value })}
-                                        className="h-10 bg-white dark:bg-gray-900 border-none font-medium text-xs shadow-sm px-3"
+                                        className="h-9 bg-white dark:bg-gray-900 border-none font-medium text-xs shadow-none px-2 focus:ring-1 focus:ring-blue-500"
                                         placeholder="Nombre..."
                                       />
                                     </div>
-                                    <div className="md:col-span-2 space-y-1">
-                                      <label className="text-[9px] font-bold text-gray-400 uppercase">Código</label>
+                                    <div className="md:col-span-2">
                                       <Input 
                                         value={sc.codigo}
                                         onChange={(e) => updateSubCosto(item.id, sc.id, { codigo: e.target.value })}
-                                        className="h-10 bg-white dark:bg-gray-900 border-none font-black text-xs text-blue-400 px-3 uppercase"
+                                        className="h-9 bg-white dark:bg-gray-900 border-none font-black text-[10px] text-blue-400 px-2 uppercase shadow-none"
                                         placeholder="SKU"
                                       />
                                     </div>
-                                    <div className="md:col-span-1 space-y-1">
-                                      <label className="text-[9px] font-bold text-gray-400 uppercase text-center block">Cant.</label>
+                                    <div className="md:col-span-1">
                                       <Input 
                                         type="number"
                                         value={sc.cantidad}
                                         onChange={(e) => updateSubCosto(item.id, sc.id, { cantidad: Number(e.target.value) })}
-                                        className="h-10 bg-white dark:bg-gray-900 border-none font-bold text-xs text-center"
+                                        className="h-9 bg-white dark:bg-gray-900 border-none font-bold text-xs text-center shadow-none"
                                       />
                                     </div>
-                                    <div className="md:col-span-2 space-y-1">
-                                      <label className="text-[9px] font-bold text-gray-400 uppercase text-right block">Unit. ($)</label>
+                                    <div className="md:col-span-2">
                                       <Input 
                                         type="number"
                                         value={sc.precio_unitario}
                                         onChange={(e) => updateSubCosto(item.id, sc.id, { precio_unitario: Number(e.target.value) })}
-                                        className="h-10 bg-white dark:bg-gray-900 border-none font-black text-xs text-right text-emerald-600"
+                                        className="h-9 bg-white dark:bg-gray-900 border-none font-black text-xs text-right text-emerald-600 px-2 shadow-none"
                                       />
                                     </div>
-                                    <div className="md:col-span-1 space-y-1">
-                                      <label className="text-[9px] font-bold text-gray-400 uppercase text-center block">Desc. %</label>
+                                    <div className="md:col-span-1">
                                       <Input 
                                         type="number"
                                         value={sc.descuento}
                                         onChange={(e) => updateSubCosto(item.id, sc.id, { descuento: Number(e.target.value) })}
-                                        className="h-10 bg-white dark:bg-gray-900 border-none font-bold text-xs text-center text-red-400"
+                                        className="h-9 bg-white dark:bg-gray-900 border-none font-bold text-xs text-center text-red-400 px-1 shadow-none"
                                       />
                                     </div>
-                                    <div className="md:col-span-2 space-y-1">
-                                      <label className="text-[9px] font-bold text-gray-400 uppercase text-right block">Subtotal</label>
-                                      <div className="h-10 flex items-center justify-end px-3 bg-white dark:bg-gray-900 rounded-lg text-xs font-black text-gray-500">
+                                    <div className="md:col-span-2">
+                                      <div className="h-9 flex items-center justify-end px-2 text-xs font-black text-gray-500">
                                         ${Math.round((sc.cantidad || 0) * (sc.precio_unitario || 0) * (1 - (sc.descuento || 0)/100)).toLocaleString("es-CL")}
                                       </div>
                                     </div>
-                                    <div className="md:col-span-1 flex justify-center">
-                                      <Button variant="ghost" onClick={() => removeSubCosto(item.id, sc.id)} className="h-10 w-10 text-gray-300 hover:text-red-500 p-0">
-                                         <X className="h-4 w-4" />
+                                    <div className="md:col-span-1 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Button variant="ghost" onClick={() => removeSubCosto(item.id, sc.id)} className="h-8 w-8 text-gray-300 hover:text-red-500 p-0">
+                                         <X className="h-3 w-3" />
                                       </Button>
                                     </div>
                                  </div>
