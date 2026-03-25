@@ -136,6 +136,9 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   };
 
   const cargarCotizacion = async () => {
+    // Validar que el ID sea un UUID válido o al menos no sea una palabra reservada o undefined
+    if (!id || id === 'nueva' || id === 'undefined' || id.length < 5) return;
+
     setLoading(true);
     try {
       const { data, error } = await supabase.from("cotizaciones").select("*").eq("id", id).single();

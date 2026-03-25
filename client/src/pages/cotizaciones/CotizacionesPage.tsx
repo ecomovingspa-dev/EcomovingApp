@@ -174,28 +174,23 @@ export default function CotizacionesPage() {
 
   const handleNueva = async () => {
     setCargando(true);
-    let newId = "";
+    setMensaje(""); // Limpiar errores previos
     try {
       // Cálculo del número correlativo inmediato
       const { count } = await supabase.from("cotizaciones").select("id", { count: 'exact', head: true });
       const nextNum = (count || 0) + 5126;
       const numero = `COT-2026-${nextNum}`;
 
+      let dataId: string | null = null;
       const { data, error } = await supabase
         .from("cotizaciones")
         .insert([{ 
            numero_cotizacion: numero,
            estado_cotizacion: 'Borrador',
            items: [],
-           total: 0,
-           total_neto: 0,
-           iva: 0,
-           costo_total: 0,
-           mg: 0,
-           ganancias: 0,
            id_mercado_publico: ''
         }])
-        .select()
+        .select('id')
         .single();
       
       if (error) {
@@ -204,24 +199,26 @@ export default function CotizacionesPage() {
             const { data: retryData, error: retryError } = await supabase
               .from("cotizaciones")
               .insert([{ numero_cotizacion: numero, estado_cotizacion: 'Borrador', items: [] }])
-              .select().single();
+              .select('id').single();
             if (retryError) throw retryError;
-            newId = String(retryData.id);
+            dataId = String(retryData.id);
          } else {
             throw error;
          }
       } else {
-        newId = String(data.id);
+        dataId = String(data.id);
       }
       
-      if (newId) {
-        setSelectedId(newId);
+      if (dataId) {
+        setSelectedId(dataId);
         setViewMode("form");
-        navigate(`/cotizaciones/${newId}`, { replace: true });
+        navigate(`/cotizaciones/${dataId}`, { replace: true });
+      } else {
+        throw new Error("No se pudo obtener el identificador de la nueva cotización");
       }
     } catch (e: any) {
       console.error("Error al crear:", e);
-      setMensaje("Error al crear cotización rápida: " + e.message);
+      setMensaje("❌ Error al crear cotización rápida: " + e.message);
     } finally {
       setCargando(false);
     }
