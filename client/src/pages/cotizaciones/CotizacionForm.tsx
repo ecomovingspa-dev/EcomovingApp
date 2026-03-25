@@ -53,6 +53,22 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
   const [openCuenta, setOpenCuenta] = useState(false);
   const [openContacto, setOpenContacto] = useState(false);
+  const [cuentaSearch, setCuentaSearch] = useState("");
+  const [contactoSearch, setContactoSearch] = useState("");
+
+  const filteredCuentas = useMemo(() => {
+    if (!cuentaSearch) return cuentas;
+    return cuentas.filter(c => 
+      c.cliente.toLowerCase().includes(cuentaSearch.toLowerCase())
+    );
+  }, [cuentas, cuentaSearch]);
+
+  const filteredContactos = useMemo(() => {
+    if (!contactoSearch) return contactos;
+    return contactos.filter(c => 
+      c.nombre.toLowerCase().includes(contactoSearch.toLowerCase())
+    );
+  }, [contactos, contactoSearch]);
 
   useEffect(() => {
     cargarDatosIniciales();
@@ -449,18 +465,23 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[400px] p-0 z-[9999]">
-                    <Command>
-                      <CommandInput placeholder="Buscar cliente..." />
-                      <CommandList>
+                    <Command shouldFilter={false}>
+                      <CommandInput 
+                        placeholder="Buscar cliente..." 
+                        value={cuentaSearch}
+                        onValueChange={setCuentaSearch}
+                      />
+                      <CommandList className="max-h-[400px]">
                         <CommandEmpty>No se encontró el cliente.</CommandEmpty>
                         <CommandGroup>
-                          {cuentas.map((c) => (
+                          {filteredCuentas.slice(0, 100).map((c) => (
                             <CommandItem
                               key={c.id}
                               value={c.cliente}
                               onSelect={() => {
                                 handleAccountChange(c.id);
                                 setOpenCuenta(false);
+                                setCuentaSearch(""); // Reset search
                               }}
                               className="text-xs font-bold"
                             >
@@ -473,6 +494,11 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                               {c.cliente}
                             </CommandItem>
                           ))}
+                          {filteredCuentas.length > 100 && (
+                            <div className="px-4 py-2 text-[10px] text-gray-400 italic bg-gray-50/50">
+                              Mostrando primeros 100 resultados de {filteredCuentas.length}...
+                            </div>
+                          )}
                         </CommandGroup>
                       </CommandList>
                     </Command>
@@ -497,18 +523,23 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[300px] p-0 z-[9999]">
-                    <Command>
-                      <CommandInput placeholder="Buscar contacto..." />
-                      <CommandList>
+                    <Command shouldFilter={false}>
+                      <CommandInput 
+                        placeholder="Buscar contacto..." 
+                        value={contactoSearch}
+                        onValueChange={setContactoSearch}
+                      />
+                      <CommandList className="max-h-[400px]">
                         <CommandEmpty>No se encontró el contacto.</CommandEmpty>
                         <CommandGroup>
-                          {contactos.map((c) => (
+                          {filteredContactos.slice(0, 100).map((c) => (
                             <CommandItem
                               key={c.id}
                               value={c.nombre}
                               onSelect={() => {
                                 setCotizacion(prev => ({ ...prev, contacto_id: c.id }));
                                 setOpenContacto(false);
+                                setContactoSearch(""); // Reset search
                               }}
                               className="text-xs font-bold"
                             >
