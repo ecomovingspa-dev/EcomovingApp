@@ -57,19 +57,19 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   const [contactoSearch, setContactoSearch] = useState("");
 
   const filteredCuentas = useMemo(() => {
-    if (!cuentaSearch) return cuentas;
-    const search = cuentaSearch.trim().toLowerCase();
-    return cuentas.filter(c => 
-      c.cliente.trim().toLowerCase().startsWith(search)
-    );
+    const search = (cuentaSearch || "").trim().toLowerCase();
+    if (!cuentas) return [];
+    return cuentas
+      .filter(c => c && c.cliente && c.cliente.toLowerCase().startsWith(search))
+      .slice(0, 100);
   }, [cuentas, cuentaSearch]);
 
   const filteredContactos = useMemo(() => {
-    if (!contactoSearch) return contactos;
-    const search = contactoSearch.trim().toLowerCase();
-    return contactos.filter(c => 
-      c.nombre.trim().toLowerCase().startsWith(search)
-    );
+    const search = (contactoSearch || "").trim().toLowerCase();
+    if (!contactos) return [];
+    return contactos
+      .filter(c => c && c.nombre && c.nombre.toLowerCase().startsWith(search))
+      .slice(0, 100);
   }, [contactos, contactoSearch]);
 
   useEffect(() => {
@@ -467,23 +467,23 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[400px] p-0 z-[9999]">
-                    <Command shouldFilter={false}>
+                    <Command>
                       <CommandInput 
                         placeholder="Buscar cliente..." 
                         value={cuentaSearch}
                         onValueChange={setCuentaSearch}
                       />
-                      <CommandList className="max-h-[400px]">
+                      <CommandList className="max-h-[400px] overflow-y-auto">
                         <CommandEmpty>No se encontró el cliente.</CommandEmpty>
-                        <CommandGroup>
-                          {filteredCuentas.slice(0, 100).map((c) => (
+                        <CommandGroup heading="Clientes Disponibles">
+                          {filteredCuentas.map((c) => (
                             <CommandItem
                               key={c.id}
                               value={c.cliente}
                               onSelect={() => {
                                 handleAccountChange(c.id);
                                 setOpenCuenta(false);
-                                setCuentaSearch(""); // Reset search
+                                setCuentaSearch("");
                               }}
                               className="text-xs font-bold"
                             >
@@ -496,11 +496,6 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                               {c.cliente}
                             </CommandItem>
                           ))}
-                          {filteredCuentas.length > 100 && (
-                            <div className="px-4 py-2 text-[10px] text-gray-400 italic bg-gray-50/50">
-                              Mostrando primeros 100 resultados de {filteredCuentas.length}...
-                            </div>
-                          )}
                         </CommandGroup>
                       </CommandList>
                     </Command>
@@ -525,23 +520,23 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-[300px] p-0 z-[9999]">
-                    <Command shouldFilter={false}>
+                    <Command>
                       <CommandInput 
                         placeholder="Buscar contacto..." 
                         value={contactoSearch}
                         onValueChange={setContactoSearch}
                       />
-                      <CommandList className="max-h-[400px]">
+                      <CommandList className="max-h-[400px] overflow-y-auto">
                         <CommandEmpty>No se encontró el contacto.</CommandEmpty>
-                        <CommandGroup>
-                          {filteredContactos.slice(0, 100).map((c) => (
+                        <CommandGroup heading="Contactos Disponibles">
+                          {filteredContactos.map((c) => (
                             <CommandItem
                               key={c.id}
                               value={c.nombre}
                               onSelect={() => {
                                 setCotizacion(prev => ({ ...prev, contacto_id: c.id }));
                                 setOpenContacto(false);
-                                setContactoSearch(""); // Reset search
+                                setContactoSearch("");
                               }}
                               className="text-xs font-bold"
                             >
