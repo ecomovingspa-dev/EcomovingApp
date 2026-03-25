@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, Save, X, Image as ImageIcon, Box, FileText, ChevronDown, ChevronUp, Layers, MousePointer2, ArrowLeft, Copy, Check, ChevronsUpDown } from "lucide-react";
+import { Plus, Trash2, Save, X, Image as ImageIcon, Box, FileText, ChevronDown, ChevronUp, Layers, MousePointer2, ArrowLeft, Copy, Check, ChevronsUpDown, FolderOpen } from "lucide-react";
 import BotonExportarPDF from "./CotizacionPDF";
 
 interface CotizacionFormProps {
@@ -752,7 +752,12 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
              </div>
 
              {(cotizacion.items || []).map((item, idx) => (
-                <div key={item.id} className="bg-white dark:bg-gray-900 rounded-[2.5rem] md:rounded-[20px] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden animate-in slide-in-from-right-4 duration-500" style={{ animationDelay: `${idx * 100}ms` }}>
+                <div 
+                  key={item.id} 
+                  onPaste={(e) => handlePaste(item.id, -1, e)}
+                  className="bg-white dark:bg-gray-900 rounded-[2.5rem] md:rounded-[20px] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden animate-in slide-in-from-right-4 duration-500" 
+                  style={{ animationDelay: `${idx * 100}ms` }}
+                >
                   
                   {/* Item Header (Venta y General) Compacto */}
                     <div className="p-5 bg-gray-50/50 dark:bg-gray-800/30 border-b border-gray-100 dark:border-gray-800 relative">
@@ -761,30 +766,30 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                         <div className="lg:col-span-2">
                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2 px-1">Imagen Principal</label>
                           <div 
-                            onPaste={(e) => handlePaste(item.id, -1, e)}
-                            onClick={(e) => {
-                              const input = e.currentTarget.querySelector('input');
-                              if (input) input.click();
-                            }}
-                            tabIndex={0}
-                            className="aspect-square bg-blue-50 dark:bg-blue-900/10 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center relative overflow-hidden group cursor-pointer hover:border-blue-400/50 dark:hover:border-blue-700/50 transition-all shadow-inner focus:ring-2 focus:ring-blue-500 outline-none"
+                            className="aspect-square bg-blue-50 dark:bg-blue-900/10 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center relative overflow-hidden group hover:border-blue-400/50 dark:hover:border-blue-700/50 transition-all shadow-inner outline-none"
                           >
                             {item.imagen ? (
                               <img src={item.imagen} className="w-full h-full object-cover" />
                             ) : (
                               <div className="text-center p-2">
                                 <ImageIcon className="h-6 w-6 text-gray-300 mx-auto mb-1" />
-                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Subir / Pegar</p>
+                                <p className="text-[8px] font-black text-gray-400 uppercase tracking-tighter italic">Ctrl+V para Pegar</p>
                               </div>
                             )}
-                            <input 
-                              type="file" 
-                              accept="image/*" 
-                              onChange={(e) => handleImageUpload(item.id, -1, e)}
-                              className="hidden"
-                            />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                              <p className="text-[10px] font-black text-white uppercase tracking-widest">Click o Ctrl+V</p>
+                            
+                            {/* Botón Flotante para Explorador (Solo si realmente quieren ir a buscar al PC) */}
+                            <label className="absolute bottom-2 right-2 p-2 bg-gray-900/60 hover:bg-gray-900/80 rounded-xl cursor-pointer opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 z-20">
+                              <FolderOpen className="h-4 w-4 text-white" />
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                onChange={(e) => handleImageUpload(item.id, -1, e)}
+                                className="hidden"
+                              />
+                            </label>
+
+                            <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                              <p className="text-[10px] font-black text-white uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full">Ctrl + V</p>
                             </div>
                           </div>
                         </div>
@@ -1023,28 +1028,31 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                                {(item.imagenes_secundarias || ["", "", ""]).map((img, iIdx) => (
                                  <div 
                                     key={iIdx} 
-                                    onPaste={(e) => handlePaste(item.id, iIdx, e)}
-                                    onClick={(e) => {
-                                      const input = e.currentTarget.querySelector('input');
-                                      if (input) input.click();
+                                    onPaste={(e) => {
+                                      e.stopPropagation(); // Evitar que suba al item global
+                                      handlePaste(item.id, iIdx, e);
                                     }}
-                                    tabIndex={0}
-                                    className="aspect-video bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-2 relative overflow-hidden group focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+                                    className="aspect-video bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-2 relative overflow-hidden group outline-none"
                                  >
                                     {img ? (
                                       <img src={img} className="w-full h-full object-cover rounded-xl" />
                                     ) : (
-                                      <ImageIcon className="h-4 w-4 text-gray-300" />
+                                      <div className="text-center">
+                                        <ImageIcon className="h-4 w-4 text-gray-300 mx-auto" />
+                                        <p className="text-[7px] font-bold text-gray-400 mt-1 uppercase italic">Pegar aquí</p>
+                                      </div>
                                     )}
-                                    <input 
-                                      type="file" accept="image/*" 
-                                      onChange={(e) => handleImageUpload(item.id, iIdx, e)}
-                                      className="hidden" 
-                                    />
-                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-center px-1 pointer-events-none">
-                                      <p className="text-[8px] font-black text-white uppercase truncate">Click o Pegar M{iIdx + 2}</p>
-                                    </div>
-                                    {img && <div className="absolute top-1 right-1 bg-gray-800 text-white text-[8px] px-1.5 py-0.5 rounded-full font-bold">Slot {iIdx+2}</div>}
+                                    
+                                    <label className="absolute bottom-1 right-1 p-1.5 bg-gray-900/60 hover:bg-gray-900/80 rounded-lg cursor-pointer opacity-0 group-hover:opacity-100 transition-all z-20">
+                                      <FolderOpen className="h-3 w-3 text-white" />
+                                      <input 
+                                        type="file" accept="image/*" 
+                                        onChange={(e) => handleImageUpload(item.id, iIdx, e)}
+                                        className="hidden" 
+                                      />
+                                    </label>
+                                    
+                                    {img && <div className="absolute top-1 left-1 bg-gray-800/80 text-white text-[7px] px-1.5 py-0.5 rounded-full font-bold">Slot {iIdx+2}</div>}
                                  </div>
                                ))}
                              </div>
