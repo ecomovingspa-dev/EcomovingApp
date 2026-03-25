@@ -302,9 +302,55 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        {/* Lado Izquierdo: Configuración General e Ítems */}
-        <div className="xl:col-span-8 space-y-8">
+      <div className="space-y-8 pb-20">
+        {/* Lado Superior: Resumen Financiero Compacto */}
+        <section className="bg-gray-900 text-white p-8 rounded-[2.5rem] shadow-2xl shadow-blue-500/10 relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="absolute -top-10 -right-10 h-40 w-40 bg-blue-500/10 rounded-full blur-3xl"></div>
+          <div className="absolute -bottom-10 -left-10 h-40 w-40 bg-emerald-500/10 rounded-full blur-3xl"></div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 items-center relative z-10">
+            <div className="space-y-1">
+              <h2 className="text-[10px] font-black tracking-[0.2em] text-blue-400 uppercase flex items-center gap-2 mb-2">
+                 <Box className="h-3 w-3" /> Resumen Global
+              </h2>
+              <div className="text-3xl font-black text-gray-100 tracking-tighter">${new Intl.NumberFormat("es-CL").format(cotizacion.total || 0)}</div>
+              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Valor Total (Inc. IVA)</p>
+            </div>
+
+            <div className="h-full border-l border-white/5 pl-6 hidden lg:block">
+              <span className="text-gray-400 font-bold text-[10px] tracking-tight uppercase block mb-1">Costo Industrial</span>
+              <span className="text-lg font-medium tracking-tight text-gray-200">${new Intl.NumberFormat("es-CL").format(cotizacion.costo_total || 0)}</span>
+            </div>
+            
+            <div className="h-full border-l border-white/5 pl-6 hidden lg:block">
+              <span className="text-gray-400 font-bold text-[10px] tracking-tight uppercase block mb-1">Utilidad (Neto)</span>
+              <span className="text-lg font-medium tracking-tight text-emerald-400">+ ${new Intl.NumberFormat("es-CL").format(cotizacion.ganancias || 0)}</span>
+            </div>
+
+            <div className="h-full border-l border-white/5 pl-6 hidden lg:block">
+              <span className="text-gray-400 font-bold text-[10px] tracking-tight uppercase block mb-1">Margen / Ítems</span>
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-black text-blue-400">{cotizacion.mg}</span>
+                <span className="text-gray-600">/</span>
+                <span className="text-lg font-bold text-gray-300">{(cotizacion.items || []).length} ítems</span>
+              </div>
+            </div>
+
+            <div className="lg:pl-6 space-y-1">
+              <div className="flex justify-between items-center text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">
+                <span>NETO PROPUESTA</span>
+                <span className="text-gray-500">IVA 19%</span>
+              </div>
+              <div className="flex justify-between items-baseline gap-4">
+                <h3 className="text-3xl font-black tracking-tighter">${new Intl.NumberFormat("es-CL").format(cotizacion.total_neto || 0)}</h3>
+                <span className="text-gray-500 font-bold text-xs italic">${new Intl.NumberFormat("es-CL").format(cotizacion.iva || 0)}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Lado Inferior: Configuración e Ítems Full-Width */}
+        <div className="space-y-8">
           
           {/* Tarjeta de Cliente */}
           <section className="bg-white dark:bg-gray-900 p-8 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm space-y-6">
@@ -519,69 +565,6 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                 </div>
              ))}
           </div>
-        </div>
-
-        {/* Lado Derecho: Resumen Financiero Sticky */}
-        <div className="xl:col-span-4 space-y-8">
-           <div className="sticky top-8 space-y-6">
-              <section className="bg-gray-900 text-white p-10 rounded-[2.5rem] shadow-2xl shadow-blue-500/10 relative overflow-hidden">
-                <div className="absolute -top-10 -right-10 h-40 w-40 bg-blue-500/10 rounded-full blur-3xl"></div>
-                <div className="absolute -bottom-10 -left-10 h-40 w-40 bg-emerald-500/10 rounded-full blur-3xl"></div>
-                
-                <h2 className="text-xs font-black tracking-[0.2em] text-blue-400 mb-8 uppercase flex items-center gap-2">
-                   <Box className="h-3 w-3" /> Resumen de Oferta
-                </h2>
-
-                <div className="space-y-6">
-                  <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                    <span className="text-gray-400 font-bold text-sm tracking-tight uppercase">Costo Base Industrial</span>
-                    <span className="text-xl font-medium tracking-tight">${new Intl.NumberFormat("es-CL").format(cotizacion.costo_total || 0)}</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-end border-b border-white/5 pb-4">
-                    <span className="text-gray-400 font-bold text-sm tracking-tight uppercase">Utilidad Estimada</span>
-                    <span className="text-xl font-medium tracking-tight text-emerald-400">+ ${new Intl.NumberFormat("es-CL").format(cotizacion.ganancias || 0)}</span>
-                  </div>
-
-                  <div className="pt-4 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[11px] font-black text-blue-400 uppercase tracking-widest">NETO PROPUESTA</span>
-                      <span className="text-gray-400 text-xs font-bold uppercase">IVA (19%)</span>
-                    </div>
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-5xl font-black tracking-tighter">${new Intl.NumberFormat("es-CL").format(cotizacion.total_neto || 0)}</h3>
-                      <span className="text-gray-500 font-bold italic pt-2">${new Intl.NumberFormat("es-CL").format(cotizacion.iva || 0)}</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-8 bg-white/5 -mx-10 px-10 py-8 border-t border-white/10">
-                    <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-2 block">VALOR TOTAL CON IMPUESTOS</label>
-                    <div className="text-4xl font-black text-gray-100 tracking-tighter">${new Intl.NumberFormat("es-CL").format(cotizacion.total || 0)}</div>
-                  </div>
-                </div>
-
-                <div className="mt-10 grid grid-cols-2 gap-4">
-                   <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                      <div className="text-[9px] font-black text-gray-500 uppercase mb-1">MARGEN GLOBAL</div>
-                      <div className="text-xl font-black text-blue-400">{cotizacion.mg}</div>
-                   </div>
-                   <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-                      <div className="text-[9px] font-black text-gray-500 uppercase mb-1">ÍTEMS</div>
-                      <div className="text-xl font-black text-white">{(cotizacion.items || []).length}</div>
-                   </div>
-                </div>
-              </section>
-
-              {/* Botones de acción extra */}
-              <div className="space-y-3">
-                 <Button variant="outline" className="w-full h-14 rounded-2xl border-gray-100 dark:border-gray-800 font-black text-gray-400 text-xs uppercase tracking-widest hover:bg-gray-50 transition-all">
-                    <Layers className="mr-2 h-4 w-4" /> VER HISTERIAL DE VERSIONES
-                 </Button>
-                 <Button variant="outline" className="w-full h-14 rounded-2xl border-gray-100 dark:border-gray-800 font-black text-gray-400 text-xs uppercase tracking-widest hover:bg-gray-50 transition-all">
-                    <MousePointer2 className="mr-2 h-4 w-4" /> REPLICAR COTIZACIÓN ANTERIOR
-                 </Button>
-              </div>
-           </div>
         </div>
       </div>
     </div>
