@@ -239,6 +239,7 @@ export default function CotizacionForm({
   const [creandoVendedor, setCreandoVendedor] = useState(false);
   const [cotizacion, setCotizacion] = useState<Partial<Cotizacion>>({
     numero_cotizacion: "",
+    fecha: "",
     vendedor_id: "",
     estado_cotizacion: "borrador",
     tiempo_entrega: "",
@@ -1209,38 +1210,41 @@ export default function CotizacionForm({
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-3 shrink-0">
                 <BotonExportarPDF {...datosParaPDF} />
+                
                 {esEdicion && (
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
                     onClick={handleDuplicate}
                     disabled={guardando}
+                    className="h-10 w-10 text-slate-400 hover:text-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition-all rounded-xl"
                     title="Duplicar Cotización"
-                    className="text-slate-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"
                   >
-                    <Copy className="h-4 w-4" />
+                    <Copy className="h-4.5 w-4.5" />
                   </Button>
                 )}
+
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setShowBrochure(true)}
-                  className="h-9 gap-2 border-slate-200 dark:border-gray-700 hover:bg-slate-50 dark:hover:bg-gray-800 text-blue-600 dark:text-blue-400"
+                  className="h-10 px-4 gap-2 border-slate-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/10 text-blue-600 dark:text-blue-400 transition-all rounded-xl font-semibold"
                 >
                   <FileText className="h-4 w-4" />
                   Presentación
                 </Button>
-                <div className="h-6 w-px bg-slate-200 dark:bg-gray-700 mx-1"></div>
-                <div className="flex items-center gap-2">
+
+                <div className="h-8 w-px bg-slate-200 dark:bg-gray-800 mx-1"></div>
+
+                <div className="flex items-center">
                   <Button
                     onClick={(e) => handleSubmit(e, true)}
                     disabled={guardando}
-                    className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-medium shadow-md shadow-blue-200 dark:shadow-blue-900/40 gap-2 h-9"
-                    title="Guardar cambios"
+                    className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/40 gap-2 h-10 px-5 rounded-xl transition-all hover:scale-[1.02] active:scale-95"
                   >
-                    <Save className="h-4 w-4" />
+                    <Save className="h-4.5 w-4.5" />
                     {guardando ? "Guardando..." : "Guardar Cotización"}
                   </Button>
                 </div>
@@ -1275,32 +1279,11 @@ export default function CotizacionForm({
           )}
         <Card className="shadow-sm border-slate-200/60 dark:border-gray-700 overflow-hidden">
           <CardHeader className="py-2.5 px-6 bg-slate-50/50 dark:bg-gray-800/50 border-b border-slate-100 dark:border-gray-700">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-              <CardTitle className="text-xs font-bold flex items-center gap-2 text-slate-600 dark:text-gray-400 uppercase tracking-wider">
-                <FileText className="h-3.5 w-3.5 text-blue-500" />
-                Información General
-              </CardTitle>
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-600 dark:text-gray-400">
-                    Fecha:
-                  </span>
-                  <span className="font-medium text-slate-700 dark:text-gray-300">
-                    {formatearFecha(cotizacion.created_at)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-600 dark:text-gray-400">
-                    N° Cotización:
-                  </span>
-                  <span className="font-medium text-slate-700 dark:text-gray-300">
-                    {cotizacion.numero_cotizacion || "BORRADOR"}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-600 dark:text-gray-400">
-                    ID Mercado:
-                  </span>
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              {/* IZQUIERDA: ID Mercado y N° Cotización */}
+              <div className="flex items-center gap-6 order-2 md:order-1">
+                <div className="flex items-center gap-2 whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-500 dark:text-gray-400">ID MERCADO:</span>
                   <Input
                     value={cotizacion.id_mercado_publico || ""}
                     onChange={(e) =>
@@ -1309,10 +1292,32 @@ export default function CotizacionForm({
                         id_mercado_publico: e.target.value,
                       }))
                     }
-                    className="h-6 w-32 text-xs border-slate-200 dark:border-gray-700 bg-white dark:bg-gray-800 dark:text-gray-100 p-1 focus-visible:ring-1 text-slate-700"
+                    className="h-7 w-32 text-xs border-slate-200 dark:border-gray-700 bg-white/70 dark:bg-gray-800/70 p-1.5 focus-visible:ring-1 text-slate-700 dark:text-gray-300 rounded-md"
                     placeholder="ID MP"
                   />
                 </div>
+                <div className="flex items-center gap-2 whitespace-nowrap">
+                  <span className="text-xs font-bold text-slate-500 dark:text-gray-400">N° COTIZACIÓN:</span>
+                  <span className="text-xs font-bold text-slate-700 dark:text-gray-200">
+                    {cotizacion.numero_cotizacion || "BORRADOR"}
+                  </span>
+                </div>
+              </div>
+
+              {/* CENTRO: INFORMACIÓN GENERAL */}
+              <div className="flex items-center gap-2 order-1 md:order-2">
+                <CardTitle className="text-xs font-black flex items-center gap-2 text-slate-700 dark:text-gray-300 uppercase tracking-widest">
+                  <FileText className="h-4 w-4 text-blue-600" />
+                  Información General
+                </CardTitle>
+              </div>
+
+              {/* DERECHA: FECHA */}
+              <div className="flex items-center gap-2 order-3">
+                <span className="text-xs font-bold text-slate-500 dark:text-gray-400">FECHA:</span>
+                <span className="text-xs font-bold text-slate-700 dark:text-gray-200">
+                  {formatearFecha(cotizacion.fecha || cotizacion.created_at)}
+                </span>
               </div>
             </div>
           </CardHeader>

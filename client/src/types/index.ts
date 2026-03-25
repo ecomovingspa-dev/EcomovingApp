@@ -79,6 +79,7 @@ export interface Cotizacion {
   celular_vendedor?: string; // ✅ Añadido recientemente
   nombre_vendedor?: string; // ✅ Añadido recientemente
   id_mercado_publico?: string;
+  fecha?: string; // ✅ Nueva: Fecha manual/comercial de la cotización
   items: Item[];
   costo_total: number; // Suma de todos los subcostos
   total_neto: number; // Costo total + márgenes

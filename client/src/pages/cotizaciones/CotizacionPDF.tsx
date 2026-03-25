@@ -232,9 +232,9 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
   return (
     <button
       onClick={generarPDF}
-      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg shadow-sm hover:shadow-md hover:bg-slate-50 transition-all h-9"
+      className="inline-flex items-center gap-2 px-4 h-10 text-sm font-semibold text-slate-700 bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md hover:border-blue-300 dark:hover:border-blue-800 hover:bg-slate-50 transition-all active:scale-95"
     >
-      <FileDown className="h-4 w-4" />
+      <FileDown className="h-4.5 w-4.5 text-blue-600" />
       Exportar PDF
     </button>
   );
