@@ -102,16 +102,26 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       yPos += 7;
 
       doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      
+      // FILA 1: Cliente y Contacto
       doc.text(`Cliente: ${cuenta?.cliente || "No especificado"}`, margin, yPos);
-      doc.text(`Contacto: ${contacto?.nombre || "No especificado"}`, pageWidth / 2 + 10, yPos);
+      doc.text(`Contacto: ${contacto?.nombre || "No especificado"}`, pageWidth - margin, yPos, { align: "right" });
       yPos += lineHeight;
-      doc.text(`Vendedor/a: ${cotizacion.vendedor_nombre || "Sin asignar"}`, margin, yPos);
-      doc.text(`Validez: ${cotizacion.validez_oferta || "No especificado"}`, pageWidth / 2 + 10, yPos);
+
+      // FILA 2: Vendedor, Correo y Celular (Vendedor)
+      const vendNombre = cotizacion.vendedores?.nombre || cotizacion.vendedor_nombre || "Sin asignar";
+      const vendCorreo = cotizacion.vendedores?.correo || cotizacion.vendedor_correo || "";
+      const vendCel = cotizacion.vendedores?.celular || "";
+      
+      doc.text(`Vendedor/a: ${vendNombre}`, margin, yPos);
+      if (vendCorreo) doc.text(`Correo: ${vendCorreo}`, pageWidth / 2, yPos, { align: "center" });
+      if (vendCel) doc.text(`Cel: ${vendCel}`, pageWidth - margin, yPos, { align: "right" });
       yPos += lineHeight;
-      doc.text(`Entrega: ${cotizacion.tiempo_entrega || "No especificado"}`, margin, yPos);
-      if (cotizacion.vendedor_correo) {
-        doc.text(`Correo: ${cotizacion.vendedor_correo}`, pageWidth / 2 + 10, yPos);
-      }
+
+      // FILA 3: Tiempo de Entrega y Validez
+      doc.text(`Tiempo de entrega: ${cotizacion.tiempo_entrega || "No especificado"}`, margin, yPos);
+      doc.text(`Validez: ${cotizacion.validez_oferta || "No especificado"}`, pageWidth / 2, yPos, { align: "center" });
       yPos += 10;
 
       // TABLA DE PRODUCTOS

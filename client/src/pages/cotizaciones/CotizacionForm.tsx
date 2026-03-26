@@ -141,7 +141,14 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.from("cotizaciones").select("*").eq("id", id).single();
+      const { data, error } = await supabase
+        .from("cotizaciones")
+        .select(`
+          *,
+          vendedores:vendedores!cotizaciones_vendedor_id_fkey (nombre, correo, celular)
+        `)
+        .eq("id", id)
+        .single();
       if (error) throw error;
       setCotizacion(data);
       
