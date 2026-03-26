@@ -32,19 +32,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const events = response.data.events || [];
         console.log(`📊 Recibidos ${events.length} eventos de Brevo.`);
 
-        // 1. Agrupar eventos por email y determinar el "mejor" estado y fecha (para el modelo de contactos)
-        // Y preparar inserciones para el modelo histórico (trazabilidad_correos)
+        // 0. Mapear correos a IDs de contactos para asegurar integridad en la trazabilidad
+        const { data: contactsBase } = await supabase.from('contactos').select('id, correo');
+        const emailMap: Record<string, string> = {};
+        contactsBase?.forEach(c => { if(c.correo) emailMap[c.correo.toLowerCase()] = c.id; });
+
+        // 1. Agrupar eventos por email y determinar el "mejor" estado
         const bestStatusPerEmail: Record<string, { status: string, date: string, isBlocked: boolean }> = {};
         const historicalUpdates = [];
 
-        // Definición de importancia de estados (Jerarquía Sentinel)
+        // Definición de importancia de estados
         const statusPriority: Record<string, number> = {
             'opened': 100,
             'unique_opened': 100,
+            'loadedbyproxy': 100,
             'clicks': 90,
             'delivered': 80,
             'request': 50,
-            'hard_bounce': 200, // Prioridad máxima por ser crítico
+            'hard_bounce': 200,
             'blocked': 200,
             'spam': 200,
             'invalid_email': 200,
@@ -52,27 +57,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         };
 
         for (const event of events) {
-            const email = event.email;
+            const email = (event.email || "").toLowerCase();
             const status = event.event;
-            const eventDate = event.date; // ISO format from Brevo
+            const eventDate = event.date;
             const messageId = event.messageId;
             const isBlocked = ['hard_bounce', 'blocked', 'invalid_email', 'unsubscribed', 'spam'].includes(status);
 
-            // a) Para el Historial (trazabilidad_correos) - Intentamos insertar cada evento
-            // Si la tabla no existe o falla, el Promise.all seguirá (lógica de fallback)
-            historicalUpdates.push(
-                supabase
-                    .from('trazabilidad_correos')
-                    .upsert({
-                        email: email,
-                        fecha: eventDate.split('T')[0],
-                        estado: status,
-                        mensaje_id: messageId,
-                        // El contacto_id se resolverá en la DB vía trigger o después si vinculamos
-                    }, { onConflict: 'mensaje_id' })
-            );
+            // a) Para el Historial Histórico
+            if (emailMap[email]) {
+                const payload: any = {
+                    contacto_id: emailMap[email],
+                    email: email,
+                    fecha: eventDate.split('T')[0],
+                    estado: status,
+                };
+                if (messageId) payload.mensaje_id = messageId;
 
-            // b) Para el Perfil de Contacto (Vista rápida) - Guardamos solo lo mejor/último
+                historicalUpdates.push(
+                    supabase
+                        .from('trazabilidad_correos')
+                        .upsert(payload, { onConflict: 'mensaje_id' })
+                );
+            }
+
+            // b) Para el Perfil de Contacto (Último estado)
             const currentPriority = statusPriority[status] || 0;
             const existing = bestStatusPerEmail[email];
             

@@ -63,7 +63,7 @@ export default function CuentasPage() {
       setTotalRecords(0);
       setCargando(false);
     }
-  }, [paginaActual, busquedaAplicada, filtroSector, filtroSegmento, filtroEstado, hayFiltroActivo]);
+  }, [paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, hayFiltroActivo]);
 
 
   const cargarCuentas = async () => {
@@ -75,8 +75,8 @@ export default function CuentasPage() {
         .from("cuentas")
         .select("*", { count: "exact" });
 
-      if (busquedaAplicada) {
-        query = query.or(`cliente.ilike.%${busquedaAplicada}%,rut.ilike.%${busquedaAplicada}%,ciudad.ilike.%${busquedaAplicada}%`);
+      if (busqueda) {
+        query = query.or(`cliente.ilike.%${busqueda}%,rut.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`);
       }
       if (filtroSector) {
         query = query.eq("sector", filtroSector);
@@ -108,14 +108,8 @@ export default function CuentasPage() {
   const totalPaginas = Math.ceil(totalRecords / filasPorPagina);
   const cuentasPaginadas = cuentas; // Already paginated from server
 
-  const handleBuscar = () => {
-    setBusquedaAplicada(busqueda);
-    setPaginaActual(1);
-  };
-
   const handleReset = () => {
     setBusqueda("");
-    setBusquedaAplicada("");
     setFiltroSector("");
     setFiltroSegmento("");
     setFiltroEstado("");
@@ -197,14 +191,16 @@ export default function CuentasPage() {
             <input
               type="text"
               value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleBuscar()}
+              onChange={(e) => {
+                setBusqueda(e.target.value);
+                setPaginaActual(1);
+              }}
               placeholder="Buscar por cliente, RUT o ciudad..."
               className="w-full border-none rounded-xl px-12 py-4 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 transition-all font-medium"
             />
             {busqueda && (
               <button
-                onClick={() => { setBusqueda(""); setBusquedaAplicada(""); }}
+                onClick={() => { setBusqueda(""); }}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                 title="Limpiar búsqueda"
               >
@@ -212,13 +208,6 @@ export default function CuentasPage() {
               </button>
             )}
           </div>
-          <button
-            onClick={handleBuscar}
-            className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-blue-500/20 flex items-center gap-2"
-          >
-            <Search className="h-5 w-5" />
-            Buscar
-          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

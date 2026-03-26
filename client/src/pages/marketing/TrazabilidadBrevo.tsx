@@ -19,6 +19,16 @@ interface CalendarDay {
   isWorkingDay: boolean;
 }
 
+const translateStatus = (status: string) => {
+  const s = status.toLowerCase();
+  if (s === 'opened' || s === 'unique_opened' || s === 'loadedbyproxy') return 'ABIERTO';
+  if (s === 'delivered') return 'ENTREGADO';
+  if (s === 'request') return 'ENVIADO';
+  if (s === 'hard_bounce' || s === 'soft_bounce' || s === 'invalid_email') return 'REBOTE';
+  if (s === 'blocked') return 'BLOQUEADO';
+  return s.toUpperCase();
+};
+
 export default function TrazabilidadBrevo() {
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
   const [contactos, setContactos] = useState<any[]>([]);
@@ -123,9 +133,9 @@ export default function TrazabilidadBrevo() {
       );
 
       const status = topEvent.estado?.toLowerCase();
-      if (status === "opened" || status === "unique_opened" || status === "clicks") 
+      if (status === "opened" || status === "unique_opened" || status === "clicks" || status === "loadedbyproxy") 
         return <Eye className="h-4 w-4 text-purple-400" />;
-      if (status === "delivered") 
+      if (status === "delivered" || status === "request") 
         return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
       return <Mail className="h-4 w-4 text-blue-400" />;
     }
@@ -135,7 +145,7 @@ export default function TrazabilidadBrevo() {
     if (ultimoEnvio === day) {
       const lastStatus = (contacto.ultimo_estado_brevo || "").toLowerCase();
       if (contacto.es_bloqueado) return <AlertCircle className="h-4 w-4 text-red-500 animate-pulse" />;
-      if (lastStatus === "opened" || lastStatus === "unique_opened" || lastStatus === "clicks") 
+      if (lastStatus === "opened" || lastStatus === "unique_opened" || lastStatus === "clicks" || lastStatus === "loadedbyproxy") 
         return <Eye className="h-4 w-4 text-purple-400" />;
       if (lastStatus === "delivered" || lastStatus === "request") 
         return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
@@ -217,7 +227,7 @@ export default function TrazabilidadBrevo() {
                 <tr key={c.id} className="group hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3">
                     <div className="text-xs font-bold text-white uppercase truncate">
-                      {c.nombre}
+                      {c.nombre?.replace('Contacto Principal - ', '') || 'SIN NOMBRE'}
                     </div>
                   </td>
 
@@ -233,7 +243,7 @@ export default function TrazabilidadBrevo() {
                     <div className="flex items-center gap-2">
                       <div className={`h-1.5 w-1.5 rounded-full ${c.es_bloqueado ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
                       <span className={`text-[10px] font-black uppercase ${c.es_bloqueado ? 'text-red-500' : 'text-emerald-500'}`}>
-                        {c.es_bloqueado ? 'CRITICAL BOUNCE' : (c.ultimo_estado_brevo || 'IDLE')}
+                        {c.es_bloqueado ? 'BLOQUEO CRÍTICO' : translateStatus(c.ultimo_estado_brevo || 'IDLE')}
                       </span>
                     </div>
                   </td>

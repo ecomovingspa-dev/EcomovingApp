@@ -101,6 +101,20 @@ export default function ContactosPage() {
   const cargarContactos = async () => {
     try {
       setCargando(true);
+      
+      // Intentamos buscar IDs de empresas si hay un término de búsqueda para ampliar resultados
+      let idsDeCuentas: string[] = [];
+      if (busqueda && busqueda.length >= 2) {
+        const { data: cuentasCoincidentes } = await supabase
+          .from("cuentas")
+          .select("id")
+          .ilike("cliente", `%${busqueda}%`);
+        
+        if (cuentasCoincidentes) {
+          idsDeCuentas = cuentasCoincidentes.map(c => c.id);
+        }
+      }
+
       let query = supabase
         .from("contactos")
         .select(
@@ -112,7 +126,19 @@ export default function ContactosPage() {
         );
 
       if (busqueda) {
-        query = query.or(`nombre.ilike.%${busqueda}%,correo.ilike.%${busqueda}%`);
+        // Combinamos búsqueda de nombre, correo y los IDs de empresas encontradas
+        const orConditions = [
+          `nombre.ilike.%${busqueda}%`,
+          `correo.ilike.%${busqueda}%`
+        ];
+        
+        if (idsDeCuentas.length > 0) {
+          // Limitamos a 50 IDs para evitar errores en el parseo del filtro OR
+          const limitedIds = idsDeCuentas.slice(0, 50);
+          orConditions.push(`cuenta_id.in.(${limitedIds.join(',')})`);
+        }
+        
+        query = query.or(orConditions.join(','));
       }
 
       if (filtroEstado) {
@@ -147,8 +173,6 @@ export default function ContactosPage() {
     } catch (error: any) {
       console.error("Error al cargar contactos:", error);
       setMensaje("❌ Error al cargar contactos");
-      setContactos([]);
-      setGruposClientes([]);
     } finally {
       setCargando(false);
     }
