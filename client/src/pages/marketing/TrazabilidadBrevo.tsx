@@ -12,34 +12,53 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-const STAGES = [
-  { id: 1, name: "General", icon: Mail, label: "E1" },
-  { id: 2, name: "Servicio Técnico", icon: Wrench, label: "E2" },
-  { id: 3, name: "Flotas", icon: Truck, label: "E3" },
-  { id: 4, name: "Accesorios", icon: Settings, label: "E4" },
-  { id: 5, name: "Inmobiliaria", icon: Building2, label: "E5" },
-];
+// March 2026 Working Days (Calculated dynamically below)
+interface CalendarDay {
+  date: string;
+  label: string;
+  isWorkingDay: boolean;
+}
 
 export default function TrazabilidadBrevo() {
+  const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
   const [contactos, setContactos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState("");
   const [soloCriticos, setSoloCriticos] = useState(false);
 
-  async function fetchContactos() {
+  const fetchContactos = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("contactos")
       .select("*")
       .eq("estado", "activo")
+      .not("correo", "is", null) // Filter contacts without email
+      .neq("correo", "")           // Filter empty emails
       .order("nombre", { ascending: true });
 
     if (error) toast.error("Error al cargar contactos");
     else setContactos(data || []);
     setLoading(false);
-  }
+  };
 
   useEffect(() => {
+    // Generate working days for March 2026
+    const days: CalendarDay[] = [];
+    const year = 2026;
+    const month = 2; // March (0-indexed)
+    const date = new Date(year, month, 1);
+    while (date.getMonth() === month) {
+      const dayOfWeek = date.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        days.push({
+          date: date.toISOString().split('T')[0],
+          label: `${date.getDate()}`,
+          isWorkingDay: true
+        });
+      }
+      date.setDate(date.getDate() + 1);
+    }
+    setCalendarDays(days);
     fetchContactos();
   }, []);
 
@@ -62,23 +81,19 @@ export default function TrazabilidadBrevo() {
     }
   }
 
-  const getStatusIcon = (contacto: any, stageId: number) => {
-    const currentStage = contacto.etapa_envio || 0;
+  const getStatusIcon = (contacto: any, day: string) => {
+    const ultimoEnvio = contacto.ultimo_envio?.split('T')[0];
     
-    // Si ya pasó esta etapa (o es la actual)
-    if (currentStage >= stageId) {
-      if (currentStage === stageId) {
-        const lastStatus = (contacto.ultimo_estado_brevo || "").toLowerCase();
-        if (contacto.es_bloqueado) return <AlertCircle className="h-5 w-5 text-red-500 animate-pulse" title="Bloqueado/Rebote" />;
-        if (lastStatus === "opened") return <Eye className="h-5 w-5 text-purple-400" title="Abierto" />;
-        if (lastStatus === "delivered" || lastStatus === "request") return <CheckCircle2 className="h-5 w-5 text-emerald-400" title="Entregado" />;
-        return <Mail className="h-5 w-5 text-blue-400" title="Enviado" />;
-      }
-      // Etapas anteriores las marcamos como completadas (histórico simplificado)
-      return <CheckCircle2 className="h-4 w-4 text-emerald-600/50" title="Completado" />;
+    // Si el último envío coincide con este día
+    if (ultimoEnvio === day) {
+      const lastStatus = (contacto.ultimo_estado_brevo || "").toLowerCase();
+      if (contacto.es_bloqueado) return <AlertCircle className="h-4 w-4 text-red-500 animate-pulse" />;
+      if (lastStatus === "opened") return <Eye className="h-4 w-4 text-purple-400" />;
+      if (lastStatus === "delivered" || lastStatus === "request") return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
+      return <Mail className="h-4 w-4 text-blue-400" />;
     }
     
-    return <Circle className="h-3 w-3 text-gray-700" title="Pendiente" />;
+    return <div className="h-1 w-1 bg-gray-800 rounded-full" />; // Dot for visualization
   };
 
   const filtered = contactos.filter(c => {
@@ -136,36 +151,31 @@ export default function TrazabilidadBrevo() {
       {/* The Matrix */}
       <div className="bg-gray-950 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left table-fixed">
             <thead>
-              <tr className="bg-gray-900/80 border-b border-gray-800 text-[10px] font-black tracking-widest text-gray-500 uppercase">
-                <th className="px-6 py-4 min-w-[200px]">IDENTIDAD DEL CONTACTO</th>
-                {STAGES.map(s => (
-                  <th key={s.id} className="px-4 py-4 text-center border-l border-gray-800/50">
-                    <div className="flex flex-col items-center gap-1">
-                      <s.icon className="h-3 w-3 opacity-50" />
-                      <span>{s.label}</span>
-                    </div>
+              <tr className="bg-gray-900/80 border-b border-gray-800 text-[9px] font-black tracking-widest text-gray-500 uppercase">
+                <th className="px-4 py-4 w-[180px]">CONTACTO (MARZO 2026)</th>
+                {calendarDays.map(d => (
+                  <th key={d.date} className="px-1 py-4 text-center border-l border-gray-800/50">
+                    {d.label}
                   </th>
                 ))}
-                <th className="px-6 py-4 border-l border-gray-800/50">ESTADO FINAL</th>
-                <th className="px-4 py-4 text-center">⚙️</th>
+                <th className="px-4 py-4 w-[120px] border-l border-gray-800/50">ESTADO</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-900">
               {filtered.map((c) => (
                 <tr key={c.id} className="group hover:bg-white/5 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors uppercase truncate max-w-[180px]">
+                  <td className="px-4 py-3">
+                    <div className="text-xs font-bold text-white uppercase truncate">
                       {c.nombre}
                     </div>
-                    <div className="text-[10px] text-gray-500 font-mono lower">{c.correo}</div>
                   </td>
 
-                  {STAGES.map(s => (
-                    <td key={s.id} className="px-4 py-4 text-center border-l border-gray-900/50">
+                  {calendarDays.map(d => (
+                    <td key={d.date} className="px-1 py-3 text-center border-l border-gray-900/10">
                       <div className="flex justify-center items-center">
-                        {getStatusIcon(c, s.id)}
+                        {getStatusIcon(c, d.date)}
                       </div>
                     </td>
                   ))}

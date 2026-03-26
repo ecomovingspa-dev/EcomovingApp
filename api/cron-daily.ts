@@ -262,7 +262,8 @@ async function ejecutarMarketing(maxEmails: number): Promise<{
             .from('contactos')
             .select('*')
             .ilike('estado', 'activo')
-            .or(`proximo_envio.is.null,proximo_envio.lte.${today}`)
+            .not('correo', 'is', null)
+            .neq('correo', '')
             .limit(maxEmails);
 
         if (contactError) throw contactError;
