@@ -32,33 +32,85 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const events = response.data.events || [];
         console.log(`📊 Recibidos ${events.length} eventos de Brevo.`);
 
-        const updates = [];
+        // 1. Agrupar eventos por email y determinar el "mejor" estado y fecha (para el modelo de contactos)
+        // Y preparar inserciones para el modelo histórico (trazabilidad_correos)
+        const bestStatusPerEmail: Record<string, { status: string, date: string, isBlocked: boolean }> = {};
+        const historicalUpdates = [];
 
-        // 2. Procesar eventos y mapear estados
+        // Definición de importancia de estados (Jerarquía Sentinel)
+        const statusPriority: Record<string, number> = {
+            'opened': 100,
+            'unique_opened': 100,
+            'clicks': 90,
+            'delivered': 80,
+            'request': 50,
+            'hard_bounce': 200, // Prioridad máxima por ser crítico
+            'blocked': 200,
+            'spam': 200,
+            'invalid_email': 200,
+            'unsubscribed': 200
+        };
+
         for (const event of events) {
             const email = event.email;
-            const status = event.event; // 'delivered', 'opened', 'hard_bounce', 'soft_bounce', 'blocked', 'invalid_email'
-            
-            // Determinar si debe marcarse como bloqueado
-            const isBlocked = ['hard_bounce', 'blocked', 'invalid_email', 'unsubscribed'].includes(status);
+            const status = event.event;
+            const eventDate = event.date; // ISO format from Brevo
+            const messageId = event.messageId;
+            const isBlocked = ['hard_bounce', 'blocked', 'invalid_email', 'unsubscribed', 'spam'].includes(status);
 
-            updates.push(
+            // a) Para el Historial (trazabilidad_correos) - Intentamos insertar cada evento
+            // Si la tabla no existe o falla, el Promise.all seguirá (lógica de fallback)
+            historicalUpdates.push(
                 supabase
-                    .from('contactos')
-                    .update({ 
-                        ultimo_estado_brevo: status,
-                        es_bloqueado: isBlocked 
-                    })
-                    .eq('correo', email)
+                    .from('trazabilidad_correos')
+                    .upsert({
+                        email: email,
+                        fecha: eventDate.split('T')[0],
+                        estado: status,
+                        mensaje_id: messageId,
+                        // El contacto_id se resolverá en la DB vía trigger o después si vinculamos
+                    }, { onConflict: 'mensaje_id' })
             );
+
+            // b) Para el Perfil de Contacto (Vista rápida) - Guardamos solo lo mejor/último
+            const currentPriority = statusPriority[status] || 0;
+            const existing = bestStatusPerEmail[email];
+            
+            if (!existing || currentPriority > (statusPriority[existing.status] || 0)) {
+                bestStatusPerEmail[email] = {
+                    status: status,
+                    date: eventDate,
+                    isBlocked: isBlocked
+                };
+            }
         }
 
-        await Promise.all(updates);
+        // 2. Ejecutar inserciones históricas (con catch individual para evitar falla total si la tabla no existe aún)
+        const historicalResults = await Promise.allSettled(historicalUpdates);
+        const savedHistory = historicalResults.filter(r => r.status === 'fulfilled').length;
+        console.log(`💾 Historial: ${savedHistory} eventos registrados.`);
+
+        // 3. Actualizar la tabla contactos con el estado consolidado
+        const profileUpdates = Object.entries(bestStatusPerEmail).map(([email, data]) => (
+            supabase
+                .from('contactos')
+                .update({ 
+                    ultimo_estado_brevo: data.status,
+                    es_bloqueado: data.isBlocked,
+                    // Sincronizar la fecha de último envío si el estado es 'request' o superior 
+                    // y es más reciente que el que tenemos? 
+                    // Por ahora solo el estado para que el icono cambie en la Matrix v2.0
+                })
+                .eq('correo', email)
+        ));
+
+        await Promise.all(profileUpdates);
 
         return res.status(200).json({ 
             success: true, 
             processed: events.length,
-            message: 'Sincronización completada exitosamente' 
+            history_saved: savedHistory,
+            message: 'Sincronización completada con priorización de estados (Opened > Sent)' 
         });
 
     } catch (error: any) {

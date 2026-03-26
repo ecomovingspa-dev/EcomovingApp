@@ -307,7 +307,7 @@ async function ejecutarMarketing(maxEmails: number): Promise<{
                 }
 
                 // Enviar
-                await axios.post('https://api.brevo.com/v3/smtp/email', {
+                const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', {
                     sender: { name: "Ecomoving", email: "ventas@ecomoving.cl" },
                     to: [{ email: contact.correo }],
                     subject: messageData.asunto,
@@ -316,6 +316,21 @@ async function ejecutarMarketing(maxEmails: number): Promise<{
                 }, {
                     headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' }
                 });
+
+                const messageId = brevoRes.data?.messageId;
+
+                // 4. Registrar en Trazabilidad Sentinel (Historización)
+                try {
+                    await supabase.from('trazabilidad_correos').insert({
+                        contacto_id: contact.id,
+                        email: contact.correo,
+                        fecha: new Date().toISOString().split('T')[0],
+                        estado: 'request', // 'request' es el estado inicial en Brevo (enviado)
+                        mensaje_id: messageId
+                    });
+                } catch (err) {
+                    console.error('⚠️ No se pudo registrar trazabilidad histórica (posible tabla faltante)');
+                }
 
                 // Actualizar próximo envío (+3 días = ~2 emails por semana)
                 const nextDate = new Date();

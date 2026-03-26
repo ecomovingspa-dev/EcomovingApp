@@ -88,7 +88,7 @@ export default function ComprasPage() {
 
     useEffect(() => {
         cargarCompras();
-    }, [currentPage]);
+    }, [currentPage, filtroProveedor, filtroFolio, filtroEstado]);
 
 
 
@@ -123,10 +123,11 @@ export default function ComprasPage() {
                 .select("*", { count: "exact" });
 
             if (filtroProveedor) {
-                query = query.ilike("razon_social", `%${filtroProveedor}%`);
+                const term = `*${filtroProveedor.trim()}*`;
+                query = query.or(`razon_social.ilike."${term}",rut_proveedor.ilike."${term}"`);
             }
             if (filtroFolio) {
-                query = query.ilike("folio", `%${filtroFolio}%`);
+                query = query.ilike("folio", `%${filtroFolio.trim()}%`);
             }
             if (filtroEstado !== "todos") {
                 query = query.eq("estado_pago", filtroEstado);
@@ -304,7 +305,7 @@ export default function ComprasPage() {
 
                     const nuevaCompra = {
                         tipo_dte: fila.TipoDTE,
-                        folio: fila.Folio,
+                        folio: String(fila.Folio || ''),
                         fecha_recepcion: parseFecha(fila.FecRecepcion),
                         fecha_emision: parseFecha(fila.FchEmis),
                         fecha_vencimiento: parseFecha(fila.FchVenc),

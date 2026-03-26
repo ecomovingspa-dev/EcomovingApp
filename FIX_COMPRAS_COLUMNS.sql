@@ -16,7 +16,10 @@ begin
         alter table compras add column tipo_dte integer;
     end if;
     if not exists (select 1 from information_schema.columns where table_name='compras' and column_name='folio') then
-        alter table compras add column folio integer;
+        alter table compras add column folio text;
+    else
+        -- Asegurar que sea text para permitir búsquedas parciales (ilike)
+        alter table compras alter column folio type text using folio::text;
     end if;
     if not exists (select 1 from information_schema.columns where table_name='compras' and column_name='rut_proveedor') then
         alter table compras add column rut_proveedor text;

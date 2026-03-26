@@ -26,18 +26,44 @@ export default function TrazabilidadBrevo() {
   const [filtro, setFiltro] = useState("");
   const [soloCriticos, setSoloCriticos] = useState(false);
 
-  const fetchContactos = async () => {
+  const fetchContactos = async (days: CalendarDay[]) => {
     setLoading(true);
-    const { data, error } = await supabase
+    
+    // 1. Obtener base de contactos
+    const { data: contactsData, error } = await supabase
       .from("contactos")
       .select("*")
       .eq("estado", "activo")
-      .not("correo", "is", null) // Filter contacts without email
-      .neq("correo", "")           // Filter empty emails
+      .not("correo", "is", null)
+      .neq("correo", "")
       .order("nombre", { ascending: true });
 
-    if (error) toast.error("Error al cargar contactos");
-    else setContactos(data || []);
+    if (error) {
+      toast.error("Error al cargar contactos");
+      setLoading(false);
+      return;
+    }
+
+    // 2. Obtener historial (trazabilidad_correos) de forma segura
+    let historyData: any[] = [];
+    try {
+      const { data: hData, error: hError } = await supabase
+        .from("trazabilidad_correos")
+        .select("*")
+        .gte("fecha", days[0]?.date || '2026-03-01');
+      
+      if (!hError) historyData = hData || [];
+    } catch (err) {
+      console.warn("⚠️ Tabla trazabilidad_correos no detectada. Usando fallback.");
+    }
+
+    // 3. Vincular historial a contactos
+    const merged = (contactsData || []).map(c => ({
+      ...c,
+      historial: historyData.filter(h => h.email === c.correo || h.contacto_id === c.id)
+    }));
+
+    setContactos(merged);
     setLoading(false);
   };
 
@@ -59,7 +85,7 @@ export default function TrazabilidadBrevo() {
       date.setDate(date.getDate() + 1);
     }
     setCalendarDays(days);
-    fetchContactos();
+    fetchContactos(days);
   }, []);
 
   async function syncWithBrevo() {
@@ -69,7 +95,7 @@ export default function TrazabilidadBrevo() {
       const data = await resp.json();
       if (data.success) {
         toast.success(`Sincronización exitosa: ${data.processed} eventos`);
-        await fetchContactos();
+        await fetchContactos(calendarDays);
       } else {
         throw new Error(data.error || "Fallo en API /api/sync-brevo");
       }
@@ -82,18 +108,41 @@ export default function TrazabilidadBrevo() {
   }
 
   const getStatusIcon = (contacto: any, day: string) => {
-    const ultimoEnvio = contacto.ultimo_envio?.split('T')[0];
+    // 1. PRIORIDAD: Historial Real (soporta múltiples envíos por mes)
+    const eventosDelDia = (contacto.historial || []).filter((h: any) => h.fecha === day);
     
-    // Si el último envío coincide con este día
+    if (eventosDelDia.length > 0) {
+      // Jerarquía de estados Sentinel
+      const weights: Record<string, number> = { 
+        'opened': 100, 'unique_opened': 100, 'clicks': 90, 
+        'delivered': 80, 'request': 50 
+      };
+      
+      const topEvent = eventosDelDia.reduce((prev: any, curr: any) => 
+        (weights[curr.estado] || 0) > (weights[prev.estado] || 0) ? curr : prev
+      );
+
+      const status = topEvent.estado?.toLowerCase();
+      if (status === "opened" || status === "unique_opened" || status === "clicks") 
+        return <Eye className="h-4 w-4 text-purple-400" />;
+      if (status === "delivered") 
+        return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
+      return <Mail className="h-4 w-4 text-blue-400" />;
+    }
+
+    // 2. FALLBACK: Modelo antiguo (ultimo_envio único) para compatibilidad
+    const ultimoEnvio = contacto.ultimo_envio?.split('T')[0];
     if (ultimoEnvio === day) {
       const lastStatus = (contacto.ultimo_estado_brevo || "").toLowerCase();
       if (contacto.es_bloqueado) return <AlertCircle className="h-4 w-4 text-red-500 animate-pulse" />;
-      if (lastStatus === "opened") return <Eye className="h-4 w-4 text-purple-400" />;
-      if (lastStatus === "delivered" || lastStatus === "request") return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
+      if (lastStatus === "opened" || lastStatus === "unique_opened" || lastStatus === "clicks") 
+        return <Eye className="h-4 w-4 text-purple-400" />;
+      if (lastStatus === "delivered" || lastStatus === "request") 
+        return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
       return <Mail className="h-4 w-4 text-blue-400" />;
     }
     
-    return <div className="h-1 w-1 bg-gray-800 rounded-full" />; // Dot for visualization
+    return <div className="h-1 w-1 bg-gray-800 rounded-full" />; // Dot default
   };
 
   const filtered = contactos.filter(c => {
