@@ -104,24 +104,28 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       
-      // FILA 1: Cliente y Contacto
-      doc.text(`Cliente: ${cuenta?.cliente || "No especificado"}`, margin, yPos);
-      doc.text(`Contacto: ${contacto?.nombre || "No especificado"}`, pageWidth - margin, yPos, { align: "right" });
-      yPos += lineHeight;
+      const col1 = margin;
+      const col2 = margin + (pageWidth - 2 * margin) / 3;
+      const col3 = margin + 2 * (pageWidth - 2 * margin) / 3;
 
-      // FILA 2: Vendedor, Correo y Celular (Vendedor)
       const vendNombre = cotizacion.vendedores?.nombre || cotizacion.vendedor_nombre || "Sin asignar";
       const vendCorreo = cotizacion.vendedores?.correo || cotizacion.vendedor_correo || "";
       const vendCel = cotizacion.vendedores?.celular || "";
-      
-      doc.text(`Vendedor/a: ${vendNombre}`, margin, yPos);
-      if (vendCorreo) doc.text(`Correo: ${vendCorreo}`, pageWidth / 2, yPos, { align: "center" });
-      if (vendCel) doc.text(`Cel: ${vendCel}`, pageWidth - margin, yPos, { align: "right" });
+
+      // FILA 1: Col 1: Cliente | Col 3: Vendedor
+      doc.text(`Cliente: ${cuenta?.cliente || "No especificado"}`, col1, yPos);
+      doc.text(`Vendedor/a: ${vendNombre}`, col3, yPos);
       yPos += lineHeight;
 
-      // FILA 3: Tiempo de Entrega y Validez
-      doc.text(`Tiempo de entrega: ${cotizacion.tiempo_entrega || "No especificado"}`, margin, yPos);
-      doc.text(`Validez: ${cotizacion.validez_oferta || "No especificado"}`, pageWidth / 2, yPos, { align: "center" });
+      // FILA 2: Col 1: Contacto | Col 3: Celular
+      doc.text(`Contacto: ${contacto?.nombre || "No especificado"}`, col1, yPos);
+      if (vendCel) doc.text(`Cel: ${vendCel}`, col3, yPos);
+      yPos += lineHeight;
+
+      // FILA 3: Col 1: Entrega | Col 2: Validez | Col 3: Correo
+      doc.text(`Tiempo de entrega: ${cotizacion.tiempo_entrega || "No especificado"}`, col1, yPos);
+      doc.text(`Validez: ${cotizacion.validez_oferta || "No especificado"}`, col2, yPos);
+      if (vendCorreo) doc.text(`Correo: ${vendCorreo}`, col3, yPos);
       yPos += 10;
 
       // TABLA DE PRODUCTOS
