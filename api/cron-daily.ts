@@ -440,6 +440,75 @@ function generarHtmlCobranza(params: {
 }
 
 // ============================================================================
+// MÓDULO ALERTA COMPRAS INTERNAS (Notificación In-App + WhatsApp futuro)
+// ============================================================================
+
+async function ejecutarAlertasCompras(): Promise<{ total: number; notificacionCreada: boolean; errors: string[] }> {
+    const report = { total: 0, notificacionCreada: false, errors: [] as string[] };
+    try {
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        const hoyStr = hoy.toISOString().split('T')[0];
+
+        // 1. Buscar facturas de compras vencidas
+        const { data: compras, error } = await supabase
+            .from('compras')
+            .select('folio, razon_social, saldo, fecha_vencimiento')
+            .gt('saldo', 0)
+            .lt('fecha_vencimiento', hoyStr);
+
+        if (error) throw error;
+        if (!compras || compras.length === 0) return report;
+
+        report.total = compras.length;
+        const deudaTotal = compras.reduce((acc, c) => acc + (c.saldo || 0), 0);
+
+        // 2. Verificar si ya existe una notificación activa del mismo tipo hoy
+        const { data: existente } = await supabase
+            .from('notificaciones')
+            .select('id')
+            .eq('tipo', 'alerta_compras_vencidas')
+            .eq('resuelta', false)
+            .gte('created_at', hoyStr)
+            .limit(1);
+
+        if (existente && existente.length > 0) {
+            console.log('ℹ️ Ya existe una alerta de compras vencidas para hoy. Omitiendo duplicado.');
+            return report;
+        }
+
+        // 3. INSERTAR NOTIFICACIÓN INTERNA EN LA APP
+        const top3 = compras.slice(0, 3).map(c =>
+            `• Folio ${c.folio} - ${c.razon_social}: ${formatearMonto(c.saldo)}`
+        ).join('\n');
+
+        const { error: insertError } = await supabase.from('notificaciones').insert({
+            tipo: 'alerta_compras_vencidas',
+            titulo: `🚨 ${compras.length} Facturas de Compra Vencidas`,
+            mensaje: `Deuda total en mora: ${formatearMonto(deudaTotal)}.\n\n${top3}${compras.length > 3 ? `\n... y ${compras.length - 3} más.` : ''}\n\nIngresa al Libro de Compras para gestionar los pagos.`,
+            modulo: 'compras',
+            enlace: '/compras',
+            icono: 'alert-triangle',
+            severidad: 'critical',
+            leida: false,
+            resuelta: false,
+            metadata: { count: compras.length, total: deudaTotal, fecha: hoyStr }
+        });
+
+        if (insertError) {
+            report.errors.push(`Error insertando notificación: ${insertError.message}`);
+        } else {
+            report.notificacionCreada = true;
+            console.log(`🔔 Notificación interna creada: ${compras.length} compras vencidas ($${deudaTotal})`);
+        }
+
+    } catch (err: any) {
+        report.errors.push(`Error global en alertas compras: ${err.message}`);
+    }
+    return report;
+}
+
+// ============================================================================
 // HANDLER PRINCIPAL
 // ============================================================================
 
@@ -463,22 +532,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(`✅ Día laboral (${diaLaboral.fecha}). Iniciando envíos...`);
 
-    // 3. Ejecutar COBRANZA (prioridad)
+    // 3. Ejecutar ALERTAS INTERNAS (Compras)
+    const alertasInternas = await ejecutarAlertasCompras();
+    console.log(`🔔 Alertas Internas Compras: ${alertasInternas.notificacionCreada ? 'Creada' : 'Sin cambios'} (${alertasInternas.total} vencidas)`);
+
+    // 4. Ejecutar COBRANZA (prio clientes)
     const cobranzaResult = await ejecutarCobranza(MAX_COBRANZA_EMAILS);
     console.log(`📧 Cobranza: ${cobranzaResult.sent} enviados`);
 
-    // 4. Calcular cuota restante para marketing
+    // 5. Calcular cuota restante para marketing
     const cuotaMarketing = BREVO_DAILY_LIMIT - cobranzaResult.sent;
 
-    // 5. Ejecutar MARKETING
+    // 6. Ejecutar MARKETING
     const marketingResult = await ejecutarMarketing(cuotaMarketing);
     console.log(`📬 Marketing: ${marketingResult.sent} enviados`);
 
-    // 6. Reporte final
+    // 7. Reporte final
     return res.status(200).json({
         fecha: diaLaboral.fecha,
         totalEnviados: cobranzaResult.sent + marketingResult.sent,
-        limiteBrevo: BREVO_DAILY_LIMIT,
+        alertasInternas: {
+            vencidas: alertasInternas.total,
+            notificacionCreada: alertasInternas.notificacionCreada,
+            errors: alertasInternas.errors
+        },
         cobranza: {
             total: cobranzaResult.total,
             processed: cobranzaResult.processed,

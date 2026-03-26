@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import DarkModeToggle from "@/components/DarkModeToggle";
+import FinanceAlertBanner from "@/components/FinanceAlertBanner";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function Layout() {
   const location = useLocation();
@@ -107,6 +109,8 @@ export default function Layout() {
 
         {/* Footer */}
         <div className="p-3 border-t border-gray-100 dark:border-gray-700 space-y-2">
+          {/* Notification Bell */}
+          <NotificationBell isCollapsed={isCollapsed} />
           {/* Dark Mode Toggle */}
           <div
             className={cn(
@@ -138,6 +142,7 @@ export default function Layout() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <FinanceAlertBanner />
         <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-gray-50 dark:bg-gray-900">
           <Outlet />
         </main>
