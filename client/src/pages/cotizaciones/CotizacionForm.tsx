@@ -81,7 +81,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
     try {
       const cid = cotizacion.cuenta_id;
       if (!cid && !search) return;
-      let query = supabase.from("contactos").select("id, nombre").order("nombre").limit(100);
+      let query = supabase.from("contactos").select("id, nombre, cuenta_id").order("nombre").limit(100);
       
       if (cid) {
         query = query.eq("cuenta_id", cid);
@@ -253,7 +253,9 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       costoTotal += costoItem;
       // El total neto por ítem es costoItem / (1 - margen/100) si es margen sobre venta, o costoItem * (1 + margen/100)
       // Usaremos margen sobre costo para simplicidad o margen sobre venta según convención
-      const netoItem = costoItem / (1 - (it.margen || 0) / 100);
+      const netoItemBruto = costoItem / (1 - (it.margen || 0) / 100);
+      const unitarioItem = it.cantidad > 0 ? Math.round(netoItemBruto / it.cantidad) : 0;
+      const netoItem = unitarioItem * it.cantidad;
       totalNeto += netoItem;
     });
 
@@ -849,7 +851,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                             className="aspect-square bg-blue-50 dark:bg-blue-900/10 rounded-2xl border-2 border-dashed border-gray-100 dark:border-gray-800 flex flex-col items-center justify-center relative overflow-hidden group hover:border-blue-400/50 dark:hover:border-blue-700/50 transition-all shadow-inner outline-none"
                           >
                             {item.imagen ? (
-                              <img src={item.imagen} className="w-full h-full object-cover" />
+                              <img src={item.imagen} className="w-full h-full object-contain p-1" />
                             ) : (
                               <div className="text-center p-2">
                                 <ImageIcon className="h-6 w-6 text-gray-300 mx-auto mb-1" />
@@ -930,9 +932,9 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                                <div className="h-12 flex items-center justify-end px-3 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-[11px] font-black text-emerald-600 shadow-sm border border-gray-100/50 dark:border-gray-700/50 leading-none">
                                  {(() => {
                                     const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
-                                    const neto = costo / (1 - (item.margen || 0)/100);
-                                    const unit = (item.cantidad || 0) > 0 ? neto / item.cantidad : 0;
-                                    return `$${Math.round(unit).toLocaleString("es-CL")}`;
+                                    const netoBruto = costo / (1 - (item.margen || 0)/100);
+                                    const unit = (item.cantidad || 0) > 0 ? Math.round(netoBruto / item.cantidad) : 0;
+                                    return `$${unit.toLocaleString("es-CL")}`;
                                  })()}
                                </div>
                             </div>
@@ -1115,7 +1117,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                                     className="aspect-video bg-gray-50 dark:bg-gray-800 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center p-2 relative overflow-hidden group outline-none"
                                  >
                                     {img ? (
-                                      <img src={img} className="w-full h-full object-cover rounded-xl" />
+                                      <img src={img} className="w-full h-full object-contain p-1 rounded-xl" />
                                     ) : (
                                       <div className="text-center">
                                         <ImageIcon className="h-4 w-4 text-gray-300 mx-auto" />
