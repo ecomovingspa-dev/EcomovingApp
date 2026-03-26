@@ -244,6 +244,11 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
   // Cálculos Automáticos
   useEffect(() => {
+    // GUARDRAIL @protocolo: Si la cotización ya está en un estado final, 
+    // no recalcular totales para no alterar documentos ya emitidos.
+    const estadosFinales = ["Facturada", "Despachada", "Producción"];
+    if (estadosFinales.includes(cotizacion.estado_cotizacion || "")) return;
+
     const items = cotizacion.items || [];
     let costoTotal = 0;
     let totalNeto = 0;
@@ -294,6 +299,9 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   // Efecto de Autoguardado y Backup Local
   useEffect(() => {
     if (!id || (cotizacion.items?.length || 0) === 0) return;
+    
+    // GUARDRAIL @protocolo: No autoguardar si está en un estado final
+    if (["Facturada", "Despachada", "Producción"].includes(cotizacion.estado_cotizacion || "")) return;
     
     const timer = setTimeout(() => {
        autoSaveToSupabase();
@@ -944,8 +952,10 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                                <div className="h-12 flex items-center justify-end px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[11px] font-black text-emerald-500 shadow-sm leading-none">
                                  {(() => {
                                     const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
-                                    const neto = costo / (1 - (item.margen || 0)/100);
-                                    return `$${Math.round(neto).toLocaleString("es-CL")}`;
+                                    const netoBruto = costo / (1 - (item.margen || 0)/100);
+                                    const unit = (item.cantidad || 0) > 0 ? Math.round(netoBruto / item.cantidad) : 0;
+                                    const subtotalItem = unit * (item.cantidad || 0);
+                                    return `$${subtotalItem.toLocaleString("es-CL")}`;
                                  })()}
                                </div>
                             </div>
