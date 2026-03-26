@@ -176,10 +176,22 @@ export default function CotizacionesPage() {
     setCargando(true);
     setMensaje(""); // Limpiar errores previos
     try {
-      // Cálculo del número correlativo inmediato
-      const { count } = await supabase.from("cotizaciones").select("id", { count: 'exact', head: true });
-      const nextNum = (count || 0) + 5126;
-      const numero = `COT-2026-${nextNum}`;
+      // Cálculo del número correlativo real basado en el máximo actual
+      const { data: lastQuote } = await supabase
+        .from("cotizaciones")
+        .select("numero_cotizacion")
+        .order("numero_cotizacion", { ascending: false })
+        .limit(1)
+        .single();
+      
+      let nextNum = 5125; // Base por si la tabla estuviera vacía
+      if (lastQuote?.numero_cotizacion) {
+         const numericMatch = lastQuote.numero_cotizacion.match(/\d+/);
+         if (numericMatch) {
+            nextNum = parseInt(numericMatch[0]) + 1;
+         }
+      }
+      const numero = `COT-${nextNum}`;
 
       let dataId: string | null = null;
       const baseDraft = { 
