@@ -33,10 +33,7 @@ interface ContactoConCuenta {
 interface GrupoCliente {
   cuentaId: string;
   nombreCliente: string;
-  segmento?: string;
-  sector?: string;
   contactos: ContactoConCuenta[];
-  expanded: boolean;
 }
 
 export default function ContactosPage() {
@@ -171,10 +168,6 @@ export default function ContactosPage() {
       const contactosData = data || [];
       setContactos(contactosData);
       if (count !== null) setTotalRecords(count);
-
-      // Agrupar por cliente para mantener la vista organizada
-      const grupos = agruparPorCliente(contactosData);
-      setGruposClientes(grupos);
     } catch (error: any) {
       console.error("Error al cargar contactos:", error);
       setMensaje("❌ Error al cargar contactos");
@@ -183,41 +176,8 @@ export default function ContactosPage() {
     }
   };
 
-  const agruparPorCliente = (contactos: ContactoConCuenta[]): GrupoCliente[] => {
-    const grupos = new Map<string, GrupoCliente>();
-
-    contactos.forEach(contacto => {
-      const cuentaId = contacto.cuenta_id || "sin-cuenta";
-      const nombreCliente = contacto.cuentas?.cliente || "Sin empresa asignada";
-
-      if (!grupos.has(cuentaId)) {
-        grupos.set(cuentaId, {
-          cuentaId,
-          nombreCliente,
-          segmento: contacto.cuentas?.segmento,
-          sector: contacto.cuentas?.sector,
-          contactos: [],
-          expanded: true
-        });
-      }
-
-      grupos.get(cuentaId)!.contactos.push(contacto);
-    });
-
-    // Ordenar por nombre de cliente
-    return Array.from(grupos.values()).sort((a, b) =>
-      a.nombreCliente.localeCompare(b.nombreCliente)
-    );
-  };
-
   const toggleGrupo = (cuentaId: string) => {
-    setGruposClientes(prev =>
-      prev.map(grupo =>
-        grupo.cuentaId === cuentaId
-          ? { ...grupo, expanded: !grupo.expanded }
-          : grupo
-      )
-    );
+    // Ya no es necesario el toggle en la vista tipo Excel
   };
 
   const eliminarContacto = async (id: string) => {
@@ -290,7 +250,7 @@ export default function ContactosPage() {
   };
 
   // Los grupos ya están filtrados por el servidor ahora
-  const gruposFiltrados = gruposClientes;
+  const gruposFiltrados = contactos;
 
   const totalPaginas = Math.ceil(totalRecords / filasPorPagina);
   const totalContactosFiltrados = totalRecords;
@@ -429,15 +389,15 @@ export default function ContactosPage() {
         </div>
       </div>
 
-      {/* Grupos por Cliente */}
-      <div className="space-y-4">
+      {/* Tabla Plana Estilo Excel */}
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
         {cargando ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center border border-gray-200 dark:border-gray-700">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 dark:border-blue-400 mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Cargando contactos...</p>
+          <div className="p-20 text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mb-4"></div>
+            <p className="text-gray-500 font-medium">Sincronizando registros...</p>
           </div>
-        ) : gruposFiltrados.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-20 text-center border border-gray-100 dark:border-gray-700">
+        ) : contactos.length === 0 ? (
+          <div className="p-20 text-center">
             <Search className="h-16 w-16 text-gray-200 dark:text-gray-700 mx-auto mb-6" />
             <p className="text-gray-600 dark:text-gray-400 font-bold mb-2">
               No se encontraron resultados
@@ -447,163 +407,114 @@ export default function ContactosPage() {
             </p>
           </div>
         ) : (
-          gruposFiltrados.map((grupo) => (
-            <div
-              key={grupo.cuentaId}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden border border-gray-200 dark:border-gray-700"
-            >
-              {/* Header del Grupo (Cliente) */}
-              <button
-                onClick={() => toggleGrupo(grupo.cuentaId)}
-                className="w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 hover:from-blue-100 hover:to-indigo-100 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30 transition-all"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                      {grupo.nombreCliente}
-                    </h3>
-                    <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3.5 w-3.5" />
-                        {grupo.contactos.length} contacto{grupo.contactos.length !== 1 ? 's' : ''}
-                      </span>
-                      {grupo.segmento && (
-                        <span className="px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-xs">
-                          {grupo.segmento}
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-900 border-b border-gray-800">
+                <tr className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  <th className="px-4 py-4 text-left w-[20%]">Empresa</th>
+                  <th className="px-4 py-4 text-left w-[18%]">Nombre</th>
+                  <th className="px-4 py-4 text-left w-[22%]">Correo</th>
+                  <th className="px-4 py-4 text-left w-[10%]">Celular</th>
+                  <th className="px-4 py-4 text-left w-[10%]">Teléfono</th>
+                  <th className="px-4 py-4 text-left w-[14%]">Depto</th>
+                  <th className="px-4 py-4 text-left w-[8%]">Estado</th>
+                  <th className="px-4 py-4 text-right w-[8%]">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700/50">
+                {contactos.map((contacto) => (
+                  <tr
+                    key={contacto.id}
+                    className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group"
+                  >
+                    {/* Empresa */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-blue-500 opacity-50" />
+                        <span className="font-bold text-gray-900 dark:text-gray-100 text-[11px] truncate uppercase tracking-tighter" title={contacto.cuentas?.cliente}>
+                          {contacto.cuentas?.cliente || "Sin empresa asignada"}
                         </span>
-                      )}
-                      {grupo.sector && (
-                        <span className="px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-full text-xs">
-                          {grupo.sector}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {grupo.expanded ? (
-                    <ChevronDown className="h-5 w-5 text-gray-500" />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 text-gray-500" />
-                  )}
-                </div>
-              </button>
+                      </div>
+                    </td>
 
-              {/* Tabla de Contactos del Grupo */}
-              {grupo.expanded && (
-                <div className="overflow-x-auto">
-                  <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead className="bg-gray-50 dark:bg-gray-900">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[18%]">
-                          Nombre
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[22%]">
-                          Correo
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[12%]">
-                          Celular
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[12%]">
-                          Teléfono
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[14%]">
-                          Departamento
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[10%]">
-                          Estado
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider w-[12%]">
-                          Acciones
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      {grupo.contactos.map((contacto) => (
-                        <tr
-                          key={contacto.id}
-                          className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    {/* Nombre */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="font-medium text-gray-700 dark:text-gray-300 text-[11px] truncate uppercase tracking-tight" title={contacto.nombre}>
+                        {contacto.nombre}
+                      </div>
+                    </td>
+
+                    {/* Correo */}
+                    <td className="px-4 py-3 whitespace-nowrap text-[11px] text-gray-500 dark:text-gray-400">
+                      <div className="truncate" title={contacto.correo}>{contacto.correo || "-"}</div>
+                    </td>
+
+                    {/* Celular */}
+                    <td className="px-4 py-3 whitespace-nowrap text-[11px] text-gray-500 dark:text-gray-400">
+                      <div className="truncate" title={contacto.celular}>{contacto.celular || "-"}</div>
+                    </td>
+
+                    {/* Teléfono */}
+                    <td className="px-4 py-3 whitespace-nowrap text-[11px] text-gray-500 dark:text-gray-400">
+                      <div className="truncate" title={contacto.telefono}>{contacto.telefono || "-"}</div>
+                    </td>
+
+                    {/* Departamento */}
+                    <td className="px-4 py-3 whitespace-nowrap text-[11px] text-gray-400 dark:text-gray-500 uppercase font-mono italic">
+                      <div className="truncate" title={contacto.departamento}>{contacto.departamento || "-"}</div>
+                    </td>
+
+                    {/* Estado */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <button
+                        onClick={() =>
+                          cambiarEstado(
+                            contacto.id,
+                            contacto.estado || "inactivo",
+                          )
+                        }
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${contacto.estado === "activo"
+                          ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
+                          : "bg-gray-300 dark:bg-gray-700"
+                          }`}
+                      >
+                        <span
+                          className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${contacto.estado === "activo"
+                            ? "translate-x-5"
+                            : "translate-x-1"
+                            }`}
+                        />
+                      </button>
+                    </td>
+
+                    {/* Acciones */}
+                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                      <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                          onClick={() =>
+                            navigate(`/contactos/${contacto.id}`)
+                          }
                         >
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <div className="flex flex-col">
-                              <div className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate" title={contacto.nombre}>
-                                {contacto.nombre}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                            <div className="truncate" title={contacto.correo}>{contacto.correo || "-"}</div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                            <div className="truncate" title={contacto.celular}>{contacto.celular || "-"}</div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                            <div className="truncate" title={contacto.telefono}>{contacto.telefono || "-"}</div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                            <div className="truncate" title={contacto.departamento}>{contacto.departamento || "-"}</div>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            <button
-                              onClick={() =>
-                                cambiarEstado(
-                                  contacto.id,
-                                  contacto.estado || "inactivo",
-                                )
-                              }
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${contacto.estado === "activo"
-                                ? "bg-green-500 dark:bg-green-600"
-                                : "bg-gray-300 dark:bg-gray-600"
-                                }`}
-                              title={
-                                contacto.estado === "activo"
-                                  ? "Desactivar contacto"
-                                  : "Activar contacto"
-                              }
-                            >
-                              <span
-                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${contacto.estado === "activo"
-                                  ? "translate-x-6"
-                                  : "translate-x-1"
-                                  }`}
-                              />
-                            </button>
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/20"
-                                onClick={() =>
-                                  navigate(`/contactos/${contacto.id}`)
-                                }
-                                title="Editar contacto"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
-                                onClick={() => eliminarContacto(contacto.id)}
-                                title="Eliminar contacto"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          ))
+                          <Pencil className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                          onClick={() => eliminarContacto(contacto.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
