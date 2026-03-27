@@ -7,6 +7,14 @@ import {
   Wrench, Truck, Settings, Building2 
 } from "lucide-react";
 import { toast } from "sonner";
+import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
+} from "@/components/ui/dialog";
+import { 
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -35,6 +43,9 @@ export default function TrazabilidadBrevo() {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState("");
   const [soloCriticos, setSoloCriticos] = useState(false);
+  const [vendedor, setVendedor] = useState("Ejecutivo de Ventas A");
+  const [draftData, setDraftData] = useState<any>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchContactos = async (days: CalendarDay[]) => {
     setLoading(true);
@@ -155,6 +166,19 @@ export default function TrazabilidadBrevo() {
     return <div className="h-1 w-1 bg-gray-800 rounded-full" />; // Dot default
   };
 
+  const generateDraft = (c: any) => {
+    const company = c.nombre?.replace('Contacto Principal - ', '') || 'su empresa';
+    const email = c.correo;
+    
+    // Asunto según el último estado
+    const subject = `Sobre tu consulta de hidratación eficiente - Ecomoving`;
+    
+    const body = `Hola ${c.nombre?.split(' ')[0] || ''},\n\nTe escribo porque vi que estuvieron revisando nuestra propuesta de sostenibilidad y eficiencia operativa para ${company} hoy.\n\nNo quería que se quedaran con dudas tácticas sobre cómo el cambio a purificadores puede reducir sus costos logísticos de inmediato.\n\n¿Tendrían 10 minutos la próxima semana para una llamada rápida?\n\nSaludos,\n\n${vendedor}\nEcomoving SpA`;
+
+    setDraftData({ email, subject, body });
+    setIsModalOpen(true);
+  };
+
   const filtered = contactos.filter(c => {
     const matchesSearch = c.nombre.toLowerCase().includes(filtro.toLowerCase()) || 
                          c.correo.toLowerCase().includes(filtro.toLowerCase());
@@ -249,9 +273,15 @@ export default function TrazabilidadBrevo() {
                   </td>
 
                   <td className="px-4 py-4 text-center">
-                    <button className="p-2 text-gray-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {(c.ultimo_estado_brevo === 'opened' || c.ultimo_estado_brevo === 'loadedbyproxy') && (
+                      <button 
+                        onClick={() => generateDraft(c)}
+                        className="p-2 text-indigo-400 hover:text-indigo-200 transition-all hover:scale-125"
+                        title="Redactar Seguimiento"
+                      >
+                        <Mail className="h-4 w-4" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -259,6 +289,81 @@ export default function TrazabilidadBrevo() {
           </table>
         </div>
       </div>
+
+      {/* MODAL DE REDACCION @VENTAS */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="bg-gray-950 border border-gray-800 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-indigo-400">
+              <Mail className="h-5 w-5" /> Redacción @Ventas IA
+            </DialogTitle>
+            <DialogDescription className="text-gray-500">
+              Borrador personalizado basado en la última apertura detectada.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 my-4">
+            <div className="flex items-center gap-4 bg-gray-900/50 p-3 rounded-xl border border-gray-800">
+              <span className="text-xs font-black uppercase text-gray-400 w-24">Remitente:</span>
+              <div className="flex gap-2">
+                {['Vendedor 1', 'Vendedor 2'].map(v => (
+                  <button 
+                    key={v}
+                    onClick={() => setVendedor(v)}
+                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${
+                      vendedor === v ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-500 hover:bg-gray-700'
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-500 uppercase">Asunto</label>
+                <input 
+                  type="text" 
+                  value={draftData?.subject} 
+                  readOnly 
+                  className="w-full bg-gray-900 border-none text-white text-sm p-3 rounded-xl" 
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-500 uppercase">Cuerpo del Correo (Tono Humano)</label>
+                <Textarea 
+                  value={draftData?.body} 
+                  readOnly 
+                  rows={8}
+                  className="w-full bg-gray-900 border-none text-white text-sm p-3 rounded-xl resize-none" 
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex justify-end gap-3 border-t border-gray-800 pt-6">
+             <Button 
+               variant="outline" 
+               className="border-gray-800 text-gray-400 hover:bg-gray-900"
+               onClick={() => setIsModalOpen(false)}
+             >
+              DESCARTAR
+             </Button>
+             <Button 
+               className="bg-indigo-600 hover:bg-indigo-500 text-white font-black"
+               onClick={() => {
+                 const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}&body=${encodeURIComponent(draftData.body)}`;
+                 window.location.href = mailto;
+                 setIsModalOpen(false);
+                 toast.success("Borrador enviado al gestor de correos");
+               }}
+             >
+              ENVIAR AL GESTOR (Disparar)
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Leyenda Sentinel */}
       <div className="flex flex-wrap gap-6 p-4 bg-gray-900/20 rounded-xl border border-dotted border-gray-800 justify-center">
