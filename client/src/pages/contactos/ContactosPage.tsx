@@ -98,9 +98,9 @@ export default function ContactosPage() {
     }
   }, [paginaActual, busqueda, filtroEstado, filtroCuentaId, filtroSegmento, filtroSector, hayFiltroActivo]);
 
-  const cargarContactos = async () => {
+  const cargarContactos = async (silent = false) => {
     try {
-      setCargando(true);
+      if (!silent) setCargando(true);
       
       // Intentamos buscar IDs de empresas si hay un término de búsqueda para ampliar resultados
       let idsDeCuentas: string[] = [];
@@ -239,7 +239,7 @@ export default function ContactosPage() {
       }
 
       setMensaje("✅ Contacto eliminado correctamente");
-      cargarContactos();
+      cargarContactos(true);
       setTimeout(() => setMensaje(""), 3000);
     } catch (error: any) {
       console.error("Error al eliminar:", error);
@@ -258,10 +258,25 @@ export default function ContactosPage() {
 
       if (error) throw error;
 
+      // Actualización optimista para evitar el parpadeo (pestañazo)
+      setContactos(prev =>
+        prev.map(c => (c.id === id ? { ...c, estado: nuevoEstado } : c))
+      );
+      setGruposClientes(prev =>
+        prev.map(grupo => ({
+          ...grupo,
+          contactos: grupo.contactos.map(c =>
+            c.id === id ? { ...c, estado: nuevoEstado } : c
+          ),
+        }))
+      );
+
       setMensaje(
         `✅ Contacto ${nuevoEstado === "activo" ? "activado" : "desactivado"}`,
       );
-      cargarContactos();
+      
+      // Carga silenciosa en segundo plano para sincronizar sin mover el scroll
+      cargarContactos(true);
       setTimeout(() => setMensaje(""), 3000);
     } catch (error: any) {
       console.error("Error al cambiar estado:", error);
