@@ -52,39 +52,80 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // VERIFICACIÓN DÍA LABORAL CHILE
 // ============================================================================
 
-async function esDiaLaboralChile(): Promise<{ esLaboral: boolean; mensaje: string; fecha: string }> {
-    const fechaChileStr = new Date().toLocaleString("en-US", { timeZone: "America/Santiago" });
-    const fechaChile = new Date(fechaChileStr);
-    const diaSemana = fechaChile.getDay();
-    const fechaFormateada = fechaChile.toISOString().split('T')[0];
+async function esDiaLaboralChile(): Promise<{ esLaboral: boolean; mensaje: string; fecha: string; feriados: string[] }> {
+    // Configuración robusta para Chile (ISO Components)
+    const options: any = { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit", weekday: "numeric" };
+    const formatter = new Intl.DateTimeFormat("en-CA", options); // en-CA da YYYY-MM-DD
+    const parts = formatter.formatToParts(new Date());
+    
+    const yearStr = parts.find(p => p.type === "year")?.value!;
+    const monthStr = parts.find(p => p.type === "month")?.value!;
+    const dayStr = parts.find(p => p.type === "day")?.value!;
+    const weekdayStr = parts.find(p => p.type === "weekday")?.value!;
+    
+    const fechaFormateada = `${yearStr}-${monthStr}-${dayStr}`;
 
-    // Fin de semana
-    if (diaSemana === 0 || diaSemana === 6) {
+    // Obtener feriados
+    let listadoFeriados: string[] = [];
+    try {
+        const { data } = await axios.get(`https://apis.digital.gob.cl/fl/feriados/${yearStr}`);
+        if (Array.isArray(data)) {
+            listadoFeriados = data.map((f: any) => f.fecha);
+        }
+    } catch (e) {
+        console.warn('⚠️ No se pudieron obtener los feriados de la API, se usará solo findes.');
+    }
+
+    // Caso 1: Fin de semana (Hoy es Sábado o Domingo)
+    const nativeDateChile = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Santiago" }));
+    const dw = nativeDateChile.getDay();
+    
+    if (dw === 0 || dw === 6) {
         return {
             esLaboral: false,
             mensaje: 'Fin de semana en Chile. Envíos suspendidos.',
-            fecha: fechaFormateada
+            fecha: fechaFormateada,
+            feriados: listadoFeriados
         };
     }
 
-    // Verificar feriados
-    try {
-        const year = fechaChile.getFullYear();
-        const { data: feriados } = await axios.get(`https://apis.digital.gob.cl/fl/feriados/${year}`);
-        const esFeriado = feriados.some((f: any) => f.fecha === fechaFormateada);
-
-        if (esFeriado) {
-            return {
-                esLaboral: false,
-                mensaje: 'Día festivo en Chile. Envíos suspendidos.',
-                fecha: fechaFormateada
-            };
-        }
-    } catch (error) {
-        console.warn('Error verificando feriados, continuando:', error);
+    // Caso 2: Feriado
+    if (listadoFeriados.includes(fechaFormateada)) {
+        return {
+            esLaboral: false,
+            mensaje: `Día festivo (${fechaFormateada}) en Chile. Envíos suspendidos.`,
+            fecha: fechaFormateada,
+            feriados: listadoFeriados
+        };
     }
 
-    return { esLaboral: true, mensaje: 'Día laboral', fecha: fechaFormateada };
+    return { esLaboral: true, mensaje: 'Día laboral', fecha: fechaFormateada, feriados: listadoFeriados };
+}
+
+/**
+ * Suma días laborales (omitiendo sábados, domingos y feriados)
+ */
+function sumarDiasLaborales(fecha: Date, diasASumar: number, feriados: string[]): Date {
+    const nuevaFecha = new Date(fecha.getTime());
+    let diasContados = 0;
+    while (diasContados < diasASumar) {
+        nuevaFecha.setDate(nuevaFecha.getDate() + 1);
+        const ds = nuevaFecha.getDay();
+        
+        // Formatear proxima fecha para comparar con feriados
+        const y = nuevaFecha.getFullYear();
+        const m = String(nuevaFecha.getMonth() + 1).padStart(2, '0');
+        const d = String(nuevaFecha.getDate()).padStart(2, '0');
+        const fComp = `${y}-${m}-${d}`;
+
+        const esFinde = (ds === 0 || ds === 6);
+        const esFeriado = feriados.includes(fComp);
+
+        if (!esFinde && !esFeriado) {
+            diasContados++;
+        }
+    }
+    return nuevaFecha;
 }
 
 // ============================================================================
@@ -245,7 +286,7 @@ async function ejecutarCobranza(maxEmails: number): Promise<{
 // MÓDULO MARKETING
 // ============================================================================
 
-async function ejecutarMarketing(maxEmails: number): Promise<{
+async function ejecutarMarketing(maxEmails: number, feriados: string[]): Promise<{
     processed: number;
     sent: number;
     errors: string[];
@@ -255,24 +296,28 @@ async function ejecutarMarketing(maxEmails: number): Promise<{
     if (maxEmails <= 0) return report;
 
     try {
-        const today = new Date().toISOString().split('T')[0];
+        // Obtener fecha actual en formato ISO para filtrado en BD
+        const todayIso = new Date().toISOString(); 
 
-        // Buscar contactos activos (case-insensitive) con próximo envío pendiente
+        // Buscar contactos activos con próximo envío pendiente (o NULL para el primer envío)
         const { data: contacts, error: contactError } = await supabase
             .from('contactos')
             .select('*')
             .ilike('estado', 'activo')
             .not('correo', 'is', null)
             .neq('correo', '')
+            // FILTRO CRUCIAL: Solo los que tengan proximo_envio en el pasado o sean NULL
+            .or(`proximo_envio.lte.${todayIso},proximo_envio.is.null`)
+            .order('proximo_envio', { ascending: true, nullsFirst: true })
             .limit(maxEmails);
 
         if (contactError) throw contactError;
         if (!contacts || contacts.length === 0) {
-            console.log('⚠️ Marketing: No hay contactos activos con envío pendiente');
+            console.log('⚠️ Marketing: No hay contactos activos con envío pendiente hoy');
             return report;
         }
 
-        console.log(`📋 Marketing: ${contacts.length} contactos para procesar`);
+        console.log(`📋 Marketing: ${contacts.length} contactos listos para envío (respetando ventana de 3 días)`);
 
         for (const contact of contacts) {
             if (report.sent >= maxEmails) break;
@@ -293,8 +338,6 @@ async function ejecutarMarketing(maxEmails: number): Promise<{
                     .eq('activo', true)
                     .maybeSingle();
 
-                // Si no hay mensaje, simplemente saltamos (pausamos) para este contacto
-                // hasta que se cree el contenido para su etapa actual.
                 if (!messageData) {
                     console.log(`  ⏸️ Pausado: Sin contenido para etapa ${etapaActual} (${contact.correo})`);
                     continue;
@@ -319,22 +362,21 @@ async function ejecutarMarketing(maxEmails: number): Promise<{
 
                 const messageId = brevoRes.data?.messageId;
 
-                // 4. Registrar en Trazabilidad Sentinel (Historización)
+                // Registrar en Trazabilidad Sentinel
                 try {
                     await supabase.from('trazabilidad_correos').insert({
                         contacto_id: contact.id,
                         email: contact.correo,
                         fecha: new Date().toISOString().split('T')[0],
-                        estado: 'request', // 'request' es el estado inicial en Brevo (enviado)
+                        estado: 'request',
                         mensaje_id: messageId
                     });
                 } catch (err) {
-                    console.error('⚠️ No se pudo registrar trazabilidad histórica (posible tabla faltante)');
+                    console.error('⚠️ Error al registrar trazabilidad');
                 }
 
-                // Actualizar próximo envío (+3 días = ~2 emails por semana)
-                const nextDate = new Date();
-                nextDate.setDate(nextDate.getDate() + 3);
+                // Calcular próximo envío: +3 días LABORALES (saltando findes y festivos)
+                const nextDate = sumarDiasLaborales(new Date(), 3, feriados);
 
                 // Calcular próxima etapa
                 const siguienteEtapa = etapaActual + 1;
@@ -348,7 +390,7 @@ async function ejecutarMarketing(maxEmails: number): Promise<{
                     })
                     .eq('id', contact.id);
 
-                console.log(`  ✅ Enviado a ${contact.correo} - Etapa ${etapaActual} → ${siguienteEtapa}`);
+                console.log(`  ✅ Enviado a ${contact.correo} - Etapa ${etapaActual} → Próximo: ${nextDate.toISOString().split('T')[0]}`);
 
                 report.sent++;
                 await sleep(DELAY_BETWEEN_EMAILS_MS);
@@ -558,8 +600,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 5. Calcular cuota restante para marketing
     const cuotaMarketing = BREVO_DAILY_LIMIT - cobranzaResult.sent;
 
-    // 6. Ejecutar MARKETING
-    const marketingResult = await ejecutarMarketing(cuotaMarketing);
+    // 6. Ejecutar MARKETING (Pasando lista de feriados para el cálculo del proximo_envio)
+    const marketingResult = await ejecutarMarketing(cuotaMarketing, diaLaboral.feriados);
     console.log(`📬 Marketing: ${marketingResult.sent} enviados`);
 
     // 7. Reporte final
