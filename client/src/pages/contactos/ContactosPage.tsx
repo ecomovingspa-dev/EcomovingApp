@@ -49,6 +49,7 @@ export default function ContactosPage() {
   const [filtroSector, setFiltroSector] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [filtroCuentaId, setFiltroCuentaId] = useState("");
+  const [soloSinNombre, setSoloSinNombre] = useState(false);
 
   // Estados para paginación
   const [paginaActual, setPaginaActual] = useState(1);
@@ -155,6 +156,10 @@ export default function ContactosPage() {
 
       if (filtroSector) {
         query = query.filter("cuentas.sector", "eq", filtroSector);
+      }
+
+      if (soloSinNombre) {
+        query = query.ilike("nombre", "Contacto Principal - %");
       }
 
       const { data, error, count } = await query
@@ -403,11 +408,23 @@ export default function ContactosPage() {
               setFiltroCuentaId("");
               setFiltroSegmento("");
               setFiltroSector("");
+              setSoloSinNombre(false);
               setPaginaActual(1);
             }}
-            className="w-full border-none rounded-xl px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
+            className="w-full border-none rounded-xl px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all font-mono text-[10px] uppercase tracking-widest"
           >
             Resetear
+          </Button>
+
+          {/* Filtro Provisorio: Sin Nombre */}
+          <Button
+            variant={soloSinNombre ? "destructive" : "outline"}
+            onClick={() => { setSoloSinNombre(!soloSinNombre); setPaginaActual(1); }}
+            className={`w-full border-none rounded-xl px-4 py-3 font-bold transition-all font-mono text-[10px] uppercase tracking-widest ${
+              !soloSinNombre ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/20 dark:text-amber-400" : ""
+            }`}
+          >
+            {soloSinNombre ? "MOSTRANDO SIN NOMBRE" : "FILTRAR SIN NOMBRE"}
           </Button>
         </div>
       </div>
@@ -515,16 +532,6 @@ export default function ContactosPage() {
                               <div className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate" title={contacto.nombre}>
                                 {contacto.nombre}
                               </div>
-                              {contacto.departamento?.toLowerCase().includes("gerencia") && (
-                                <span className="text-[10px] w-fit font-bold px-1.5 py-0.5 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 rounded uppercase">
-                                  👑 Nivel Ejecutivo
-                                </span>
-                              )}
-                              {contacto.departamento?.toLowerCase().includes("directivo") && (
-                                <span className="text-[10px] w-fit font-bold px-1.5 py-0.5 bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 rounded uppercase">
-                                  🏛️ Nivel Directivo
-                                </span>
-                              )}
                             </div>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
