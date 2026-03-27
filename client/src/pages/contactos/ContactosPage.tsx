@@ -44,8 +44,8 @@ export default function ContactosPage() {
   const [busqueda, setBusqueda] = useState("");
   const [filtroSegmento, setFiltroSegmento] = useState("");
   const [filtroSector, setFiltroSector] = useState("");
+  const [filtroSector, setFiltroSector] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
-  const [filtroCuentaId, setFiltroCuentaId] = useState("");
   const [soloSinNombre, setSoloSinNombre] = useState(false);
 
   // Estados para paginación
@@ -56,7 +56,6 @@ export default function ContactosPage() {
   // Estados para opciones de filtros
   const [availableSectors, setAvailableSectors] = useState<string[]>([]);
   const [availableSegments, setAvailableSegments] = useState<string[]>([]);
-  const [availableCuentas, setAvailableCuentas] = useState<{ id: string, cliente: string }[]>([]);
 
   // Determinar si hay algún filtro activo
   // No restriction on loading, server-side pagination handles performance
@@ -75,11 +74,6 @@ export default function ContactosPage() {
         setAvailableSectors(Array.from(new Set(qSectors.map((c: any) => c.sector).filter(Boolean))));
         setAvailableSegments(Array.from(new Set(qSectors.map((c: any) => c.segmento).filter(Boolean))));
       }
-
-      const { data: qCuentas } = await supabase.from("cuentas").select("id, cliente").order("cliente");
-      if (qCuentas) {
-        setAvailableCuentas(qCuentas);
-      }
     } catch (e) {
       console.error("Error cargando opciones de filtros:", e);
     }
@@ -90,11 +84,10 @@ export default function ContactosPage() {
       cargarContactos();
     } else {
       setContactos([]);
-      setGruposClientes([]);
       setTotalRecords(0);
       setCargando(false);
     }
-  }, [paginaActual, busqueda, filtroEstado, filtroCuentaId, filtroSegmento, filtroSector, hayFiltroActivo]);
+  }, [paginaActual, busqueda, filtroEstado, filtroSegmento, filtroSector, hayFiltroActivo]);
 
   const cargarContactos = async (silent = false) => {
     try {
@@ -143,16 +136,12 @@ export default function ContactosPage() {
         query = query.eq("estado", filtroEstado);
       }
 
-      if (filtroCuentaId) {
-        query = query.eq("cuenta_id", filtroCuentaId);
-      }
-
       if (filtroSegmento) {
-        query = query.filter("cuentas.segmento", "eq", filtroSegmento);
+        query = query.filter("cuentas!contactos_cuenta_id_fkey.segmento", "eq", filtroSegmento);
       }
 
       if (filtroSector) {
-        query = query.filter("cuentas.sector", "eq", filtroSector);
+        query = query.filter("cuentas!contactos_cuenta_id_fkey.sector", "eq", filtroSector);
       }
 
       if (soloSinNombre) {
@@ -317,20 +306,6 @@ export default function ContactosPage() {
             <option value="inactivo">Inactivo</option>
           </select>
 
-          {/* Filtro Cuenta */}
-          <select
-            value={filtroCuentaId}
-            onChange={(e) => { setFiltroCuentaId(e.target.value); setPaginaActual(1); }}
-            className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all font-medium"
-          >
-            <option value="">Empresa: Todas</option>
-            {availableCuentas.map((cuenta) => (
-              <option key={cuenta.id} value={cuenta.id}>
-                {cuenta.cliente}
-              </option>
-            ))}
-          </select>
-
           {/* Filtro Segmento */}
           <select
             value={filtroSegmento}
@@ -365,7 +340,6 @@ export default function ContactosPage() {
             onClick={() => {
               setBusqueda("");
               setFiltroEstado("");
-              setFiltroCuentaId("");
               setFiltroSegmento("");
               setFiltroSector("");
               setSoloSinNombre(false);
