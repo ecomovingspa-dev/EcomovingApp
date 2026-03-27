@@ -30,20 +30,14 @@ interface ContactoConCuenta {
   };
 }
 
-interface GrupoCliente {
-  cuentaId: string;
-  nombreCliente: string;
-  contactos: ContactoConCuenta[];
-}
+
 
 export default function ContactosPage() {
   const [contactos, setContactos] = useState<ContactoConCuenta[]>([]);
-  const [gruposClientes, setGruposClientes] = useState<GrupoCliente[]>([]);
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [busqueda, setBusqueda] = useState("");
   const [filtroSegmento, setFiltroSegmento] = useState("");
-  const [filtroSector, setFiltroSector] = useState("");
   const [filtroSector, setFiltroSector] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [soloSinNombre, setSoloSinNombre] = useState(false);
