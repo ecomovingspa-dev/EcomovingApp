@@ -311,6 +311,34 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
     
     return () => clearTimeout(timer);
   }, [JSON.stringify(cotizacion)]);
+  
+  // Trigger de Estado Automático (v2.1)
+  useEffect(() => {
+    const { nro_oc, nro_guia, nro_factura, estado_cotizacion } = cotizacion;
+    
+    // PRIORIDAD 1: N° Factura lleno => Facturada
+    if (nro_factura?.trim()) {
+      if (estado_cotizacion !== "Facturada") {
+        setCotizacion(prev => ({ ...prev, estado_cotizacion: "Facturada" }));
+      }
+      return;
+    }
+
+    // PRIORIDAD 2: Guía llena (y factura vacía) => Despachada
+    if (nro_guia?.trim() && !nro_factura?.trim()) {
+      if (estado_cotizacion !== "Despachada") {
+        setCotizacion(prev => ({ ...prev, estado_cotizacion: "Despachada" }));
+      }
+      return;
+    }
+
+    // PRIORIDAD 3: OC llena (y guía/factura vacías) => Producción
+    if (nro_oc?.trim() && !nro_guia?.trim() && !nro_factura?.trim()) {
+      if (estado_cotizacion !== "Producción") {
+        setCotizacion(prev => ({ ...prev, estado_cotizacion: "Producción" }));
+      }
+    }
+  }, [cotizacion.nro_oc, cotizacion.nro_guia, cotizacion.nro_factura]);
 
   const handleSave = async (silent = false) => {
     if (!cotizacion.cuenta_id && !silent) {
@@ -493,9 +521,30 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight uppercase">
-               {id ? `COTIZACIÓN ${cotizacion.numero_cotizacion || ""}` : "NUEVO REQUERIMIENTO COMERCIAL"}
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-black text-gray-900 dark:text-gray-100 tracking-tight uppercase">
+                 {id ? `COTIZACIÓN ${cotizacion.numero_cotizacion || ""}` : "NUEVO REQUERIMIENTO COMERCIAL"}
+              </h1>
+              {id && (
+                <select 
+                  value={cotizacion.estado_cotizacion}
+                  onChange={(e) => setCotizacion(prev => ({ ...prev, estado_cotizacion: e.target.value }))}
+                  className={cn(
+                    "ml-2 px-3 py-1 text-[10px] rounded-full uppercase font-black tracking-widest border-2 transition-all cursor-pointer",
+                    cotizacion.estado_cotizacion === "Producción" ? "bg-blue-600 border-blue-600 text-white" :
+                    cotizacion.estado_cotizacion === "Despachada" ? "bg-purple-600 border-purple-600 text-white" :
+                    cotizacion.estado_cotizacion === "Facturada" ? "bg-emerald-600 border-emerald-600 text-white" :
+                    "bg-amber-100 border-amber-400 text-amber-700"
+                  )}
+                >
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="Producción">Producción</option>
+                  <option value="Despachada">Despachada</option>
+                  <option value="Facturada">Facturada</option>
+                  <option value="Anulada">Anulada</option>
+                </select>
+              )}
+            </div>
             <p className="text-gray-500 dark:text-gray-400 text-xs font-medium">Configure los detalles técnicos y financieros de la propuesta.</p>
           </div>
         </div>
