@@ -139,7 +139,7 @@ export default function ContactosPage() {
       }
 
       if (soloSinNombre) {
-        query = query.ilike("nombre", "Contacto Principal - %");
+        query = query.or('nombre.is.null,nombre.eq."",nombre.ilike."Contacto Principal - %"');
       }
 
       const { data, error, count } = await query
