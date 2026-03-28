@@ -105,7 +105,7 @@ export default function ContactosPage() {
         .select(
           `
           *,
-          cuentas:cuentas!contactos_cuenta_id_fkey(cliente, segmento, sector)
+          cuentas:cuentas!contactos_cuenta_id_fkey${(filtroSegmento || filtroSector) ? "!inner" : ""}(cliente, segmento, sector)
         `,
           { count: "exact" }
         );
@@ -131,11 +131,11 @@ export default function ContactosPage() {
       }
 
       if (filtroSegmento) {
-        query = query.filter("cuentas!contactos_cuenta_id_fkey.segmento", "eq", filtroSegmento);
+        query = query.eq("cuentas.segmento", filtroSegmento);
       }
 
       if (filtroSector) {
-        query = query.filter("cuentas!contactos_cuenta_id_fkey.sector", "eq", filtroSector);
+        query = query.eq("cuentas.sector", filtroSector);
       }
 
       if (soloSinNombre) {
