@@ -1,0 +1,11 @@
+[
+  "id",
+  "created_at",
+  "cliente",
+  "sector",
+  "segmento",
+  "estado",
+  "ciudad",
+  "web",
+  "rut"
+]

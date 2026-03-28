@@ -1,0 +1,12 @@
+--- ANALIZANDO HOT LEADS (OPENED/CLICK) ---
+Nombre: Claudio Rojas | Empresa: Ilustre Municipalidad de Valdivia | Estado: opened | Envío: 2026-03-26
+Nombre: Maria Jose Castillo | Empresa: Barrick Chile | Estado: opened | Envío: 2026-03-26
+Nombre: Contacto Principal - Minera Cordillera | Empresa: Minera Cordillera | Estado: opened | Envío: 2026-03-26
+Nombre: Constanza Henriquez | Empresa: Asistencia Post Venta Sociedad Anonima | Estado: opened | Envío: 2026-03-26
+Nombre: Mario Osorio C. | Empresa: Ecomoving | Estado: opened | Envío: 2026-03-26
+Nombre: Contacto Principal - Fluitek Chile S.A | Empresa: Fluitek Chile S.A | Estado: opened | Envío: 2026-03-26
+Nombre: Contacto Principal - Teck Exploraciones Mineras Chile Ltda. | Empresa: Teck Exploraciones Mineras Chile Ltda. | Estado: opened | Envío: 2026-03-26
+Nombre: Contacto Principal - Freeport-Mcmoran South America | Empresa: Freeport-Mcmoran South America | Estado: opened | Envío: 2026-03-26
+Nombre: Contacto Principal - Geocom S.A. | Empresa: Geocom S.A. | Estado: opened | Envío: 2026-03-26
+Nombre: Contacto Principal - Antko | Empresa: Antko | Estado: opened | Envío: 2026-03-26
+Nombre: Contacto Principal - Proveedora Industrial Minera Andina S.A | Empresa: Proveedora Industrial Minera Andina S.A | Estado: opened | Envío: 2026-03-26

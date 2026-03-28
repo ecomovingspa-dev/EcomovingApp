@@ -39,7 +39,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   const [vendedores, setVendedores] = useState<any[]>([]);
 
   const [cotizacion, setCotizacion] = useState<Partial<Cotizacion>>({
-    estado_cotizacion: "Borrador",
+    estado_cotizacion: "Pendiente",
     cuenta_id: cuentaId,
     contacto_id: contactoId,
     items: [],
@@ -464,7 +464,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       const duplicado = {
         ...payload,
         numero_cotizacion: `COT-${num}`,
-        estado_cotizacion: "Borrador",
+        estado_cotizacion: "Pendiente",
         items: newItems,
         fecha: new Date().toISOString().split("T")[0]
       };

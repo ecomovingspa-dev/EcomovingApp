@@ -196,7 +196,7 @@ export default function CotizacionesPage() {
       let dataId: string | null = null;
       const baseDraft = { 
         numero_cotizacion: numero,
-        estado_cotizacion: 'Borrador',
+        estado_cotizacion: 'Pendiente',
         items: [],
         total: 0,
         total_neto: 0,
