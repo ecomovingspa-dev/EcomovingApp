@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, FileText, Search, X, ChevronLeft } from "lucide-react";
 import CotizacionForm from "./CotizacionForm";
+import BotonExportarPDF from "./CotizacionPDF";
 
 interface CotizacionConCuenta {
   id: number;
@@ -63,7 +64,21 @@ export default function CotizacionesPage() {
             cliente
           ),
           vendedores:vendedores!cotizaciones_vendedor_id_fkey (
-            nombre
+            nombre,
+            correo,
+            celular
+          ),
+          items,
+          tiempo_entrega,
+          validez_oferta,
+          fecha,
+          id_mercado_publico,
+          contacto_id,
+          cuenta_id,
+          contacto:contactos!cotizaciones_contacto_id_fkey (
+            nombre,
+            correo,
+            celular
           )
         `,
           { count: 'exact' }
@@ -129,7 +144,6 @@ export default function CotizacionesPage() {
 
   const stats = useMemo(() => {
     const defaultStats = {
-      borrador: { total: 0, count: 0, label: "Borradores", color: "text-gray-500", icon: <FileText className="h-4 w-4" /> },
       pendiente: { total: 0, count: 0, label: "Pendientes", color: "text-amber-500", icon: <Search className="h-4 w-4" /> },
       produccion: { total: 0, count: 0, label: "Producción", color: "text-blue-500", icon: <Plus className="h-4 w-4" /> },
       despachada: { total: 0, count: 0, label: "Despachadas", color: "text-purple-500", icon: <FileText className="h-4 w-4" /> },
@@ -290,7 +304,7 @@ export default function CotizacionesPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {Object.entries(stats).map(([key, value]) => (
           <div key={key} className="bg-white dark:bg-gray-800 p-4 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow group">
             <div className={`flex items-center gap-2 mb-2 ${value.color} font-bold text-[10px] uppercase tracking-wider`}>
@@ -384,7 +398,7 @@ export default function CotizacionesPage() {
                         ${new Intl.NumberFormat("es-CL").format(cot.total || 0)}
                       </td>
                       <td className="px-4 py-4 text-sm text-right text-blue-600 dark:text-blue-400 font-medium whitespace-nowrap">
-                        {cot.mg}%
+                        {cot.mg}
                       </td>
                       <td className="px-4 py-4 text-sm text-right text-emerald-600 dark:text-emerald-400 font-medium whitespace-nowrap">
                         ${new Intl.NumberFormat("es-CL").format(cot.ganancias || 0)}
@@ -406,6 +420,20 @@ export default function CotizacionesPage() {
                           >
                             <Edit className="h-4 w-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
                           </button>
+                          
+                          <BotonExportarPDF
+                            variant="icon"
+                            cotizacion={cot}
+                            cuenta={cot.cuentas}
+                            contacto={Array.isArray(cot.contacto) ? cot.contacto[0] : cot.contacto}
+                            items={cot.items || []}
+                            totales={{ 
+                              neto: cot.total_neto || 0, 
+                              iva: cot.iva || 0, 
+                              total: cot.total || 0 
+                            }}
+                          />
+
                           <button
                             onClick={() => handleEliminar(cot.id)}
                             className="p-1.5 hover:bg-white dark:hover:bg-gray-800 rounded-lg shadow-sm border border-transparent hover:border-red-200 dark:hover:border-red-900/50 transition-all group"

@@ -9,6 +9,7 @@ interface BotonExportarPDFProps {
   contacto: any;
   items: any[];
   totales: any;
+  variant?: "button" | "icon";
 }
 
 export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
@@ -17,6 +18,7 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
   contacto,
   items,
   totales,
+  variant = "button",
 }) => {
   const generarPDF = async () => {
     try {
@@ -245,6 +247,21 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       alert("Error crítico al generar el PDF. Esto puede ocurrir por imágenes corruptas o falta de memoria en el navegador. Intente guardar la cotización primero.");
     }
   };
+
+  if (variant === "icon") {
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          generarPDF();
+        }}
+        className="p-1.5 hover:bg-white dark:hover:bg-gray-800 rounded-lg shadow-sm border border-transparent hover:border-blue-200 dark:hover:border-blue-900/50 transition-all group"
+        title="Descargar PDF"
+      >
+        <FileDown className="h-4 w-4 text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+      </button>
+    );
+  }
 
   return (
     <button
