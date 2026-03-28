@@ -151,7 +151,9 @@ export default function CotizacionesPage() {
     };
 
     return cotizaciones.reduce((acc, cot) => {
-      const estado = (cot.estado_cotizacion || "borrador").toLowerCase();
+      let estado = (cot.estado_cotizacion || "pendiente").toLowerCase();
+      if (estado === "borrador") estado = "pendiente";
+      
       if (acc[estado as keyof typeof defaultStats]) {
         acc[estado as keyof typeof defaultStats].total += cot.total || 0;
         acc[estado as keyof typeof defaultStats].count += 1;
