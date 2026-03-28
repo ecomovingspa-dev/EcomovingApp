@@ -105,7 +105,7 @@ export default function ContactosPage() {
         .select(
           `
           *,
-          cuentas:cuentas!contactos_cuenta_id_fkey(cliente, segmento, sector)
+          cuentas(cliente, segmento, sector)
         `,
           { count: "exact" }
         );
@@ -131,11 +131,11 @@ export default function ContactosPage() {
       }
 
       if (filtroSegmento) {
-        query = query.filter("cuentas!contactos_cuenta_id_fkey.segmento", "eq", filtroSegmento);
+        query = query.eq("cuentas.segmento", filtroSegmento);
       }
 
       if (filtroSector) {
-        query = query.filter("cuentas!contactos_cuenta_id_fkey.sector", "eq", filtroSector);
+        query = query.eq("cuentas.sector", filtroSector);
       }
 
       if (soloSinNombre) {
@@ -210,14 +210,6 @@ export default function ContactosPage() {
       setContactos(prev =>
         prev.map(c => (c.id === id ? { ...c, estado: nuevoEstado } : c))
       );
-      setGruposClientes(prev =>
-        prev.map(grupo => ({
-          ...grupo,
-          contactos: grupo.contactos.map(c =>
-            c.id === id ? { ...c, estado: nuevoEstado } : c
-          ),
-        }))
-      );
 
       setMensaje(
         `✅ Contacto ${nuevoEstado === "activo" ? "activado" : "desactivado"}`,
@@ -248,7 +240,7 @@ export default function ContactosPage() {
             Contactos
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {gruposClientes.length} empresas • {contactos.length} contactos
+            {totalRecords} contactos registrados
           </p>
         </div>
         <Button
@@ -514,7 +506,7 @@ export default function ContactosPage() {
       {/* Info de resultados */}
       {!cargando && gruposFiltrados.length > 0 && (
         <div className="p-4 bg-gray-50 dark:bg-gray-900/30 rounded-xl border border-gray-100 dark:border-gray-800 text-xs text-gray-500 dark:text-gray-400 flex justify-between font-mono">
-          <span>Mostrando {gruposFiltrados.length} empresa{gruposFiltrados.length !== 1 ? 's' : ''} en esta página</span>
+          <span>Mostrando {contactos.length} contacto{contactos.length !== 1 ? 's' : ''} en esta página</span>
           <span>Total: {totalRecords} contacto{totalRecords !== 1 ? 's' : ''} encontrados</span>
         </div>
       )}
