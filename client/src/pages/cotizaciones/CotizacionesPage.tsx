@@ -105,16 +105,7 @@ export default function CotizacionesPage() {
         .range(pagina * PAGE_SIZE, (pagina + 1) * PAGE_SIZE - 1);
 
       if (error) throw error;
-
-      // Mapeo manual de la información de cuenta y vendedor desde catálogos
-      const cotizacionesFormateadas = (data || []).map((item: any) => ({
-        ...item,
-        cuentas: { cliente: catalogoCuentas[item.cuenta_id] || "Cargando..." },
-        vendedores: { nombre: catalogoVendedores[item.vendedor_id] || "Vendedor desc." },
-        // El contacto se maneja similar o se carga por demanda si es necesario
-      }));
-
-      setCotizaciones(cotizacionesFormateadas);
+      setCotizaciones(data || []);
       if (count !== null) setTotalRecords(count);
     } catch (e: any) {
       console.error("Error al cargar:", e);
@@ -124,6 +115,18 @@ export default function CotizacionesPage() {
     }
   };
 
+  // Mapeo reactivo: Se actualiza en cuanto cargan los catálogos
+  const cotizacionesProcesadas = useMemo(() => {
+    return cotizaciones.map((item: any) => ({
+      ...item,
+      cuentas: { 
+        cliente: catalogoCuentas[item.cuenta_id] || (cargando ? "Cargando..." : "Sin Cliente") 
+      },
+      vendedores: { 
+        nombre: catalogoVendedores[item.vendedor_id] || (cargando ? "Cargando..." : "Vendedor no asignado") 
+      },
+    }));
+  }, [cotizaciones, catalogoCuentas, catalogoVendedores, cargando]);
 
   useEffect(() => {
     if (routeId) {
@@ -152,15 +155,15 @@ export default function CotizacionesPage() {
   };
 
   const cotizacionesFiltradas = useMemo(() => {
-    if (!busqueda.trim()) return cotizaciones;
+    if (!busqueda.trim()) return cotizacionesProcesadas;
     const termino = busqueda.toLowerCase();
-    return cotizaciones.filter(
+    return cotizacionesProcesadas.filter(
       (cot) =>
         (cot.numero_cotizacion || "").toLowerCase().includes(termino) ||
         (cot.cuentas?.cliente || "").toLowerCase().includes(termino) ||
         (cot.vendedores?.nombre || "").toLowerCase().includes(termino),
     );
-  }, [cotizaciones, busqueda]);
+  }, [cotizacionesProcesadas, busqueda]);
 
   const stats = useMemo(() => {
     const defaultStats = {
