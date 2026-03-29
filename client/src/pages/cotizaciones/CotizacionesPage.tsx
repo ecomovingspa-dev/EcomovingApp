@@ -66,10 +66,10 @@ export default function CotizacionesPage() {
           mg,
           ganancias,
           estado_cotizacion,
-          cuentas:cuentas!cotizaciones_cuenta_id_fkey (
+          cuentas!cuenta_id (
             cliente
           ),
-          vendedores:vendedores!cotizaciones_vendedor_id_fkey (
+          vendedores!vendedor_id (
             nombre,
             correo,
             celular
@@ -81,7 +81,7 @@ export default function CotizacionesPage() {
           id_mercado_publico,
           contacto_id,
           cuenta_id,
-          contacto:contactos!cotizaciones_contacto_id_fkey (
+          contacto:contactos!contacto_id (
             nombre,
             correo,
             celular
