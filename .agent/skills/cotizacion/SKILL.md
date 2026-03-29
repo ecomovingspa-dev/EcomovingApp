@@ -43,21 +43,17 @@ Total:        $XX.XXX
 
 ---
 
-## Función 2: Gestión de estados
+## Función 2: Gestión de estados (Flujo Autogestionado)
 
-El ciclo de vida de una cotización en Ecomoving:
+El ciclo de vida cronológico de una cotización:
 
-```
-Borrador → Pendiente (COT-XXXX) → Producción → Despachada → Facturada
-```
+- **Etapa 0 - Pendiente** 🟡: Propuesta enviada (OC/Guía/Factura vacíos). Si no hay avance tras **60 días**, el sistema la clasifica como **Perdida**.
+- **Etapa 1 - Producción** 🔵: Iniciado con N° de **OC** (Campo informativo). Bloquea cálculos automáticos.
+- **Etapa 2 - Despachada** 🟣: Iniciado con N° de **Guía** (Campo informativo). Bloquea cálculos automáticos.
+- **Etapa 3 - Facturada** 🟢: Cierre con N° de **Factura** (Campo definitivo). Bloquea cálculos automáticos.
+- **Perdida** 🔴: Cotización no concretada (Sustituye a Anulada). No se borra para historial comercial.
 
-- `Borrador`: proceso interno, sin número asignado
-- `Pendiente`: cotización con número COT-XXXX asignado, oferta enviada al cliente
-- `Producción`: cliente aprobó o emitió OC
-- `Despachada`: entrega física realizada
-- `Facturada`: cierre comercial completo
-
-Transiciones solo hacia adelante. Si el usuario solicita retroceder un estado, alertar antes de proceder:
+Transiciones autogestionadas por el equipo comercial según avance de documentos.
 
 ```
 ⚠️ ALERTA DE ESTADO
@@ -93,9 +89,7 @@ Toda modificación estructural en la lógica de cálculo requiere visado de `@pr
 
 ## Límite de identidad
 
-Este skill no tiene acceso de escritura a su propio archivo SKILL.md ni al de ningún otro skill.
-
-Cuando el usuario comparta mejoras, correcciones o nuevas instrucciones para este skill, el comportamiento correcto es:
+Este skill es el guardián de la integridad comercial de Ecomoving. Su configuración y comportamientos deben ser actualizados por la IA bajo mandato explícito del usuario para reflejar fielmente los cambios en el código de producción.
 
 1. Acusar recibo del contenido
 2. Responder preguntas sobre él si las hay

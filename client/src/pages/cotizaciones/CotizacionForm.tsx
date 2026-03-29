@@ -28,6 +28,7 @@ const CATEGORIAS = [
   { id: "tecnologia", label: "Tecnología / USB", icon: "🔋" },
 ];
 
+
 export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClose, onSave }: CotizacionFormProps) {
   const { id: paramId } = useParams();
   const id = propId || paramId;
@@ -55,6 +56,26 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   const [openContacto, setOpenContacto] = useState(false);
   const [cuentaSearch, setCuentaSearch] = useState("");
   const [contactoSearch, setContactoSearch] = useState("");
+
+  /**
+   * Motor de Estados Automático de Ecomoving
+   * Prioridad: Factura > Guía > OC > Tiempo (60 días) > Pendiente
+   */
+  const obtenerEstadoAutomatico = (cot: any) => {
+    if (cot.nro_factura) return "Facturada";
+    if (cot.nro_guia) return "Despachada";
+    if (cot.nro_oc) return "Producción";
+    
+    if (cot.fecha) {
+      const fechaCot = new Date(cot.fecha);
+      const hoy = new Date();
+      const diffTime = Math.abs(hoy.getTime() - fechaCot.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > 60) return "Perdida";
+    }
+    
+    return cot.estado_cotizacion === "Perdida" ? "Perdida" : "Pendiente";
+  };
 
   const buscarCuentas = async (search: string, explicitId?: string) => {
     try {
@@ -313,32 +334,6 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   }, [JSON.stringify(cotizacion)]);
   
   // Trigger de Estado Automático (v2.1)
-  useEffect(() => {
-    const { nro_oc, nro_guia, nro_factura, estado_cotizacion } = cotizacion;
-    
-    // PRIORIDAD 1: N° Factura lleno => Facturada
-    if (nro_factura?.trim()) {
-      if (estado_cotizacion !== "Facturada") {
-        setCotizacion(prev => ({ ...prev, estado_cotizacion: "Facturada" }));
-      }
-      return;
-    }
-
-    // PRIORIDAD 2: Guía llena (y factura vacía) => Despachada
-    if (nro_guia?.trim() && !nro_factura?.trim()) {
-      if (estado_cotizacion !== "Despachada") {
-        setCotizacion(prev => ({ ...prev, estado_cotizacion: "Despachada" }));
-      }
-      return;
-    }
-
-    // PRIORIDAD 3: OC llena (y guía/factura vacías) => Producción
-    if (nro_oc?.trim() && !nro_guia?.trim() && !nro_factura?.trim()) {
-      if (estado_cotizacion !== "Producción") {
-        setCotizacion(prev => ({ ...prev, estado_cotizacion: "Producción" }));
-      }
-    }
-  }, [cotizacion.nro_oc, cotizacion.nro_guia, cotizacion.nro_factura]);
 
   const handleSave = async (silent = false) => {
     if (!cotizacion.cuenta_id && !silent) {
@@ -352,7 +347,11 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
     }
 
     try {
-      const payload = { ...cotizacion } as any;
+      const estadoCalculado = obtenerEstadoAutomatico(cotizacion);
+      const payload = { 
+        ...cotizacion, 
+        estado_cotizacion: estadoCalculado 
+      } as any;
       // Limpieza de objetos de relación que Supabase rechazaría en UPDATE directo
       delete payload.cuentas;
       delete payload.contactos;
@@ -526,23 +525,21 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                  {id ? `COTIZACIÓN ${cotizacion.numero_cotizacion || ""}` : "NUEVO REQUERIMIENTO COMERCIAL"}
               </h1>
               {id && (
-                <select 
-                  value={cotizacion.estado_cotizacion}
-                  onChange={(e) => setCotizacion(prev => ({ ...prev, estado_cotizacion: e.target.value }))}
+                <span 
                   className={cn(
-                    "ml-2 px-3 py-1 text-[10px] rounded-full uppercase font-black tracking-widest border-2 transition-all cursor-pointer",
-                    cotizacion.estado_cotizacion === "Producción" ? "bg-blue-600 border-blue-600 text-white" :
-                    cotizacion.estado_cotizacion === "Despachada" ? "bg-purple-600 border-purple-600 text-white" :
-                    cotizacion.estado_cotizacion === "Facturada" ? "bg-emerald-600 border-emerald-600 text-white" :
-                    "bg-amber-100 border-amber-400 text-amber-700"
+                    "ml-2 px-3 py-1 text-[10px] rounded-full uppercase font-black tracking-widest border-2 transition-all",
+                    (() => {
+                      const est = obtenerEstadoAutomatico(cotizacion);
+                      return est === "Facturada" ? "bg-emerald-600 border-emerald-600 text-white" :
+                             est === "Despachada" ? "bg-purple-600 border-purple-600 text-white" :
+                             est === "Producción" ? "bg-blue-600 border-blue-600 text-white" :
+                             est === "Perdida" ? "bg-red-600 border-red-600 text-white" :
+                             "bg-amber-100 border-amber-400 text-amber-700";
+                    })()
                   )}
                 >
-                  <option value="Pendiente">Pendiente</option>
-                  <option value="Producción">Producción</option>
-                  <option value="Despachada">Despachada</option>
-                  <option value="Facturada">Facturada</option>
-                  <option value="Perdida">Perdida</option>
-                </select>
+                  {obtenerEstadoAutomatico(cotizacion)}
+                </span>
               )}
             </div>
             <p className="text-gray-500 dark:text-gray-400 text-xs font-medium">Configure los detalles técnicos y financieros de la propuesta.</p>

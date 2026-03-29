@@ -153,6 +153,25 @@ export default function CotizacionesPage() {
     );
   }, [cotizaciones, busqueda]);
 
+  /**
+   * Motor de Estados Automático de Ecomoving (Sincronizado con Formulario)
+   */
+  const obtenerEstadoAutomatico = (cot: any) => {
+    if (cot.nro_factura) return "Facturada";
+    if (cot.nro_guia) return "Despachada";
+    if (cot.nro_oc) return "Producción";
+    
+    if (cot.fecha) {
+      const fechaCot = new Date(cot.fecha);
+      const hoy = new Date();
+      const diffTime = Math.abs(hoy.getTime() - fechaCot.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays > 60) return "Perdida";
+    }
+    
+    return cot.estado_cotizacion === "Perdida" ? "Perdida" : "Pendiente";
+  };
+
   const stats = useMemo(() => {
     const defaultStats = {
       pendiente: { total: 0, count: 0, label: "Pendientes", color: "text-amber-500", icon: <Search className="h-4 w-4" /> },
@@ -162,34 +181,31 @@ export default function CotizacionesPage() {
     };
 
     return cotizaciones.reduce((acc, cot) => {
-      let estado = (cot.estado_cotizacion || "pendiente").toLowerCase();
-      if (estado === "borrador") estado = "pendiente";
+      const estadoReal = obtenerEstadoAutomatico(cot);
+      let key = estadoReal.toLowerCase();
+      // Mapeo simple para las keys de stats
+      if (key === "producción") key = "produccion";
       
-      if (acc[estado as keyof typeof defaultStats]) {
-        acc[estado as keyof typeof defaultStats].total += cot.total || 0;
-        acc[estado as keyof typeof defaultStats].count += 1;
+      if (acc[key as keyof typeof defaultStats]) {
+        acc[key as keyof typeof defaultStats].total += cot.total || 0;
+        acc[key as keyof typeof defaultStats].count += 1;
       }
       return acc;
     }, defaultStats);
   }, [cotizaciones]);
 
   const getEstadoColor = (estado?: string) => {
-    switch (estado?.toLowerCase()) {
-      case "facturada":
-        return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
-      case "pendiente":
-      case "borrador":
-        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "produccion":
-        return "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200";
-      case "despachada":
-        return "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400";
-      case "rechazada":
-      case "cancelada":
-      case "perdida":
-        return "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+    switch (estado) {
+      case "Facturada":
+        return "bg-emerald-100/80 text-emerald-800 border-emerald-200";
+      case "Despachada":
+        return "bg-purple-100/80 text-purple-800 border-purple-200";
+      case "Producción":
+        return "bg-blue-100/80 text-blue-800 border-blue-200";
+      case "Perdida":
+        return "bg-red-100/80 text-red-800 border-red-200";
       default:
-        return "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
+        return "bg-amber-100/80 text-amber-800 border-amber-200";
     }
   };
 
@@ -420,8 +436,8 @@ export default function CotizacionesPage() {
                         {cot.vendedores?.nombre || "-"}
                       </td>
                       <td className="px-4 py-4 text-center whitespace-nowrap">
-                        <span className={`px-3 py-1 text-[10px] rounded-full uppercase font-bold tracking-tight shadow-sm ${getEstadoColor(cot.estado_cotizacion)}`}>
-                          {cot.estado_cotizacion || "Sin estado"}
+                        <span className={`px-3 py-1 text-[10px] rounded-full uppercase font-bold tracking-tight shadow-sm ${getEstadoColor(obtenerEstadoAutomatico(cot))}`}>
+                          {obtenerEstadoAutomatico(cot)}
                         </span>
                       </td>
                       <td className="px-4 py-4 text-center whitespace-nowrap">
