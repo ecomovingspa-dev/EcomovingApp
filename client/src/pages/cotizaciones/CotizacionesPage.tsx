@@ -43,13 +43,37 @@ export default function CotizacionesPage() {
   const [totalRecords, setTotalRecords] = useState(0);
   const PAGE_SIZE = 50;
 
+  // Catálogos para mapeo manual (Evita errores de relación en Supabase)
+  const [catalogoCuentas, setCatalogoCuentas] = useState<Record<string, string>>({});
+  const [catalogoVendedores, setCatalogoVendedores] = useState<Record<string, string>>({});
+
   // State for the integrated form
   const [viewMode, setViewMode] = useState<"list" | "form">("list");
   const [selectedId, setSelectedId] = useState<string | undefined>(routeId);
 
   useEffect(() => {
+    cargarCatalogos();
     cargarCotizaciones();
   }, [pagina]); // Reload when page changes
+
+  const cargarCatalogos = async () => {
+    try {
+      const [{ data: ctas }, { data: vends }] = await Promise.all([
+        supabase.from("cuentas").select("id, cliente"),
+        supabase.from("vendedores").select("id, nombre")
+      ]);
+      
+      const mapCuentas: Record<string, string> = {};
+      ctas?.forEach(c => mapCuentas[c.id] = c.cliente);
+      setCatalogoCuentas(mapCuentas);
+
+      const mapVends: Record<string, string> = {};
+      vends?.forEach(v => mapVends[v.id] = v.nombre);
+      setCatalogoVendedores(mapVends);
+    } catch (e) {
+      console.error("Error cargando catálogos:", e);
+    }
+  };
 
   const cargarCotizaciones = async () => {
     setCargando(true);
@@ -66,14 +90,6 @@ export default function CotizacionesPage() {
           mg,
           ganancias,
           estado_cotizacion,
-          cuentas!cuenta_id (
-            cliente
-          ),
-          vendedores!vendedor_id (
-            nombre,
-            correo,
-            celular
-          ),
           items,
           tiempo_entrega,
           validez_oferta,
@@ -81,11 +97,7 @@ export default function CotizacionesPage() {
           id_mercado_publico,
           contacto_id,
           cuenta_id,
-          contacto:contactos!contacto_id (
-            nombre,
-            correo,
-            celular
-          )
+          vendedor_id
         `,
           { count: 'exact' }
         )
@@ -94,10 +106,12 @@ export default function CotizacionesPage() {
 
       if (error) throw error;
 
+      // Mapeo manual de la información de cuenta y vendedor desde catálogos
       const cotizacionesFormateadas = (data || []).map((item: any) => ({
         ...item,
-        cuentas: Array.isArray(item.cuentas) ? item.cuentas[0] : item.cuentas,
-        vendedores: Array.isArray(item.vendedores) ? item.vendedores[0] : item.vendedores,
+        cuentas: { cliente: catalogoCuentas[item.cuenta_id] || "Cargando..." },
+        vendedores: { nombre: catalogoVendedores[item.vendedor_id] || "Vendedor desc." },
+        // El contacto se maneja similar o se carga por demanda si es necesario
       }));
 
       setCotizaciones(cotizacionesFormateadas);
