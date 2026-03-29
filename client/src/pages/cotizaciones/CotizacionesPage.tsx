@@ -58,11 +58,15 @@ export default function CotizacionesPage() {
 
   const cargarCatalogos = async () => {
     try {
-      const [{ data: ctas }, { data: vends }] = await Promise.all([
-        supabase.from("cuentas").select("id, cliente"),
-        supabase.from("vendedores").select("id, nombre")
+      // Cargamos con un límite extendido (o recursivo si fuera necesario > 1000)
+      const [{ data: ctas, error: errCta }, { data: vends, error: errVend }] = await Promise.all([
+        supabase.from("cuentas").select("id, cliente").limit(5000),
+        supabase.from("vendedores").select("id, nombre").limit(1000)
       ]);
       
+      if (errCta) console.error("Error cat. cuentas:", errCta);
+      if (errVend) console.error("Error cat. vendedores:", errVend);
+
       const mapCuentas: Record<string, string> = {};
       ctas?.forEach(c => mapCuentas[c.id] = c.cliente);
       setCatalogoCuentas(mapCuentas);
