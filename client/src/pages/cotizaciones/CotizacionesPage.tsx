@@ -43,44 +43,17 @@ export default function CotizacionesPage() {
   const [totalRecords, setTotalRecords] = useState(0);
   const PAGE_SIZE = 50;
 
-  // Catálogos para mapeo manual (Evita errores de relación en Supabase)
-  const [catalogoCuentas, setCatalogoCuentas] = useState<Record<string, string>>({});
-  const [catalogoVendedores, setCatalogoVendedores] = useState<Record<string, string>>({});
-
   // State for the integrated form
   const [viewMode, setViewMode] = useState<"list" | "form">("list");
   const [selectedId, setSelectedId] = useState<string | undefined>(routeId);
 
   useEffect(() => {
-    cargarCatalogos();
     cargarCotizaciones();
   }, [pagina]); // Reload when page changes
 
-  const cargarCatalogos = async () => {
-    try {
-      // Cargamos con un límite extendido (o recursivo si fuera necesario > 1000)
-      const [{ data: ctas, error: errCta }, { data: vends, error: errVend }] = await Promise.all([
-        supabase.from("cuentas").select("id, cliente").limit(5000),
-        supabase.from("vendedores").select("id, nombre").limit(1000)
-      ]);
-      
-      if (errCta) console.error("Error cat. cuentas:", errCta);
-      if (errVend) console.error("Error cat. vendedores:", errVend);
-
-      const mapCuentas: Record<string, string> = {};
-      ctas?.forEach(c => mapCuentas[c.id] = c.cliente);
-      setCatalogoCuentas(mapCuentas);
-
-      const mapVends: Record<string, string> = {};
-      vends?.forEach(v => mapVends[v.id] = v.nombre);
-      setCatalogoVendedores(mapVends);
-    } catch (e) {
-      console.error("Error cargando catálogos:", e);
-    }
-  };
-
   const cargarCotizaciones = async () => {
     setCargando(true);
+    setMensaje("");
     try {
       const { data, error, count } = await supabase
         .from("cotizaciones")
@@ -109,7 +82,31 @@ export default function CotizacionesPage() {
         .range(pagina * PAGE_SIZE, (pagina + 1) * PAGE_SIZE - 1);
 
       if (error) throw error;
-      setCotizaciones(data || []);
+
+      if (!data || data.length === 0) {
+        setCotizaciones([]);
+        return;
+      }
+
+      // Traemos los nombres de cuentas y vendedores para los registros de ESTA PÁGINA (máximo 50)
+      const idsCuentas = Array.from(new Set((data || []).map(i => i.cuenta_id).filter(Boolean)));
+      const idsVends = Array.from(new Set((data || []).map(i => i.vendedor_id).filter(Boolean)));
+
+      const [{ data: ctas }, { data: vends }] = await Promise.all([
+        supabase.from("cuentas").select("id, cliente").in("id", idsCuentas),
+        supabase.from("vendedores").select("id, nombre").in("id", idsVends)
+      ]);
+
+      const mapCuentas = (ctas || []).reduce((acc: any, curr) => ({ ...acc, [curr.id]: curr.cliente }), {});
+      const mapVends = (vends || []).reduce((acc: any, curr) => ({ ...acc, [curr.id]: curr.nombre }), {});
+
+      const cotizacionesFormateadas = data.map((item: any) => ({
+        ...item,
+        cuentas: { cliente: mapCuentas[item.cuenta_id] || "Sin Cliente" },
+        vendedores: { nombre: mapVends[item.vendedor_id] || "Vendedor no asignado" },
+      }));
+
+      setCotizaciones(cotizacionesFormateadas);
       if (count !== null) setTotalRecords(count);
     } catch (e: any) {
       console.error("Error al cargar:", e);
@@ -118,19 +115,6 @@ export default function CotizacionesPage() {
       setCargando(false);
     }
   };
-
-  // Mapeo reactivo: Se actualiza en cuanto cargan los catálogos
-  const cotizacionesProcesadas = useMemo(() => {
-    return cotizaciones.map((item: any) => ({
-      ...item,
-      cuentas: { 
-        cliente: catalogoCuentas[item.cuenta_id] || (cargando ? "Cargando..." : "Sin Cliente") 
-      },
-      vendedores: { 
-        nombre: catalogoVendedores[item.vendedor_id] || (cargando ? "Cargando..." : "Vendedor no asignado") 
-      },
-    }));
-  }, [cotizaciones, catalogoCuentas, catalogoVendedores, cargando]);
 
   useEffect(() => {
     if (routeId) {
@@ -159,15 +143,15 @@ export default function CotizacionesPage() {
   };
 
   const cotizacionesFiltradas = useMemo(() => {
-    if (!busqueda.trim()) return cotizacionesProcesadas;
+    if (!busqueda.trim()) return cotizaciones;
     const termino = busqueda.toLowerCase();
-    return cotizacionesProcesadas.filter(
+    return cotizaciones.filter(
       (cot) =>
         (cot.numero_cotizacion || "").toLowerCase().includes(termino) ||
         (cot.cuentas?.cliente || "").toLowerCase().includes(termino) ||
         (cot.vendedores?.nombre || "").toLowerCase().includes(termino),
     );
-  }, [cotizacionesProcesadas, busqueda]);
+  }, [cotizaciones, busqueda]);
 
   const stats = useMemo(() => {
     const defaultStats = {
