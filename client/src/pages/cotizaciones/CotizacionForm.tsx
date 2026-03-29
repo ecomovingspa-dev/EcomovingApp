@@ -541,7 +541,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                   <option value="Producción">Producción</option>
                   <option value="Despachada">Despachada</option>
                   <option value="Facturada">Facturada</option>
-                  <option value="Anulada">Anulada</option>
+                  <option value="Perdida">Perdida</option>
                 </select>
               )}
             </div>
