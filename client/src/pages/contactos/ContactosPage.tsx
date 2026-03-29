@@ -198,6 +198,14 @@ export default function ContactosPage() {
   const cambiarEstado = async (id: string, estadoActual: string) => {
     const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo";
 
+    // Si intenta activar pero no tiene correo, prevenir
+    const contacto = contactos.find(c => c.id === id);
+    if (nuevoEstado === "activo" && (!contacto || !contacto.correo?.trim())) {
+      setMensaje("⚠️ No se puede activar un contacto sin correo electrónico");
+      setTimeout(() => setMensaje(""), 3000);
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from("contactos")
@@ -424,7 +432,6 @@ export default function ContactosPage() {
                       <div className="truncate" title={contacto.departamento}>{contacto.departamento || "-"}</div>
                     </td>
 
-                    {/* Estado */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <button
                         onClick={() =>
@@ -433,13 +440,15 @@ export default function ContactosPage() {
                             contacto.estado || "inactivo",
                           )
                         }
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${contacto.estado === "activo"
+                        disabled={!contacto.correo?.trim()}
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${contacto.estado === "activo" && contacto.correo?.trim()
                           ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
                           : "bg-gray-300 dark:bg-gray-700"
-                          }`}
+                          } ${!contacto.correo?.trim() ? "opacity-30 cursor-not-allowed" : ""}`}
+                        title={!contacto.correo?.trim() ? "El contacto debe tener correo para ser activado" : ""}
                       >
                         <span
-                          className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${contacto.estado === "activo"
+                          className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${contacto.estado === "activo" && contacto.correo?.trim()
                             ? "translate-x-5"
                             : "translate-x-1"
                             }`}

@@ -109,6 +109,11 @@ export default function ContactoForm() {
       return;
     }
 
+    if (contacto.estado === "activo" && !contacto.correo?.trim()) {
+      setMensaje("⚠️ Un contacto activo debe tener un correo electrónico");
+      return;
+    }
+
     setGuardando(true);
     setMensaje("");
 
@@ -415,8 +420,15 @@ export default function ContactoForm() {
                   <Select
                     value={contacto.estado}
                     onValueChange={(val) => handleChange("estado", val as any)}
+                    disabled={!contacto.correo?.trim()}
                   >
-                    <SelectTrigger className="h-11 dark:bg-gray-900 dark:border-gray-700">
+                    <SelectTrigger 
+                      className={cn(
+                        "h-11 dark:bg-gray-900 dark:border-gray-700",
+                        !contacto.correo?.trim() && "opacity-50 cursor-not-allowed bg-gray-50"
+                      )}
+                      title={!contacto.correo?.trim() ? "Se requiere correo para activar el contacto" : ""}
+                    >
                       <SelectValue placeholder="Seleccionar estado" />
                     </SelectTrigger>
                     <SelectContent>
