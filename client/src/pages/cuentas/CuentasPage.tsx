@@ -153,14 +153,6 @@ export default function CuentasPage() {
     }
   };
 
-  if (cargando) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 space-y-4">
-        <Loader2 className="h-12 w-12 text-blue-500 animate-spin" />
-        <div className="text-lg text-gray-600 dark:text-gray-400 font-medium">⏳ Cargando cuentas...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
@@ -198,7 +190,11 @@ export default function CuentasPage() {
               placeholder="Buscar por cliente, RUT o ciudad..."
               className="w-full border-none rounded-xl px-12 py-4 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 transition-all font-medium"
             />
-            {busqueda && (
+            {cargando ? (
+              <div className="absolute right-4 top-1/2 transform -translate-y-1/2 text-blue-500">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : busqueda ? (
               <button
                 onClick={() => { setBusqueda(""); }}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
@@ -206,7 +202,7 @@ export default function CuentasPage() {
               >
                 <X className="h-5 w-5" />
               </button>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -254,8 +250,17 @@ export default function CuentasPage() {
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-            {cuentasPaginadas.length > 0 ? (
+          <tbody className={`divide-y divide-gray-100 dark:divide-gray-700 transition-opacity duration-200 ${cargando ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+            {cargando && cuentasPaginadas.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-20 text-center">
+                  <div className="flex flex-col items-center justify-center space-y-4">
+                    <Loader2 className="h-10 w-10 text-blue-500 animate-spin mx-auto" />
+                    <div className="text-gray-600 dark:text-gray-400 font-medium">⏳ Sincronizando cuentas...</div>
+                  </div>
+                </td>
+              </tr>
+            ) : cuentasPaginadas.length > 0 ? (
               cuentasPaginadas.map((cuenta) => (
                 <tr key={cuenta.id} className="group hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors">
                   <td className="px-4 py-2 min-w-[450px]">
