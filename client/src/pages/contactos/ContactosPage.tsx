@@ -40,7 +40,6 @@ export default function ContactosPage() {
   const [filtroSegmento, setFiltroSegmento] = useState("");
   const [filtroSector, setFiltroSector] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
-  const [soloSinNombre, setSoloSinNombre] = useState(false);
 
   // Estados para paginación
   const [paginaActual, setPaginaActual] = useState(1);
@@ -138,9 +137,6 @@ export default function ContactosPage() {
         query = query.eq("cuentas.sector", filtroSector);
       }
 
-      if (soloSinNombre) {
-        query = query.or('nombre.is.null,nombre.eq."",nombre.ilike."Contacto Principal - %"');
-      }
 
       const { data, error, count } = await query
         .order("created_at", { ascending: false })
@@ -329,7 +325,6 @@ export default function ContactosPage() {
               setFiltroEstado("");
               setFiltroSegmento("");
               setFiltroSector("");
-              setSoloSinNombre(false);
               setPaginaActual(1);
             }}
             className="w-full border-none rounded-xl px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all font-mono text-[10px] uppercase tracking-widest"
@@ -337,16 +332,7 @@ export default function ContactosPage() {
             Resetear
           </Button>
 
-          {/* Filtro Provisorio: Sin Nombre */}
-          <Button
-            variant={soloSinNombre ? "destructive" : "outline"}
-            onClick={() => { setSoloSinNombre(!soloSinNombre); setPaginaActual(1); }}
-            className={`w-full border-none rounded-xl px-4 py-3 font-bold transition-all font-mono text-[10px] uppercase tracking-widest ${
-              !soloSinNombre ? "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/20 dark:text-amber-400" : ""
-            }`}
-          >
-            {soloSinNombre ? "MOSTRANDO SIN NOMBRE" : "FILTRAR SIN NOMBRE"}
-          </Button>
+
         </div>
       </div>
 

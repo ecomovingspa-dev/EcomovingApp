@@ -64,7 +64,9 @@ export default function Marketing() {
   // Formatear fecha
   const formatearFecha = (fecha: string | null) => {
     if (!fecha) return "-";
-    return new Date(fecha).toLocaleDateString("es-CL");
+    // Si la fecha viene como YYYY-MM-DD sin hora, forzamos medio día para evitar que por huso horario (UTC-3/4) se corra un día atrás
+    const fechaAjustada = fecha.length === 10 ? `${fecha}T12:00:00` : fecha;
+    return new Date(fechaAjustada).toLocaleDateString("es-CL");
   };
 
   return (
