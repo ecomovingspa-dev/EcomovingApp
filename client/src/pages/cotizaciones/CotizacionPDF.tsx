@@ -116,18 +116,18 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
 
       // FILA 1: Col 1: Cliente | Col 3: Vendedor
       doc.text(`Cliente: ${cuenta?.cliente || "No especificado"}`, col1, yPos);
-      doc.text(`Vendedor/a: ${vendNombre}`, col3, yPos);
+      doc.text(`Vendedor: ${vendNombre}`, col3, yPos);
       yPos += lineHeight;
 
       // FILA 2: Col 1: Contacto | Col 3: Celular
       doc.text(`Contacto: ${contacto?.nombre || "No especificado"}`, col1, yPos);
-      if (vendCel) doc.text(`Cel: ${vendCel}`, col3, yPos);
+      doc.text(`Celular: ${vendCel || "No especificado"}`, col3, yPos);
       yPos += lineHeight;
 
       // FILA 3: Col 1: Entrega | Col 2: Validez | Col 3: Correo
       doc.text(`Tiempo de entrega: ${cotizacion.tiempo_entrega || "No especificado"}`, col1, yPos);
       doc.text(`Validez: ${cotizacion.validez_oferta || "No especificado"}`, col2, yPos);
-      if (vendCorreo) doc.text(`Correo: ${vendCorreo}`, col3, yPos);
+      doc.text(`Correo electrónico: ${vendCorreo || "No especificado"}`, col3, yPos);
       yPos += 10;
 
       // TABLA DE PRODUCTOS
