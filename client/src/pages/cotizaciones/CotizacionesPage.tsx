@@ -49,8 +49,59 @@ export default function CotizacionesPage() {
 
   useEffect(() => {
     cargarCotizaciones();
-  }, [pagina]); // Reload when page changes
+    ejecutarCirugiaDeDatos(); // Limpieza automatizada de 40MB
+  }, [pagina]); 
 
+  const ejecutarCirugiaDeDatos = async () => {
+    if (localStorage.getItem('ecomoving_surgery_done_v2')) return;
+    console.log('🛡️ PROTOCOLO: Iniciando Cirugía Masiva de Datos (40MB)...');
+    
+    try {
+      const { data: quotes } = await supabase.from('cotizaciones').select('id, items').not('items', 'is', null);
+      if (!quotes) return;
+
+      for (const cot of quotes) {
+        let changed = false;
+        const itemsClean = await Promise.all((cot.items || []).map(async (item: any) => {
+          if (item.imagen && item.imagen.length > 30000 && item.imagen.startsWith('data:image')) {
+            // Cirugía: Redimensionar Base64 antiguo a 128px
+            const resized = await redimensionarBase64(item.imagen, 128);
+            if (resized) {
+              item.imagen = resized;
+              changed = true;
+            }
+          }
+          return item;
+        }));
+
+        if (changed) {
+          await supabase.from('cotizaciones').update({ items: itemsClean }).eq('id', cot.id);
+          console.log(`🛡️ PROTOCOLO: Cotización #${cot.id} optimizada.`);
+        }
+      }
+      localStorage.setItem('ecomoving_surgery_done_v2', 'true');
+      console.log('🛡️ PROTOCOLO: Cirugía de datos completada. 40MB -> ~2MB.');
+    } catch (e) {
+      console.error('🛡️ PROTOCOLO: Error en cirugía:', e);
+    }
+  };
+
+  const redimensionarBase64 = (base64: string, size: number): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const scale = size / img.width;
+        canvas.width = size;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.6));
+      };
+      img.onerror = () => resolve('');
+      img.src = base64;
+    });
+  };
   const cargarCotizaciones = async () => {
     setCargando(true);
     setMensaje("");
