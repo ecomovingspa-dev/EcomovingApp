@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ChevronRight,
   SearchCheck,
+  GraduationCap,
 } from "lucide-react";
 
 interface ContactoConCuenta {
@@ -24,6 +25,7 @@ interface ContactoConCuenta {
   telefono?: string;
   departamento?: string;
   estado?: string;
+  etapa?: string;
   cuenta_id: string;
   cuentas?: {
     cliente: string;
@@ -42,7 +44,12 @@ export default function ContactosPage() {
   const [filtroSegmento, setFiltroSegmento] = useState("");
   const [filtroSector, setFiltroSector] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
+  const [filtroEtapa, setFiltroEtapa] = useState("");
   const [modalProspeccion, setModalProspeccion] = useState(false);
+  // Graduación
+  const [contactoAGraduar, setContactoAGraduar] = useState<ContactoConCuenta | null>(null);
+  const [nombreGraduacion, setNombreGraduacion] = useState("");
+  const [graduando, setGraduando] = useState(false);
 
   // Estados para paginación
   const [paginaActual, setPaginaActual] = useState(1);
@@ -83,7 +90,7 @@ export default function ContactosPage() {
       setTotalRecords(0);
       setCargando(false);
     }
-  }, [paginaActual, busqueda, filtroEstado, filtroSegmento, filtroSector, hayFiltroActivo]);
+  }, [paginaActual, busqueda, filtroEstado, filtroEtapa, filtroSegmento, filtroSector, hayFiltroActivo]);
 
   const cargarContactos = async (silent = false) => {
     try {
@@ -130,6 +137,10 @@ export default function ContactosPage() {
 
       if (filtroEstado) {
         query = query.eq("estado", filtroEstado);
+      }
+
+      if (filtroEtapa) {
+        query = query.eq("etapa", filtroEtapa);
       }
 
       if (filtroSegmento) {
@@ -227,6 +238,36 @@ export default function ContactosPage() {
   // Los grupos ya están filtrados por el servidor ahora
   const gruposFiltrados = contactos;
 
+  const abrirGraduacion = (contacto: ContactoConCuenta) => {
+    setContactoAGraduar(contacto);
+    setNombreGraduacion("");
+  };
+
+  const graduarContacto = async () => {
+    if (!contactoAGraduar || !nombreGraduacion.trim()) return;
+    setGraduando(true);
+    try {
+      const { error } = await supabase
+        .from("contactos")
+        .update({
+          nombre: nombreGraduacion.trim(),
+          etapa: "marketing",
+          estado: "activo",
+        })
+        .eq("id", contactoAGraduar.id);
+      if (error) throw error;
+      setMensaje(`✅ ${nombreGraduacion.trim()} graduado a Marketing correctamente`);
+      setContactoAGraduar(null);
+      setNombreGraduacion("");
+      cargarContactos(true);
+      setTimeout(() => setMensaje(""), 4000);
+    } catch (err: any) {
+      setMensaje("❌ Error al graduar: " + err.message);
+    } finally {
+      setGraduando(false);
+    }
+  };
+
   const totalPaginas = Math.ceil(totalRecords / filasPorPagina);
   const totalContactosFiltrados = totalRecords;
 
@@ -289,6 +330,17 @@ export default function ContactosPage() {
 
         {/* Filtros */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Filtro Etapa */}
+          <select
+            value={filtroEtapa}
+            onChange={(e) => { setFiltroEtapa(e.target.value); setPaginaActual(1); }}
+            className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 transition-all font-medium"
+          >
+            <option value="">Etapa: Todas</option>
+            <option value="prospeccion">🔍 Prospección</option>
+            <option value="marketing">📬 Marketing</option>
+          </select>
+
           {/* Filtro Estado */}
           <select
             value={filtroEstado}
@@ -334,6 +386,7 @@ export default function ContactosPage() {
             onClick={() => {
               setBusqueda("");
               setFiltroEstado("");
+              setFiltroEtapa("");
               setFiltroSegmento("");
               setFiltroSector("");
               setPaginaActual(1);
@@ -397,8 +450,16 @@ export default function ContactosPage() {
 
                     {/* Nombre */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="font-medium text-gray-700 dark:text-gray-300 text-[11px] truncate uppercase tracking-tight" title={contacto.nombre}>
-                        {contacto.nombre}
+                      <div className="flex items-center gap-2">
+                        {contacto.etapa === "prospeccion" ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 text-[9px] font-black uppercase tracking-wider">
+                            🔍 Prospecto
+                          </span>
+                        ) : (
+                          <span className="font-medium text-gray-700 dark:text-gray-300 text-[11px] truncate uppercase tracking-tight" title={contacto.nombre}>
+                            {contacto.nombre}
+                          </span>
+                        )}
                       </div>
                     </td>
 
@@ -447,6 +508,17 @@ export default function ContactosPage() {
                     {/* Acciones */}
                     <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {contacto.etapa === "prospeccion" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-violet-600 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-900/20"
+                            title="Graduar a Marketing"
+                            onClick={() => abrirGraduacion(contacto)}
+                          >
+                            <GraduationCap className="h-3 w-3" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -511,6 +583,72 @@ export default function ContactosPage() {
         open={modalProspeccion}
         onOpenChange={setModalProspeccion}
       />
+
+      {/* Modal de Graduación */}
+      {contactoAGraduar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+            {/* Header */}
+            <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-violet-50 dark:bg-violet-900/20">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center">
+                  <GraduationCap className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-sm">Graduar a Marketing</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    {contactoAGraduar.cuentas?.cliente || "Empresa"} · {contactoAGraduar.correo}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Ingresa el nombre del contacto para aprobarlo y moverlo al pipeline de Marketing.
+              </p>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">Nombre del Contacto</label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={nombreGraduacion}
+                  onChange={(e) => setNombreGraduacion(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && graduarContacto()}
+                  placeholder="Ej: Juan Pérez"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none text-sm font-medium transition-all"
+                />
+              </div>
+              <div className="bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl p-3 text-[11px] text-violet-600 dark:text-violet-400">
+                ⚡ Al confirmar: <strong>estado → activo</strong> · <strong>etapa → marketing</strong>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => setContactoAGraduar(null)}
+                className="text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Cancelar
+              </Button>
+              <Button
+                disabled={!nombreGraduacion.trim() || graduando}
+                onClick={graduarContacto}
+                className="bg-violet-700 hover:bg-violet-800 text-white disabled:opacity-50"
+              >
+                {graduando ? (
+                  <><div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />Graduando...</>
+                ) : (
+                  <><GraduationCap className="h-4 w-4 mr-2" />Confirmar Graduación</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
