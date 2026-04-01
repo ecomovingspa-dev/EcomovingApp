@@ -91,16 +91,17 @@ export default function DashboardMetrics() {
                     });
                 }
 
-                // 1. Fetch Cotizaciones (Sales & Profit) - For Projected/Revenue
-                const { data: cotizaciones, error: cotError } = await supabase
-                    .from("cotizaciones")
-                    .select("total_neto, ganancias, created_at, estado_cotizacion")
-                    .in("estado_cotizacion", ["Aprobada", "Cerrada", "Facturada", "Pagada"])
-                    .gte("created_at", isoDate);
+                // 1. Fetch Ventas (Facturas reales — fuente de verdad para Ingresos Netos)
+                // @protocolo: FUENTE=ventas, CAMPO=mnt_neto, FILTRO=anulada=false, FECHA=fch_emis
+                const { data: ventas, error: venError } = await supabase
+                    .from("ventas")
+                    .select("mnt_neto, saldo, fch_emis, fch_venc, anulada")
+                    .eq("anulada", false)
+                    .gte("fch_emis", dateOnly);
 
-                if (cotError) throw cotError;
+                if (venError) throw venError;
 
-                // 2. Fetch Compras (Real Expenses)
+                // 2. Fetch Compras (Gastos Operativos — Libro de Compras)
                 const { data: compras, error: comError } = await supabase
                     .from("compras")
                     .select("monto_total, fecha_emision")
@@ -108,17 +109,6 @@ export default function DashboardMetrics() {
                     .gte("fecha_emision", dateOnly);
 
                 if (comError) throw comError;
-
-                // 3. Fetch Ventas (Current Collections Status)
-                const { data: ventas, error: venError } = await supabase
-                    .from("ventas")
-                    .select("saldo, fch_venc, anulada, mnt_total")
-                    .eq("anulada", false)
-                    .gt("saldo", 0);
-
-
-
-                if (venError) throw venError;
 
                 // 4. Fetch Campaigns (Marketing Context)
                 const { count: campaignsCount } = await supabase
@@ -130,21 +120,20 @@ export default function DashboardMetrics() {
                 let totalExpenses = 0;
                 let totalProfit = 0;
 
-                cotizaciones?.forEach((c) => {
-                    if (!c.created_at) return;
-                    const date = new Date(c.created_at);
+                // Ingresos Netos: desde ventas reales (fch_emis, mnt_neto)
+                ventas?.forEach((v) => {
+                    if (!v.fch_emis) return;
+                    const date = new Date(v.fch_emis);
                     const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                     const month = months.find(m => m.key === key);
                     if (month) {
-                        const s = c.total_neto || 0;
-                        const p = c.ganancias || 0;
+                        const s = v.mnt_neto || 0;
                         month.sales += s;
-                        month.profit += p;
                         totalSales += s;
-                        totalProfit += p;
                     }
                 });
 
+                // Gastos Operativos: desde compras (fecha_emision, monto_total)
                 compras?.forEach((c) => {
                     if (!c.fecha_emision) return;
                     const date = new Date(c.fecha_emision);
@@ -156,6 +145,10 @@ export default function DashboardMetrics() {
                         totalExpenses += e;
                     }
                 });
+
+                // Utilidad Bruta
+                totalProfit = totalSales - totalExpenses;
+                months.forEach(m => { m.profit = m.sales - m.expenses; });
 
                 // Calculate Trend
                 const n = months.length;
@@ -173,14 +166,13 @@ export default function DashboardMetrics() {
                     d.trend = Math.max(0, slope * i + intercept);
                 });
 
-                // Collections Logic
+                // Cobranza: saldo pendiente y vencido desde ventas
                 let pending = 0;
                 let overdue = 0;
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
                 ventas?.forEach((v) => {
-                    if (v.anulada) return;
                     if (v.saldo && v.saldo > 0) {
                         pending += v.saldo;
                         if (v.fch_venc) {
