@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ConfiguracionProspeccion } from "../../components/contactos/ConfiguracionProspeccion";
 import {
   Pencil,
   Trash2,
@@ -12,6 +13,7 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
+  SearchCheck,
 } from "lucide-react";
 
 interface ContactoConCuenta {
@@ -40,6 +42,7 @@ export default function ContactosPage() {
   const [filtroSegmento, setFiltroSegmento] = useState("");
   const [filtroSector, setFiltroSector] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
+  const [modalProspeccion, setModalProspeccion] = useState(false);
 
   // Estados para paginación
   const [paginaActual, setPaginaActual] = useState(1);
@@ -240,12 +243,20 @@ export default function ContactosPage() {
             {totalRecords} contactos registrados
           </p>
         </div>
-        <Button
-          onClick={() => navigate("/contactos/nuevo")}
-          className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
-        >
-          <UserPlus className="mr-2 h-4 w-4" /> Nuevo Contacto
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={() => setModalProspeccion(true)}
+            className="bg-violet-700 hover:bg-violet-800 text-white shadow-md"
+          >
+            <SearchCheck className="mr-2 h-4 w-4" /> Prospección
+          </Button>
+          <Button
+            onClick={() => navigate("/contactos/nuevo")}
+            className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
+          >
+            <UserPlus className="mr-2 h-4 w-4" /> Nuevo Contacto
+          </Button>
+        </div>
       </div>
 
       {/* Mensaje */}
@@ -496,6 +507,10 @@ export default function ContactosPage() {
           <span>Total: {totalRecords} contacto{totalRecords !== 1 ? 's' : ''} encontrados</span>
         </div>
       )}
+      <ConfiguracionProspeccion
+        open={modalProspeccion}
+        onOpenChange={setModalProspeccion}
+      />
     </div>
   );
 }

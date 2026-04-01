@@ -1093,22 +1093,28 @@ Ejemplos:
 
     // Helper para procesar documentos de ventas/compras a Coincidencia
     const processDocs = (data: any[], esAbono: boolean): Coincidencia[] => {
-        return data.map((d: any) => {
-            const montoTotal = d.mnt_total || d.monto_total || 0;
-            const balance = d.saldo !== undefined && d.saldo !== null ? d.saldo : montoTotal;
-            return {
-                id: d.id,
-                tipo: esAbono ? 'venta' : 'compra',
-                entidad: d.rzn_soc_recep || d.razon_social || "Desconocido",
-                fecha: d.fch_emis || d.fecha_emision,
-                monto: balance, // Importante: Mostrar Saldo como monto a conciliar
-                monto_total: montoTotal,
-                folio: d.folio,
-                estado: d.estado_deuda || d.estado_pago || "Pendiente",
-                conciliado: d.conciliado || false,
-                documento_relacionado: d
-            };
-        });
+        return data
+            .filter((d: any) => {
+                const montoTotal = d.mnt_total || d.monto_total || 0;
+                const balance = d.saldo !== undefined && d.saldo !== null ? d.saldo : montoTotal;
+                return balance > 0; // Solo mostrar documentos con saldo pendiente
+            })
+            .map((d: any) => {
+                const montoTotal = d.mnt_total || d.monto_total || 0;
+                const balance = d.saldo !== undefined && d.saldo !== null ? d.saldo : montoTotal;
+                return {
+                    id: d.id,
+                    tipo: esAbono ? 'venta' : 'compra',
+                    entidad: d.rzn_soc_recep || d.razon_social || "Desconocido",
+                    fecha: d.fch_emis || d.fecha_emision,
+                    monto: balance, // Importante: Mostrar Saldo como monto a conciliar
+                    monto_total: montoTotal,
+                    folio: d.folio,
+                    estado: d.estado_deuda || d.estado_pago || "Pendiente",
+                    conciliado: d.conciliado || false,
+                    documento_relacionado: d
+                };
+            });
     };
 
 
@@ -1156,13 +1162,18 @@ Ejemplos:
 
             if (errMov) throw errMov;
 
-            // 2. Actualizar cada documento
-            for (const doc of multipleSelectedDocs) {
-                const docData = doc.documento_relacionado as any;
-                const saldoActual = (docData.saldo !== undefined && docData.saldo !== null) ? Number(docData.saldo) : Number(doc.monto);
+            // 2. Actualizar documentos y registrar pagos
+            let montoDisponible = montoMovimiento;
 
-                let nuevoSaldo = saldoActual - doc.monto;
-                if (nuevoSaldo < 0) nuevoSaldo = 0;
+            for (const doc of multipleSelectedDocs) {
+                if (montoDisponible <= 0) break;
+
+                const docData = doc.documento_relacionado as any;
+                const saldoActual = (docData.saldo !== undefined && docData.saldo !== null) ? Number(docData.saldo) : Number(doc.monto_total);
+
+                // El abono para este doc es el mínimo entre su saldo y lo que queda del movimiento
+                const montoAAbonar = Math.min(saldoActual, montoDisponible);
+                const nuevoSaldo = Math.max(0, saldoActual - montoAAbonar);
                 const esPagoTotal = nuevoSaldo <= 100;
 
                 const updateDoc: any = {
@@ -1172,41 +1183,29 @@ Ejemplos:
 
                 if (doc.tipo === 'venta') {
                     updateDoc.estado_deuda = esPagoTotal ? "Pagada" : "Parcial";
-
-                    const { error: errVenta } = await supabase.from("ventas").update(updateDoc).eq("id", doc.id);
-                    if (errVenta) {
-                        console.error(`Error actualizando venta ${doc.id}:`, errVenta);
-                         throw new Error(`Error actualizando venta ${doc.folio}: ${errVenta.message}`);
-                    }
-
-                    const { error: errAbono } = await supabase.from("abonos").insert({
+                    await supabase.from("ventas").update(updateDoc).eq("id", doc.id);
+                    
+                    await supabase.from("abonos").insert({
                         venta_id: doc.id,
-                        monto_abono: doc.monto,
+                        monto_abono: montoAAbonar,
                         fecha_abono: new Date().toISOString().split("T")[0],
                         tipo_abono: "Transferencia",
-                        detalle_abono: `Conciliación Múltiple - Movimiento: ${selectedMovimiento.descripcion}`
+                        detalle_abono: `Conciliación Múltiple [Movimiento ID: ${selectedMovimiento.id}] - ${selectedMovimiento.descripcion}`
                     });
-                    if (errAbono) {
-                         console.error(`Error insertando abono para venta ${doc.id}:`, errAbono);
-                         throw new Error(`Error insertando pago para venta ${doc.folio}: ${errAbono.message}`);
-                    }
                 } else {
                     updateDoc.estado_pago = esPagoTotal ? "Pagada" : "Parcial";
-                    const { error: errCompra } = await supabase.from("compras").update(updateDoc).eq("id", doc.id);
-                    if (errCompra) {
-                        console.error(`Error actualizando compra ${doc.id}:`, errCompra);
-                        throw new Error(`Error actualizando compra ${doc.folio}: ${errCompra.message}`);
-                    }
+                    await supabase.from("compras").update(updateDoc).eq("id", doc.id);
 
-                    // También se registra abono en compras si existe la tabla
                     await supabase.from("compras_abonos").insert({
                         compra_id: doc.id,
-                        monto_abono: doc.monto,
+                        monto_abono: montoAAbonar,
                         fecha_abono: new Date().toISOString().split("T")[0],
                         tipo_abono: "Transferencia",
-                        detalle_abono: `Conciliación Múltiple - Movimiento: ${selectedMovimiento.descripcion}`
+                        detalle_abono: `Conciliación Múltiple [Movimiento ID: ${selectedMovimiento.id}] - ${selectedMovimiento.descripcion}`
                     }).catch(e => console.warn("Aviso: No se pudo registrar abono en compras:", e));
                 }
+
+                montoDisponible -= montoAAbonar;
             }
 
             setConciliarOpen(false);
@@ -1315,51 +1314,50 @@ Ejemplos:
         try {
             const montoMovimiento = Math.abs(mov.cargos || mov.abonos || 0);
 
-            // Si tiene documento relacionado, restaurar su saldo
-            if (mov.conciliado_id && mov.tipo_conciliacion !== 'manual') {
-                const esMultiple = mov.tipo_conciliacion === 'multiple';
-                const tabla = esMultiple ? 'ventas' : (mov.tipo_conciliacion === 'venta' ? 'ventas' : 'compras');
-                const campoEstado = (esMultiple || mov.tipo_conciliacion === 'venta') ? 'estado_deuda' : 'estado_pago';
-                const campoMonto = (esMultiple || mov.tipo_conciliacion === 'venta') ? 'mnt_total' : 'monto_total';
+            // NUEVO: Manejar múltiples documentos de abono relacionados
+            if (mov.estado === 'conciliado' && mov.tipo_conciliacion !== 'manual') {
+                const searchPatterns = [
+                    `%Movimiento ID: ${mov.id}%`,
+                    `%Movimiento: ${mov.descripcion}%`,
+                    `% - ${mov.descripcion}%`
+                ];
 
-                // Obtener el documento actual
-                const { data: doc } = await supabase.from(tabla).select('*').eq('id', mov.conciliado_id).single();
+                const types = ['venta', 'compra'];
+                for (const type of types) {
+                    const tablaAbonos = (type === 'venta') ? 'abonos' : 'compras_abonos';
+                    const tablaDocs = (type === 'venta') ? 'ventas' : 'compras';
+                    const campoFK = (type === 'venta') ? 'venta_id' : 'compra_id';
+                    const campoEstado = (type === 'venta') ? 'estado_deuda' : 'estado_pago';
+                    const campoMontoTotal = (type === 'venta') ? 'mnt_total' : 'monto_total';
 
-                if (doc) {
-                    const saldoActual = doc.saldo ?? 0;
-                    const nuevoSaldo = saldoActual + montoMovimiento;
-                    const montoTotal = doc[campoMonto];
+                    // 1. Encontrar los abonos registrados para este movimiento ID o descripción
+                    const { data: abonosRelacionados } = await supabase.from(tablaAbonos)
+                        .select(`*, ${tablaDocs}(*)`)
+                        .or(searchPatterns.map(p => `detalle_abono.ilike.${p}`).join(','));
 
-                    // Determinar el nuevo estado
-                    let nuevoEstadoDoc = 'Pendiente';
-                    if (nuevoSaldo >= montoTotal) {
-                        nuevoEstadoDoc = 'Pendiente'; // Vuelve a estar completamente pendiente
-                    } else if (nuevoSaldo > 0) {
-                        nuevoEstadoDoc = 'Parcial'; // Tiene abonos pero no está pagada
-                    }
+                    if (abonosRelacionados && abonosRelacionados.length > 0) {
+                        for (const abono of abonosRelacionados) {
+                            const doc = abono[tablaDocs];
+                            if (!doc) continue;
 
-                    const { error: errUpdate } = await supabase.from(tabla).update({
-                        [campoEstado]: nuevoEstadoDoc,
-                        saldo: Math.min(nuevoSaldo, montoTotal),
-                        conciliado: false
-                    }).eq('id', mov.conciliado_id);
+                            const montoAReversar = Number(abono.monto_abono);
+                            const saldoActual = Number(doc.saldo ?? 0);
+                            const montoTotal = Number(doc[campoMontoTotal]);
+                            const nuevoSaldo = Math.min(saldoActual + montoAReversar, montoTotal);
 
-                    if (errUpdate) {
-                        console.error("Error revertiendo documento:", errUpdate);
-                        throw new Error(`Error al restaurar saldo del documento: ${errUpdate.message}`);
-                    }
+                            // Determinar nuevo estado
+                            let nuevoEstado = (nuevoSaldo >= montoTotal - 100) ? 'Pendiente' : 'Parcial';
 
-                    // NUEVO: Eliminar el registro del abono/pago histórico
-                    const tablaAbonos = (tabla === 'ventas') ? 'abonos' : 'compras_abonos';
-                    const campoFK = (tabla === 'ventas') ? 'venta_id' : 'compra_id';
+                            // 2. Restaurar saldo del documento
+                            await supabase.from(tablaDocs).update({
+                                [campoEstado]: nuevoEstado,
+                                saldo: nuevoSaldo,
+                                conciliado: false
+                            }).eq('id', doc.id);
 
-                    const { error: errDel } = await supabase.from(tablaAbonos)
-                        .delete()
-                        .eq(campoFK, mov.conciliado_id)
-                        .ilike('detalle_abono', `%${mov.descripcion}%`);
-                    
-                    if (errDel) {
-                        console.warn("Aviso: No se pudo eliminar el detalle del abono:", errDel);
+                            // 3. Eliminar el abono
+                            await supabase.from(tablaAbonos).delete().eq('id', abono.id);
+                        }
                     }
                 }
             }
