@@ -423,12 +423,13 @@ export default function ContactosPage() {
               <thead className="bg-gray-900 border-b border-gray-800">
                 <tr className="text-[10px] font-black uppercase tracking-widest text-gray-400">
                   <th className="px-4 py-4 text-left w-[20%]">Empresa</th>
-                  <th className="px-4 py-4 text-left w-[18%]">Nombre</th>
-                  <th className="px-4 py-4 text-left w-[22%]">Correo</th>
+                  <th className="px-4 py-4 text-left w-[8%]">Nombre</th>
+                  <th className="px-4 py-4 text-left w-[15%]">Correo</th>
                   <th className="px-4 py-4 text-left w-[10%]">Celular</th>
                   <th className="px-4 py-4 text-left w-[10%]">Teléfono</th>
                   <th className="px-4 py-4 text-left w-[14%]">Depto</th>
-                  <th className="px-4 py-4 text-left w-[8%]">Estado</th>
+                  <th className="px-4 py-4 text-left w-[7%]">Estado</th>
+                  <th className="px-4 py-4 text-left w-[8%]">Etapa</th>
                   <th className="px-4 py-4 text-right w-[8%]">Acciones</th>
                 </tr>
               </thead>
@@ -450,17 +451,9 @@ export default function ContactosPage() {
 
                     {/* Nombre */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {contacto.etapa === "prospeccion" ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 text-[9px] font-black uppercase tracking-wider">
-                            🔍 Prospecto
-                          </span>
-                        ) : (
-                          <span className="font-medium text-gray-700 dark:text-gray-300 text-[11px] truncate uppercase tracking-tight" title={contacto.nombre}>
-                            {contacto.nombre}
-                          </span>
-                        )}
-                      </div>
+                      <span className="font-medium text-gray-700 dark:text-gray-300 text-[11px] truncate uppercase tracking-tight block" title={contacto.nombre}>
+                        {contacto.nombre || "-"}
+                      </span>
                     </td>
 
                     {/* Correo */}
@@ -483,6 +476,7 @@ export default function ContactosPage() {
                       <div className="truncate" title={contacto.departamento}>{contacto.departamento || "-"}</div>
                     </td>
 
+                    {/* Estado */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <button
                         onClick={() =>
@@ -503,6 +497,19 @@ export default function ContactosPage() {
                             }`}
                         />
                       </button>
+                    </td>
+
+                    {/* Etapa */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {contacto.etapa === "prospeccion" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 text-[9px] font-black uppercase tracking-wider">
+                          🔍 Prosp.
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[9px] font-black uppercase tracking-wider">
+                          📬 Mktg.
+                        </span>
+                      )}
                     </td>
 
                     {/* Acciones */}
