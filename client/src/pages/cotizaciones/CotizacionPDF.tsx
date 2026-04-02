@@ -180,7 +180,7 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
         didDrawCell: (data) => {
           if (data.column.index === 0 && data.section === "body") {
             const item = tableData[data.row.index];
-            if (item.imagen) {
+            if (item && item.imagen) {
               try {
                 const format = item.imagen.includes("image/png") ? "PNG" : "JPEG";
                 doc.addImage(item.imagen, format, data.cell.x + 2, data.cell.y + 2, 16, 14);
