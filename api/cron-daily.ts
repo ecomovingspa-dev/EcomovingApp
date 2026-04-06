@@ -566,6 +566,154 @@ async function ejecutarAlertasCompras(): Promise<{ total: number; notificacionCr
 }
 
 // ============================================================================
+// MÓDULO PROSPECCIÓN (AI-POWERED)
+// ============================================================================
+
+async function ejecutarProspeccion(maxEmails: number, feriados: string[]): Promise<{
+    processed: number;
+    sent: number;
+    ai_enhanced: number;
+    errors: string[];
+}> {
+    const report = { processed: 0, sent: 0, ai_enhanced: 0, errors: [] as string[] };
+    if (maxEmails <= 0) return report;
+
+    try {
+        const todayIso = new Date().toISOString();
+
+        // 1. Buscar contactos en etapa 'prospeccion' con envío pendiente
+        const { data: contacts, error: contactError } = await supabase
+            .from('contactos')
+            .select('*')
+            .eq('etapa', 'prospeccion')
+            .ilike('estado', 'activo')
+            .not('correo', 'is', null)
+            .neq('correo', '')
+            .or(`proximo_envio.lte.${todayIso},proximo_envio.is.null`)
+            .order('proximo_envio', { ascending: true, nullsFirst: true })
+            .limit(maxEmails);
+
+        if (contactError) throw contactError;
+        if (!contacts || contacts.length === 0) return report;
+
+        console.log(`🔍 Prospección: ${contacts.length} contactos en cola.`);
+
+        for (const contact of contacts) {
+            if (report.sent >= maxEmails) break;
+            report.processed++;
+
+            try {
+                // Etapa de la secuencia (1: Ice-Breaker, 2: Follow-Up, etc.)
+                let etapaSecuencia = parseInt(contact.etapa_envio) || 1;
+                
+                // 2. Obtener configuración de esta etapa
+                const { data: config, error: configError } = await supabase
+                    .from('configuracion_prospeccion')
+                    .select('*')
+                    .eq('orden', etapaSecuencia)
+                    .eq('activo', true)
+                    .maybeSingle();
+
+                if (!config) {
+                    console.warn(`  - Sin configuración para etapa ${etapaSecuencia} (${contact.correo})`);
+                    continue;
+                }
+
+                // 3. Preparar Variables
+                const empresa = contact.empresa || "su organización";
+                const correo = contact.correo || "";
+                const dominio = correo.split('@')[1] || "";
+                
+                let subject = config.asunto_template.replace(/{empresa}/g, empresa).replace(/{correo}/g, correo);
+                let intro = config.mensaje_intro.replace(/{empresa}/g, empresa).replace(/{correo}/g, correo).replace(/{dominio}/g, dominio);
+                let cierre = config.mensaje_cierre.replace(/{empresa}/g, empresa).replace(/{correo}/g, correo).replace(/{dominio}/g, dominio);
+
+                // --- 4. POTENCIACIÓN IA (Ollama/Gemma) ---
+                // Se activa si OLLAMA_URL está en el env
+                if (process.env.OLLAMA_URL || process.env.USE_OLLAMA === 'true') {
+                    try {
+                        const { generateProspeccionIceBreaker } = await import('./utils/ollama');
+                        const aiIntro = await generateProspeccionIceBreaker(empresa, dominio, intro);
+                        if (aiIntro && aiIntro.length > 20) {
+                            intro = aiIntro;
+                            report.ai_enhanced++;
+                        }
+                    } catch (aiErr: any) {
+                        console.warn('  ⚠️ AI Skip:', aiErr.message);
+                    }
+                }
+
+                // 5. Construir HTML
+                const htmlContent = generarHtmlProspeccion({
+                    intro,
+                    cierre,
+                    empresa
+                });
+
+                // 6. Enviar vía Brevo
+                const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', {
+                    sender: { name: "Ecomoving", email: "ventas@ecomoving.cl" },
+                    to: [{ email: contact.correo }],
+                    subject: subject,
+                    htmlContent: htmlContent
+                }, {
+                    headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' }
+                });
+
+                const messageId = brevoRes.data?.messageId;
+
+                // 7. Actualizar Contacto
+                const proximoEnvio = sumarDiasLaborales(new Date(), config.dias_espera || 3, feriados);
+                await supabase.from('contactos').update({
+                    ultimo_envio: new Date().toISOString(),
+                    proximo_envio: proximoEnvio.toISOString(),
+                    etapa_envio: etapaSecuencia + 1
+                }).eq('id', contact.id);
+
+                report.sent++;
+                await sleep(DELAY_BETWEEN_EMAILS_MS);
+
+            } catch (err: any) {
+                report.errors.push(`Prospección ${contact.correo}: ${err.message}`);
+            }
+        }
+    } catch (err: any) {
+        report.errors.push(`Error global prospección: ${err.message}`);
+    }
+    return report;
+}
+
+/**
+ * Template visual para Prospección
+ */
+function generarHtmlProspeccion(params: { intro: string; cierre: string; empresa: string }): string {
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; color: #1e293b; line-height: 1.6; background-color: #f8fafc; margin: 0; padding: 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .content { font-size: 16px; margin-bottom: 25px; color: #334155; }
+    .cta { font-size: 16px; color: #475569; margin-bottom: 30px; }
+    .footer { border-top: 1px solid #e2e8f0; padding-top: 20px; font-size: 13px; color: #64748b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="content">${params.intro.replace(/\n/g, '<br>')}</div>
+    <div class="cta">${params.cierre.replace(/\n/g, '<br>')}</div>
+    <div class="footer">
+      <strong>Equipo Ecomoving SpA</strong><br>
+      Santiago, Chile
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
+// ============================================================================
 // HANDLER PRINCIPAL
 // ============================================================================
 

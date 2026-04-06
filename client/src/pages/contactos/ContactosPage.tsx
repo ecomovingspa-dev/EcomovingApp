@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfiguracionProspeccion } from "../../components/contactos/ConfiguracionProspeccion";
+import { RevisionProspeccionIA } from "../../components/contactos/RevisionProspeccionIA";
 import {
   Pencil,
   Trash2,
@@ -15,6 +16,7 @@ import {
   ChevronRight,
   SearchCheck,
   GraduationCap,
+  Sparkles,
 } from "lucide-react";
 
 interface ContactoConCuenta {
@@ -50,6 +52,9 @@ export default function ContactosPage() {
   const [contactoAGraduar, setContactoAGraduar] = useState<ContactoConCuenta | null>(null);
   const [nombreGraduacion, setNombreGraduacion] = useState("");
   const [graduando, setGraduando] = useState(false);
+  // Prospección IA
+  const [modalRevisionIA, setModalRevisionIA] = useState(false);
+  const [contactoARevisar, setContactoARevisar] = useState<any>(null);
 
   // Estados para paginación
   const [paginaActual, setPaginaActual] = useState(1);
@@ -526,6 +531,20 @@ export default function ContactosPage() {
                             <GraduationCap className="h-3 w-3" />
                           </Button>
                         )}
+                        {contacto.etapa === "prospeccion" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-900/20"
+                            title="Preparar Envío IA (Gemma 3)"
+                            onClick={() => {
+                              setContactoARevisar(contacto);
+                              setModalRevisionIA(true);
+                            }}
+                          >
+                            <Sparkles className="h-3 w-3" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -589,6 +608,16 @@ export default function ContactosPage() {
       <ConfiguracionProspeccion
         open={modalProspeccion}
         onOpenChange={setModalProspeccion}
+      />
+      <RevisionProspeccionIA
+        open={modalRevisionIA}
+        onOpenChange={setModalRevisionIA}
+        contacto={contactoARevisar}
+        onSuccess={() => {
+          setMensaje("✅ Correo de prospección enviado y registrado.");
+          cargarContactos(true);
+          setTimeout(() => setMensaje(""), 3000);
+        }}
       />
 
       {/* Modal de Graduación */}
