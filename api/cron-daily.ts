@@ -25,7 +25,7 @@ const CRON_SECRET = process.env.CRON_SECRET!;
 // Constantes de límites
 const BREVO_DAILY_LIMIT = 300;
 const MAX_COBRANZA_EMAILS = 50; // Prioridad, reservar espacio
-const DELAY_BETWEEN_EMAILS_MS = 300; // 300ms entre emails para no saturar
+const DELAY_BETWEEN_EMAILS_MS = 100; // 100ms entre emails para no saturar 
 
 // ============================================================================
 // UTILIDADES
