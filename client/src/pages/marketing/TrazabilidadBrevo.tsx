@@ -44,6 +44,7 @@ export default function TrazabilidadBrevo() {
   const [filtro, setFiltro] = useState("");
   const [soloCriticos, setSoloCriticos] = useState(false);
   const [vendedor, setVendedor] = useState("Ejecutivo de Ventas A");
+  const [filtroEtapa, setFiltroEtapa] = useState("todos");
   const [draftData, setDraftData] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -89,10 +90,12 @@ export default function TrazabilidadBrevo() {
   };
 
   useEffect(() => {
-    // Generate working days for March 2026
+    // Generate working days for current month (April 2026 as per user requirement)
     const days: CalendarDay[] = [];
-    const year = 2026;
-    const month = 2; // March (0-indexed)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth(); // Current month (April = 3)
+    
     const date = new Date(year, month, 1);
     while (date.getMonth() === month) {
       const dayOfWeek = date.getDay();
@@ -121,7 +124,7 @@ export default function TrazabilidadBrevo() {
         throw new Error(data.error || "Fallo en API /api/sync-brevo");
       }
     } catch (err: any) {
-      toast.error("Error de Sync: Asegúrate de correr 'vercel dev' para la API local.");
+      toast.error("Error de Sincronización: Asegúrate de correr 'vercel dev' para la API local.");
       console.error(err);
     } finally {
       setLoading(false);
@@ -183,7 +186,9 @@ export default function TrazabilidadBrevo() {
     const matchesSearch = c.nombre.toLowerCase().includes(filtro.toLowerCase()) || 
                          c.correo.toLowerCase().includes(filtro.toLowerCase());
     const matchesCriticos = soloCriticos ? c.es_bloqueado : true;
-    return matchesSearch && matchesCriticos;
+    const matchesEtapa = filtroEtapa === "todos" ? true : (c.etapa === filtroEtapa);
+    
+    return matchesSearch && matchesCriticos && matchesEtapa;
   });
 
   return (
@@ -220,13 +225,24 @@ export default function TrazabilidadBrevo() {
           >
             {soloCriticos ? "FILTRANDO CRÍTICOS" : "TODOS"}
           </button>
+
+          <Select onValueChange={(val) => setFiltroEtapa(val)} defaultValue="todos">
+            <SelectTrigger className="w-[140px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+              <SelectValue placeholder="ETAPA" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-gray-800 text-white">
+              <SelectItem value="todos">TODAS LAS ETAPAS</SelectItem>
+              <SelectItem value="marketing">MARKETING</SelectItem>
+              <SelectItem value="prospeccion">PROSPECCIÓN</SelectItem>
+            </SelectContent>
+          </Select>
           <button 
             onClick={syncWithBrevo}
             disabled={loading}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-black transition-all disabled:opacity-50"
           >
             <RefreshCcw className="h-4 w-4" />
-            SYNC BREVO
+            SINCRONIZAR BREVO
           </button>
         </div>
       </div>
@@ -237,7 +253,7 @@ export default function TrazabilidadBrevo() {
           <table className="w-full text-left table-fixed">
             <thead>
               <tr className="bg-gray-900/80 border-b border-gray-800 text-[9px] font-black tracking-widest text-gray-500 uppercase">
-                <th className="px-4 py-4 w-[180px]">CONTACTO (MARZO 2026)</th>
+                <th className="px-4 py-4 w-[240px]">CONTACTO ({new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }).toUpperCase()})</th>
                 {calendarDays.map(d => (
                   <th key={d.date} className="px-1 py-4 text-center border-l border-gray-800/50">
                     {d.label}
@@ -250,8 +266,15 @@ export default function TrazabilidadBrevo() {
               {filtered.map((c) => (
                 <tr key={c.id} className="group hover:bg-white/5 transition-colors">
                   <td className="px-4 py-3">
-                    <div className="text-xs font-bold text-white uppercase truncate">
-                      {c.nombre?.replace('Contacto Principal - ', '') || 'SIN NOMBRE'}
+                    <div className="flex flex-col gap-0.5">
+                      <div className="text-xs font-bold text-white uppercase truncate max-w-[180px]">
+                        {c.nombre?.replace('Contacto Principal - ', '') || 'SIN NOMBRE'}
+                      </div>
+                      <div className={`text-[8px] font-black px-1.5 py-0.5 rounded-sm inline-block w-fit ${
+                        c.etapa === 'prospeccion' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-400/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-400/20'
+                      }`}>
+                        {c.etapa?.toUpperCase() || 'MARKETING'}
+                      </div>
                     </div>
                   </td>
 
@@ -267,7 +290,7 @@ export default function TrazabilidadBrevo() {
                     <div className="flex items-center gap-2">
                       <div className={`h-1.5 w-1.5 rounded-full ${c.es_bloqueado ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
                       <span className={`text-[10px] font-black uppercase ${c.es_bloqueado ? 'text-red-500' : 'text-emerald-500'}`}>
-                        {c.es_bloqueado ? 'BLOQUEO CRÍTICO' : translateStatus(c.ultimo_estado_brevo || 'IDLE')}
+                        {c.es_bloqueado ? 'BLOQUEO CRÍTICO' : translateStatus(c.ultimo_estado_brevo || 'INACTIVO')}
                       </span>
                     </div>
                   </td>

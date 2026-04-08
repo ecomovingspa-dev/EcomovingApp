@@ -25,7 +25,7 @@ const CRON_SECRET = process.env.CRON_SECRET!;
 // Constantes de límites
 const BREVO_DAILY_LIMIT = 300;
 const MAX_COBRANZA_EMAILS = 50; // Prioridad, reservar espacio
-const DELAY_BETWEEN_EMAILS_MS = 100; // 100ms entre emails para no saturar 
+const DELAY_BETWEEN_EMAILS_MS = 30; // 30ms entre emails para optimizar tiempo y evitar timeout
 
 // ============================================================================
 // UTILIDADES
@@ -49,79 +49,47 @@ const formatearFechaCL = (fechaStr: string | null) => {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // ============================================================================
-// VERIFICACIÓN DÍA LABORAL CHILE
+// VERIFICACIÓN DÍA LABORAL (Lunes a Viernes)
 // ============================================================================
 
-async function esDiaLaboralChile(): Promise<{ esLaboral: boolean; mensaje: string; fecha: string; feriados: string[] }> {
-    // Configuración robusta para Chile (ISO Components)
-    const options: any = { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit", weekday: "numeric" };
-    const formatter = new Intl.DateTimeFormat("en-CA", options); // en-CA da YYYY-MM-DD
+function getFechaChile(): string {
+    const options: any = { timeZone: "America/Santiago", year: "numeric", month: "2-digit", day: "2-digit" };
+    const formatter = new Intl.DateTimeFormat("en-CA", options);
     const parts = formatter.formatToParts(new Date());
     
     const yearStr = parts.find(p => p.type === "year")?.value!;
     const monthStr = parts.find(p => p.type === "month")?.value!;
     const dayStr = parts.find(p => p.type === "day")?.value!;
-    const weekdayStr = parts.find(p => p.type === "weekday")?.value!;
-    
-    const fechaFormateada = `${yearStr}-${monthStr}-${dayStr}`;
+    return `${yearStr}-${monthStr}-${dayStr}`;
+}
 
-    // Obtener feriados
-    let listadoFeriados: string[] = [];
-    try {
-        const { data } = await axios.get(`https://apis.digital.gob.cl/fl/feriados/${yearStr}`);
-        if (Array.isArray(data)) {
-            listadoFeriados = data.map((f: any) => f.fecha);
-        }
-    } catch (e) {
-        console.warn('⚠️ No se pudieron obtener los feriados de la API, se usará solo findes.');
-    }
-
-    // Caso 1: Fin de semana (Hoy es Sábado o Domingo)
+function esDiaLaboral(): { esLaboral: boolean; mensaje: string; fecha: string } {
+    const fechaChile = getFechaChile();
     const nativeDateChile = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Santiago" }));
     const dw = nativeDateChile.getDay();
     
+    // 0 = Domingo, 6 = Sábado
     if (dw === 0 || dw === 6) {
         return {
             esLaboral: false,
-            mensaje: 'Fin de semana en Chile. Envíos suspendidos.',
-            fecha: fechaFormateada,
-            feriados: listadoFeriados
+            mensaje: 'Fin de semana. Envíos suspendidos.',
+            fecha: fechaChile
         };
     }
 
-    // Caso 2: Feriado
-    if (listadoFeriados.includes(fechaFormateada)) {
-        return {
-            esLaboral: false,
-            mensaje: `Día festivo (${fechaFormateada}) en Chile. Envíos suspendidos.`,
-            fecha: fechaFormateada,
-            feriados: listadoFeriados
-        };
-    }
-
-    return { esLaboral: true, mensaje: 'Día laboral', fecha: fechaFormateada, feriados: listadoFeriados };
+    return { esLaboral: true, mensaje: 'Día laboral', fecha: fechaChile };
 }
 
 /**
- * Suma días laborales (omitiendo sábados, domingos y feriados)
+ * Suma días hábiles (omitiendo solo fines de semana por solicitud del usuario)
  */
-function sumarDiasLaborales(fecha: Date, diasASumar: number, feriados: string[]): Date {
+function sumarDiasHabiles(fecha: Date, diasASumar: number): Date {
     const nuevaFecha = new Date(fecha.getTime());
     let diasContados = 0;
     while (diasContados < diasASumar) {
         nuevaFecha.setDate(nuevaFecha.getDate() + 1);
         const ds = nuevaFecha.getDay();
-        
-        // Formatear proxima fecha para comparar con feriados
-        const y = nuevaFecha.getFullYear();
-        const m = String(nuevaFecha.getMonth() + 1).padStart(2, '0');
-        const d = String(nuevaFecha.getDate()).padStart(2, '0');
-        const fComp = `${y}-${m}-${d}`;
-
-        const esFinde = (ds === 0 || ds === 6);
-        const esFeriado = feriados.includes(fComp);
-
-        if (!esFinde && !esFeriado) {
+        if (ds !== 0 && ds !== 6) {
             diasContados++;
         }
     }
@@ -176,104 +144,71 @@ async function ejecutarCobranza(maxEmails: number): Promise<{
 
         report.total = ventas.length;
 
-        for (const factura of ventas) {
-            if (report.sent >= maxEmails) break;
-            report.processed++;
+        const CHUNK_SIZE = 5;
+        for (let i = 0; i < ventas.length; i += CHUNK_SIZE) {
+            const chunk = ventas.slice(i, i + CHUNK_SIZE);
 
-            try {
-                const folio = factura.folio || 'N/A';
-                const correo = factura.correo_cobranza;
-                const contacto = factura.contacto_cobranza;
+            await Promise.all(chunk.map(async (factura) => {
+                try {
+                    report.processed++;
+                    const folio = factura.folio || 'N/A';
+                    const correo = factura.correo_cobranza;
+                    const contacto = factura.contacto_cobranza;
 
-                if (!correo || !correo.includes('@') || !contacto?.trim()) {
-                    report.skipped++;
-                    continue;
-                }
-
-                const hoy = new Date();
-                const fchVenc = parsearFecha(factura.fch_venc);
-                if (!fchVenc) {
-                    report.errors.push(`Fecha inválida folio ${folio}`);
-                    continue;
-                }
-
-                fchVenc.setHours(0, 0, 0, 0);
-                hoy.setHours(0, 0, 0, 0);
-                const diffDias = Math.floor((hoy.getTime() - fchVenc.getTime()) / (1000 * 60 * 60 * 24));
-
-                // Buscar rango
-                let rangoActual = null;
-                for (const rango of RANGOS) {
-                    if (diffDias >= rango.min && diffDias <= rango.max) {
-                        rangoActual = rango;
-                        break;
+                    if (!correo || !correo.includes('@') || !contacto?.trim()) {
+                        report.skipped++;
+                        return;
                     }
-                }
 
-                // Control de envío (no duplicar)
-                let enviar = false;
-                const ultimoTipoAviso = factura.ultimo_tipo_aviso;
-                if (rangoActual) {
-                    if (!ultimoTipoAviso) enviar = true;
-                    else if (ultimoTipoAviso !== rangoActual.nombre) enviar = true;
-                }
+                    const hoy = new Date();
+                    const fchVenc = parsearFecha(factura.fch_venc);
+                    if (!fchVenc) return;
 
-                if (!enviar || !rangoActual) {
-                    report.skipped++;
-                    continue;
-                }
+                    fchVenc.setHours(0, 0, 0, 0);
+                    hoy.setHours(0, 0, 0, 0);
+                    const diffDias = Math.floor((hoy.getTime() - fchVenc.getTime()) / (1000 * 60 * 60 * 24));
 
-                // Construir email
-                const asunto = rangoActual.getAsunto(String(folio), diffDias);
-                const introMsg = rangoActual.mensaje_intro.replace('{dias}', String(Math.abs(diffDias)));
-                const cierreMsg = rangoActual.mensaje_cierre.replace('{dias}', String(Math.abs(diffDias)));
+                    let rangoActual = RANGOS.find(r => diffDias >= r.min && diffDias <= r.max);
 
-                const htmlContent = generarHtmlCobranza({
-                    contacto,
-                    folio,
-                    fechaEmision: formatearFechaCL(factura.fch_emis),
-                    fechaVencimiento: formatearFechaCL(factura.fch_venc),
-                    montoTotal: formatearMonto(factura.mnt_total),
-                    diffDias,
-                    introMsg,
-                    cierreMsg
-                });
+                    if (!rangoActual || factura.ultimo_tipo_aviso === rangoActual.nombre) {
+                        report.skipped++;
+                        return;
+                    }
 
-                // CC al vendedor
-                const ccList: { email: string }[] = [];
-                if (factura.correo_vendedor?.includes('@')) {
-                    factura.correo_vendedor.split(',').forEach((c: string) => {
-                        const email = c.trim().toLowerCase();
-                        if (email.includes('@')) ccList.push({ email });
+                    const htmlContent = generarHtmlCobranza({
+                        contacto, folio,
+                        fechaEmision: formatearFechaCL(factura.fch_emis),
+                        fechaVencimiento: formatearFechaCL(factura.fch_venc),
+                        montoTotal: formatearMonto(factura.mnt_total),
+                        diffDias,
+                        introMsg: rangoActual.mensaje_intro.replace('{dias}', String(Math.abs(diffDias))),
+                        cierreMsg: rangoActual.mensaje_cierre.replace('{dias}', String(Math.abs(diffDias)))
                     });
-                }
 
-                // Enviar
-                await axios.post('https://api.brevo.com/v3/smtp/email', {
-                    sender: { name: "Departamento Cobranzas", email: "cobranza@ecomoving.cl" },
-                    to: [{ email: correo, name: contacto }],
-                    cc: ccList.length > 0 ? ccList : undefined,
-                    subject: asunto,
-                    htmlContent
-                }, {
-                    headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' }
-                });
+                    const ccList = (factura.correo_vendedor || '').split(',').map((c: string) => c.trim().toLowerCase()).filter((c: string) => c.includes('@')).map((email: string) => ({ email }));
 
-                // Actualizar DB
-                await supabase
-                    .from('ventas')
-                    .update({
+                    await axios.post('https://api.brevo.com/v3/smtp/email', {
+                        sender: { name: "Departamento Cobranzas", email: "cobranza@ecomoving.cl" },
+                        to: [{ email: correo, name: contacto }],
+                        cc: ccList.length > 0 ? ccList : undefined,
+                        subject: rangoActual.getAsunto(String(folio), diffDias),
+                        htmlContent
+                    }, {
+                        headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' }
+                    });
+
+                    await supabase.from('ventas').update({
                         ultimo_tipo_aviso: rangoActual.nombre,
                         fecha_ultimo_aviso: new Date().toISOString()
-                    })
-                    .eq('folio', folio);
+                    }).eq('folio', folio);
 
-                report.sent++;
-                await sleep(DELAY_BETWEEN_EMAILS_MS);
+                    report.sent++;
+                } catch (err: any) {
+                    report.errors.push(`Cobranza ${factura.folio}: ${err.message}`);
+                }
+            }));
 
-            } catch (err: any) {
-                report.errors.push(`Cobranza ${factura.folio}: ${err.message}`);
-            }
+            await sleep(DELAY_BETWEEN_EMAILS_MS);
         }
     } catch (err: any) {
         report.errors.push(`Error global cobranza: ${err.message}`);
@@ -286,7 +221,7 @@ async function ejecutarCobranza(maxEmails: number): Promise<{
 // MÓDULO MARKETING
 // ============================================================================
 
-async function ejecutarMarketing(maxEmails: number, feriados: string[]): Promise<{
+async function ejecutarMarketing(maxEmails: number): Promise<{
     processed: number;
     sent: number;
     errors: string[];
@@ -296,108 +231,82 @@ async function ejecutarMarketing(maxEmails: number, feriados: string[]): Promise
     if (maxEmails <= 0) return report;
 
     try {
-        // Obtener fecha actual en formato ISO para filtrado en BD
-        const todayIso = new Date().toISOString(); 
+        const today = getFechaChile(); 
 
-        // Buscar contactos activos con próximo envío pendiente (o NULL para el primer envío)
         const { data: contacts, error: contactError } = await supabase
             .from('contactos')
             .select('*')
+            .eq('etapa', 'marketing')
             .ilike('estado', 'activo')
-            .not('correo', 'is', null)
-            .neq('correo', '')
-            // FILTRO CRUCIAL: Solo los que tengan proximo_envio en el pasado o sean NULL
-            .or(`proximo_envio.lte.${todayIso},proximo_envio.is.null`)
+            .or(`proximo_envio.lte.${today},proximo_envio.is.null`)
             .order('proximo_envio', { ascending: true, nullsFirst: true })
             .limit(maxEmails);
 
         if (contactError) throw contactError;
-        if (!contacts || contacts.length === 0) {
-            console.log('⚠️ Marketing: No hay contactos activos con envío pendiente hoy');
-            return report;
-        }
+        if (!contacts || contacts.length === 0) return report;
 
-        console.log(`📋 Marketing: ${contacts.length} contactos listos para envío (respetando ventana de 3 días)`);
+        console.log(`📋 Marketing: ${contacts.length} contactos en cola.`);
 
-        for (const contact of contacts) {
-            if (report.sent >= maxEmails) break;
-            report.processed++;
-
-            try {
-                // Obtener etapa de envío (usar 1 si es NULL, 0, o no existe)
-                let etapaActual = parseInt(contact.etapa_envio) || 1;
-                if (etapaActual < 1) etapaActual = 1;
-
-                console.log(`  📧 Procesando ${contact.correo} - Etapa ${etapaActual}`);
-
-                // Buscar contenido de la secuencia
-                let { data: messageData } = await supabase
-                    .from('marketing')
-                    .select('*')
-                    .eq('nombre_envio', etapaActual)
-                    .eq('activo', true)
-                    .maybeSingle();
-
-                if (!messageData) {
-                    console.log(`  ⏸️ Pausado: Sin contenido para etapa ${etapaActual} (${contact.correo})`);
-                    continue;
-                }
-
-                // Preparar HTML
-                let finalHtml = messageData.cuerpo_html || '';
-                if (messageData.imagen_url) {
-                    finalHtml = finalHtml.replace('IMAGE_PLACEHOLDER', messageData.imagen_url);
-                }
-
-                // Enviar
-                const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', {
-                    sender: { name: "Ecomoving", email: "ventas@ecomoving.cl" },
-                    to: [{ email: contact.correo }],
-                    subject: messageData.asunto,
-                    htmlContent: finalHtml,
-                    textContent: messageData.cuerpodetalle || "Ver correo en formato HTML"
-                }, {
-                    headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' }
-                });
-
-                const messageId = brevoRes.data?.messageId;
-
-                // Registrar en Trazabilidad Sentinel
+        // Procesar en chunks de 5 para velocidad
+        const CHUNK_SIZE = 5;
+        for (let i = 0; i < contacts.length; i += CHUNK_SIZE) {
+            const chunk = contacts.slice(i, i + CHUNK_SIZE);
+            
+            await Promise.all(chunk.map(async (contact) => {
                 try {
-                    await supabase.from('trazabilidad_correos').insert({
-                        contacto_id: contact.id,
-                        email: contact.correo,
-                        fecha: new Date().toISOString().split('T')[0],
-                        estado: 'request',
-                        mensaje_id: messageId
+                    report.processed++;
+                    let etapaActual = parseInt(contact.etapa_envio) || 1;
+
+                    let { data: messageData } = await supabase
+                        .from('marketing')
+                        .select('*')
+                        .eq('nombre_envio', etapaActual)
+                        .eq('activo', true)
+                        .maybeSingle();
+
+                    if (!messageData) {
+                        console.log(`  ⏸️ Pausado: Sin contenido etapa ${etapaActual} (${contact.correo})`);
+                        return;
+                    }
+
+                    let finalHtml = messageData.cuerpo_html || '';
+                    if (messageData.imagen_url) {
+                        finalHtml = finalHtml.replace('IMAGE_PLACEHOLDER', messageData.imagen_url);
+                    }
+
+                    const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', {
+                        sender: { name: "Ecomoving", email: "ventas@ecomoving.cl" },
+                        to: [{ email: contact.correo }],
+                        subject: messageData.asunto,
+                        htmlContent: finalHtml,
+                        textContent: messageData.cuerpodetalle || "Ver correo en formato HTML"
+                    }, {
+                        headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' }
                     });
-                } catch (err) {
-                    console.error('⚠️ Error al registrar trazabilidad');
-                }
 
-                // Calcular próximo envío: +3 días LABORALES (saltando findes y festivos)
-                const nextDate = sumarDiasLaborales(new Date(), 3, feriados);
+                    const messageId = brevoRes.data?.messageId;
 
-                // Calcular próxima etapa
-                const siguienteEtapa = etapaActual + 1;
+                    // Registro de trazabilidad
+                    await supabase.from('trazabilidad_correos').insert({
+                        contacto_id: contact.id, email: contact.correo,
+                        fecha: getFechaChile(),
+                        estado: 'request', mensaje_id: messageId
+                    });
 
-                await supabase
-                    .from('contactos')
-                    .update({
+                    const nextDate = sumarDiasHabiles(new Date(), 3);
+                    await supabase.from('contactos').update({
                         ultimo_envio: new Date().toISOString(),
-                        proximo_envio: nextDate.toISOString(),
-                        etapa_envio: siguienteEtapa
-                    })
-                    .eq('id', contact.id);
+                        proximo_envio: nextDate.toISOString().split('T')[0],
+                        etapa_envio: etapaActual + 1
+                    }).eq('id', contact.id);
 
-                console.log(`  ✅ Enviado a ${contact.correo} - Etapa ${etapaActual} → Próximo: ${nextDate.toISOString().split('T')[0]}`);
-
-                report.sent++;
-                await sleep(DELAY_BETWEEN_EMAILS_MS);
-
-            } catch (err: any) {
-                report.errors.push(`Marketing ${contact.id}: ${err.message}`);
-            }
+                    report.sent++;
+                } catch (err: any) {
+                    report.errors.push(`Marketing ${contact.correo}: ${err.message}`);
+                }
+            }));
+            
+            await sleep(DELAY_BETWEEN_EMAILS_MS);
         }
     } catch (err: any) {
         report.errors.push(`Error global marketing: ${err.message}`);
@@ -569,7 +478,7 @@ async function ejecutarAlertasCompras(): Promise<{ total: number; notificacionCr
 // MÓDULO PROSPECCIÓN (AI-POWERED)
 // ============================================================================
 
-async function ejecutarProspeccion(maxEmails: number, feriados: string[]): Promise<{
+async function ejecutarProspeccion(maxEmails: number): Promise<{
     processed: number;
     sent: number;
     ai_enhanced: number;
@@ -579,7 +488,7 @@ async function ejecutarProspeccion(maxEmails: number, feriados: string[]): Promi
     if (maxEmails <= 0) return report;
 
     try {
-        const todayIso = new Date().toISOString();
+        const today = getFechaChile();
 
         // 1. Buscar contactos en etapa 'prospeccion' con envío pendiente
         const { data: contacts, error: contactError } = await supabase
@@ -589,7 +498,7 @@ async function ejecutarProspeccion(maxEmails: number, feriados: string[]): Promi
             .ilike('estado', 'activo')
             .not('correo', 'is', null)
             .neq('correo', '')
-            .or(`proximo_envio.lte.${todayIso},proximo_envio.is.null`)
+            .or(`proximo_envio.lte.${today},proximo_envio.is.null`)
             .order('proximo_envio', { ascending: true, nullsFirst: true })
             .limit(maxEmails);
 
@@ -598,84 +507,68 @@ async function ejecutarProspeccion(maxEmails: number, feriados: string[]): Promi
 
         console.log(`🔍 Prospección: ${contacts.length} contactos en cola.`);
 
-        for (const contact of contacts) {
-            if (report.sent >= maxEmails) break;
-            report.processed++;
+        const CHUNK_SIZE = 5;
+        for (let i = 0; i < contacts.length; i += CHUNK_SIZE) {
+            const chunk = contacts.slice(i, i + CHUNK_SIZE);
 
-            try {
-                // Etapa de la secuencia (1: Ice-Breaker, 2: Follow-Up, etc.)
-                let etapaSecuencia = parseInt(contact.etapa_envio) || 1;
-                
-                // 2. Obtener configuración de esta etapa
-                const { data: config, error: configError } = await supabase
-                    .from('configuracion_prospeccion')
-                    .select('*')
-                    .eq('orden', etapaSecuencia)
-                    .eq('activo', true)
-                    .maybeSingle();
+            await Promise.all(chunk.map(async (contact) => {
+                try {
+                    report.processed++;
+                    let etapaSecuencia = parseInt(contact.etapa_envio) || 1;
 
-                if (!config) {
-                    console.warn(`  - Sin configuración para etapa ${etapaSecuencia} (${contact.correo})`);
-                    continue;
-                }
+                    let { data: config } = await supabase
+                        .from('configuracion_prospeccion')
+                        .select('*')
+                        .eq('orden', etapaSecuencia)
+                        .eq('activo', true)
+                        .maybeSingle();
 
-                // 3. Preparar Variables
-                const empresa = contact.empresa || "su organización";
-                const correo = contact.correo || "";
-                const dominio = correo.split('@')[1] || "";
-                
-                let subject = config.asunto_template.replace(/{empresa}/g, empresa).replace(/{correo}/g, correo);
-                let intro = config.mensaje_intro.replace(/{empresa}/g, empresa).replace(/{correo}/g, correo).replace(/{dominio}/g, dominio);
-                let cierre = config.mensaje_cierre.replace(/{empresa}/g, empresa).replace(/{correo}/g, correo).replace(/{dominio}/g, dominio);
+                    if (!config) return;
 
-                // --- 4. POTENCIACIÓN IA (Ollama/Gemma) ---
-                // Se activa si OLLAMA_URL está en el env
-                if (process.env.OLLAMA_URL || process.env.USE_OLLAMA === 'true') {
-                    try {
-                        const { generateProspeccionIceBreaker } = await import('./utils/ollama');
-                        const aiIntro = await generateProspeccionIceBreaker(empresa, dominio, intro);
-                        if (aiIntro && aiIntro.length > 20) {
-                            intro = aiIntro;
-                            report.ai_enhanced++;
-                        }
-                    } catch (aiErr: any) {
-                        console.warn('  ⚠️ AI Skip:', aiErr.message);
+                    const empresa = contact.empresa || "su organización";
+                    const correo = contact.correo || "";
+                    const dominio = correo.split('@')[1] || "";
+                    
+                    let subject = config.asunto_template.replace(/{empresa}/g, empresa).replace(/{correo}/g, correo);
+                    let intro = config.mensaje_intro.replace(/{empresa}/g, empresa).replace(/{correo}/g, correo).replace(/{dominio}/g, dominio);
+                    let cierre = config.mensaje_cierre.replace(/{empresa}/g, empresa).replace(/{correo}/g, correo).replace(/{dominio}/g, dominio);
+
+                    if (process.env.OLLAMA_URL || process.env.USE_OLLAMA === 'true') {
+                        try {
+                            const { generateProspeccionIceBreaker } = await import('./utils/ollama');
+                            const aiIntro = await generateProspeccionIceBreaker(empresa, dominio, intro);
+                            if (aiIntro && aiIntro.length > 20) {
+                                intro = aiIntro;
+                                report.ai_enhanced++;
+                            }
+                        } catch (aiErr) {}
                     }
+
+                    const htmlContent = generarHtmlProspeccion({ intro, cierre, empresa });
+
+                    await axios.post('https://api.brevo.com/v3/smtp/email', {
+                        sender: { name: "Ecomoving", email: "ventas@ecomoving.cl" },
+                        to: [{ email: contact.correo }],
+                        subject: subject,
+                        htmlContent: htmlContent
+                    }, {
+                        headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' }
+                    });
+
+                    const proximoEnvio = sumarDiasHabiles(new Date(), config.dias_espera || 3);
+                    await supabase.from('contactos').update({
+                        ultimo_envio: new Date().toISOString(),
+                        proximo_envio: proximoEnvio.toISOString().split('T')[0],
+                        etapa_envio: etapaSecuencia + 1
+                    }).eq('id', contact.id);
+
+                    report.sent++;
+                } catch (err: any) {
+                    report.errors.push(`Prospección ${contact.correo}: ${err.message}`);
                 }
+            }));
 
-                // 5. Construir HTML
-                const htmlContent = generarHtmlProspeccion({
-                    intro,
-                    cierre,
-                    empresa
-                });
-
-                // 6. Enviar vía Brevo
-                const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', {
-                    sender: { name: "Ecomoving", email: "ventas@ecomoving.cl" },
-                    to: [{ email: contact.correo }],
-                    subject: subject,
-                    htmlContent: htmlContent
-                }, {
-                    headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' }
-                });
-
-                const messageId = brevoRes.data?.messageId;
-
-                // 7. Actualizar Contacto
-                const proximoEnvio = sumarDiasLaborales(new Date(), config.dias_espera || 3, feriados);
-                await supabase.from('contactos').update({
-                    ultimo_envio: new Date().toISOString(),
-                    proximo_envio: proximoEnvio.toISOString(),
-                    etapa_envio: etapaSecuencia + 1
-                }).eq('id', contact.id);
-
-                report.sent++;
-                await sleep(DELAY_BETWEEN_EMAILS_MS);
-
-            } catch (err: any) {
-                report.errors.push(`Prospección ${contact.correo}: ${err.message}`);
-            }
+            await sleep(DELAY_BETWEEN_EMAILS_MS);
         }
     } catch (err: any) {
         report.errors.push(`Error global prospección: ${err.message}`);
@@ -725,12 +618,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 2. Verificar día laboral
-    const diaLaboral = await esDiaLaboralChile();
+    const diaLaboral = esDiaLaboral();
     if (!diaLaboral.esLaboral) {
         return res.status(200).json({
             message: diaLaboral.mensaje,
             fecha: diaLaboral.fecha,
             cobranza: { sent: 0 },
+            prospeccion: { sent: 0 },
             marketing: { sent: 0 }
         });
     }
@@ -745,14 +639,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cobranzaResult = await ejecutarCobranza(MAX_COBRANZA_EMAILS);
     console.log(`📧 Cobranza: ${cobranzaResult.sent} enviados`);
 
-    // 5. Calcular cuota restante para marketing
-    const cuotaMarketing = BREVO_DAILY_LIMIT - cobranzaResult.sent;
+    // 5. Calcular cuota restante para Marketing (Prospección pausada por ahora)
+    const cuotaRestante = BREVO_DAILY_LIMIT - cobranzaResult.sent;
 
-    // 6. Ejecutar MARKETING (Pasando lista de feriados para el cálculo del proximo_envio)
-    const marketingResult = await ejecutarMarketing(cuotaMarketing, diaLaboral.feriados);
+    /* 
+    // Módulo Prospección en Pausa hasta que esté listo
+    const prospeccionResult = await ejecutarProspeccion(Math.floor(cuotaRestante / 2));
+    console.log(`🔍 Prospección: ${prospeccionResult.sent} enviados`);
+    */
+    const prospeccionResult = { processed: 0, sent: 0, ai_enhanced: 0, errors: [] };
+
+    // 7. Ejecutar MARKETING
+    const marketingResult = await ejecutarMarketing(cuotaRestante);
     console.log(`📬 Marketing: ${marketingResult.sent} enviados`);
 
-    // 7. Reporte final
+    // 8. Reporte final
     return res.status(200).json({
         fecha: diaLaboral.fecha,
         totalEnviados: cobranzaResult.sent + marketingResult.sent,
@@ -765,8 +666,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             total: cobranzaResult.total,
             processed: cobranzaResult.processed,
             sent: cobranzaResult.sent,
-            skipped: cobranzaResult.skipped,
             errors: cobranzaResult.errors
+        },
+        prospeccion: {
+            processed: prospeccionResult.processed,
+            sent: prospeccionResult.sent,
+            ai_enhanced: prospeccionResult.ai_enhanced,
+            errors: prospeccionResult.errors
         },
         marketing: {
             processed: marketingResult.processed,

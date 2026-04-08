@@ -72,6 +72,7 @@ export default function ListaContenidos() {
             setCreando(true);
             const timestamp = Date.now();
             const nombreImagen = `MKT-${timestamp}.jpg`;
+            const imagenUrl = `https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/imagenes-marketing/${nombreImagen}`;
             const siguienteEnvio = mensajes.length > 0
                 ? Math.max(...mensajes.map(m => m.nombre_envio)) + 1
                 : 1;
@@ -88,6 +89,7 @@ export default function ListaContenidos() {
                     cuerpo: nuevoContenido,
                     nombre_envio: siguienteEnvio,
                     nombre_imagen: nombreImagen,
+                    imagen_url: imagenUrl,
                     cuerpo_html: `
 <!DOCTYPE html>
 <html lang="es">
@@ -111,9 +113,7 @@ export default function ListaContenidos() {
             </td></tr>
             <tr><td align="center"><h1 class="h1">${titulo}</h1></td></tr>
             <tr><td align="center" style="padding-bottom: 50px;">
-                <div style="width: 650px; height: 350px; background-color: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #ccc;">
-                    [Imagen: ${nombreImagen}]
-                </div>
+                <img src="${imagenUrl}" alt="Ecomoving" width="650" style="width: 650px; display: block; border-radius: 4px;" />
             </td></tr>
             <tr><td align="center"><p class="p">${resto}</p></td></tr>
             <tr><td align="center" style="padding-bottom: 50px;">
@@ -247,13 +247,16 @@ export default function ListaContenidos() {
                     </p>
                 </div>
 
-                <Button
-                    onClick={() => setMostrarNuevo(!mostrarNuevo)}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white flex items-center gap-2 shadow-lg shadow-indigo-500/20 px-6"
+                <button
+                    onClick={() => {
+                        console.log("Mostrando formulario nuevo contenido...");
+                        setMostrarNuevo(!mostrarNuevo);
+                    }}
+                    className="bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-2 shadow-lg shadow-emerald-500/20 px-6 py-2.5 rounded-xl font-bold transition-all active:scale-95"
                 >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-5 w-5" />
                     Nuevo Contenido
-                </Button>
+                </button>
             </div>
 
             {mostrarNuevo && (
