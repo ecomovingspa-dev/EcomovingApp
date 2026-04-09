@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { ConfiguracionProspeccion } from "../../components/contactos/ConfiguracionProspeccion";
 
 import {
-  Pencil,
   Trash2,
   UserPlus,
   Users,
@@ -207,33 +206,25 @@ export default function ContactosPage() {
     }
   };
 
-  const cambiarEstado = async (id: string, estadoActual: string) => {
-    const nuevoEstado = estadoActual === "activo" ? "inactivo" : "activo";
-
-    // Si intenta activar pero no tiene correo, prevenir
+  const actualizarCampo = async (id: string, campo: string, valor: string) => {
     try {
       const { error } = await supabase
         .from("contactos")
-        .update({ estado: nuevoEstado })
+        .update({ [campo]: valor })
         .eq("id", id);
 
       if (error) throw error;
 
-      // Actualización optimista para evitar el parpadeo (pestañazo)
+      // Actualización optimista
       setContactos(prev =>
-        prev.map(c => (c.id === id ? { ...c, estado: nuevoEstado } : c))
-      );
-
-      setMensaje(
-        `✅ Contacto ${nuevoEstado === "activo" ? "activado" : "desactivado"}`,
+        prev.map(c => (c.id === id ? { ...c, [campo]: valor } : c))
       );
       
-      // Carga silenciosa en segundo plano para sincronizar sin mover el scroll
-      cargarContactos(true);
-      setTimeout(() => setMensaje(""), 3000);
+      setMensaje(`✅ ${campo.charAt(0).toUpperCase() + campo.slice(1)} actualizado`);
+      setTimeout(() => setMensaje(""), 2000);
     } catch (error: any) {
-      console.error("Error al cambiar estado:", error);
-      setMensaje("❌ Error al cambiar el estado");
+      console.error("Error al actualizar campo:", error);
+      setMensaje("❌ Error al guardar cambios");
     }
   };
 
@@ -432,7 +423,7 @@ export default function ContactosPage() {
                   <th className="px-4 py-4 text-left w-[14%]">Depto</th>
                   <th className="px-4 py-4 text-left w-[7%]">Estado</th>
                   <th className="px-4 py-4 text-left w-[8%]">Etapa</th>
-                  <th className="px-4 py-4 text-right w-[8%]">Acciones</th>
+                  <th className="sticky right-0 px-4 py-4 text-right w-[8%] bg-gray-900 border-l border-gray-800 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.5)]">Acciones</th>
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-100 dark:divide-gray-700/50">
@@ -453,40 +444,86 @@ export default function ContactosPage() {
 
                     {/* Nombre */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="font-medium text-gray-700 dark:text-gray-300 text-[11px] truncate uppercase tracking-tight block" title={contacto.nombre}>
-                        {contacto.nombre || "-"}
-                      </span>
+                      <input
+                        type="text"
+                        defaultValue={contacto.nombre || ""}
+                        onBlur={(e) => {
+                          if (e.target.value !== (contacto.nombre || "")) {
+                            actualizarCampo(contacto.id, "nombre", e.target.value);
+                          }
+                        }}
+                        className="bg-transparent border-none p-0 w-full font-medium text-gray-700 dark:text-gray-300 text-[11px] uppercase tracking-tight focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                        title={contacto.nombre}
+                      />
                     </td>
 
                     {/* Correo */}
-                    <td className="px-4 py-3 whitespace-nowrap text-[11px] text-gray-500 dark:text-gray-400">
-                      <div className="truncate" title={contacto.correo}>{contacto.correo || "-"}</div>
+                    <td className="px-4 py-3 whitespace-nowrap text-[11px]">
+                      <input
+                        type="email"
+                        defaultValue={contacto.correo || ""}
+                        onBlur={(e) => {
+                          if (e.target.value !== (contacto.correo || "")) {
+                            actualizarCampo(contacto.id, "correo", e.target.value);
+                          }
+                        }}
+                        className="bg-transparent border-none p-0 w-full text-gray-500 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                        title={contacto.correo}
+                      />
                     </td>
 
                     {/* Celular */}
-                    <td className="px-4 py-3 whitespace-nowrap text-[11px] text-gray-500 dark:text-gray-400">
-                      <div className="truncate" title={contacto.celular}>{contacto.celular || "-"}</div>
+                    <td className="px-4 py-3 whitespace-nowrap text-[11px]">
+                      <input
+                        type="text"
+                        defaultValue={contacto.celular || ""}
+                        onBlur={(e) => {
+                          if (e.target.value !== (contacto.celular || "")) {
+                            actualizarCampo(contacto.id, "celular", e.target.value);
+                          }
+                        }}
+                        className="bg-transparent border-none p-0 w-full text-gray-500 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                        title={contacto.celular}
+                      />
                     </td>
 
                     {/* Teléfono */}
-                    <td className="px-4 py-3 whitespace-nowrap text-[11px] text-gray-500 dark:text-gray-400">
-                      <div className="truncate" title={contacto.telefono}>{contacto.telefono || "-"}</div>
+                    <td className="px-4 py-3 whitespace-nowrap text-[11px]">
+                      <input
+                        type="text"
+                        defaultValue={contacto.telefono || ""}
+                        onBlur={(e) => {
+                          if (e.target.value !== (contacto.telefono || "")) {
+                            actualizarCampo(contacto.id, "telefono", e.target.value);
+                          }
+                        }}
+                        className="bg-transparent border-none p-0 w-full text-gray-500 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                        title={contacto.telefono}
+                      />
                     </td>
 
                     {/* Departamento */}
-                    <td className="px-4 py-3 whitespace-nowrap text-[11px] text-gray-400 dark:text-gray-500 uppercase font-mono italic">
-                      <div className="truncate" title={contacto.departamento}>{contacto.departamento || "-"}</div>
+                    <td className="px-4 py-3 whitespace-nowrap text-[11px] uppercase font-mono italic">
+                      <input
+                        type="text"
+                        defaultValue={contacto.departamento || ""}
+                        onBlur={(e) => {
+                          if (e.target.value !== (contacto.departamento || "")) {
+                            actualizarCampo(contacto.id, "departamento", e.target.value);
+                          }
+                        }}
+                        className="bg-transparent border-none p-0 w-full text-gray-400 dark:text-gray-500 focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                        title={contacto.departamento}
+                      />
                     </td>
 
                     {/* Estado */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <button
-                        onClick={() =>
-                          cambiarEstado(
-                            contacto.id,
-                            contacto.estado || "inactivo",
-                          )
-                        }
+                        onClick={() => {
+                          const nuevoEstado = contacto.estado === "activo" ? "inactivo" : "activo";
+                          actualizarCampo(contacto.id, "estado", nuevoEstado);
+                        }}
                         className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${contacto.estado === "activo"
                           ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
                           : "bg-gray-300 dark:bg-gray-700"
@@ -515,7 +552,7 @@ export default function ContactosPage() {
                     </td>
 
                     {/* Acciones */}
-                    <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                    <td className="sticky right-0 px-4 py-3 whitespace-nowrap text-right text-sm bg-white dark:bg-gray-800 border-l border-gray-100 dark:border-gray-700/50 z-10 transition-colors group-hover:bg-blue-50 dark:group-hover:bg-[#1a2235] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         {contacto.etapa === "prospeccion" && (
                           <Button
@@ -528,16 +565,6 @@ export default function ContactosPage() {
                             <GraduationCap className="h-3 w-3" />
                           </Button>
                         )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
-                          onClick={() =>
-                            navigate(`/contactos/${contacto.id}`)
-                          }
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

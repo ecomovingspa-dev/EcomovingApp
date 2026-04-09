@@ -31,8 +31,8 @@ import { cn } from "@/lib/utils";
 
 export default function ContactoForm() {
   const navigate = useNavigate();
-  const { id } = useParams();
-  const esEdicion = !!id;
+  // esEdicion removed as editing is now inline in the table
+  const esEdicion = false;
 
   const [guardando, setGuardando] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -58,8 +58,7 @@ export default function ContactoForm() {
 
   useEffect(() => {
     cargarCuentas();
-    if (esEdicion) cargarContacto();
-  }, [id]);
+  }, []);
 
   const cargarCuentas = async () => {
     try {
@@ -77,24 +76,6 @@ export default function ContactoForm() {
     }
   };
 
-  const cargarContacto = async () => {
-    setCargando(true);
-    try {
-      const { data, error } = await supabase
-        .from("contactos")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) throw error;
-      if (data) setContacto(data);
-    } catch (error: any) {
-      console.error("Error al cargar contacto:", error);
-      setMensaje("❌ Error al cargar contacto");
-    } finally {
-      setCargando(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,32 +94,16 @@ export default function ContactoForm() {
     setMensaje("");
 
     try {
-      if (esEdicion) {
-        const { error } = await supabase
-          .from("contactos")
-          .update(contacto)
-          .eq("id", id);
+      const { error } = await supabase.from("contactos").insert([contacto]);
 
-        if (error) throw error;
-        setMensaje("✅ Contacto actualizado");
+      if (error) throw error;
+      setMensaje("✅ Contacto creado");
 
-        // Regla: Asegurar que la cuenta actual esté activa
-        await supabase
-          .from("cuentas")
-          .update({ estado: "activo" })
-          .eq("id", contacto.cuenta_id);
-      } else {
-        const { error } = await supabase.from("contactos").insert([contacto]);
-
-        if (error) throw error;
-        setMensaje("✅ Contacto creado");
-
-        // Regla: Si tiene contactos -> Activo
-        await supabase
-          .from("cuentas")
-          .update({ estado: "activo" })
-          .eq("id", contacto.cuenta_id);
-      }
+      // Regla: Si tiene contactos -> Activo
+      await supabase
+        .from("cuentas")
+        .update({ estado: "activo" })
+        .eq("id", (contacto as any).cuenta_id);
 
       setTimeout(() => navigate("/contactos"), 1500);
     } catch (error: any) {
