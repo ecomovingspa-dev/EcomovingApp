@@ -415,8 +415,7 @@ export default function ContactosPage() {
             <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-900 border-b border-gray-800">
                 <tr className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  <th className="px-4 py-4 text-left w-[20%]">Empresa</th>
-                  <th className="px-4 py-4 text-left w-[8%]">Nombre</th>
+                  <th className="px-4 py-4 text-left w-[28%]">Nombre / Empresa</th>
                   <th className="px-4 py-4 text-left w-[15%]">Correo</th>
                   <th className="px-4 py-4 text-left w-[10%]">Celular</th>
                   <th className="px-4 py-4 text-left w-[10%]">Teléfono</th>
@@ -432,29 +431,27 @@ export default function ContactosPage() {
                     key={contacto.id}
                     className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group"
                   >
-                    {/* Empresa */}
+                    {/* Nombre / Empresa */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-blue-500 opacity-50" />
-                        <span className="font-bold text-gray-900 dark:text-gray-100 text-[11px] truncate uppercase tracking-tighter" title={contacto.cuentas?.cliente}>
-                          {contacto.cuentas?.cliente || "Sin empresa asignada"}
-                        </span>
+                      <div className="flex flex-col">
+                        <input
+                          type="text"
+                          defaultValue={contacto.nombre || ""}
+                          onBlur={(e) => {
+                            if (e.target.value !== (contacto.nombre || "")) {
+                              actualizarCampo(contacto.id, "nombre", e.target.value);
+                            }
+                          }}
+                          className="bg-transparent border-none p-0 w-full font-bold text-gray-900 dark:text-gray-100 text-[11px] uppercase tracking-tight focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                          title={contacto.nombre}
+                        />
+                        <div className="flex items-center gap-1.5 mt-0.5 opacity-60">
+                          <Building2 className="h-2.5 w-2.5 text-blue-500" />
+                          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-tighter truncate" title={contacto.cuentas?.cliente}>
+                            {contacto.cuentas?.cliente || "Sin empresa asignada"}
+                          </span>
+                        </div>
                       </div>
-                    </td>
-
-                    {/* Nombre */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <input
-                        type="text"
-                        defaultValue={contacto.nombre || ""}
-                        onBlur={(e) => {
-                          if (e.target.value !== (contacto.nombre || "")) {
-                            actualizarCampo(contacto.id, "nombre", e.target.value);
-                          }
-                        }}
-                        className="bg-transparent border-none p-0 w-full font-medium text-gray-700 dark:text-gray-300 text-[11px] uppercase tracking-tight focus:ring-1 focus:ring-blue-500 rounded outline-none"
-                        title={contacto.nombre}
-                      />
                     </td>
 
                     {/* Correo */}
