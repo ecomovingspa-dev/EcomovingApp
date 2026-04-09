@@ -352,8 +352,8 @@ export default function ContactosPage() {
             className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 transition-all font-medium"
           >
             <option value="">Etapa: Todas</option>
-            <option value="prospeccion">🔍 Prospección</option>
-            <option value="nutricion">🌱 Nutrición</option>
+            <option value="nutricion">🌱 Nutricion</option>
+            <option value="prospeccion">🔍 Prospeccion</option>
             <option value="marketing">📬 Marketing</option>
           </select>
 
