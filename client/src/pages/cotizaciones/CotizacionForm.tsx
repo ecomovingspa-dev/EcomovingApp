@@ -413,14 +413,14 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       img.onload = () => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
-        const MAX_WIDTH = 128; // Optimizado para miniaturas de 3x3cm e integridad de DB
+        const MAX_WIDTH = 320; // Protocolo v2.1: Optimizado para alta resolución (Retina/PDF) y rendimiento de DB
         const scale = MAX_WIDTH / img.width;
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scale;
         ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
         
-        // Exportar a JPEG de baja calidad optimizado para DB
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
+        // Exportar a JPEG de alta fidelidad optimizado
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
         callback(dataUrl);
       };
       img.src = event.target?.result as string;

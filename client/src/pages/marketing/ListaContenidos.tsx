@@ -9,11 +9,15 @@ import {
     Library,
     Loader2,
     AlertCircle,
-    Image as ImageIcon,
     Send,
-    Edit3
+    Edit3,
+    Wand2,
+    Sparkles,
+    Check
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
+
+import { generateMarketingContent } from "../../lib/gemini";
 
 interface MarketingMessage {
     id: string;
@@ -36,9 +40,12 @@ export default function ListaContenidos() {
     const [editandoUrl, setEditandoUrl] = useState<string | null>(null);
     const [urlTemporal, setUrlTemporal] = useState("");
     const [mostrarNuevo, setMostrarNuevo] = useState(false);
+    const [mostrarIA, setMostrarIA] = useState(false);
     const [nuevoAsunto, setNuevoAsunto] = useState("");
     const [nuevoContenido, setNuevoContenido] = useState("");
+    const [promptIA, setPromptIA] = useState("");
     const [creando, setCreando] = useState(false);
+    const [generandoIA, setGenerandoIA] = useState(false);
 
     useEffect(() => {
         cargarMensajes();
@@ -247,17 +254,104 @@ export default function ListaContenidos() {
                     </p>
                 </div>
 
-                <button
-                    onClick={() => {
-                        console.log("Mostrando formulario nuevo contenido...");
-                        setMostrarNuevo(!mostrarNuevo);
-                    }}
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-2 shadow-lg shadow-emerald-500/20 px-6 py-2.5 rounded-xl font-bold transition-all active:scale-95"
-                >
-                    <Plus className="h-5 w-5" />
-                    Nuevo Contenido
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => {
+                            setMostrarIA(!mostrarIA);
+                            setMostrarNuevo(false);
+                        }}
+                        className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2 shadow-lg shadow-violet-500/20 px-6 py-2.5 rounded-xl font-bold transition-all active:scale-95"
+                    >
+                        <Wand2 className="h-5 w-5" />
+                        Generación Mágica
+                    </button>
+                    <button
+                        onClick={() => {
+                            setMostrarNuevo(!mostrarNuevo);
+                            setMostrarIA(false);
+                        }}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-2 shadow-lg shadow-emerald-500/20 px-6 py-2.5 rounded-xl font-bold transition-all active:scale-95"
+                    >
+                        <Plus className="h-5 w-5" />
+                        Nuevo Contenido
+                    </button>
+                </div>
             </div>
+
+            {/* Modal de IA (Generación Mágica) */}
+            {mostrarIA && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border-2 border-violet-100 dark:border-violet-900/50 overflow-hidden animate-in slide-in-from-top-4 duration-300">
+                    <div className="p-6 space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-violet-900 dark:text-violet-100 flex items-center gap-2">
+                                <Sparkles className="h-5 w-5 text-violet-500" />
+                                Inteligencia Artificial Ecomoving
+                            </h3>
+                            <button onClick={() => setMostrarIA(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Describe el tema o producto y la IA creará el contenido completo por ti.</p>
+                        <div className="relative">
+                            <textarea
+                                value={promptIA}
+                                onChange={(e) => setPromptIA(e.target.value)}
+                                placeholder="Ej: Crea un correo elegante sobre nuestras nuevas soluciones de mobiliario sostenible para oficinas modernas..."
+                                className="w-full h-32 px-4 py-3 rounded-lg bg-violet-50/50 dark:bg-violet-900/10 border border-violet-100 dark:border-violet-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none transition-all resize-none"
+                            />
+                        </div>
+                        <button
+                            onClick={async () => {
+                                if (!promptIA.trim()) return;
+                                setGenerandoIA(true);
+                                try {
+                                    // Usar la librería gemini.ts para generar
+                                    // Pasamos una imagen dummy o vacía ya que ListaContenidos no maneja imagen de entrada ahora
+                                    const result = await generateMarketingContent("", promptIA);
+                                    
+                                    // Guardar directamente en la base de datos
+                                    const siguienteEnvio = mensajes.length > 0
+                                        ? Math.max(...mensajes.map(m => m.nombre_envio)) + 1
+                                        : 1;
+
+                                    const { data, error: dbError } = await supabase
+                                        .from("marketing")
+                                        .insert([{
+                                            asunto: result.subject,
+                                            cuerpo: `${result.part1}\n\n${result.part2}`,
+                                            cuerpo_html: result.html,
+                                            nombre_envio: siguienteEnvio,
+                                            estado: 'en revisión',
+                                            activo: true
+                                        }])
+                                        .select();
+
+                                    if (dbError) throw dbError;
+                                    if (data) {
+                                        setMensajes([...mensajes, data[0]]);
+                                        setMostrarIA(false);
+                                        setPromptIA("");
+                                        alert("✨ ¡Contenido generado y guardado!");
+                                    }
+                                } catch (err: any) {
+                                    alert("❌ Error IA: " + err.message);
+                                } finally {
+                                    setGenerandoIA(false);
+                                }
+                            }}
+                            disabled={generandoIA}
+                            className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold h-12 shadow-lg shadow-violet-500/30 flex items-center justify-center gap-2 rounded-xl"
+                        >
+                            {generandoIA ? (
+                                <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                                <>
+                                    <Sparkles className="h-5 w-5" />
+                                    Generar y Guardar a la Biblioteca
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {mostrarNuevo && (
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-indigo-100 dark:border-indigo-900/50 overflow-hidden animate-in slide-in-from-top-4 duration-300">
