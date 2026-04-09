@@ -208,19 +208,41 @@ export default function ContactosPage() {
 
   const actualizarCampo = async (id: string, campo: string, valor: string) => {
     try {
+      // Obtener el contacto actual para calcular la nueva etapa
+      const contactoActual = contactos.find(c => c.id === id);
+      if (!contactoActual) return;
+
+      const nombre = (campo === "nombre" ? valor : (contactoActual.nombre || "")).trim();
+      const correo = (campo === "correo" ? valor : (contactoActual.correo || "")).trim();
+
+      let nuevaEtapa = contactoActual.etapa;
+      
+      if (!nombre && !correo) {
+        nuevaEtapa = "prospeccion";
+      } else if (!nombre && correo) {
+        nuevaEtapa = "nutricion";
+      } else if (nombre && correo) {
+        nuevaEtapa = "marketing";
+      }
+
+      const updates: any = { [campo]: valor };
+      if (nuevaEtapa !== contactoActual.etapa) {
+        updates.etapa = nuevaEtapa;
+      }
+
       const { error } = await supabase
         .from("contactos")
-        .update({ [campo]: valor })
+        .update(updates)
         .eq("id", id);
 
       if (error) throw error;
 
       // Actualización optimista
       setContactos(prev =>
-        prev.map(c => (c.id === id ? { ...c, [campo]: valor } : c))
+        prev.map(c => (c.id === id ? { ...c, ...updates } : c))
       );
       
-      setMensaje(`✅ ${campo.charAt(0).toUpperCase() + campo.slice(1)} actualizado`);
+      setMensaje(`✅ Registro actualizado`);
       setTimeout(() => setMensaje(""), 2000);
     } catch (error: any) {
       console.error("Error al actualizar campo:", error);
@@ -331,6 +353,7 @@ export default function ContactosPage() {
           >
             <option value="">Etapa: Todas</option>
             <option value="prospeccion">🔍 Prospección</option>
+            <option value="nutricion">🌱 Nutrición</option>
             <option value="marketing">📬 Marketing</option>
           </select>
 
@@ -540,6 +563,10 @@ export default function ContactosPage() {
                       {contacto.etapa === "prospeccion" ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 text-[9px] font-black uppercase tracking-wider">
                           🔍 Prosp.
+                        </span>
+                      ) : contacto.etapa === "nutricion" ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider">
+                          🌱 Nutr.
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[9px] font-black uppercase tracking-wider">
