@@ -105,11 +105,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 .update({ 
                     ultimo_estado_brevo: data.status,
                     es_bloqueado: data.isBlocked,
-                    // Sincronizar la fecha de último envío si el estado es 'request' o superior 
-                    // y es más reciente que el que tenemos? 
-                    // Por ahora solo el estado para que el icono cambie en la Matrix v2.0
                 })
-                .eq('correo', email)
+                .ilike('correo', email) // Case-insensitive matching
         ));
 
         await Promise.all(profileUpdates);

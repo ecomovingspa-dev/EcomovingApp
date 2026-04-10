@@ -51,10 +51,11 @@ export default function TrazabilidadBrevo() {
   const fetchContactos = async (days: CalendarDay[]) => {
     setLoading(true);
     
-    // 1. Obtener base de contactos
+    // 1. Obtener base de contactos (Nutrición y Marketing únicamente)
     const { data: contactsData, error } = await supabase
       .from("contactos")
       .select("*")
+      .in("etapa", ["nutricion", "marketing"])
       .eq("estado", "activo")
       .not("correo", "is", null)
       .neq("correo", "")
@@ -271,7 +272,7 @@ export default function TrazabilidadBrevo() {
                         {c.nombre?.replace('Contacto Principal - ', '') || 'SIN NOMBRE'}
                       </div>
                       <div className={`text-[8px] font-black px-1.5 py-0.5 rounded-sm inline-block w-fit ${
-                        c.etapa === 'prospeccion' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-400/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-400/20'
+                        c.etapa === 'nutricion' ? 'bg-amber-500/10 text-amber-400 border border-amber-400/20' : 'bg-blue-500/10 text-blue-400 border border-blue-400/20'
                       }`}>
                         {c.etapa?.toUpperCase() || 'MARKETING'}
                       </div>
@@ -290,7 +291,10 @@ export default function TrazabilidadBrevo() {
                     <div className="flex items-center gap-2">
                       <div className={`h-1.5 w-1.5 rounded-full ${c.es_bloqueado ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
                       <span className={`text-[10px] font-black uppercase ${c.es_bloqueado ? 'text-red-500' : 'text-emerald-500'}`}>
-                        {c.es_bloqueado ? 'BLOQUEO CRÍTICO' : translateStatus(c.ultimo_estado_brevo || 'INACTIVO')}
+                        {c.es_bloqueado 
+                          ? 'BLOQUEO CRÍTICO' 
+                          : translateStatus(c.ultimo_estado_brevo || (c.historial?.length > 0 ? c.historial[0].estado : 'INACTIVO'))
+                        }
                       </span>
                     </div>
                   </td>
