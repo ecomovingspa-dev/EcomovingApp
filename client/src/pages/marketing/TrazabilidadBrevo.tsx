@@ -137,10 +137,17 @@ export default function TrazabilidadBrevo() {
     const eventosDelDia = (contacto.historial || []).filter((h: any) => h.fecha === day);
     
     if (eventosDelDia.length > 0) {
-      // Jerarquía de estados Sentinel
+      // Jerarquía de importancia para el negocio
       const weights: Record<string, number> = { 
-        'opened': 100, 'unique_opened': 100, 'clicks': 90, 
-        'delivered': 80, 'request': 50 
+        'hard_bounce': 1000, 
+        'spam': 1000, 
+        'soft_bounce': 900,
+        'opened': 800, 
+        'unique_opened': 800, 
+        'clicks': 700, 
+        'delivered': 500, 
+        'request': 300,
+        'deferred': 100
       };
       
       const topEvent = eventosDelDia.reduce((prev: any, curr: any) => 
@@ -148,6 +155,13 @@ export default function TrazabilidadBrevo() {
       );
 
       const status = topEvent.estado?.toLowerCase();
+
+      // REBOTES / BLOQUEOS
+      if (status.includes('bounce') || status === 'spam' || status === 'invalid_email') {
+        return <AlertCircle className="h-4 w-4 text-red-500 animate-pulse" title={status.toUpperCase()} />;
+      }
+
+      // APERTURAS
       if (status === "opened" || status === "unique_opened" || status === "clicks" || status === "loadedbyproxy") 
         return (
           <div className="flex flex-col items-center gap-1">
@@ -157,16 +171,23 @@ export default function TrazabilidadBrevo() {
             </button>
           </div>
         );
+
+      // ENTREGAS
       if (status === "delivered" || status === "request") 
         return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
+      
       return <Mail className="h-4 w-4 text-blue-400" />;
     }
 
-    // 2. FALLBACK: Modelo antiguo (ultimo_envio único) para compatibilidad
+    // 2. FALLBACK: Modelo antiguo (ultimo_envio único)
     const ultimoEnvio = contacto.ultimo_envio?.split('T')[0];
     if (ultimoEnvio === day) {
-      const lastStatus = (contacto.ultimo_estado_brevo || "").toLowerCase();
       if (contacto.es_bloqueado) return <AlertCircle className="h-4 w-4 text-red-500 animate-pulse" />;
+      const lastStatus = (contacto.ultimo_estado_brevo || "").toLowerCase();
+
+      if (lastStatus.includes('bounce') || lastStatus === 'spam') 
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+
       if (lastStatus === "opened" || lastStatus === "unique_opened" || lastStatus === "clicks" || lastStatus === "loadedbyproxy") 
         return (
           <div className="flex flex-col items-center gap-1">
