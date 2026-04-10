@@ -149,7 +149,14 @@ export default function TrazabilidadBrevo() {
 
       const status = topEvent.estado?.toLowerCase();
       if (status === "opened" || status === "unique_opened" || status === "clicks" || status === "loadedbyproxy") 
-        return <Eye className="h-4 w-4 text-purple-400" />;
+        return (
+          <div className="flex flex-col items-center gap-1">
+            <Eye className="h-4 w-4 text-purple-400" />
+            <button onClick={() => generateDraft(contacto)} className="p-0.5 bg-indigo-500 rounded-md hover:scale-110 transition-transform">
+              <Wrench className="h-2 w-2 text-white" />
+            </button>
+          </div>
+        );
       if (status === "delivered" || status === "request") 
         return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
       return <Mail className="h-4 w-4 text-blue-400" />;
@@ -161,7 +168,14 @@ export default function TrazabilidadBrevo() {
       const lastStatus = (contacto.ultimo_estado_brevo || "").toLowerCase();
       if (contacto.es_bloqueado) return <AlertCircle className="h-4 w-4 text-red-500 animate-pulse" />;
       if (lastStatus === "opened" || lastStatus === "unique_opened" || lastStatus === "clicks" || lastStatus === "loadedbyproxy") 
-        return <Eye className="h-4 w-4 text-purple-400" />;
+        return (
+          <div className="flex flex-col items-center gap-1">
+            <Eye className="h-4 w-4 text-purple-400" />
+            <button onClick={() => generateDraft(contacto)} className="p-0.5 bg-indigo-500 rounded-md hover:scale-110 transition-transform">
+              <Wrench className="h-2 w-2 text-white" />
+            </button>
+          </div>
+        );
       if (lastStatus === "delivered" || lastStatus === "request") 
         return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
       return <Mail className="h-4 w-4 text-blue-400" />;
@@ -248,6 +262,22 @@ export default function TrazabilidadBrevo() {
         </div>
       </div>
 
+      {/* Mini-Leyenda Superior */}
+      <div className="flex flex-wrap gap-4 px-4 py-2 bg-gray-900/40 rounded-xl border border-gray-800 w-fit">
+        <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
+          <Mail className="h-3 w-3 text-blue-400" /> Enviado
+        </div>
+        <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
+          <CheckCircle2 className="h-3 w-3 text-emerald-400" /> Entregado
+        </div>
+        <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
+          <Eye className="h-3 w-3 text-purple-400" /> Abierto
+        </div>
+        <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
+          <Wrench className="h-3 w-3 text-indigo-400" /> Seguimiento
+        </div>
+      </div>
+
       {/* The Matrix */}
       <div className="bg-gray-950 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
@@ -260,7 +290,6 @@ export default function TrazabilidadBrevo() {
                     {d.label}
                   </th>
                 ))}
-                <th className="px-4 py-4 w-[120px] border-l border-gray-800/50">ESTADO</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-900">
@@ -287,29 +316,6 @@ export default function TrazabilidadBrevo() {
                     </td>
                   ))}
 
-                  <td className="px-6 py-4 border-l border-gray-900/50">
-                    <div className="flex items-center gap-2">
-                      <div className={`h-1.5 w-1.5 rounded-full ${c.es_bloqueado ? 'bg-red-500 animate-pulse' : 'bg-emerald-500'}`} />
-                      <span className={`text-[10px] font-black uppercase ${c.es_bloqueado ? 'text-red-500' : 'text-emerald-500'}`}>
-                        {c.es_bloqueado 
-                          ? 'BLOQUEO CRÍTICO' 
-                          : translateStatus(c.ultimo_estado_brevo || (c.historial?.length > 0 ? c.historial[0].estado : 'INACTIVO'))
-                        }
-                      </span>
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-4 text-center">
-                    {(c.ultimo_estado_brevo === 'opened' || c.ultimo_estado_brevo === 'loadedbyproxy') && (
-                      <button 
-                        onClick={() => generateDraft(c)}
-                        className="p-2 text-indigo-400 hover:text-indigo-200 transition-all hover:scale-125"
-                        title="Redactar Seguimiento"
-                      >
-                        <Mail className="h-4 w-4" />
-                      </button>
-                    )}
-                  </td>
                 </tr>
               ))}
             </tbody>

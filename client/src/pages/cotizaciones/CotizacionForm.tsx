@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cotizacion, Item, SubCosto, Cuenta, Contacto } from "../../types";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, Save, X, Image as ImageIcon, Box, FileText, ChevronDown, ChevronUp, Layers, MousePointer2, ArrowLeft, Copy, Check, ChevronsUpDown, FolderOpen } from "lucide-react";
+import { Plus, Trash2, Save, X, Image as ImageIcon, Box, FileText, ChevronDown, ChevronUp, Layers, MousePointer2, ArrowLeft, Copy, Check, ChevronsUpDown, FolderOpen, Package } from "lucide-react";
 import BotonExportarPDF from "./CotizacionPDF";
 
 interface CotizacionFormProps {
@@ -30,6 +30,7 @@ const CATEGORIAS = [
 
 
 export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClose, onSave }: CotizacionFormProps) {
+  const navigate = useNavigate();
   const { id: paramId } = useParams();
   const id = propId || paramId;
   
@@ -571,6 +572,14 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                  className="flex-1 md:flex-none h-10 px-6 border-gray-200 dark:border-gray-800 font-black text-gray-600 dark:text-gray-400 text-xs flex items-center gap-2"
                >
                  <Copy className="h-3.5 w-3.5" /> DUPLICAR COTIZACIÓN
+               </Button>
+               
+               <Button 
+                 variant="outline" 
+                 onClick={() => navigate("/packing")}
+                 className="flex-1 md:flex-none h-10 px-6 border-gray-200 dark:border-gray-800 font-black text-gray-600 dark:text-gray-400 text-xs flex items-center gap-2"
+               >
+                 <Package className="h-4 w-4" /> PACKING
                </Button>
              </>
            )}
