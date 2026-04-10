@@ -17,6 +17,8 @@ const VentasPage = lazy(() => import("./pages/ventas/VentasPage"));
 const ComprasPage = lazy(() => import("./pages/compras/ComprasPage"));
 const ConciliacionPage = lazy(() => import("./pages/conciliacion/ConciliacionPage"));
 const Marketing = lazy(() => import("./pages/marketing/marketing"));
+const PackingPage = lazy(() => import("./pages/logistica/PackingPage"));
+
 
 
 
@@ -62,7 +64,11 @@ export default function App() {
 
             {/* Marketing */}
             <Route path="marketing" element={<Marketing />} />
+
+            {/* Logística - Packing */}
+            <Route path="packing" element={<PackingPage />} />
           </Route>
+
         </Routes>
       </Suspense>
     </BrowserRouter>

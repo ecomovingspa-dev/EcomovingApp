@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Edit, Trash2, FileText, Search, X, ChevronLeft } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, Search, X, ChevronLeft, Package } from "lucide-react";
 import CotizacionForm from "./CotizacionForm";
 import BotonExportarPDF from "./CotizacionPDF";
 
@@ -375,13 +375,22 @@ export default function CotizacionesPage() {
             Gestión de cotizaciones (Página {pagina + 1})
           </p>
         </div>
-        <Button
-          onClick={handleNueva}
-          className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white shadow-md"
-          data-testid="button-nueva-cotizacion"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Nueva Cotización
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => navigate("/packing")}
+            className="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
+          >
+            <Package className="mr-2 h-4 w-4" /> Packing
+          </Button>
+          <Button
+            onClick={handleNueva}
+            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white shadow-md"
+            data-testid="button-nueva-cotizacion"
+          >
+            <Plus className="mr-2 h-4 w-4" /> Nueva Cotización
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
