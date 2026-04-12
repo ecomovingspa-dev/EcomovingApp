@@ -13,7 +13,8 @@ import {
     Edit3,
     Wand2,
     Sparkles,
-    Check
+    Check,
+    Image as ImageIcon
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
