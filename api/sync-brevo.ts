@@ -123,3 +123,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(500).json({ error: error.message });
     }
 }
+
+// Force Redeploy: 2026-04-12T20:45:11.342Z
