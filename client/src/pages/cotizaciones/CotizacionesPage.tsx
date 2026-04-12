@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Edit, Trash2, FileText, Search, X, ChevronLeft, Package } from "lucide-react";
 import CotizacionForm from "./CotizacionForm";
 import BotonExportarPDF from "./CotizacionPDF";
+import PackingPage from "../logistica/PackingPage";
 
 interface CotizacionConCuenta {
   id: number;
@@ -46,6 +47,7 @@ export default function CotizacionesPage() {
   // State for the integrated form
   const [viewMode, setViewMode] = useState<"list" | "form">("list");
   const [selectedId, setSelectedId] = useState<string | undefined>(routeId);
+  const [showPackingModal, setShowPackingModal] = useState(false);
 
   useEffect(() => {
     cargarCotizaciones();
@@ -376,9 +378,9 @@ export default function CotizacionesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
+        <Button
             variant="outline"
-            onClick={() => navigate("/packing")}
+            onClick={() => setShowPackingModal(true)}
             className="border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
           >
             <Package className="mr-2 h-4 w-4" /> Packing
@@ -569,6 +571,24 @@ export default function CotizacionesPage() {
           </>
         )}
       </div>
+
+      {/* Modal Packing */}
+      {showPackingModal && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-auto py-6 px-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-[1400px] relative">
+            <button
+              onClick={() => setShowPackingModal(false)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-500 hover:text-red-600 transition-all"
+              title="Cerrar Packing"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="p-6">
+              <PackingPage />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from "@/lib/utils";
 import { Plus, Trash2, Save, X, Image as ImageIcon, Box, FileText, ChevronDown, ChevronUp, Layers, MousePointer2, ArrowLeft, Copy, Check, ChevronsUpDown, FolderOpen, Package } from "lucide-react";
 import BotonExportarPDF from "./CotizacionPDF";
+import PackingPage from "../logistica/PackingPage";
 
 interface CotizacionFormProps {
   id?: string;
@@ -36,6 +37,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
+  const [showPackingModal, setShowPackingModal] = useState(false);
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [contactos, setContactos] = useState<Contacto[]>([]);
   const [vendedores, setVendedores] = useState<any[]>([]);
@@ -576,7 +578,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                
                <Button 
                  variant="outline" 
-                 onClick={() => navigate("/packing")}
+                 onClick={() => setShowPackingModal(true)}
                  className="flex-1 md:flex-none h-10 px-6 border-gray-200 dark:border-gray-800 font-black text-gray-600 dark:text-gray-400 text-xs flex items-center gap-2"
                >
                  <Package className="h-4 w-4" /> PACKING
@@ -1213,6 +1215,24 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
           </div>
         </div>
       </div>
+
+      {/* Modal Packing */}
+      {showPackingModal && (
+        <div className="fixed inset-0 z-[200] flex items-start justify-center bg-black/60 backdrop-blur-sm overflow-auto py-6 px-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-[1400px] relative">
+            <button
+              onClick={() => setShowPackingModal(false)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-red-900/30 text-gray-500 hover:text-red-600 transition-all"
+              title="Cerrar Packing"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="p-6">
+              <PackingPage />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -174,6 +174,7 @@ export default function PackingPage() {
                 <th className="px-6 py-5 text-left text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] border-b dark:border-gray-700">Producto</th>
                 <th className="px-6 py-5 text-left text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] border-b dark:border-gray-700">Proveedor</th>
                 <th className="px-4 py-5 text-center text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] border-b dark:border-gray-700">Cajas</th>
+                <th className="px-4 py-5 text-center text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] border-b dark:border-gray-700 bg-indigo-50/30 dark:bg-indigo-900/10">Cant./Caja</th>
                 <th className="px-4 py-5 text-center text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] border-b dark:border-gray-700">P. Volumen</th>
                 <th className="px-4 py-5 text-center text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] border-b dark:border-gray-700">Peso Total</th>
                 <th className="px-6 py-5 text-center text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] border-b dark:border-gray-700 bg-yellow-50/30 dark:bg-yellow-900/10">Dimensiones (An x Al x La)</th>
@@ -183,7 +184,7 @@ export default function PackingPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {cargando && items.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-32 text-center">
+                  <td colSpan={8} className="px-6 py-32 text-center">
                     <Loader2 className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
                     <p className="text-gray-500 font-bold text-xl">Sincronizando con Supabase...</p>
                   </td>
@@ -208,7 +209,7 @@ export default function PackingPage() {
                     />
                   </td>
 
-                  {/* Cajas y Cantidad */}
+                  {/* Cajas */}
                   <td className="px-4 py-4 text-center">
                     <div className="flex flex-col items-center">
                         <input
@@ -218,6 +219,22 @@ export default function PackingPage() {
                           className="w-16 bg-transparent border-none rounded-lg px-2 py-1 text-center text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
                         />
                         <span className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter mt-1">N° Cajas</span>
+                    </div>
+                  </td>
+
+                  {/* Cantidad por Caja */}
+                  <td className="px-4 py-4 text-center bg-indigo-50/10 dark:bg-indigo-900/5">
+                    <div className="flex flex-col items-center">
+                      <div className="inline-flex flex-col items-center px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                        <input
+                          type="number"
+                          defaultValue={item.cantidad_por_caja}
+                          onBlur={(e) => actualizarInline(item.id, "cantidad_por_caja", parseInt(e.target.value) || 0)}
+                          className="w-14 bg-transparent border-none text-center text-sm font-black text-indigo-700 dark:text-indigo-400 focus:ring-0 p-0"
+                          title="Cantidad por caja"
+                        />
+                        <span className="text-[9px] text-indigo-500 font-bold uppercase tracking-wider">Und/Caja</span>
+                      </div>
                     </div>
                   </td>
 
