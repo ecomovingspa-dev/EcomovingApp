@@ -11,14 +11,12 @@ import {
     AlertCircle,
     Send,
     Edit3,
-    Wand2,
-    Sparkles,
     Check,
     Image as ImageIcon
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
-import { generateMarketingContent } from "../../lib/gemini";
+
 
 interface MarketingMessage {
     id: string;
@@ -40,13 +38,6 @@ export default function ListaContenidos() {
     const [vistaPrevia, setVistaPrevia] = useState<string | null>(null);
     const [editandoUrl, setEditandoUrl] = useState<string | null>(null);
     const [urlTemporal, setUrlTemporal] = useState("");
-    const [mostrarNuevo, setMostrarNuevo] = useState(false);
-    const [mostrarIA, setMostrarIA] = useState(false);
-    const [nuevoAsunto, setNuevoAsunto] = useState("");
-    const [nuevoContenido, setNuevoContenido] = useState("");
-    const [promptIA, setPromptIA] = useState("");
-    const [creando, setCreando] = useState(false);
-    const [generandoIA, setGenerandoIA] = useState(false);
 
     useEffect(() => {
         cargarMensajes();
@@ -70,92 +61,7 @@ export default function ListaContenidos() {
         }
     };
 
-    const crearContenido = async () => {
-        if (!nuevoAsunto || !nuevoContenido) {
-            alert("⚠️ Por favor completa el asunto y el contenido.");
-            return;
-        }
 
-        try {
-            setCreando(true);
-            const timestamp = Date.now();
-            const nombreImagen = `MKT-${timestamp}.jpg`;
-            const imagenUrl = `https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/imagenes-marketing/${nombreImagen}`;
-            const siguienteEnvio = mensajes.length > 0
-                ? Math.max(...mensajes.map(m => m.nombre_envio)) + 1
-                : 1;
-
-            // Extraer título y párrafo para el HTML
-            const lineas = nuevoContenido.split('\n').filter(l => l.trim() !== '');
-            const titulo = lineas[0] || "ECOMOVING";
-            const resto = lineas.slice(1).join('<br><br>');
-
-            const { data, error: dbError } = await supabase
-                .from("marketing")
-                .insert([{
-                    asunto: nuevoAsunto,
-                    cuerpo: nuevoContenido,
-                    nombre_envio: siguienteEnvio,
-                    nombre_imagen: nombreImagen,
-                    imagen_url: imagenUrl,
-                    cuerpo_html: `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;700;900&display=swap');
-        body { margin: 0; padding: 0; background-color: #f9f9f9; font-family: 'Outfit', sans-serif; color: #1a1a1a; }
-        .wrapper { width: 100%; background-color: #f9f9f9; padding: 40px 0; }
-        .main-container { width: 900px; background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 8px; margin: 0 auto; }
-        .h1 { font-size: 26px; font-weight: 800; line-height: 1.2; text-align: center; color: #000000; text-transform: uppercase; margin: 50px 0; }
-        .p { font-size: 19px; line-height: 1.6; color: #333333; font-weight: 300; text-align: center; margin: 0 80px 50px; }
-        .footer { padding: 50px; background-color: #fafafa; border-top: 1px solid #f0f0f0; text-align: center; font-size: 15px; color: #999999; }
-    </style>
-</head>
-<body>
-    <center class="wrapper">
-        <table class="main-container" width="900" border="0" cellpadding="0" cellspacing="0">
-            <tr><td align="center" style="padding: 50px 0;">
-                <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" alt="Ecomoving" width="250" />
-            </td></tr>
-            <tr><td align="center"><h1 class="h1">${titulo}</h1></td></tr>
-            <tr><td align="center" style="padding-bottom: 50px;">
-                <img src="${imagenUrl}" alt="Ecomoving" width="650" style="width: 650px; display: block; border-radius: 4px;" />
-            </td></tr>
-            <tr><td align="center"><p class="p">${resto}</p></td></tr>
-            <tr><td align="center" style="padding-bottom: 50px;">
-                <table style="background-color: #000000;">
-                    <tr><td style="padding: 12px 40px;">
-                        <a href="https://www.ecomoving.cl" style="color: #ffffff; text-decoration: none; font-weight: 900; text-transform: uppercase; letter-spacing: 3px;">EXPLORAR PORTAFOLIO</a>
-                    </td></tr>
-                </table>
-            </td></tr>
-            <tr><td class="footer">ECOMOVING SPA &bull; SANTIAGO, CHILE<br><br>ventas@ecomoving.cl</td></tr>
-        </table>
-    </center>
-</body>
-</html>`,
-                    estado: 'en revisión',
-                    activo: true
-                }])
-                .select();
-
-            if (dbError) throw dbError;
-
-            if (data) {
-                setMensajes([...mensajes, data[0]]);
-                setMostrarNuevo(false);
-                setNuevoAsunto("");
-                setNuevoContenido("");
-                alert("✅ Contenido creado con éxito.");
-            }
-        } catch (err: any) {
-            alert("❌ Error: " + err.message);
-        } finally {
-            setCreando(false);
-        }
-    };
 
     const pruebaEnvio = async (msg: MarketingMessage) => {
         if (!msg.imagen_url) {
@@ -255,162 +161,9 @@ export default function ListaContenidos() {
                     </p>
                 </div>
 
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => {
-                            setMostrarIA(!mostrarIA);
-                            setMostrarNuevo(false);
-                        }}
-                        className="bg-violet-600 hover:bg-violet-700 text-white flex items-center gap-2 shadow-lg shadow-violet-500/20 px-6 py-2.5 rounded-xl font-bold transition-all active:scale-95"
-                    >
-                        <Wand2 className="h-5 w-5" />
-                        Generación Mágica
-                    </button>
-                    <button
-                        onClick={() => {
-                            setMostrarNuevo(!mostrarNuevo);
-                            setMostrarIA(false);
-                        }}
-                        className="bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-2 shadow-lg shadow-emerald-500/20 px-6 py-2.5 rounded-xl font-bold transition-all active:scale-95"
-                    >
-                        <Plus className="h-5 w-5" />
-                        Nuevo Contenido
-                    </button>
-                </div>
+
             </div>
 
-            {/* Modal de IA (Generación Mágica) */}
-            {mostrarIA && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border-2 border-violet-100 dark:border-violet-900/50 overflow-hidden animate-in slide-in-from-top-4 duration-300">
-                    <div className="p-6 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-violet-900 dark:text-violet-100 flex items-center gap-2">
-                                <Sparkles className="h-5 w-5 text-violet-500" />
-                                Inteligencia Artificial Ecomoving
-                            </h3>
-                            <button onClick={() => setMostrarIA(false)} className="text-gray-400 hover:text-gray-600">✕</button>
-                        </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Describe el tema o producto y la IA creará el contenido completo por ti.</p>
-                        <div className="relative">
-                            <textarea
-                                value={promptIA}
-                                onChange={(e) => setPromptIA(e.target.value)}
-                                placeholder="Ej: Crea un correo elegante sobre nuestras nuevas soluciones de mobiliario sostenible para oficinas modernas..."
-                                className="w-full h-32 px-4 py-3 rounded-lg bg-violet-50/50 dark:bg-violet-900/10 border border-violet-100 dark:border-violet-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 outline-none transition-all resize-none"
-                            />
-                        </div>
-                        <button
-                            onClick={async () => {
-                                if (!promptIA.trim()) return;
-                                setGenerandoIA(true);
-                                try {
-                                    // Usar la librería gemini.ts para generar
-                                    // Pasamos una imagen dummy o vacía ya que ListaContenidos no maneja imagen de entrada ahora
-                                    const result = await generateMarketingContent("", promptIA);
-                                    
-                                    // Guardar directamente en la base de datos
-                                    const siguienteEnvio = mensajes.length > 0
-                                        ? Math.max(...mensajes.map(m => m.nombre_envio)) + 1
-                                        : 1;
-
-                                    const { data, error: dbError } = await supabase
-                                        .from("marketing")
-                                        .insert([{
-                                            asunto: result.subject,
-                                            cuerpo: `${result.part1}\n\n${result.part2}`,
-                                            cuerpo_html: result.html,
-                                            nombre_envio: siguienteEnvio,
-                                            estado: 'en revisión',
-                                            activo: true
-                                        }])
-                                        .select();
-
-                                    if (dbError) throw dbError;
-                                    if (data) {
-                                        setMensajes([...mensajes, data[0]]);
-                                        setMostrarIA(false);
-                                        setPromptIA("");
-                                        alert("✨ ¡Contenido generado y guardado!");
-                                    }
-                                } catch (err: any) {
-                                    alert("❌ Error IA: " + err.message);
-                                } finally {
-                                    setGenerandoIA(false);
-                                }
-                            }}
-                            disabled={generandoIA}
-                            className="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold h-12 shadow-lg shadow-violet-500/30 flex items-center justify-center gap-2 rounded-xl"
-                        >
-                            {generandoIA ? (
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                            ) : (
-                                <>
-                                    <Sparkles className="h-5 w-5" />
-                                    Generar y Guardar a la Biblioteca
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {mostrarNuevo && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-indigo-100 dark:border-indigo-900/50 overflow-hidden animate-in slide-in-from-top-4 duration-300">
-                    <div className="p-6 space-y-6">
-                        <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-4">
-                            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <Plus className="h-5 w-5 text-indigo-500" />
-                                Crear Nuevo Contenido
-                            </h3>
-                            <button onClick={() => setMostrarNuevo(false)} className="text-gray-400 hover:text-gray-600 transition-colors">✕</button>
-                        </div>
-
-                        <div className="grid gap-6">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Asunto del Correo</label>
-                                <input
-                                    type="text"
-                                    value={nuevoAsunto}
-                                    onChange={(e) => setNuevoAsunto(e.target.value)}
-                                    placeholder="Ej: Hidratación Sostenible Corporativa"
-                                    className="w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">Contenido (Título y Párrafo)</label>
-                                <textarea
-                                    value={nuevoContenido}
-                                    onChange={(e) => setNuevoContenido(e.target.value)}
-                                    placeholder="Primera línea: Título Principal&#10;Siguientes líneas: Cuerpo del mensaje"
-                                    className="w-full h-40 px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex items-center gap-4 pt-4">
-                            <Button
-                                onClick={crearContenido}
-                                disabled={creando}
-                                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-12 shadow-lg shadow-emerald-500/20"
-                            >
-                                {creando ? (
-                                    <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                                ) : (
-                                    "Guardar en la Biblioteca"
-                                )}
-                            </Button>
-                            <Button
-                                variant="outline"
-                                onClick={() => setMostrarNuevo(false)}
-                                className="h-12 px-8 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
-                            >
-                                Cancelar
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {error && (
                 <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 flex items-center gap-2 border border-red-100 dark:border-red-800">
