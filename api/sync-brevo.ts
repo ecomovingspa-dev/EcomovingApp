@@ -16,15 +16,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         console.log('🔄 Iniciando sincronización de estadísticas de Brevo...');
         
-        // 1. Obtener eventos de los últimos 7 días
+        // 1. Obtener eventos de los últimos 30 días
         const now = new Date();
-        const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
         
         const response = await axios.get('https://api.brevo.com/v3/smtp/statistics/events', {
             headers: { 'api-key': BREVO_API_KEY },
             params: {
-                limit: 100,
-                startDate: sevenDaysAgo.toISOString().split('T')[0],
+                limit: 1000,
+                startDate: thirtyDaysAgo.toISOString().split('T')[0],
                 endDate: now.toISOString().split('T')[0]
             }
         });
