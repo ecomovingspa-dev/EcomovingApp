@@ -11,7 +11,9 @@ import {
   Box,
   Scale,
   Maximize2,
-  Trash2
+  Trash2,
+  Plus,
+  X
 } from "lucide-react";
 
 interface PackingItem {
@@ -35,6 +37,18 @@ export default function PackingPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [creando, setCreando] = useState(false);
+  const [nuevoItem, setNuevoItem] = useState<Partial<PackingItem>>({
+    codigo: "",
+    proveedor: "",
+    n_cajas: 0,
+    cantidad_por_caja: 0,
+    ancho: 0,
+    alto: 0,
+    largo: 0,
+    kg_por_caja: 0
+  });
 
   useEffect(() => {
     cargarItems();
@@ -97,6 +111,50 @@ export default function PackingPage() {
     }
   };
 
+  const crearItem = async () => {
+    if (!nuevoItem.codigo) {
+      setError("El código es obligatorio");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
+
+    try {
+      setCreando(true);
+      const itemToInsert = {
+        codigo: nuevoItem.codigo,
+        proveedor: nuevoItem.proveedor || "",
+        n_cajas: nuevoItem.n_cajas || 0,
+        cantidad_por_caja: nuevoItem.cantidad_por_caja || 0,
+        ancho: nuevoItem.ancho || 0,
+        alto: nuevoItem.alto || 0,
+        largo: nuevoItem.largo || 0,
+        kg_por_caja: nuevoItem.kg_por_caja || 0,
+        peso_volumen: ((nuevoItem.n_cajas || 0) * ((nuevoItem.ancho || 0) * (nuevoItem.alto || 0) * (nuevoItem.largo || 0))) / 4000,
+        peso_kg: (nuevoItem.n_cajas || 0) * (nuevoItem.kg_por_caja || 0)
+      };
+
+      const { data, error: insertError } = await supabase
+        .from("packing_productos")
+        .insert([itemToInsert])
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+
+      setItems([data, ...items].sort((a, b) => a.codigo.localeCompare(b.codigo)));
+      setIsModalOpen(false);
+      setNuevoItem({
+        codigo: "", proveedor: "", n_cajas: 0, cantidad_por_caja: 0, ancho: 0, alto: 0, largo: 0, kg_por_caja: 0
+      });
+    } catch (err) {
+      console.error("Error al crear:", err);
+      setError("Error al crear el registro");
+      setTimeout(() => setError(""), 3000);
+    } finally {
+      setCreando(false);
+    }
+  };
+
   // Cálculos dinámicos para la UI (reflejando la lógica de la Vista)
   const calcularPesoVolumen = (i: PackingItem) => {
     return Number(((i.n_cajas * (i.ancho * i.alto * i.largo)) / 4000).toFixed(2));
@@ -155,6 +213,12 @@ export default function PackingPage() {
             className="px-6 py-4 bg-gray-100 dark:bg-gray-700 rounded-xl font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-200 transition-all flex items-center gap-2"
           >
             <RotateCcw className="h-4 w-4" /> Reset
+          </button>
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="px-6 py-4 bg-blue-600 rounded-xl font-bold text-white hover:bg-blue-700 transition-all flex items-center gap-2 shadow-lg shadow-blue-500/30"
+          >
+            <Plus className="h-5 w-5" /> Nuevo
           </button>
         </div>
       </div>
@@ -330,6 +394,107 @@ export default function PackingPage() {
             Divisor Volumétrico: <span className="text-blue-500 font-bold">4.000</span>
          </div>
       </div>
+      
+      {/* Modal Nuevo Registro */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-gray-100 dark:border-gray-700">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Package className="h-6 w-6 text-blue-600" /> Nuevo Registro de Packing
+              </h3>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Código</label>
+                  <input
+                    type="text"
+                    value={nuevoItem.codigo || ""}
+                    onChange={(e) => setNuevoItem({...nuevoItem, codigo: e.target.value.toUpperCase()})}
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 uppercase font-semibold"
+                    placeholder="Ej. M50"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Proveedor</label>
+                  <input
+                    type="text"
+                    value={nuevoItem.proveedor || ""}
+                    onChange={(e) => setNuevoItem({...nuevoItem, proveedor: e.target.value})}
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 font-medium"
+                    placeholder="Ej. Imblasco"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">N° Cajas</label>
+                  <input
+                    type="number"
+                    value={nuevoItem.n_cajas || ""}
+                    onChange={(e) => setNuevoItem({...nuevoItem, n_cajas: parseInt(e.target.value) || 0})}
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Cantidad por Caja</label>
+                  <input
+                    type="number"
+                    value={nuevoItem.cantidad_por_caja || ""}
+                    onChange={(e) => setNuevoItem({...nuevoItem, cantidad_por_caja: parseInt(e.target.value) || 0})}
+                    className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Dimensiones de la Caja (cm)</label>
+                <div className="flex items-center gap-2">
+                  <input type="number" placeholder="Ancho" value={nuevoItem.ancho || ""} onChange={(e) => setNuevoItem({...nuevoItem, ancho: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500" />
+                  <span className="text-gray-400 font-bold">×</span>
+                  <input type="number" placeholder="Alto" value={nuevoItem.alto || ""} onChange={(e) => setNuevoItem({...nuevoItem, alto: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500" />
+                  <span className="text-gray-400 font-bold">×</span>
+                  <input type="number" placeholder="Largo" value={nuevoItem.largo || ""} onChange={(e) => setNuevoItem({...nuevoItem, largo: parseFloat(e.target.value) || 0})} className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500" />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Peso Kg por Caja</label>
+                <input
+                  type="number"
+                  value={nuevoItem.kg_por_caja || ""}
+                  onChange={(e) => setNuevoItem({...nuevoItem, kg_por_caja: parseFloat(e.target.value) || 0})}
+                  className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+            </div>
+            
+            <div className="p-6 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="px-6 py-2 rounded-xl font-bold text-gray-600 hover:bg-gray-200 transition-colors"
+                disabled={creando}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={crearItem}
+                disabled={creando || !nuevoItem.codigo}
+                className="px-6 py-2 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all shadow-md shadow-blue-500/20"
+              >
+                {creando ? <Loader2 className="h-5 w-5 animate-spin" /> : "Guardar Registro"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
