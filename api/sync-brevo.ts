@@ -50,19 +50,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             'clicks': 90,
             'delivered': 80,
             'request': 50,
+            'requests': 50,
             'hard_bounce': 200,
+            'hardbounces': 200,
+            'soft_bounce': 200,
+            'softbounces': 200,
             'blocked': 200,
             'spam': 200,
             'invalid_email': 200,
+            'invalid': 200,
             'unsubscribed': 200
         };
 
         for (const event of events) {
             const email = (event.email || "").toLowerCase();
-            const status = event.event;
+            const status = (event.event || "").toLowerCase();
             const eventDate = event.date;
             const messageId = event.messageId;
-            const isBlocked = ['hard_bounce', 'blocked', 'invalid_email', 'unsubscribed', 'spam'].includes(status);
+            const isBlocked = ['hard_bounce', 'hardbounces', 'blocked', 'invalid_email', 'invalid', 'unsubscribed', 'spam'].includes(status);
             const currentPriority = statusPriority[status] || 0;
 
             // a) Para el Historial Histórico (Evita sobrescribir eventos importantes de un mismo mensaje)

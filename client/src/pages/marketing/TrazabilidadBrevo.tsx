@@ -139,25 +139,31 @@ export default function TrazabilidadBrevo() {
     if (eventosDelDia.length > 0) {
       // Jerarquía de importancia para el negocio
       const weights: Record<string, number> = { 
-        'hard_bounce': 1000, 
+        'hard_bounce': 1000,
+        'hardbounces': 1000, 
         'spam': 1000, 
         'soft_bounce': 900,
+        'softbounces': 900,
+        'invalid': 900,
+        'invalid_email': 900,
         'opened': 800, 
         'unique_opened': 800, 
+        'loadedbyproxy': 800,
         'clicks': 700, 
         'delivered': 500, 
         'request': 300,
+        'requests': 300,
         'deferred': 100
       };
       
       const topEvent = eventosDelDia.reduce((prev: any, curr: any) => 
-        (weights[curr.estado] || 0) > (weights[prev.estado] || 0) ? curr : prev
+        (weights[curr.estado?.toLowerCase()] || 0) > (weights[prev.estado?.toLowerCase()] || 0) ? curr : prev
       );
 
-      const status = topEvent.estado?.toLowerCase();
+      const status = topEvent.estado?.toLowerCase() || "";
 
       // REBOTES / BLOQUEOS
-      if (status.includes('bounce') || status === 'spam' || status === 'invalid_email') {
+      if (status.includes('bounce') || status === 'spam' || status.includes('invalid')) {
         return <AlertCircle className="h-4 w-4 text-red-500 animate-pulse" title={status.toUpperCase()} />;
       }
 
@@ -185,7 +191,7 @@ export default function TrazabilidadBrevo() {
       if (contacto.es_bloqueado) return <AlertCircle className="h-4 w-4 text-red-500 animate-pulse" />;
       const lastStatus = (contacto.ultimo_estado_brevo || "").toLowerCase();
 
-      if (lastStatus.includes('bounce') || lastStatus === 'spam') 
+      if (lastStatus.includes('bounce') || lastStatus === 'spam' || lastStatus.includes('invalid')) 
         return <AlertCircle className="h-4 w-4 text-red-500" />;
 
       if (lastStatus === "opened" || lastStatus === "unique_opened" || lastStatus === "clicks" || lastStatus === "loadedbyproxy") 
@@ -197,7 +203,7 @@ export default function TrazabilidadBrevo() {
             </button>
           </div>
         );
-      if (lastStatus === "delivered" || lastStatus === "request") 
+      if (lastStatus === "delivered" || lastStatus.includes("request")) 
         return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
       return <Mail className="h-4 w-4 text-blue-400" />;
     }
