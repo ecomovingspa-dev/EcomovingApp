@@ -54,7 +54,7 @@ export default function TrazabilidadBrevo() {
     // 1. Obtener base de contactos (Nutrición y Marketing únicamente)
     const { data: contactsData, error } = await supabase
       .from("contactos")
-      .select("*, cuentas(nombre)")
+      .select("*")
       .in("etapa", ["nutricion", "marketing"])
       .eq("estado", "activo")
       .not("correo", "is", null)
