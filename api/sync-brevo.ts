@@ -118,25 +118,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
         }
 
-        // Agregar los eventos históricos agrupados
-        for (const [msgId, data] of Object.entries(bestStatusPerMessage)) {
+        // Reemplazo de UPSERT fallido (Error Postgres 42P10: falta de constraint UNIQUE en mensaje_id)
+        // en su lugar usamos una estrategia DELETE -> INSERT MASIVO
+        
+        const messageIds = Object.keys(bestStatusPerMessage);
+        const newRecords = Object.entries(bestStatusPerMessage).map(([msgId, data]) => ({
+            contacto_id: emailMap[data.email],
+            email: data.email,
+            fecha: data.date.split('T')[0],
+            estado: data.status,
+            mensaje_id: msgId
+        }));
+
+        // 1. Purgar en bloques de a 200 para los messageIds que recibimos (Bypass de onConflict)
+        const chunkSize = 200;
+        for (let i = 0; i < messageIds.length; i += chunkSize) {
+            const chunk = messageIds.slice(i, i + chunkSize);
+            await supabase.from('trazabilidad_correos').delete().in('mensaje_id', chunk);
+        }
+
+        // 2. Insertar los nuevos registros puros (ya filtrados a máxima prioridad)
+        for (let i = 0; i < newRecords.length; i += chunkSize) {
+            const chunk = newRecords.slice(i, i + chunkSize);
             historicalUpdates.push(
-                supabase
-                    .from('trazabilidad_correos')
-                    .upsert({
-                        contacto_id: emailMap[data.email],
-                        email: data.email,
-                        fecha: data.date.split('T')[0],
-                        estado: data.status,
-                        mensaje_id: msgId
-                    }, { onConflict: 'mensaje_id' })
+                supabase.from('trazabilidad_correos').insert(chunk)
             );
         }
 
-        // 2. Ejecutar inserciones históricas (con catch individual para evitar falla total si la tabla no existe aún)
+        // 3. Ejecutar inserciones históricas de este lote
         const historicalResults = await Promise.allSettled(historicalUpdates);
         const savedHistory = historicalResults.filter(r => r.status === 'fulfilled').length;
-        console.log(`💾 Historial: ${savedHistory} eventos registrados.`);
+        console.log(`💾 Historial: Insertadas ${newRecords.length} filas en Supabase.`);
 
         // 3. Actualizar la tabla contactos con el estado consolidado
         const profileUpdates = Object.entries(bestStatusPerEmail).map(([email, data]) => (
