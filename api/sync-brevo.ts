@@ -39,7 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             
             if (eventsChunk.length < 1000) break;
             offset += 1000;
-            if (offset >= 5000) break; // Hard limit para evitar timeout de Vercel
+            if (offset >= 20000) break; // Límite expandido a 20k para cubrir capa de 6000 correos (cada uno genera 2.5 eventos en promedio)
         }
 
         const events = allEvents;
