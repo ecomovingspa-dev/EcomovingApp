@@ -54,7 +54,7 @@ export default function TrazabilidadBrevo() {
     // 1. Obtener base de contactos (Nutrición y Marketing únicamente)
     const { data: contactsData, error } = await supabase
       .from("contactos")
-      .select("*")
+      .select("*, cuentas(nombre)")
       .in("etapa", ["nutricion", "marketing"])
       .eq("estado", "activo")
       .not("correo", "is", null)
@@ -164,51 +164,51 @@ export default function TrazabilidadBrevo() {
 
       // REBOTES / BLOQUEOS
       if (status.includes('bounce') || status === 'spam' || status.includes('invalid')) {
-        return <AlertCircle className="h-4 w-4 text-red-500 animate-pulse" title={status.toUpperCase()} />;
+        return <AlertCircle className="h-5 w-5 text-red-500 animate-pulse" title={status.toUpperCase()} />;
       }
 
       // APERTURAS
       if (status === "opened" || status === "unique_opened" || status === "clicks" || status === "loadedbyproxy") 
         return (
-          <div className="flex flex-col items-center gap-1">
-            <Eye className="h-4 w-4 text-purple-400" />
+          <div className="flex flex-col items-center gap-1.5">
+            <Eye className="h-5 w-5 text-purple-400" />
             <button onClick={() => generateDraft(contacto)} className="p-0.5 bg-indigo-500 rounded-md hover:scale-110 transition-transform">
-              <Wrench className="h-2 w-2 text-white" />
+              <Wrench className="h-3 w-3 text-white" />
             </button>
           </div>
         );
 
       // ENTREGAS
-      if (status === "delivered" || status === "request") 
-        return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
+      if (status === "delivered" || status === "request" || status === "requests") 
+        return <CheckCircle2 className="h-5 w-5 text-emerald-400" />;
       
-      return <Mail className="h-4 w-4 text-blue-400" />;
+      return <Mail className="h-5 w-5 text-blue-400" />;
     }
 
     // 2. FALLBACK: Modelo antiguo (ultimo_envio único)
     const ultimoEnvio = contacto.ultimo_envio?.split('T')[0];
     if (ultimoEnvio === day) {
-      if (contacto.es_bloqueado) return <AlertCircle className="h-4 w-4 text-red-500 animate-pulse" />;
+      if (contacto.es_bloqueado) return <AlertCircle className="h-5 w-5 text-red-500 animate-pulse" />;
       const lastStatus = (contacto.ultimo_estado_brevo || "").toLowerCase();
 
       if (lastStatus.includes('bounce') || lastStatus === 'spam' || lastStatus.includes('invalid')) 
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
+        return <AlertCircle className="h-5 w-5 text-red-500" />;
 
       if (lastStatus === "opened" || lastStatus === "unique_opened" || lastStatus === "clicks" || lastStatus === "loadedbyproxy") 
         return (
-          <div className="flex flex-col items-center gap-1">
-            <Eye className="h-4 w-4 text-purple-400" />
+          <div className="flex flex-col items-center gap-1.5">
+            <Eye className="h-5 w-5 text-purple-400" />
             <button onClick={() => generateDraft(contacto)} className="p-0.5 bg-indigo-500 rounded-md hover:scale-110 transition-transform">
-              <Wrench className="h-2 w-2 text-white" />
+              <Wrench className="h-3 w-3 text-white" />
             </button>
           </div>
         );
       if (lastStatus === "delivered" || lastStatus.includes("request")) 
-        return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
-      return <Mail className="h-4 w-4 text-blue-400" />;
+        return <CheckCircle2 className="h-5 w-5 text-emerald-400" />;
+      return <Mail className="h-5 w-5 text-blue-400" />;
     }
     
-    return <div className="h-1 w-1 bg-gray-800 rounded-full" />; // Dot default
+    return <div className="h-1.5 w-1.5 bg-gray-800 rounded-full" />; // Dot default
   };
 
   const generateDraft = (c: any) => {
@@ -322,10 +322,14 @@ export default function TrazabilidadBrevo() {
             <tbody className="divide-y divide-gray-900">
               {filtered.map((c) => (
                 <tr key={c.id} className="group hover:bg-white/5 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-0.5">
-                      <div className="text-xs font-bold text-white uppercase truncate max-w-[180px]">
+                  <td className="px-4 py-5">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="text-sm font-bold text-white uppercase truncate max-w-[200px]">
                         {c.nombre?.replace('Contacto Principal - ', '') || 'SIN NOMBRE'}
+                      </div>
+                      <div className="text-[10px] text-gray-400 truncate max-w-[180px] font-medium flex items-center gap-1">
+                        <Building2 className="h-3 w-3 text-gray-500" />
+                        {c.cuentas?.nombre || c.empresa || 'Empresa No Asignada'}
                       </div>
                       <div className={`text-[8px] font-black px-1.5 py-0.5 rounded-sm inline-block w-fit ${
                         c.etapa === 'nutricion' ? 'bg-amber-500/10 text-amber-400 border border-amber-400/20' : 'bg-blue-500/10 text-blue-400 border border-blue-400/20'
@@ -336,7 +340,7 @@ export default function TrazabilidadBrevo() {
                   </td>
 
                   {calendarDays.map(d => (
-                    <td key={d.date} className="px-1 py-3 text-center border-l border-gray-900/10">
+                    <td key={d.date} className="px-1 py-5 text-center border-l border-gray-900/10">
                       <div className="flex justify-center items-center">
                         {getStatusIcon(c, d.date)}
                       </div>
