@@ -39,6 +39,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // 1. Agrupar eventos por email y determinar el "mejor" estado
         const bestStatusPerEmail: Record<string, { status: string, date: string, isBlocked: boolean }> = {};
+        const bestStatusPerMessage: Record<string, { email: string, status: string, date: string }> = {};
         const historicalUpdates = [];
 
         // Definición de importancia de estados
@@ -62,26 +63,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             const eventDate = event.date;
             const messageId = event.messageId;
             const isBlocked = ['hard_bounce', 'blocked', 'invalid_email', 'unsubscribed', 'spam'].includes(status);
+            const currentPriority = statusPriority[status] || 0;
 
-            // a) Para el Historial Histórico
-            if (emailMap[email]) {
+            // a) Para el Historial Histórico (Evita sobrescribir eventos importantes de un mismo mensaje)
+            if (emailMap[email] && messageId) {
+                const existingMsg = bestStatusPerMessage[messageId];
+                if (!existingMsg || currentPriority > (statusPriority[existingMsg.status] || 0)) {
+                    bestStatusPerMessage[messageId] = {
+                        email: email,
+                        status: status,
+                        date: eventDate
+                    };
+                }
+            } else if (emailMap[email] && !messageId) {
+                // Fallback si Brevo no envía messageId (raro)
                 const payload: any = {
                     contacto_id: emailMap[email],
                     email: email,
                     fecha: eventDate.split('T')[0],
                     estado: status,
                 };
-                if (messageId) payload.mensaje_id = messageId;
-
                 historicalUpdates.push(
-                    supabase
-                        .from('trazabilidad_correos')
-                        .upsert(payload, { onConflict: 'mensaje_id' })
+                    supabase.from('trazabilidad_correos').insert(payload)
                 );
             }
 
             // b) Para el Perfil de Contacto (Último estado)
-            const currentPriority = statusPriority[status] || 0;
             const existing = bestStatusPerEmail[email];
             
             if (!existing || currentPriority > (statusPriority[existing.status] || 0)) {
@@ -91,6 +98,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     isBlocked: isBlocked
                 };
             }
+        }
+
+        // Agregar los eventos históricos agrupados
+        for (const [msgId, data] of Object.entries(bestStatusPerMessage)) {
+            historicalUpdates.push(
+                supabase
+                    .from('trazabilidad_correos')
+                    .upsert({
+                        contacto_id: emailMap[data.email],
+                        email: data.email,
+                        fecha: data.date.split('T')[0],
+                        estado: data.status,
+                        mensaje_id: msgId
+                    }, { onConflict: 'mensaje_id' })
+            );
         }
 
         // 2. Ejecutar inserciones históricas (con catch individual para evitar falla total si la tabla no existe aún)
