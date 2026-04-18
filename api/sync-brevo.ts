@@ -16,21 +16,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         console.log('🔄 Iniciando sincronización de estadísticas de Brevo...');
         
-        // 1. Obtener eventos de los últimos 30 días
+        // 1. Obtener eventos de los últimos 30 días (hasta 5000 eventos via paginación)
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
         
-        const response = await axios.get('https://api.brevo.com/v3/smtp/statistics/events', {
-            headers: { 'api-key': BREVO_API_KEY },
-            params: {
-                limit: 1000,
-                startDate: thirtyDaysAgo.toISOString().split('T')[0],
-                endDate: now.toISOString().split('T')[0]
-            }
-        });
+        let allEvents: any[] = [];
+        let offset = 0;
+        
+        while(true) {
+            const response = await axios.get('https://api.brevo.com/v3/smtp/statistics/events', {
+                headers: { 'api-key': BREVO_API_KEY },
+                params: {
+                    limit: 1000,
+                    offset: offset,
+                    startDate: thirtyDaysAgo.toISOString().split('T')[0],
+                    endDate: now.toISOString().split('T')[0]
+                }
+            });
 
-        const events = response.data.events || [];
-        console.log(`📊 Recibidos ${events.length} eventos de Brevo.`);
+            const eventsChunk = response.data.events || [];
+            allEvents = allEvents.concat(eventsChunk);
+            
+            if (eventsChunk.length < 1000) break;
+            offset += 1000;
+            if (offset >= 5000) break; // Hard limit para evitar timeout de Vercel
+        }
+
+        const events = allEvents;
+        console.log(`📊 Recibidos ${events.length} eventos de Brevo en total.`);
 
         // 0. Mapear correos a IDs de contactos para asegurar integridad en la trazabilidad
         const { data: contactsBase } = await supabase.from('contactos').select('id, correo');
