@@ -67,6 +67,31 @@ export default function TrazabilidadBrevo() {
       return;
     }
 
+    // 1.5 Resolver manualmente los nombres de cuenta para eludir error FK de Supabase "ambiguous relationship"
+    const validContacts = contactsData || [];
+    const accountIdsToFetch = [...new Set(validContacts.map(c => c.cuenta_id).filter(Boolean))];
+    
+    let accountsMap: Record<string, string> = {};
+    if (accountIdsToFetch.length > 0) {
+      const { data: cuentasData } = await supabase
+        .from("cuentas")
+        .select("id, nombre")
+        .in("id", accountIdsToFetch);
+        
+      if (cuentasData) {
+        cuentasData.forEach((acc: any) => {
+          accountsMap[acc.id] = acc.nombre;
+        });
+      }
+    }
+
+    // Embed the account name string directly in the contact object mapping for the template fallback:
+    validContacts.forEach((c: any) => {
+      if (c.cuenta_id && accountsMap[c.cuenta_id]) {
+        c.empresa_rel_name = accountsMap[c.cuenta_id];
+      }
+    });
+
     // 2. Obtener historial (trazabilidad_correos) de forma segura
     let historyData: any[] = [];
     try {
@@ -329,7 +354,7 @@ export default function TrazabilidadBrevo() {
                       </div>
                       <div className="text-[10px] text-gray-400 truncate max-w-[180px] font-medium flex items-center gap-1">
                         <Building2 className="h-3 w-3 text-gray-500" />
-                        {c.cuentas?.nombre || c.empresa || 'Empresa No Asignada'}
+                        {c.empresa_rel_name || c.empresa || 'Empresa No Asignada'}
                       </div>
                       <div className={`text-[8px] font-black px-1.5 py-0.5 rounded-sm inline-block w-fit ${
                         c.etapa === 'nutricion' ? 'bg-amber-500/10 text-amber-400 border border-amber-400/20' : 'bg-blue-500/10 text-blue-400 border border-blue-400/20'
