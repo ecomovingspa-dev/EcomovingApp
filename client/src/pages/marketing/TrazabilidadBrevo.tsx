@@ -75,12 +75,12 @@ export default function TrazabilidadBrevo() {
     if (accountIdsToFetch.length > 0) {
       const { data: cuentasData } = await supabase
         .from("cuentas")
-        .select("id, nombre")
+        .select("id, cliente")
         .in("id", accountIdsToFetch);
         
       if (cuentasData) {
         cuentasData.forEach((acc: any) => {
-          accountsMap[acc.id] = acc.nombre;
+          accountsMap[acc.id] = acc.cliente;
         });
       }
     }
