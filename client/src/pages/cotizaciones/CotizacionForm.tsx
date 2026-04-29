@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, Save, X, Image as ImageIcon, Box, FileText, ChevronDown, ChevronUp, Layers, MousePointer2, ArrowLeft, Copy, Check, ChevronsUpDown, FolderOpen, Package } from "lucide-react";
+import { Plus, Trash2, Save, X, Image as ImageIcon, Box, FileText, ChevronDown, ChevronUp, Layers, MousePointer2, ArrowLeft, Copy, Check, ChevronsUpDown, FolderOpen, Package, Lock, Unlock } from "lucide-react";
 import BotonExportarPDF from "./CotizacionPDF";
 import PackingPage from "../logistica/PackingPage";
 
@@ -234,36 +234,81 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
   };
 
   const addSubCosto = (iid: number) => {
-    setCotizacion(prev => ({
-      ...prev,
-      items: (prev.items || []).map(it => it.id === iid ? {
-        ...it,
-        subcostos: [...it.subcostos, { id: Date.now(), proveedor: "", codigo: "", cantidad: 1, precio_unitario: 0, descuento: 0 }]
-      } : it)
-    }));
+    setCotizacion(prev => {
+      const items = (prev.items || []).map(it => {
+        if (it.id !== iid) return it;
+        
+        const oldCosto = it.subcostos.reduce((acc, sc) => acc + (sc.cantidad * sc.precio_unitario * (1 - sc.descuento / 100)), 0);
+        const netoBruto = oldCosto > 0 ? oldCosto / (1 - (it.margen || 0) / 100) : 0;
+        
+        const newSubcostos = [...it.subcostos, { id: Date.now(), proveedor: "", codigo: "", cantidad: 1, precio_unitario: 0, descuento: 0 }];
+        const newCosto = newSubcostos.reduce((acc, sc) => acc + (sc.cantidad * sc.precio_unitario * (1 - sc.descuento / 100)), 0);
+        
+        let newMargen = it.margen;
+        if (it.precio_fijo && netoBruto > 0) {
+           newMargen = 100 * (1 - newCosto / netoBruto);
+        }
+        
+        return {
+          ...it,
+          subcostos: newSubcostos,
+          margen: it.precio_fijo ? parseFloat(newMargen.toFixed(2)) : it.margen
+        };
+      });
+      return { ...prev, items };
+    });
   };
 
   const updateSubCosto = (iid: number, sid: number, updates: Partial<SubCosto>) => {
-    setCotizacion(prev => ({
-      ...prev,
-      items: (prev.items || []).map(it => {
+    setCotizacion(prev => {
+      const items = (prev.items || []).map(it => {
         if (it.id !== iid) return it;
+        
+        const oldCosto = it.subcostos.reduce((acc, sc) => acc + (sc.cantidad * sc.precio_unitario * (1 - sc.descuento / 100)), 0);
+        const netoBruto = oldCosto > 0 ? oldCosto / (1 - (it.margen || 0) / 100) : 0;
+        
+        const newSubcostos = it.subcostos.map(sc => sc.id === sid ? { ...sc, ...updates } : sc);
+        const newCosto = newSubcostos.reduce((acc, sc) => acc + (sc.cantidad * sc.precio_unitario * (1 - sc.descuento / 100)), 0);
+        
+        let newMargen = it.margen;
+        if (it.precio_fijo && netoBruto > 0) {
+           newMargen = 100 * (1 - newCosto / netoBruto);
+        }
+        
         return {
           ...it,
-          subcostos: it.subcostos.map(sc => sc.id === sid ? { ...sc, ...updates } : sc)
+          subcostos: newSubcostos,
+          margen: it.precio_fijo ? parseFloat(newMargen.toFixed(2)) : it.margen
         };
-      })
-    }));
+      });
+      return { ...prev, items };
+    });
   };
 
   const removeSubCosto = (iid: number, sid: number) => {
-    setCotizacion(prev => ({
-      ...prev,
-      items: (prev.items || []).map(it => it.id === iid ? {
-        ...it,
-        subcostos: it.subcostos.filter(sc => sc.id !== sid)
-      } : it)
-    }));
+    setCotizacion(prev => {
+      const items = (prev.items || []).map(it => {
+        if (it.id !== iid) return it;
+        
+        const oldCosto = it.subcostos.reduce((acc, sc) => acc + (sc.cantidad * sc.precio_unitario * (1 - sc.descuento / 100)), 0);
+        const netoBruto = oldCosto > 0 ? oldCosto / (1 - (it.margen || 0) / 100) : 0;
+        
+        const newSubcostos = it.subcostos.filter(sc => sc.id !== sid);
+        const newCosto = newSubcostos.reduce((acc, sc) => acc + (sc.cantidad * sc.precio_unitario * (1 - sc.descuento / 100)), 0);
+        
+        let newMargen = it.margen;
+        if (it.precio_fijo && netoBruto > 0) {
+           newMargen = 100 * (1 - newCosto / netoBruto);
+        }
+        
+        return {
+          ...it,
+          subcostos: newSubcostos,
+          margen: it.precio_fijo ? parseFloat(newMargen.toFixed(2)) : it.margen
+        };
+      });
+      return { ...prev, items };
+    });
   };
 
   // Cálculos Automáticos
@@ -994,13 +1039,20 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
                             <div className="space-y-1">
                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right block italic">Unit. Venta</label>
-                               <div className="h-12 flex items-center justify-end px-3 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-[11px] font-black text-emerald-600 shadow-sm border border-gray-100/50 dark:border-gray-700/50 leading-none">
-                                 {(() => {
-                                    const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
-                                    const netoBruto = costo / (1 - (item.margen || 0)/100);
-                                    const unit = (item.cantidad || 0) > 0 ? Math.round(netoBruto / item.cantidad) : 0;
-                                    return `$${unit.toLocaleString("es-CL")}`;
-                                 })()}
+                               <div 
+                                 onClick={() => updateItem(item.id, { precio_fijo: !item.precio_fijo })}
+                                 className="h-12 flex items-center justify-between px-3 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-[11px] font-black text-emerald-600 shadow-sm border border-gray-100/50 dark:border-gray-700/50 leading-none cursor-pointer group transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                                 title={item.precio_fijo ? "Precio bloqueado: El margen absorberá cambios en los costos" : "Precio libre: Cambios en el costo modificarán el precio de venta"}
+                               >
+                                 {item.precio_fijo ? <Lock className="h-3.5 w-3.5 text-red-400" /> : <Unlock className="h-3.5 w-3.5 text-gray-400 opacity-40 group-hover:opacity-100 transition-opacity" />}
+                                 <span>
+                                  {(() => {
+                                     const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
+                                     const netoBruto = costo / (1 - (item.margen || 0)/100);
+                                     const unit = (item.cantidad || 0) > 0 ? Math.round(netoBruto / item.cantidad) : 0;
+                                     return `$${unit.toLocaleString("es-CL")}`;
+                                  })()}
+                                 </span>
                                </div>
                             </div>
 
