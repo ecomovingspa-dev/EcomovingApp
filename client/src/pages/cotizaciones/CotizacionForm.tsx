@@ -313,10 +313,9 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
   // Cálculos Automáticos
   useEffect(() => {
-    // GUARDRAIL @protocolo: Si la cotización ya está en un estado final, 
-    // no recalcular totales para no alterar documentos ya emitidos.
-    const estadosFinales = ["Facturada", "Despachada", "Producción"];
-    if (estadosFinales.includes(cotizacion.estado_cotizacion || "")) return;
+    // GUARDRAIL RELAJADO @protocolo: El candado de "precio_fijo" a nivel de ítem ahora
+    // se encarga de proteger el precio de venta. Permitimos recalcular aquí para que
+    // la conciliación refleje los nuevos costos, ganancias y márgenes en el dashboard.
 
     const items = cotizacion.items || [];
     let costoTotal = 0;
