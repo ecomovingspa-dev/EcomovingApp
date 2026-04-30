@@ -1020,7 +1020,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
                         {/* Columna Derecha: Bloque de Valores Financieros y Acciones */}
                         <div className="lg:col-span-5 space-y-4 pt-1">
-                          <div className="grid grid-cols-4 gap-2">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                             <div className="space-y-1">
                                <label className="text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center block">Cant.</label>
                                <Input 
@@ -1127,71 +1127,75 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                             </div>
                             
                             {/* Header de Columnas Subcostos */}
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-3 px-4 mb-1">
-                               <div className="md:col-span-3 text-[9px] font-black text-gray-400 uppercase tracking-tighter">Proveedor / Detalle</div>
-                               <div className="md:col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-tighter">Código SKU</div>
-                               <div className="md:col-span-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center">Cant.</div>
-                               <div className="md:col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right">Unit. ($)</div>
-                               <div className="md:col-span-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center">Desc %</div>
-                               <div className="md:col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right">Subtotal</div>
-                               <div className="md:col-span-1"></div>
-                            </div>
+                            <div className="overflow-x-auto pb-2">
+                              <div className="min-w-[700px]">
+                                <div className="grid grid-cols-12 gap-3 px-4 mb-1">
+                                   <div className="col-span-3 text-[9px] font-black text-gray-400 uppercase tracking-tighter">Proveedor / Detalle</div>
+                                   <div className="col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-tighter">Código SKU</div>
+                                   <div className="col-span-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center">Cant.</div>
+                                   <div className="col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right">Unit. ($)</div>
+                                   <div className="col-span-1 text-[9px] font-black text-gray-400 uppercase tracking-tighter text-center">Desc %</div>
+                                   <div className="col-span-2 text-[9px] font-black text-gray-400 uppercase tracking-tighter text-right">Subtotal</div>
+                                   <div className="col-span-1"></div>
+                                </div>
 
-                            <div className="space-y-1">
-                               {(item.subcostos || []).map(sc => (
-                                 <div key={sc.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-gray-50/30 dark:bg-gray-800/10 p-2 px-4 rounded-xl border border-transparent hover:border-blue-100 dark:hover:border-blue-900/30 hover:bg-blue-50/30 transition-all group">
-                                    <div className="md:col-span-3">
-                                      <Input 
-                                        value={sc.proveedor}
-                                        onChange={(e) => updateSubCosto(item.id, sc.id, { proveedor: e.target.value })}
-                                        className="h-9 bg-white dark:bg-gray-900 border-none font-medium text-xs shadow-none px-2 focus:ring-1 focus:ring-blue-500"
-                                        placeholder="Nombre..."
-                                      />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                      <Input 
-                                        value={sc.codigo}
-                                        onChange={(e) => updateSubCosto(item.id, sc.id, { codigo: e.target.value })}
-                                        className="h-9 bg-white dark:bg-gray-900 border-none font-black text-[10px] text-blue-400 px-2 uppercase shadow-none"
-                                        placeholder="SKU"
-                                      />
-                                    </div>
-                                    <div className="md:col-span-1">
-                                      <Input 
-                                        type="number"
-                                        value={sc.cantidad}
-                                        onChange={(e) => updateSubCosto(item.id, sc.id, { cantidad: Number(e.target.value) })}
-                                        className="h-9 bg-white dark:bg-gray-900 border-none font-bold text-xs text-center shadow-none"
-                                      />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                      <Input 
-                                        type="number"
-                                        value={sc.precio_unitario}
-                                        onChange={(e) => updateSubCosto(item.id, sc.id, { precio_unitario: Number(e.target.value) })}
-                                        className="h-9 bg-white dark:bg-gray-900 border-none font-black text-xs text-right text-emerald-600 px-2 shadow-none"
-                                      />
-                                    </div>
-                                    <div className="md:col-span-1">
-                                      <Input 
-                                        type="number"
-                                        value={sc.descuento}
-                                        onChange={(e) => updateSubCosto(item.id, sc.id, { descuento: Number(e.target.value) })}
-                                        className="h-9 bg-white dark:bg-gray-900 border-none font-bold text-xs text-center text-red-400 px-1 shadow-none"
-                                      />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                      <div className="h-9 flex items-center justify-end px-2 text-xs font-black text-gray-500">
-                                        ${Math.round((sc.cantidad || 0) * (sc.precio_unitario || 0) * (1 - (sc.descuento || 0)/100)).toLocaleString("es-CL")}
-                                      </div>
-                                    </div>
-                                    <div className="md:col-span-1 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <Button variant="ghost" onClick={() => removeSubCosto(item.id, sc.id)} className="h-8 w-8 text-gray-300 hover:text-red-500 p-0">
-                                         <X className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                 </div>
-                               ))}
+                                <div className="space-y-1">
+                                   {(item.subcostos || []).map(sc => (
+                                     <div key={sc.id} className="grid grid-cols-12 gap-3 items-center bg-gray-50/30 dark:bg-gray-800/10 p-2 px-4 rounded-xl border border-transparent hover:border-blue-100 dark:hover:border-blue-900/30 hover:bg-blue-50/30 transition-all group">
+                                        <div className="col-span-3">
+                                          <Input 
+                                            value={sc.proveedor}
+                                            onChange={(e) => updateSubCosto(item.id, sc.id, { proveedor: e.target.value })}
+                                            className="h-9 bg-white dark:bg-gray-900 border-none font-medium text-xs shadow-none px-2 focus:ring-1 focus:ring-blue-500"
+                                            placeholder="Nombre..."
+                                          />
+                                        </div>
+                                        <div className="col-span-2">
+                                          <Input 
+                                            value={sc.codigo}
+                                            onChange={(e) => updateSubCosto(item.id, sc.id, { codigo: e.target.value })}
+                                            className="h-9 bg-white dark:bg-gray-900 border-none font-black text-[10px] text-blue-400 px-2 uppercase shadow-none"
+                                            placeholder="SKU"
+                                          />
+                                        </div>
+                                        <div className="col-span-1">
+                                          <Input 
+                                            type="number"
+                                            value={sc.cantidad}
+                                            onChange={(e) => updateSubCosto(item.id, sc.id, { cantidad: Number(e.target.value) })}
+                                            className="h-9 bg-white dark:bg-gray-900 border-none font-bold text-xs text-center shadow-none"
+                                          />
+                                        </div>
+                                        <div className="col-span-2">
+                                          <Input 
+                                            type="number"
+                                            value={sc.precio_unitario}
+                                            onChange={(e) => updateSubCosto(item.id, sc.id, { precio_unitario: Number(e.target.value) })}
+                                            className="h-9 bg-white dark:bg-gray-900 border-none font-black text-xs text-right text-emerald-600 px-2 shadow-none"
+                                          />
+                                        </div>
+                                        <div className="col-span-1">
+                                          <Input 
+                                            type="number"
+                                            value={sc.descuento}
+                                            onChange={(e) => updateSubCosto(item.id, sc.id, { descuento: Number(e.target.value) })}
+                                            className="h-9 bg-white dark:bg-gray-900 border-none font-bold text-xs text-center text-red-400 px-1 shadow-none"
+                                          />
+                                        </div>
+                                        <div className="col-span-2">
+                                          <div className="h-9 flex items-center justify-end px-2 text-xs font-black text-gray-500">
+                                            ${Math.round((sc.cantidad || 0) * (sc.precio_unitario || 0) * (1 - (sc.descuento || 0)/100)).toLocaleString("es-CL")}
+                                          </div>
+                                        </div>
+                                        <div className="col-span-1 flex justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                          <Button variant="ghost" onClick={() => removeSubCosto(item.id, sc.id)} className="h-8 w-8 text-gray-300 hover:text-red-500 p-0">
+                                             <X className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                     </div>
+                                   ))}
+                                </div>
+                              </div>
                             </div>
                          </div>
                       </div>
