@@ -250,6 +250,29 @@ export default function ContactosPage() {
     }
   };
 
+  const actualizarSegmentoCuenta = async (cuentaId: string, nuevoSegmento: string) => {
+    if (!cuentaId) return;
+    try {
+      const { error } = await supabase
+        .from("cuentas")
+        .update({ segmento: nuevoSegmento })
+        .eq("id", cuentaId);
+
+      if (error) throw error;
+
+      // Actualización optimista
+      setContactos(prev =>
+        prev.map(c => (c.cuenta_id === cuentaId ? { ...c, cuentas: { ...c.cuentas!, segmento: nuevoSegmento } } : c))
+      );
+      
+      setMensaje(`✅ Segmento actualizado`);
+      setTimeout(() => setMensaje(""), 2000);
+    } catch (error: any) {
+      console.error("Error al actualizar segmento:", error);
+      setMensaje("❌ Error al guardar cambios");
+    }
+  };
+
   // Los grupos ya están filtrados por el servidor ahora
   const gruposFiltrados = contactos;
 
@@ -577,7 +600,16 @@ export default function ContactosPage() {
 
                     {/* Segmento */}
                     <td className="px-4 py-3 whitespace-nowrap text-[10px] uppercase font-bold tracking-tight text-gray-600 dark:text-gray-400">
-                      {contacto.cuentas?.segmento || "-"}
+                      <select
+                        value={contacto.cuentas?.segmento || ""}
+                        onChange={(e) => actualizarSegmentoCuenta(contacto.cuenta_id, e.target.value)}
+                        className="bg-transparent border-none p-0 w-full text-gray-600 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 rounded outline-none uppercase font-bold tracking-tight cursor-pointer"
+                      >
+                        <option value="">-</option>
+                        {availableSegments.map((seg) => (
+                          <option key={seg} value={seg}>{seg}</option>
+                        ))}
+                      </select>
                     </td>
 
                     {/* Acciones */}
