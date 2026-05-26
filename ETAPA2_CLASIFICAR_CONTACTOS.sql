@@ -1,47 +1,28 @@
 -- ============================================================================
--- ETAPA 2: CLASIFICAR CONTACTOS EXISTENTES
--- Asigna etapa = 'prospeccion' o 'marketing' según datos del contacto
+-- ETAPA 2: CLASIFICAR CONTACTOS EXISTENTES (Actualizado a 3 etapas)
 -- Ejecutar en Supabase SQL Editor
 -- ============================================================================
 
--- ────────────────────────────────────────────────────────────────
--- PASO 1: Diagnóstico previo (ver cuántos hay en cada caso)
--- ────────────────────────────────────────────────────────────────
-
--- Contactos CON correo y SIN nombre → candidatos a Prospección
-SELECT 'PROSPECCION' AS clasificacion, COUNT(*) AS total
-FROM contactos
-WHERE correo IS NOT NULL
-  AND correo != ''
-  AND (nombre IS NULL OR TRIM(nombre) = '');
-
--- Contactos CON correo y CON nombre → Marketing
--- (ya tienen etapa = 'marketing' por default, pero verificamos)
-SELECT 'MARKETING' AS clasificacion, COUNT(*) AS total
-FROM contactos
-WHERE correo IS NOT NULL
-  AND correo != ''
-  AND nombre IS NOT NULL
-  AND TRIM(nombre) != '';
-
-
--- ────────────────────────────────────────────────────────────────
--- PASO 2: Clasificar contactos sin nombre como 'prospeccion'
--- ────────────────────────────────────────────────────────────────
-
+-- 1. Prospección: Sin Nombre y Sin Correo (o correos genéricos)
 UPDATE contactos
 SET etapa = 'prospeccion'
-WHERE correo IS NOT NULL
-  AND correo != ''
-  AND (nombre IS NULL OR TRIM(nombre) = '')
-  AND etapa != 'prospeccion';
+WHERE (nombre IS NULL OR TRIM(nombre) = '')
+  AND (correo IS NULL OR TRIM(correo) = '');
 
+-- 2. Nutrición: Sin Nombre pero CON Correo
+UPDATE contactos
+SET etapa = 'nutricion'
+WHERE (nombre IS NULL OR TRIM(nombre) = '')
+  AND (correo IS NOT NULL AND TRIM(correo) != '');
 
--- ────────────────────────────────────────────────────────────────
--- PASO 3: Verificación final
--- ────────────────────────────────────────────────────────────────
+-- 3. Marketing: CON Nombre y CON Correo
+UPDATE contactos
+SET etapa = 'marketing'
+WHERE (nombre IS NOT NULL AND TRIM(nombre) != '')
+  AND (correo IS NOT NULL AND TRIM(correo) != '');
 
-SELECT etapa, estado, COUNT(*) AS total
+-- Verificación de cómo quedaron los datos
+SELECT etapa, COUNT(*) AS total
 FROM contactos
-GROUP BY etapa, estado
-ORDER BY etapa, estado;
+GROUP BY etapa
+ORDER BY etapa;
