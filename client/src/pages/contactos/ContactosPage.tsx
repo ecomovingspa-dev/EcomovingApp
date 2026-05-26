@@ -440,11 +440,11 @@ export default function ContactosPage() {
                 <tr className="text-[10px] font-black uppercase tracking-widest text-gray-400">
                   <th className="px-4 py-4 text-left w-[20%]">Nombre / Empresa</th>
                   <th className="px-4 py-4 text-left w-[15%]">Correo</th>
-                  <th className="px-4 py-4 text-left w-[10%]">Celular</th>
-                  <th className="px-4 py-4 text-left w-[10%]">Teléfono</th>
-                  <th className="px-4 py-4 text-left w-[14%]">Depto</th>
+                  <th className="px-4 py-4 text-left w-[12%]">Cel/Tel</th>
+                  <th className="px-4 py-4 text-left w-[12%]">Depto</th>
                   <th className="px-4 py-4 text-left w-[7%]">Estado</th>
-                  <th className="px-4 py-4 text-left w-[16%]">Etapa</th>
+                  <th className="px-4 py-4 text-left w-[10%]">Etapa</th>
+                  <th className="px-4 py-4 text-left w-[16%]">Segmento</th>
                   <th className="sticky right-0 px-4 py-4 text-right w-[8%] bg-gray-900 border-l border-gray-800 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.5)]">Acciones</th>
                 </tr>
               </thead>
@@ -492,34 +492,34 @@ export default function ContactosPage() {
                       />
                     </td>
 
-                    {/* Celular */}
+                    {/* Celular / Teléfono */}
                     <td className="px-4 py-3 whitespace-nowrap text-[11px]">
-                      <input
-                        type="text"
-                        defaultValue={contacto.celular || ""}
-                        onBlur={(e) => {
-                          if (e.target.value !== (contacto.celular || "")) {
-                            actualizarCampo(contacto.id, "celular", e.target.value);
-                          }
-                        }}
-                        className="bg-transparent border-none p-0 w-full text-gray-500 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 rounded outline-none"
-                        title={contacto.celular}
-                      />
-                    </td>
-
-                    {/* Teléfono */}
-                    <td className="px-4 py-3 whitespace-nowrap text-[11px]">
-                      <input
-                        type="text"
-                        defaultValue={contacto.telefono || ""}
-                        onBlur={(e) => {
-                          if (e.target.value !== (contacto.telefono || "")) {
-                            actualizarCampo(contacto.id, "telefono", e.target.value);
-                          }
-                        }}
-                        className="bg-transparent border-none p-0 w-full text-gray-500 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 rounded outline-none"
-                        title={contacto.telefono}
-                      />
+                      <div className="flex flex-col gap-1">
+                        <input
+                          type="text"
+                          placeholder="Celular"
+                          defaultValue={contacto.celular || ""}
+                          onBlur={(e) => {
+                            if (e.target.value !== (contacto.celular || "")) {
+                              actualizarCampo(contacto.id, "celular", e.target.value);
+                            }
+                          }}
+                          className="bg-transparent border-none p-0 w-full text-gray-500 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 rounded outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                          title={contacto.celular}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Teléfono"
+                          defaultValue={contacto.telefono || ""}
+                          onBlur={(e) => {
+                            if (e.target.value !== (contacto.telefono || "")) {
+                              actualizarCampo(contacto.id, "telefono", e.target.value);
+                            }
+                          }}
+                          className="bg-transparent border-none p-0 w-full text-gray-500 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 rounded outline-none placeholder:text-gray-300 dark:placeholder:text-gray-600"
+                          title={contacto.telefono}
+                        />
+                      </div>
                     </td>
 
                     {/* Departamento */}
@@ -573,6 +573,11 @@ export default function ContactosPage() {
                           📬 Mktg.
                         </span>
                       )}
+                    </td>
+
+                    {/* Segmento */}
+                    <td className="px-4 py-3 whitespace-nowrap text-[10px] uppercase font-bold tracking-tight text-gray-600 dark:text-gray-400">
+                      {contacto.cuentas?.segmento || "-"}
                     </td>
 
                     {/* Acciones */}
