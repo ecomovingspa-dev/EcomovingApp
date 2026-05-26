@@ -273,6 +273,29 @@ export default function ContactosPage() {
     }
   };
 
+  const actualizarSectorCuenta = async (cuentaId: string, nuevoSector: string) => {
+    if (!cuentaId) return;
+    try {
+      const { error } = await supabase
+        .from("cuentas")
+        .update({ sector: nuevoSector })
+        .eq("id", cuentaId);
+
+      if (error) throw error;
+
+      // Actualización optimista
+      setContactos(prev =>
+        prev.map(c => (c.cuenta_id === cuentaId ? { ...c, cuentas: { ...c.cuentas!, sector: nuevoSector } } : c))
+      );
+      
+      setMensaje(`✅ Sector actualizado`);
+      setTimeout(() => setMensaje(""), 2000);
+    } catch (error: any) {
+      console.error("Error al actualizar sector:", error);
+      setMensaje("❌ Error al guardar cambios");
+    }
+  };
+
   // Los grupos ya están filtrados por el servidor ahora
   const gruposFiltrados = contactos;
 
@@ -461,13 +484,14 @@ export default function ContactosPage() {
             <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-900 border-b border-gray-800">
                 <tr className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  <th className="px-4 py-4 text-left w-[20%]">Nombre / Empresa</th>
-                  <th className="px-4 py-4 text-left w-[15%]">Correo</th>
-                  <th className="px-4 py-4 text-left w-[12%]">Cel/Tel</th>
-                  <th className="px-4 py-4 text-left w-[12%]">Depto</th>
+                  <th className="px-4 py-4 text-left w-[18%]">Nombre / Empresa</th>
+                  <th className="px-4 py-4 text-left w-[14%]">Correo</th>
+                  <th className="px-4 py-4 text-left w-[11%]">Cel/Tel</th>
+                  <th className="px-4 py-4 text-left w-[11%]">Depto</th>
                   <th className="px-4 py-4 text-left w-[7%]">Estado</th>
-                  <th className="px-4 py-4 text-left w-[10%]">Etapa</th>
-                  <th className="px-4 py-4 text-left w-[16%]">Segmento</th>
+                  <th className="px-4 py-4 text-left w-[9%]">Etapa</th>
+                  <th className="px-4 py-4 text-left w-[11%]">Segmento</th>
+                  <th className="px-4 py-4 text-left w-[11%]">Sector</th>
                   <th className="sticky right-0 px-4 py-4 text-right w-[8%] bg-gray-900 border-l border-gray-800 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.5)]">Acciones</th>
                 </tr>
               </thead>
@@ -608,6 +632,20 @@ export default function ContactosPage() {
                         <option value="">-</option>
                         {availableSegments.map((seg) => (
                           <option key={seg} value={seg}>{seg}</option>
+                        ))}
+                      </select>
+                    </td>
+
+                    {/* Sector */}
+                    <td className="px-4 py-3 whitespace-nowrap text-[10px] uppercase font-bold tracking-tight text-gray-600 dark:text-gray-400">
+                      <select
+                        value={contacto.cuentas?.sector || ""}
+                        onChange={(e) => actualizarSectorCuenta(contacto.cuenta_id, e.target.value)}
+                        className="bg-transparent border-none p-0 w-full text-gray-600 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 rounded outline-none uppercase font-bold tracking-tight cursor-pointer"
+                      >
+                        <option value="">-</option>
+                        {availableSectors.map((sec) => (
+                          <option key={sec} value={sec}>{sec}</option>
                         ))}
                       </select>
                     </td>
