@@ -438,13 +438,13 @@ export default function ContactosPage() {
             <table className="w-full table-fixed divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-900 border-b border-gray-800">
                 <tr className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                  <th className="px-4 py-4 text-left w-[28%]">Nombre / Empresa</th>
+                  <th className="px-4 py-4 text-left w-[20%]">Nombre / Empresa</th>
                   <th className="px-4 py-4 text-left w-[15%]">Correo</th>
                   <th className="px-4 py-4 text-left w-[10%]">Celular</th>
                   <th className="px-4 py-4 text-left w-[10%]">Teléfono</th>
                   <th className="px-4 py-4 text-left w-[14%]">Depto</th>
                   <th className="px-4 py-4 text-left w-[7%]">Estado</th>
-                  <th className="px-4 py-4 text-left w-[8%]">Etapa</th>
+                  <th className="px-4 py-4 text-left w-[16%]">Etapa</th>
                   <th className="sticky right-0 px-4 py-4 text-right w-[8%] bg-gray-900 border-l border-gray-800 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.5)]">Acciones</th>
                 </tr>
               </thead>
