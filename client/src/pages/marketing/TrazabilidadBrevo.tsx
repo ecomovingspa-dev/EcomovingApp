@@ -51,11 +51,11 @@ export default function TrazabilidadBrevo() {
   const fetchContactos = async (days: CalendarDay[]) => {
     setLoading(true);
     
-    // 1. Obtener base de contactos (Nutrición y Marketing únicamente)
+    // 1. Obtener base de contactos (Prospección, Nutrición y Marketing)
     const { data: contactsData, error } = await supabase
       .from("contactos")
       .select("*")
-      .in("etapa", ["nutricion", "marketing"])
+      .in("etapa", ["prospeccion", "nutricion", "marketing"])
       .eq("estado", "activo")
       .not("correo", "is", null)
       .neq("correo", "")
@@ -300,6 +300,7 @@ export default function TrazabilidadBrevo() {
             <SelectContent className="bg-gray-900 border-gray-800 text-white">
               <SelectItem value="todos">TODAS LAS ETAPAS</SelectItem>
               <SelectItem value="marketing">MARKETING</SelectItem>
+              <SelectItem value="nutricion">NUTRICIÓN</SelectItem>
               <SelectItem value="prospeccion">PROSPECCIÓN</SelectItem>
             </SelectContent>
           </Select>
