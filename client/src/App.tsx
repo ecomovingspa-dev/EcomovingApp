@@ -18,6 +18,7 @@ const ComprasPage = lazy(() => import("./pages/compras/ComprasPage"));
 const ConciliacionPage = lazy(() => import("./pages/conciliacion/ConciliacionPage"));
 const Marketing = lazy(() => import("./pages/marketing/marketing"));
 const PackingPage = lazy(() => import("./pages/logistica/PackingPage"));
+const PizarrONPage = lazy(() => import("./pages/pizarron/PizarrONPage"));
 
 
 
@@ -64,6 +65,9 @@ export default function App() {
 
             {/* Marketing */}
             <Route path="marketing" element={<Marketing />} />
+
+            {/* Pizarrón */}
+            <Route path="pizarron" element={<PizarrONPage />} />
 
             {/* Logística - Packing */}
             <Route path="packing" element={<PackingPage />} />

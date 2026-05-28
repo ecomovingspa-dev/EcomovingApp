@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   ArrowRightLeft,
   Package,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -38,7 +39,7 @@ export default function Layout() {
     { path: "/contactos", label: "Contactos", icon: Users },
     { path: "/marketing", label: "Marketing", icon: Mail },
     { path: "/cotizaciones", label: "Cotizaciones", icon: FileText },
-    { path: "/packing", label: "Logística", icon: Package },
+    { path: "/pizarron", label: "Pizarrón", icon: CalendarDays },
     { path: "/oportunidades", label: "Oportunidades", icon: Briefcase },
     { path: "/ventas", label: "Ventas", icon: DollarSign },
     { path: "/compras", label: "Compras", icon: ShoppingBag },
