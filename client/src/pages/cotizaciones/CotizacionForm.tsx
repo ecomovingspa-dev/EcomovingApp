@@ -532,6 +532,11 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
         return { ...rest };
       });
 
+      // Limpiar relaciones que Supabase rechazaría en insert
+      delete (payload as any).vendedores;
+      delete (payload as any).cuentas;
+      delete (payload as any).contactos;
+
       const { count } = await supabase.from("cotizaciones").select("*", { count: 'exact', head: true });
       const num = ((count as any) || 0) + 5126;
 
