@@ -1,6 +1,17 @@
 import './load_env'; // Cargar variables de entorno PRIMERO para evitar error de importación hoisted de Supabase
 import http from 'http';
-import handler from '../api/enrich-accounts';
+import enrichAccountsHandler from '../api/enrich-accounts';
+import sendTestProspeccionHandler from '../api/send-test-prospeccion';
+import sendTestCobranzaHandler from '../api/send-test-cobranza';
+import sendTestHandler from '../api/send-test';
+
+// Map of endpoints to handlers
+const handlers: Record<string, any> = {
+    '/api/enrich-accounts': enrichAccountsHandler,
+    '/api/send-test-prospeccion': sendTestProspeccionHandler,
+    '/api/send-test-cobranza': sendTestCobranzaHandler,
+    '/api/send-test': sendTestHandler,
+};
 
 // Emulador local super liviano de Vercel Serverless Functions
 const server = http.createServer(async (req: any, res: any) => {
@@ -16,7 +27,10 @@ const server = http.createServer(async (req: any, res: any) => {
         return;
     }
 
-    if (req.url === '/api/enrich-accounts') {
+    const pathname = req.url?.split('?')[0] || '';
+    const handler = handlers[pathname];
+
+    if (handler) {
         let body = '';
         req.on('data', (chunk: any) => {
             body += chunk;
@@ -47,12 +61,16 @@ const server = http.createServer(async (req: any, res: any) => {
         });
     } else {
         res.statusCode = 404;
-        res.end(JSON.stringify({ error: 'Endpoint no encontrado en emulador local' }));
+        res.end(JSON.stringify({ error: `Endpoint ${pathname} no encontrado en emulador local` }));
     }
 });
 
 const PORT = 3001;
 server.listen(PORT, () => {
     console.log(`🚀 Emulador de API Vercel corriendo localmente en el puerto ${PORT}`);
-    console.log(`🔗 Endpoint activo: http://localhost:${PORT}/api/enrich-accounts`);
+    console.log("🔗 Endpoints activos:");
+    Object.keys(handlers).forEach(path => {
+        console.log(`   - http://localhost:${PORT}${path}`);
+    });
 });
+
