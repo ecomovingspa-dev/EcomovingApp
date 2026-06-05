@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus } from "lucide-react";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,7 @@ export default function CuentasPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
+  const [enriqueciendoId, setEnriqueciendoId] = useState<string | null>(null);
 
 
 
@@ -152,6 +153,31 @@ export default function CuentasPage() {
     } catch (error: any) {
       console.error("Error:", error);
       alert("Error al eliminar la cuenta");
+    }
+  };
+
+  const enriquecerConIA = async (cuentaId: string) => {
+    setEnriqueciendoId(cuentaId);
+    setError("");
+    try {
+      const response = await fetch("/api/enrich-accounts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ cuentaId }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Error al enriquecer con IA");
+      }
+      await cargarCuentas();
+    } catch (err: any) {
+      console.error("Error al enriquecer con IA:", err);
+      setError(err.message || "Error al enriquecer con IA");
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setEnriqueciendoId(null);
     }
   };
 
@@ -376,7 +402,17 @@ export default function CuentasPage() {
                         <CheckCircle2 className="h-4 w-4 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                       )}
 
-
+                      {enriqueciendoId === cuenta.id ? (
+                        <Loader2 className="h-4 w-4 text-cyan-500 animate-spin" />
+                      ) : (
+                        <button
+                          onClick={() => enriquecerConIA(cuenta.id)}
+                          className="p-2 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 transition-colors rounded-lg cursor-pointer"
+                          title="Enriquecer con IA"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                        </button>
+                      )}
 
                       <button
                         onClick={() => eliminarCuenta(cuenta.id)}
