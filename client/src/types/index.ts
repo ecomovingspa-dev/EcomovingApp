@@ -8,7 +8,15 @@ export interface Cuenta {
   estado?: string;
   ciudad?: string;
   web?: string;
+  origen?: string;
   created_at?: string; // ISO 8601
+  contactos?: {
+    id: string;
+    nombre: string;
+    correo?: string;
+    celular?: string;
+    telefono?: string;
+  }[];
 }
 
 // Tipos para Contactos
@@ -23,6 +31,7 @@ export interface Contacto {
   nivel?: string;
   estado?: string;
   cuenta_id: string;
+  origen?: string;
   created_at?: string; // ISO 8601
 }
 

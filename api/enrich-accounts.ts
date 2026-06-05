@@ -1,0 +1,262 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+import axios from 'axios';
+
+// Initialize Supabase Client
+const supabaseUrl = process.env.SUPABASE_URL || "https://xgdmyjzyejjmwdqkufhp.supabase.co";
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || "AIzaSyC7bM_4Fr_Z2DDFMhZPqCTnA7oQLrKBV2I";
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+    // Configurar CORS
+    res.setHeader('Access-Control-Allow-Credentials', "true");
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+    res.setHeader(
+        'Access-Control-Allow-Headers',
+        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+    );
+
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
+    }
+
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method Not Allowed' });
+    }
+
+    const { cuentaId } = req.body;
+
+    try {
+        let accountsToProcess = [];
+
+        if (cuentaId) {
+            // Procesar una cuenta específica
+            const { data, error } = await supabase
+                .from('cuentas')
+                .select('*')
+                .eq('id', cuentaId)
+                .single();
+            if (error || !data) {
+                return res.status(404).json({ error: `No se encontró la cuenta con ID: ${cuentaId}` });
+            }
+            accountsToProcess = [data];
+        } else {
+            // Buscar cuentas pendientes ingresadas manualmente que estén activas
+            const { data, error } = await supabase
+                .from('cuentas')
+                .select('*')
+                .eq('estado', 'activo')
+                .or('origen.eq.manual,origen.is.null')
+                .limit(5); // Procesar máximo 5 de una vez para evitar timeout
+            
+            if (error) throw error;
+            accountsToProcess = data || [];
+        }
+
+        if (accountsToProcess.length === 0) {
+            return res.status(200).json({ success: true, message: "No hay cuentas activas manuales pendientes de enriquecer." });
+        }
+
+        const results = [];
+
+        for (const account of accountsToProcess) {
+            const companyName = account.cliente;
+            console.log(`🤖 Enriqueciendo cuenta: "${companyName}"...`);
+
+            // 1. Llamar a Gemini con Google Search Grounding
+            const prompt = `
+Encuentra información pública oficial sobre la empresa chilena "${companyName}".
+Necesito:
+1. Su sitio web oficial (URL completa, ej: www.empresa.cl).
+2. Su teléfono central de contacto en Chile.
+3. Clasifica la empresa en uno de los siguientes segmentos comerciales según su giro principal (elige estrictamente una opción de esta lista):
+   - "Automotoras": Concesionarias, venta de vehículos (autos, camiones, motos), repuestos y talleres.
+   - "Salud": Clínicas privadas, centros médicos, centros dentales, laboratorios clínicos.
+   - "Comercializadores": Empresas que venden productos físicos, distribuidores, retail, importadoras.
+   - "Minería / Industria": Mineras, metalúrgicas, maestranzas, manufactura y fábricas industriales.
+   - "Constructoras / Inmobiliarias": Constructoras de obras, desarrollo de proyectos inmobiliarios, arquitectura.
+   - "Servicios": Consultoras, empresas de software/TI, empresas de seguridad, aseo, agencias.
+   - "Logística / Transporte": Empresas de transporte de carga, navieras, bodegaje, distribución.
+   - "Alimentos / Agrícola": Procesadoras de alimentos, packing, viñas, exportadoras agrícolas, cadenas gastronómicas.
+4. Correos de contacto y nombres de personas a cargo en las áreas de Adquisiciones, Compras, Sustentabilidad, Finanzas o en su defecto, el correo general de contacto comercial.
+
+Responde estrictamente en formato JSON válido, con la siguiente estructura:
+{
+  "web": "URL completa del sitio web o null",
+  "telefono": "Teléfono formateado en lo posible como +56... o null",
+  "segmento": "Escribe exactamente una de las 8 categorías del segmento anterior",
+  "contactos": [
+    {
+      "nombre": "Nombre de la persona (deja null si es genérico o no se encuentra)",
+      "correo": "correo electrónico corporativo de la persona o del área",
+      "cargo": "Cargo o área de desempeño (ej: Compras, Adquisiciones, Sustentabilidad)"
+    }
+  ]
+}
+`;
+
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            
+            const response = await axios.post(geminiUrl, {
+                contents: [
+                    {
+                        parts: [
+                            { text: prompt }
+                        ]
+                    }
+                ],
+                tools: [
+                    {
+                        google_search: {}
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.2
+                }
+            });
+
+            const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+            console.log("Gemini Raw response:", rawText);
+            
+            let cleaned = rawText.trim();
+            if (cleaned.startsWith("```")) {
+                cleaned = cleaned.replace(/^```(json)?/i, "");
+                cleaned = cleaned.replace(/```$/, "");
+            }
+            
+            const enrichmentData = JSON.parse(cleaned.trim());
+
+            // 2. Normalizar datos
+            const web = enrichmentData.web || account.web;
+            const telefono = enrichmentData.telefono || account.telefono;
+            const sector = 'privado'; // Sourcing de la IA siempre busca sector privado
+            const segmento = enrichmentData.segmento || account.segmento || 'Servicios';
+
+            // 3. Actualizar la Cuenta
+            const { error: updateError } = await supabase
+                .from('cuentas')
+                .update({
+                    web,
+                    sector,
+                    segmento,
+                    origen: 'AI' // Marcar que fue procesada por la IA
+                })
+                .eq('id', account.id);
+
+            if (updateError) {
+                console.error(`Error actualizando cuenta ${companyName}:`, updateError.message);
+                results.push({ cuenta: companyName, status: "error_actualizando_cuenta", detail: updateError.message });
+                continue;
+            }
+
+            const contactosInsertados = [];
+
+            // 4. Procesar e insertar los contactos
+            if (enrichmentData.contactos && enrichmentData.contactos.length > 0) {
+                for (const contact of enrichmentData.contactos) {
+                    if (!contact.correo || !contact.correo.includes('@')) continue;
+
+                    // Validar si el contacto ya existe para evitar duplicación
+                    const { data: existingContact } = await supabase
+                        .from('contactos')
+                        .select('id')
+                        .eq('correo', contact.correo.trim().toLowerCase())
+                        .maybeSingle();
+
+                    if (existingContact) {
+                        console.log(`⚠️ Contacto ${contact.correo} ya existe. Vinculando o ignorando.`);
+                        continue;
+                    }
+
+                    // Determinar etapa: Si tiene nombre real va a 'marketing', si no (ej: Prospección) va a 'prospeccion'
+                    const tieneNombreReal = contact.nombre && contact.nombre.trim() !== "" && !contact.nombre.toLowerCase().includes("contacto") && !contact.nombre.toLowerCase().includes("prospecto");
+                    const nombreContacto = tieneNombreReal ? contact.nombre.trim() : "Prospección";
+                    const etapaContacto = tieneNombreReal ? "marketing" : "prospeccion";
+
+                    const { data: newContact, error: contactError } = await supabase
+                        .from('contactos')
+                        .insert([
+                            {
+                                nombre: nombreContacto,
+                                correo: contact.correo.trim().toLowerCase(),
+                                departamento: contact.cargo || "Adquisiciones",
+                                estado: "inactivo", // REGLA: Siempre inactivo
+                                etapa: etapaContacto,
+                                cuenta_id: account.id,
+                                origen: 'AI', // Marcar origen IA
+                                ciudad: account.ciudad || "Santiago",
+                                telefono: telefono || null
+                            }
+                        ])
+                        .select('id, correo, etapa')
+                        .single();
+
+                    if (contactError) {
+                        console.error(`Error insertando contacto ${contact.correo}:`, contactError.message);
+                    } else {
+                        contactosInsertados.push(newContact);
+                    }
+                }
+            }
+
+            // Si no se encontró ningún contacto con correo, creamos un registro placeholder genérico de Prospección
+            if (contactosInsertados.length === 0) {
+                // Rastrear un dominio para el correo genérico de la empresa
+                const domain = web ? web.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0] : `${companyName.toLowerCase().replace(/[^a-z0-9]/g, '')}.cl`;
+                const generalEmail = `contacto@${domain}`;
+
+                const { data: existingGeneral } = await supabase
+                    .from('contactos')
+                    .select('id')
+                    .eq('correo', generalEmail)
+                    .maybeSingle();
+
+                if (!existingGeneral) {
+                    const { data: placeholderContact, error: placeholderError } = await supabase
+                        .from('contactos')
+                        .insert([
+                            {
+                                nombre: "Prospección",
+                                correo: generalEmail,
+                                estado: "inactivo",
+                                etapa: "prospeccion",
+                                cuenta_id: account.id,
+                                origen: 'AI',
+                                ciudad: account.ciudad || "Santiago",
+                                telefono: telefono || null
+                            }
+                        ])
+                        .select('id, correo, etapa')
+                        .single();
+
+                    if (!placeholderError) {
+                        contactosInsertados.push(placeholderContact);
+                    }
+                }
+            }
+
+            results.push({
+                cuenta: companyName,
+                status: "enriquecida",
+                web,
+                telefono,
+                sector,
+                segmento,
+                contactosEncontrados: contactosInsertados
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            results
+        });
+
+    } catch (err: any) {
+        console.error("Error en enrich-accounts:", err);
+        return res.status(500).json({ error: err.message });
+    }
+}

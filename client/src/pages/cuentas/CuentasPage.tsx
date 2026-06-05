@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X } from "lucide-react";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 export default function CuentasPage() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
@@ -73,7 +75,7 @@ export default function CuentasPage() {
 
       let query = supabase
         .from("cuentas")
-        .select("*", { count: "exact" });
+        .select("*, contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono)", { count: "exact" });
 
       if (busqueda) {
         query = query.or(`cliente.ilike.%${busqueda}%,rut.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`);
@@ -262,14 +264,65 @@ export default function CuentasPage() {
               </tr>
             ) : cuentasPaginadas.length > 0 ? (
               cuentasPaginadas.map((cuenta) => (
-                <tr key={cuenta.id} className="group hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors">
+                <tr
+                  key={cuenta.id}
+                  className={`group transition-colors ${
+                    cuenta.origen === 'AI'
+                      ? "bg-cyan-100/80 dark:bg-cyan-950/50 hover:bg-cyan-200/60 dark:hover:bg-cyan-900/50"
+                      : "hover:bg-blue-50/30 dark:hover:bg-blue-900/10"
+                  }`}
+                >
                   <td className="px-4 py-2 min-w-[450px]">
-                    <textarea
-                      defaultValue={cuenta.cliente || ""}
-                      onBlur={(e) => actualizarCuentaInline(cuenta.id, "cliente", e.target.value)}
-                      rows={2}
-                      className="w-full bg-transparent border-none rounded-lg px-2 py-1 text-sm font-bold text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all resize-none"
-                    />
+                    <div className="flex items-start gap-2">
+                      {cuenta.contactos && cuenta.contactos.length > 0 ? (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="mt-1.5 p-1 rounded bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-950/80 text-blue-600 dark:text-blue-400 cursor-pointer transition-all hover:scale-105 shrink-0"
+                              title={`Ver ${cuenta.contactos.length} contacto(s)`}
+                            >
+                              <Plus className="h-3 w-3 font-bold" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-80 p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-xl z-50" align="start">
+                            <h4 className="font-bold text-sm text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 pb-2 mb-2 uppercase tracking-wide flex items-center gap-2">
+                              <Building2 className="h-4 w-4 text-blue-500" />
+                              Contactos de la Cuenta
+                            </h4>
+                            <div className="space-y-3 max-h-[200px] overflow-y-auto custom-scrollbar">
+                              {cuenta.contactos.map((contact: any) => (
+                                <div key={contact.id} className="text-xs border-b border-gray-50 dark:border-gray-700/50 pb-2 last:border-0 last:pb-0">
+                                  <p className="font-bold text-gray-900 dark:text-gray-100 uppercase">{contact.nombre || "Sin nombre"}</p>
+                                  {contact.correo && (
+                                    <p className="text-gray-500 dark:text-gray-400 mt-0.5 truncate">{contact.correo}</p>
+                                  )}
+                                  {(contact.celular || contact.telefono) && (
+                                    <p className="text-gray-400 dark:text-gray-500 mt-0.5 font-mono">
+                                      📞 {contact.celular || contact.telefono}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      ) : (
+                        <div className="w-5 shrink-0" />
+                      )}
+                      
+                      <textarea
+                        defaultValue={cuenta.cliente || ""}
+                        onBlur={(e) => actualizarCuentaInline(cuenta.id, "cliente", e.target.value)}
+                        rows={2}
+                        className="flex-1 bg-transparent border-none rounded-lg px-2 py-1 text-sm font-bold text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all resize-none"
+                      />
+                      {cuenta.origen === 'AI' && (
+                        <span className="mt-2 px-1.5 py-0.5 rounded bg-cyan-200 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300 text-[8px] font-black uppercase tracking-widest leading-none">
+                          IA
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-2">
                     <input
@@ -292,6 +345,7 @@ export default function CuentasPage() {
                       <option value="inactivo">INACTIVO</option>
                     </select>
                   </td>
+
                   <td className="px-4 py-2 min-w-[120px]">
                     <input
                       defaultValue={cuenta.sector || ""}

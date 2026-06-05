@@ -30,6 +30,7 @@ interface EtapaProspeccion {
     mensaje_intro: string;
     mensaje_cierre: string;
     activo: boolean;
+    imagen_url?: string;
 }
 
 interface Props {
@@ -127,10 +128,11 @@ export function ConfiguracionProspeccion({ open, onOpenChange }: Props) {
                     asunto_template: etapa.asunto_template,
                     mensaje_intro: etapa.mensaje_intro,
                     mensaje_cierre: etapa.mensaje_cierre,
+                    imagen_url: etapa.imagen_url || "",
                 })
                 .eq("id", etapa.id);
             if (error) throw error;
-            alert("✅ Etapa guardada correctamente");
+            alert("✅ Plantilla guardada correctamente");
         } catch (err: any) {
             alert("Error al guardar: " + err.message);
         } finally {
@@ -170,20 +172,11 @@ export function ConfiguracionProspeccion({ open, onOpenChange }: Props) {
                             <Search className="h-4 w-4 text-white" />
                         </div>
                         <div>
-                            <h2 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Campañas de Prospección</h2>
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Variables: {"{empresa}"}, {"{correo}"}</p>
+                            <h2 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">Prospección</h2>
+                            <p className="text-[10px] text-gray-500 dark:text-gray-400">Plantillas de Correo</p>
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleCrear}
-                            className="ml-auto h-7 w-7 text-violet-600 hover:bg-violet-100 dark:hover:bg-violet-800/30"
-                            title="Nueva etapa"
-                        >
-                            <PlusCircle className="h-4 w-4" />
-                        </Button>
                     </div>
-
+ 
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
                         {cargando ? (
                             <div className="flex justify-center p-4">
@@ -210,12 +203,6 @@ export function ConfiguracionProspeccion({ open, onOpenChange }: Props) {
                                     )}
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={(e) => handleEliminar(etapa.id, e)}
-                                        className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-opacity"
-                                    >
-                                        <Trash2 className="h-3 w-3" />
-                                    </button>
                                     {selectedId === etapa.id && <ChevronRight className="h-3 w-3 opacity-50" />}
                                 </div>
                             </div>
@@ -314,6 +301,17 @@ export function ConfiguracionProspeccion({ open, onOpenChange }: Props) {
                                         />
                                     </div>
 
+                                    {/* Imagen Promocional */}
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">URL de la Imagen Promocional</Label>
+                                        <Input
+                                            className="bg-white dark:bg-[#161b22] border-gray-200 dark:border-gray-800 text-sm h-10 shadow-sm focus:border-violet-400 focus:ring-violet-400/20"
+                                            placeholder="https://ejemplo.com/imagen.jpg (opcional)"
+                                            value={selectedEtapa.imagen_url || ""}
+                                            onChange={(e) => handleUpdate(selectedEtapa.id, "imagen_url", e.target.value)}
+                                        />
+                                    </div>
+
                                     {/* Preview */}
                                     <div className="bg-gray-50 dark:bg-[#161b22]/50 border border-gray-200 dark:border-gray-800 rounded-xl p-4 text-xs text-gray-500 dark:text-gray-400 space-y-2">
                                         <p className="font-bold uppercase tracking-widest text-[10px] text-gray-400">Vista previa del correo</p>
@@ -322,6 +320,21 @@ export function ConfiguracionProspeccion({ open, onOpenChange }: Props) {
                                         </p>
                                         <div className="border-t border-gray-200 dark:border-gray-700 pt-2 space-y-2 leading-relaxed">
                                             <p>{selectedEtapa.mensaje_intro.replace("{empresa}", "Empresa Ejemplo S.A.").replace("{correo}", "contacto@ejemplo.cl").replace("{dominio}", "ejemplo.cl")}</p>
+                                            
+                                            {selectedEtapa.imagen_url && (
+                                                <div className="my-3 text-center border border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-900">
+                                                    <p className="text-[9px] text-gray-400 mb-1">Imagen promocional:</p>
+                                                    <img 
+                                                        src={selectedEtapa.imagen_url} 
+                                                        alt="Vista previa" 
+                                                        className="max-h-40 mx-auto rounded"
+                                                        onError={(e) => {
+                                                            (e.target as HTMLElement).style.display = 'none';
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+
                                             <p className="italic text-gray-400">{selectedEtapa.mensaje_cierre}</p>
                                         </div>
                                     </div>
@@ -329,23 +342,8 @@ export function ConfiguracionProspeccion({ open, onOpenChange }: Props) {
                             </div>
 
                             {/* Footer */}
-                            <div className="p-5 border-t border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-[#0f1117]/50 backdrop-blur-md flex justify-between items-center gap-4">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={enviandoPrueba}
-                                    className="h-10 px-4 text-xs font-bold border-violet-200 dark:border-violet-800 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-all active:scale-95"
-                                    onClick={() => enviarPrueba(selectedEtapa)}
-                                >
-                                    {enviandoPrueba ? (
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    ) : (
-                                        <Mail className="h-4 w-4 mr-2" />
-                                    )}
-                                    Enviar Prueba
-                                </Button>
-
-                                <div className="flex items-center gap-3">
+                            <div className="p-5 border-t border-gray-100 dark:border-gray-800 bg-white/50 dark:bg-[#0f1117]/50 backdrop-blur-md flex justify-end items-center gap-4">
+                                <div className="flex items-center gap-3 ml-auto">
                                     <Button
                                         variant="ghost"
                                         onClick={() => onOpenChange(false)}

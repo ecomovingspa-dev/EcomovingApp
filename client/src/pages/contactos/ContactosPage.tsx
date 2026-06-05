@@ -4,6 +4,12 @@ import { supabase } from "../../lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ConfiguracionProspeccion } from "../../components/contactos/ConfiguracionProspeccion";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 import {
   Trash2,
@@ -15,7 +21,8 @@ import {
   ChevronRight,
   SearchCheck,
   GraduationCap,
-
+  Play,
+  Check,
 } from "lucide-react";
 
 interface ContactoConCuenta {
@@ -28,6 +35,7 @@ interface ContactoConCuenta {
   estado?: string;
   etapa?: string;
   cuenta_id: string;
+  origen?: string;
   cuentas?: {
     cliente: string;
     segmento?: string;
@@ -61,6 +69,19 @@ export default function ContactosPage() {
   const [availableSectors, setAvailableSectors] = useState<string[]>([]);
   const [availableSegments, setAvailableSegments] = useState<string[]>([]);
 
+  // Estados para edición de cuenta
+  const [cuentas, setCuentas] = useState<any[]>([]);
+  const [popoverAbierto, setPopoverAbierto] = useState<string | null>(null);
+  const [busquedaCuentas, setBusquedaCuentas] = useState("");
+
+  const cuentasFiltradas = useMemo(() => {
+    if (!busquedaCuentas.trim()) return cuentas;
+    return cuentas.filter((c) =>
+      c.cliente?.toLowerCase().includes(busquedaCuentas.toLowerCase()) ||
+      c.rut?.toLowerCase().includes(busquedaCuentas.toLowerCase())
+    );
+  }, [cuentas, busquedaCuentas]);
+
   // Determinar si hay algún filtro activo
   // No restriction on loading, server-side pagination handles performance
   const hayFiltroActivo = true;
@@ -77,6 +98,14 @@ export default function ContactosPage() {
       if (qSectors) {
         setAvailableSectors(Array.from(new Set(qSectors.map((c: any) => c.sector).filter(Boolean))));
         setAvailableSegments(Array.from(new Set(qSectors.map((c: any) => c.segmento).filter(Boolean))));
+      }
+      
+      const { data: qCuentas, error: errorCuentas } = await supabase
+        .from("cuentas")
+        .select("id, cliente, rut, estado, segmento, sector, contactos:contactos!contactos_cuenta_id_fkey(id)")
+        .order("cliente");
+      if (!errorCuentas && qCuentas) {
+        setCuentas(qCuentas);
       }
     } catch (e) {
       console.error("Error cargando opciones de filtros:", e);
@@ -296,6 +325,71 @@ export default function ContactosPage() {
     }
   };
 
+  const actualizarCuentaContacto = async (contactoId: string, nuevaCuentaId: string) => {
+    if (!contactoId || !nuevaCuentaId) return;
+    
+    const contactoActual = contactos.find(c => c.id === contactoId);
+    if (!contactoActual) return;
+    
+    const antiguaCuentaId = contactoActual.cuenta_id;
+    if (antiguaCuentaId === nuevaCuentaId) return;
+
+    try {
+      const { error } = await supabase
+        .from("contactos")
+        .update({ cuenta_id: nuevaCuentaId })
+        .eq("id", contactoId);
+
+      if (error) throw error;
+
+      // Regla: Si tiene contactos -> Activo
+      await supabase
+        .from("cuentas")
+        .update({ estado: "activo" })
+        .eq("id", nuevaCuentaId);
+
+      // Verificar si la antigua cuenta se quedó sin contactos
+      if (antiguaCuentaId) {
+        const { count, error: countError } = await supabase
+          .from("contactos")
+          .select("*", { count: 'exact', head: true })
+          .eq("cuenta_id", antiguaCuentaId);
+
+        if (!countError && count === 0) {
+          await supabase
+            .from("cuentas")
+            .update({ estado: "prospecto" })
+            .eq("id", antiguaCuentaId);
+        }
+      }
+
+      // Actualización optimista
+      const nuevaCuenta = cuentas.find(c => c.id === nuevaCuentaId);
+      const clienteNombre = nuevaCuenta ? nuevaCuenta.cliente : "";
+      const segmento = nuevaCuenta ? nuevaCuenta.segmento : undefined;
+      const sector = nuevaCuenta ? nuevaCuenta.sector : undefined;
+
+      setContactos(prev =>
+        prev.map(c => (c.id === contactoId ? { 
+          ...c, 
+          cuenta_id: nuevaCuentaId, 
+          cuentas: { 
+            ...c.cuentas, 
+            cliente: clienteNombre,
+            segmento: segmento !== undefined ? segmento : c.cuentas?.segmento,
+            sector: sector !== undefined ? sector : c.cuentas?.sector
+          } 
+        } : c))
+      );
+
+      setMensaje(`✅ Cuenta de contacto actualizada`);
+      setTimeout(() => setMensaje(""), 2000);
+    } catch (error: any) {
+      console.error("Error al actualizar cuenta del contacto:", error);
+      setMensaje("❌ Error al guardar cambios");
+    }
+  };
+
   // Los grupos ya están filtrados por el servidor ahora
   const gruposFiltrados = contactos;
 
@@ -499,7 +593,11 @@ export default function ContactosPage() {
                 {contactos.map((contacto) => (
                   <tr
                     key={contacto.id}
-                    className="hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group"
+                    className={`transition-colors group ${
+                      contacto.origen === 'AI' && contacto.estado === 'inactivo'
+                        ? "bg-cyan-100/80 dark:bg-cyan-950/50 hover:bg-cyan-200/60 dark:hover:bg-cyan-900/50"
+                        : "hover:bg-blue-50/50 dark:hover:bg-blue-900/10"
+                    }`}
                   >
                     {/* Nombre / Empresa */}
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -515,11 +613,86 @@ export default function ContactosPage() {
                           className="bg-transparent border-none p-0 w-full font-bold text-gray-900 dark:text-gray-100 text-[11px] uppercase tracking-tight focus:ring-1 focus:ring-blue-500 rounded outline-none"
                           title={contacto.nombre}
                         />
-                        <div className="flex items-center gap-1.5 mt-0.5 opacity-60">
-                          <Building2 className="h-2.5 w-2.5 text-blue-500" />
-                          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-medium uppercase tracking-tighter truncate" title={contacto.cuentas?.cliente}>
-                            {contacto.cuentas?.cliente || "Sin empresa asignada"}
-                          </span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <Building2 className="h-2.5 w-2.5 text-blue-500 shrink-0" />
+                          <Popover 
+                            open={popoverAbierto === contacto.id} 
+                            onOpenChange={(open) => {
+                              if (open) {
+                                setPopoverAbierto(contacto.id);
+                              } else {
+                                setPopoverAbierto(null);
+                                setBusquedaCuentas("");
+                              }
+                            }}
+                          >
+                            <PopoverTrigger asChild>
+                              <button
+                                type="button"
+                                className="text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-tighter truncate hover:text-blue-600 dark:hover:text-blue-400 hover:underline outline-none text-left max-w-[140px] cursor-pointer"
+                                title={contacto.cuentas?.cliente || "Sin empresa asignada"}
+                              >
+                                {contacto.cuentas?.cliente || "Sin empresa asignada"}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl z-50" align="start">
+                              <div className="flex flex-col h-[250px]">
+                                <div className="p-2 border-b border-gray-100 dark:border-gray-700">
+                                  <input
+                                    type="text"
+                                    placeholder="Buscar empresa..."
+                                    className="w-full px-2 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded outline-none text-gray-900 dark:text-white"
+                                    value={busquedaCuentas}
+                                    onChange={(e) => setBusquedaCuentas(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                </div>
+                                <div className="flex-1 overflow-y-auto p-1 custom-scrollbar">
+                                  {cuentasFiltradas.length === 0 ? (
+                                    <div className="py-4 text-center text-xs text-gray-500">
+                                      No se encontraron cuentas.
+                                    </div>
+                                  ) : (
+                                    cuentasFiltradas.map((cuenta) => (
+                                      <button
+                                        key={cuenta.id}
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          actualizarCuentaContacto(contacto.id, cuenta.id);
+                                          setPopoverAbierto(null);
+                                          setBusquedaCuentas("");
+                                        }}
+                                        className={cn(
+                                          "w-full flex items-center justify-between px-2 py-1.5 text-xs rounded transition-colors text-left font-sans cursor-pointer",
+                                          contacto.cuenta_id === cuenta.id
+                                            ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold"
+                                            : "hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                        )}
+                                      >
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                          <span className="truncate pr-2 font-bold">{cuenta.cliente}</span>
+                                          <span className="text-[9px] text-gray-400 dark:text-gray-500">
+                                            {cuenta.contactos && cuenta.contactos.length > 0
+                                              ? `👤 ${cuenta.contactos.length} contacto${cuenta.contactos.length > 1 ? 's' : ''}`
+                                              : '⚠️ Sin contactos'}
+                                          </span>
+                                        </div>
+                                        {contacto.cuenta_id === cuenta.id && (
+                                          <Check className="h-3 w-3 shrink-0 text-blue-600 dark:text-blue-400 ml-2" />
+                                        )}
+                                      </button>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                          {contacto.origen === 'AI' && (
+                            <span className="ml-1 px-1 py-0.2 rounded bg-cyan-200 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300 text-[8px] font-black uppercase tracking-widest leading-none">
+                              IA
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -653,6 +826,17 @@ export default function ContactosPage() {
                     {/* Acciones */}
                     <td className="sticky right-0 px-4 py-3 whitespace-nowrap text-right text-sm bg-white dark:bg-gray-800 border-l border-gray-100 dark:border-gray-700/50 z-10 transition-colors group-hover:bg-blue-50 dark:group-hover:bg-[#1a2235] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {contacto.estado === "inactivo" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
+                            title="Activar Contacto"
+                            onClick={() => actualizarCampo(contacto.id, "estado", "activo")}
+                          >
+                            <Play className="h-3 w-3" />
+                          </Button>
+                        )}
                         {contacto.etapa === "prospeccion" && (
                           <Button
                             variant="ghost"
