@@ -69,11 +69,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             // 1. Llamar a Gemini con Google Search Grounding
             const prompt = `
-Encuentra información pública oficial sobre la empresa chilena "${companyName}".
+Encuentra información pública oficial sobre la empresa "${companyName}".
 Necesito:
 1. Su sitio web oficial (URL completa, ej: www.empresa.cl).
-2. Su teléfono central de contacto en Chile.
-3. Clasifica la empresa en uno de los siguientes segmentos comerciales según su giro principal (elige estrictamente una opción de esta lista):
+2. Su teléfono central de contacto (o el principal si no está en Chile).
+3. Determina si la empresa tiene presencia, representación comercial, oficina local o está operativa de forma directa en Chile (responde true o false).
+4. Clasifica la empresa en uno de los siguientes segmentos comerciales según su giro principal (elige estrictamente una opción de esta lista):
    - "Automotoras": Concesionarias, venta de vehículos (autos, camiones, motos), repuestos y talleres.
    - "Salud": Clínicas privadas, centros médicos, centros dentales, laboratorios clínicos.
    - "Comercializadores": Empresas que venden productos físicos, distribuidores, retail, importadoras.
@@ -82,12 +83,13 @@ Necesito:
    - "Servicios": Consultoras, empresas de software/TI, empresas de seguridad, aseo, agencias.
    - "Logística / Transporte": Empresas de transporte de carga, navieras, bodegaje, distribución.
    - "Alimentos / Agrícola": Procesadoras de alimentos, packing, viñas, exportadoras agrícolas, cadenas gastronómicas.
-4. Correos de contacto y nombres de personas a cargo en las áreas de Adquisiciones, Compras, Sustentabilidad, Finanzas o en su defecto, el correo general de contacto comercial.
+5. Correos de contacto y nombres de personas a cargo en las áreas de Adquisiciones, Compras, Sustentabilidad, Finanzas o en su defecto, el correo general de contacto comercial.
 
 Responde estrictamente en formato JSON válido, con la siguiente estructura:
 {
   "web": "URL completa del sitio web o null",
   "telefono": "Teléfono formateado en lo posible como +56... o null",
+  "presencia_chile": true o false,
   "segmento": "Escribe exactamente una de las 8 categorías del segmento anterior",
   "contactos": [
     {
@@ -134,7 +136,33 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
             const web = enrichmentData.web || account.web;
             const telefono = enrichmentData.telefono || account.telefono;
             const sector = 'privado'; // Sourcing de la IA siempre busca sector privado
-            const segmento = enrichmentData.segmento || account.segmento || 'Servicios';
+            
+            // Validar presencia en Chile y redefinir estado/segmento
+            const tienePresencia = enrichmentData.presencia_chile !== false;
+            const estadoActualizado = tienePresencia ? account.estado : 'inactivo';
+
+            const validSegments = [
+              'Automotoras',
+              'Salud',
+              'Comercializadores',
+              'Minería / Industria',
+              'Constructoras / Inmobiliarias',
+              'Servicios',
+              'Logística / Transporte',
+              'Alimentos / Agrícola'
+            ];
+
+            let segmento = 'Servicios';
+            if (!tienePresencia) {
+              segmento = 'Internacional (Sin filial)';
+            } else {
+              let aiSegment = enrichmentData.segmento;
+              if (aiSegment && validSegments.includes(aiSegment)) {
+                segmento = aiSegment;
+              } else if (account.segmento && validSegments.includes(account.segmento)) {
+                segmento = account.segmento;
+              }
+            }
 
             // 3. Actualizar la Cuenta
             const { error: updateError } = await supabase
@@ -143,6 +171,7 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
                     web,
                     sector,
                     segmento,
+                    estado: estadoActualizado,
                     origen: 'AI' // Marcar que fue procesada por la IA
                 })
                 .eq('id', account.id);
