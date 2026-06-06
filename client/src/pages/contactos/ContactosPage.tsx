@@ -68,6 +68,7 @@ export default function ContactosPage() {
   // Estados para opciones de filtros
   const [availableSectors, setAvailableSectors] = useState<string[]>([]);
   const [availableSegments, setAvailableSegments] = useState<string[]>([]);
+  const [totalEtapasProspeccion, setTotalEtapasProspeccion] = useState<number>(3);
 
   // Estados para edición de cuenta
   const [cuentas, setCuentas] = useState<any[]>([]);
@@ -106,6 +107,15 @@ export default function ContactosPage() {
         .order("cliente");
       if (!errorCuentas && qCuentas) {
         setCuentas(qCuentas);
+      }
+
+      // Obtener el número total de etapas activas en la secuencia de prospección
+      const { count } = await supabase
+        .from("configuracion_prospeccion")
+        .select("*", { count: "exact", head: true })
+        .eq("activo", true);
+      if (count !== null) {
+        setTotalEtapasProspeccion(count);
       }
     } catch (e) {
       console.error("Error cargando opciones de filtros:", e);
@@ -402,16 +412,23 @@ export default function ContactosPage() {
     if (!contactoAGraduar || !nombreGraduacion.trim()) return;
     setGraduando(true);
     try {
+      // Verificar si hay una etapa de marketing congelada en `indice_secuencia`
+      const stageCongelada = contactoAGraduar.indice_secuencia && contactoAGraduar.indice_secuencia > 0
+        ? contactoAGraduar.indice_secuencia
+        : 1;
+
       const { error } = await supabase
         .from("contactos")
         .update({
           nombre: nombreGraduacion.trim(),
           etapa: "marketing",
           estado: "activo",
+          etapa_envio: stageCongelada, // Restaurar etapa de marketing congelada
+          indice_secuencia: -1 // Marcar que ya pasó por prospección
         })
         .eq("id", contactoAGraduar.id);
       if (error) throw error;
-      setMensaje(`✅ ${nombreGraduacion.trim()} graduado a Marketing correctamente`);
+      setMensaje(`✅ ${nombreGraduacion.trim()} graduado a Marketing correctamente (Etapa de envío: ${stageCongelada})`);
       setContactoAGraduar(null);
       setNombreGraduacion("");
       cargarContactos(true);
@@ -423,8 +440,16 @@ export default function ContactosPage() {
     }
   };
 
-  const degradarAProspeccion = async (contactoId: string) => {
+  const degradarAProspeccion = async (contacto: ContactoConCuenta) => {
+    const yaProspectado = contacto.indice_secuencia === -1 || (contacto.indice_secuencia && contacto.indice_secuencia > 0);
+    const mensajeConfirm = yaProspectado
+      ? "⚠️ Este contacto ya pasó por la campaña de Prospección anteriormente. ¿Estás seguro de degradarlo por SEGUNDA VEZ? La campaña de Marketing/Nutrición se congelará y volverá a enviar correos fríos desde el paso 1."
+      : "¿Estás seguro de degradar este contacto a Prospección? La campaña de Marketing/Nutrición se congelará y comenzará la secuencia fría desde el paso 1.";
+
+    if (!confirm(mensajeConfirm)) return;
+
     try {
+      const marketingStage = contacto.etapa_envio || 1;
       const { error } = await supabase
         .from("contactos")
         .update({
@@ -432,8 +457,9 @@ export default function ContactosPage() {
           etapa_envio: 1,
           proximo_envio: null,
           estado: "activo", // Se mantiene activo para que parta enviando prospección
+          indice_secuencia: marketingStage // Guardar el progreso de marketing
         })
-        .eq("id", contactoId);
+        .eq("id", contacto.id);
       if (error) throw error;
       setMensaje("✅ Contacto degradado a Prospección. Iniciando secuencia fría.");
       cargarContactos(true);
@@ -714,6 +740,11 @@ export default function ContactosPage() {
                               IA
                             </span>
                           )}
+                          {contacto.etapa !== "prospeccion" && (contacto.indice_secuencia === -1 || (contacto.indice_secuencia && contacto.indice_secuencia > 0)) && (
+                            <span className="ml-1 px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400 text-[8px] font-black uppercase tracking-wider leading-none flex items-center gap-0.5" title="Este contacto ya recibió la campaña de Prospección">
+                              ✓ Prosp. Ok
+                            </span>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -780,39 +811,66 @@ export default function ContactosPage() {
 
                     {/* Campaña: Activo = Marketing/Nutrición, Desactivado = Prospección */}
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <button
-                        onClick={() => {
-                          if (contacto.etapa === "prospeccion") {
-                            // Activar -> Graduar a Marketing
-                            abrirGraduacion(contacto);
-                          } else {
-                            // Desactivar -> Degradación a Prospección
-                            if (confirm("¿Estás seguro de degradar este contacto a Prospección? La campaña de Marketing/Nutrición se congelará y comenzará la secuencia fría desde el paso 1.")) {
-                              degradarAProspeccion(contacto.id);
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            if (contacto.etapa === "prospeccion") {
+                              // Activar -> Graduar a Marketing
+                              abrirGraduacion(contacto);
+                            } else {
+                              // Desactivar -> Degradación a Prospección
+                              degradarAProspeccion(contacto);
                             }
-                          }
-                        }}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${(contacto.etapa === "marketing" || contacto.etapa === "nutricion")
-                          ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
-                          : "bg-gray-300 dark:bg-gray-700"
-                          }`}
-                        title={(contacto.etapa === "marketing" || contacto.etapa === "nutricion") ? "Campaña: Activo (Marketing)" : "Campaña: Desactivado (Prospección)"}
-                      >
-                        <span
-                          className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${(contacto.etapa === "marketing" || contacto.etapa === "nutricion")
-                            ? "translate-x-5"
-                            : "translate-x-1"
+                          }}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${(contacto.etapa === "marketing" || contacto.etapa === "nutricion")
+                            ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
+                            : "bg-gray-300 dark:bg-gray-700"
                             }`}
-                        />
-                      </button>
+                          title={(contacto.etapa === "marketing" || contacto.etapa === "nutricion") ? "Campaña: Activo (Marketing)" : "Campaña: Desactivado (Prospección)"}
+                        >
+                          <span
+                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${(contacto.etapa === "marketing" || contacto.etapa === "nutricion")
+                              ? "translate-x-5"
+                              : "translate-x-1"
+                              }`}
+                          />
+                        </button>
+                        
+                        {(contacto.etapa !== "prospeccion" && (contacto.indice_secuencia === -1 || (contacto.indice_secuencia && contacto.indice_secuencia > 0))) && (
+                          <span 
+                            className="text-amber-500 dark:text-amber-400 shrink-0 cursor-help" 
+                            title="Atención: Este contacto ya pasó por la campaña de Prospección anteriormente. Si lo desactivas, se volverá a iniciar la secuencia fría por segunda vez."
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                            </svg>
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Etapa */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       {contacto.etapa === "prospeccion" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 text-[9px] font-black uppercase tracking-wider">
-                          🔍 Prosp.
-                        </span>
+                        (() => {
+                          const paso = parseInt((contacto as any).etapa_envio) || 1;
+                          const esFinalizada = paso > totalEtapasProspeccion;
+                          return esFinalizada ? (
+                            <span 
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider"
+                              title={`La campaña de Prospección ha finalizado (Se enviaron las ${totalEtapasProspeccion} etapas)`}
+                            >
+                              ✓ Prosp. Fin
+                            </span>
+                          ) : (
+                            <span 
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 text-[9px] font-black uppercase tracking-wider"
+                              title={`En secuencia de Prospección (Paso ${paso} de ${totalEtapasProspeccion})`}
+                            >
+                              🔍 Prosp. ({paso}/{totalEtapasProspeccion})
+                            </span>
+                          );
+                        })()
                       ) : contacto.etapa === "nutricion" ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider">
                           🌱 Nutr.
