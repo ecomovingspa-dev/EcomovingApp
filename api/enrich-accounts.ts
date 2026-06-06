@@ -204,7 +204,6 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
                     // Determinar etapa: Si tiene nombre real va a 'marketing', si no (ej: Prospección) va a 'prospeccion'
                     const tieneNombreReal = contact.nombre && contact.nombre.trim() !== "" && !contact.nombre.toLowerCase().includes("contacto") && !contact.nombre.toLowerCase().includes("prospecto");
                     const nombreContacto = tieneNombreReal ? contact.nombre.trim() : "Prospección";
-                    const etapaContacto = tieneNombreReal ? "marketing" : "prospeccion";
 
                     const { data: newContact, error: contactError } = await supabase
                         .from('contactos')
@@ -213,8 +212,8 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
                                 nombre: nombreContacto,
                                 correo: contact.correo.trim().toLowerCase(),
                                 departamento: contact.cargo || "Adquisiciones",
-                                estado: "inactivo", // REGLA: Siempre inactivo
-                                etapa: etapaContacto,
+                                estado: "activo", // REGLA: Activo por defecto para que empiece campaña automáticamente
+                                etapa: "prospeccion", // REGLA: Por defecto comienza en prospección (Desactivado en el switch de la UI)
                                 cuenta_id: account.id,
                                 origen: 'AI', // Marcar origen IA
                                 ciudad: account.ciudad || "Santiago",
@@ -251,8 +250,8 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
                             {
                                 nombre: "Prospección",
                                 correo: generalEmail,
-                                estado: "inactivo",
-                                etapa: "prospeccion",
+                                estado: "activo", // REGLA: Activo por defecto para que empiece campaña automáticamente
+                                etapa: "prospeccion", // REGLA: Por defecto comienza en prospección (Desactivado en el switch de la UI)
                                 cuenta_id: account.id,
                                 origen: 'AI',
                                 ciudad: account.ciudad || "Santiago",

@@ -423,6 +423,27 @@ export default function ContactosPage() {
     }
   };
 
+  const degradarAProspeccion = async (contactoId: string) => {
+    try {
+      const { error } = await supabase
+        .from("contactos")
+        .update({
+          etapa: "prospeccion",
+          etapa_envio: 1,
+          proximo_envio: null,
+          estado: "activo", // Se mantiene activo para que parta enviando prospección
+        })
+        .eq("id", contactoId);
+      if (error) throw error;
+      setMensaje("✅ Contacto degradado a Prospección. Iniciando secuencia fría.");
+      cargarContactos(true);
+      setTimeout(() => setMensaje(""), 4000);
+    } catch (err: any) {
+      console.error("Error al degradar contacto:", err);
+      setMensaje("❌ Error al degradar contacto: " + err.message);
+    }
+  };
+
   const totalPaginas = Math.ceil(totalRecords / filasPorPagina);
   const totalContactosFiltrados = totalRecords;
 
@@ -582,7 +603,7 @@ export default function ContactosPage() {
                   <th className="px-4 py-4 text-left w-[14%]">Correo</th>
                   <th className="px-4 py-4 text-left w-[11%]">Cel/Tel</th>
                   <th className="px-4 py-4 text-left w-[11%]">Depto</th>
-                  <th className="px-4 py-4 text-left w-[7%]">Estado</th>
+                  <th className="px-4 py-4 text-left w-[7%]">Campaña</th>
                   <th className="px-4 py-4 text-left w-[9%]">Etapa</th>
                   <th className="px-4 py-4 text-left w-[11%]">Segmento</th>
                   <th className="px-4 py-4 text-left w-[11%]">Sector</th>
@@ -594,7 +615,7 @@ export default function ContactosPage() {
                   <tr
                     key={contacto.id}
                     className={`transition-colors group ${
-                      contacto.origen === 'AI' && contacto.estado === 'inactivo'
+                      contacto.origen === 'AI' && contacto.etapa === 'prospeccion'
                         ? "bg-cyan-100/80 dark:bg-cyan-950/50 hover:bg-cyan-200/60 dark:hover:bg-cyan-900/50"
                         : "hover:bg-blue-50/50 dark:hover:bg-blue-900/10"
                     }`}
@@ -757,20 +778,28 @@ export default function ContactosPage() {
                       />
                     </td>
 
-                    {/* Estado */}
+                    {/* Campaña: Activo = Marketing/Nutrición, Desactivado = Prospección */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <button
                         onClick={() => {
-                          const nuevoEstado = contacto.estado === "activo" ? "inactivo" : "activo";
-                          actualizarCampo(contacto.id, "estado", nuevoEstado);
+                          if (contacto.etapa === "prospeccion") {
+                            // Activar -> Graduar a Marketing
+                            abrirGraduacion(contacto);
+                          } else {
+                            // Desactivar -> Degradación a Prospección
+                            if (confirm("¿Estás seguro de degradar este contacto a Prospección? La campaña de Marketing/Nutrición se congelará y comenzará la secuencia fría desde el paso 1.")) {
+                              degradarAProspeccion(contacto.id);
+                            }
+                          }
                         }}
-                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${contacto.estado === "activo"
+                        className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${(contacto.etapa === "marketing" || contacto.etapa === "nutricion")
                           ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
                           : "bg-gray-300 dark:bg-gray-700"
                           }`}
+                        title={(contacto.etapa === "marketing" || contacto.etapa === "nutricion") ? "Campaña: Activo (Marketing)" : "Campaña: Desactivado (Prospección)"}
                       >
                         <span
-                          className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${contacto.estado === "activo"
+                          className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${(contacto.etapa === "marketing" || contacto.etapa === "nutricion")
                             ? "translate-x-5"
                             : "translate-x-1"
                             }`}
@@ -826,17 +855,6 @@ export default function ContactosPage() {
                     {/* Acciones */}
                     <td className="sticky right-0 px-4 py-3 whitespace-nowrap text-right text-sm bg-white dark:bg-gray-800 border-l border-gray-100 dark:border-gray-700/50 z-10 transition-colors group-hover:bg-blue-50 dark:group-hover:bg-[#1a2235] shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.1)]">
                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {contacto.estado === "inactivo" && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
-                            title="Activar Contacto"
-                            onClick={() => actualizarCampo(contacto.id, "estado", "activo")}
-                          >
-                            <Play className="h-3 w-3" />
-                          </Button>
-                        )}
                         {contacto.etapa === "prospeccion" && (
                           <Button
                             variant="ghost"
