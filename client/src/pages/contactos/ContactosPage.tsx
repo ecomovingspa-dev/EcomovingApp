@@ -740,11 +740,11 @@ export default function ContactosPage() {
                               IA
                             </span>
                           )}
-                          {contacto.etapa !== "prospeccion" && (contacto.indice_secuencia === -1 || (contacto.indice_secuencia && contacto.indice_secuencia > 0)) && (
+                          {contacto.etapa !== "prospeccion" && (contacto.indice_secuencia === -1 || (contacto.indice_secuencia !== null && contacto.indice_secuencia !== undefined && contacto.indice_secuencia > 0)) ? (
                             <span className="ml-1 px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400 text-[8px] font-black uppercase tracking-wider leading-none flex items-center gap-0.5" title="Este contacto ya recibió la campaña de Prospección">
                               ✓ Prosp. Ok
                             </span>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </td>
@@ -836,7 +836,7 @@ export default function ContactosPage() {
                           />
                         </button>
                         
-                        {(contacto.etapa !== "prospeccion" && (contacto.indice_secuencia === -1 || (contacto.indice_secuencia && contacto.indice_secuencia > 0))) && (
+                        contacto.etapa !== "prospeccion" && (contacto.indice_secuencia === -1 || (contacto.indice_secuencia !== null && contacto.indice_secuencia !== undefined && contacto.indice_secuencia > 0)) ? (
                           <span 
                             className="text-amber-500 dark:text-amber-400 shrink-0 cursor-help" 
                             title="Atención: Este contacto ya pasó por la campaña de Prospección anteriormente. Si lo desactivas, se volverá a iniciar la secuencia fría por segunda vez."
@@ -845,7 +845,7 @@ export default function ContactosPage() {
                               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
                             </svg>
                           </span>
-                        )}
+                        ) : null
                       </div>
                     </td>
 
