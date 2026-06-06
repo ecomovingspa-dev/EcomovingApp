@@ -403,41 +403,58 @@ export default function ContactosPage() {
   // Los grupos ya están filtrados por el servidor ahora
   const gruposFiltrados = contactos;
 
-  const abrirGraduacion = (contacto: ContactoConCuenta) => {
-    setContactoAGraduar(contacto);
-    setNombreGraduacion("");
+  const graduarContactoDirecto = async (contacto: ContactoConCuenta, nombreEspecifico?: string) => {
+    try {
+      // Verificar si hay una etapa de marketing congelada en `indice_secuencia`
+      const stageCongelada = contacto.indice_secuencia && contacto.indice_secuencia > 0
+        ? contacto.indice_secuencia
+        : 1;
+
+      const updates: any = {
+        etapa: "marketing",
+        estado: "activo",
+        etapa_envio: stageCongelada, // Restaurar etapa de marketing congelada
+        indice_secuencia: -1 // Marcar que ya pasó por prospección
+      };
+
+      if (nombreEspecifico && nombreEspecifico.trim()) {
+        updates.nombre = nombreEspecifico.trim();
+      }
+
+      const { error } = await supabase
+        .from("contactos")
+        .update(updates)
+        .eq("id", contacto.id);
+      if (error) throw error;
+      
+      const nombreMostrar = nombreEspecifico?.trim() || contacto.nombre || "Contacto";
+      setMensaje(`✅ ${nombreMostrar} graduado a Marketing correctamente (Etapa de envío: ${stageCongelada})`);
+      cargarContactos(true);
+      setTimeout(() => setMensaje(""), 4000);
+    } catch (err: any) {
+      console.error("Error al graduar:", err);
+      setMensaje("❌ Error al graduar: " + err.message);
+    }
+  };
+
+  const iniciarGraduacion = (contacto: ContactoConCuenta) => {
+    if (contacto.nombre && contacto.nombre.trim()) {
+      // Si ya tiene nombre, se gradúa directamente sin abrir el formulario/modal
+      graduarContactoDirecto(contacto);
+    } else {
+      // Si no tiene nombre, se abre el modal para que lo ingrese
+      setContactoAGraduar(contacto);
+      setNombreGraduacion("");
+    }
   };
 
   const graduarContacto = async () => {
     if (!contactoAGraduar || !nombreGraduacion.trim()) return;
     setGraduando(true);
-    try {
-      // Verificar si hay una etapa de marketing congelada en `indice_secuencia`
-      const stageCongelada = contactoAGraduar.indice_secuencia && contactoAGraduar.indice_secuencia > 0
-        ? contactoAGraduar.indice_secuencia
-        : 1;
-
-      const { error } = await supabase
-        .from("contactos")
-        .update({
-          nombre: nombreGraduacion.trim(),
-          etapa: "marketing",
-          estado: "activo",
-          etapa_envio: stageCongelada, // Restaurar etapa de marketing congelada
-          indice_secuencia: -1 // Marcar que ya pasó por prospección
-        })
-        .eq("id", contactoAGraduar.id);
-      if (error) throw error;
-      setMensaje(`✅ ${nombreGraduacion.trim()} graduado a Marketing correctamente (Etapa de envío: ${stageCongelada})`);
-      setContactoAGraduar(null);
-      setNombreGraduacion("");
-      cargarContactos(true);
-      setTimeout(() => setMensaje(""), 4000);
-    } catch (err: any) {
-      setMensaje("❌ Error al graduar: " + err.message);
-    } finally {
-      setGraduando(false);
-    }
+    await graduarContactoDirecto(contactoAGraduar, nombreGraduacion);
+    setContactoAGraduar(null);
+    setNombreGraduacion("");
+    setGraduando(false);
   };
 
   const degradarAProspeccion = async (contacto: ContactoConCuenta) => {
@@ -816,7 +833,7 @@ export default function ContactosPage() {
                           onClick={() => {
                             if (contacto.etapa === "prospeccion") {
                               // Activar -> Graduar a Marketing
-                              abrirGraduacion(contacto);
+                              iniciarGraduacion(contacto);
                             } else {
                               // Desactivar -> Degradación a Prospección
                               degradarAProspeccion(contacto);
@@ -919,7 +936,7 @@ export default function ContactosPage() {
                             size="icon"
                             className="h-7 w-7 text-violet-600 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-900/20"
                             title="Graduar a Marketing"
-                            onClick={() => abrirGraduacion(contacto)}
+                            onClick={() => iniciarGraduacion(contacto)}
                           >
                             <GraduationCap className="h-3 w-3" />
                           </Button>
