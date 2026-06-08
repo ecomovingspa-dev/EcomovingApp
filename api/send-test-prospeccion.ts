@@ -13,21 +13,44 @@ function generarHtmlProspeccion(params: { intro: string; cierre: string; empresa
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: 'Segoe UI', sans-serif; color: #1e293b; line-height: 1.6; background-color: #f8fafc; margin: 0; padding: 20px; }
-    .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .content { font-size: 16px; margin-bottom: 25px; color: #334155; }
-    .cta { font-size: 16px; color: #475569; margin-bottom: 30px; }
-    .footer { border-top: 1px solid #e2e8f0; padding-top: 20px; font-size: 13px; color: #64748b; }
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+    body { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6; background-color: #f8fafc; margin: 0; padding: 0; }
+    .wrapper { width: 100%; background-color: #f8fafc; padding: 40px 0; }
+    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02); border: 1px solid #e2e8f0; }
+    .header { padding: 40px 40px 30px; text-align: left; }
+    .logo { height: 32px; display: block; border: 0; }
+    .content { padding: 0 40px 30px; font-size: 16px; color: #334155; }
+    .cta { padding: 0 40px 40px; font-size: 16px; color: #475569; font-weight: 400; }
+    .footer { background-color: #fafafa; border-top: 1px solid #f1f5f9; padding: 35px 40px; }
+    .signature-title { font-weight: 700; color: #0f172a; font-size: 14px; margin-bottom: 4px; }
+    .signature-dept { color: #64748b; font-size: 12px; margin-bottom: 15px; }
+    .logo-footer { height: 20px; opacity: 0.8; display: block; margin-top: 15px; border: 0; }
+    .legal-text { font-size: 11px; color: #94a3b8; line-height: 1.5; margin-top: 15px; border-top: 1px dashed #e2e8f0; padding-top: 15px; text-align: center; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="content">${params.intro.replace(/\n/g, '<br>')}</div>
-    <div class="cta">${params.cierre.replace(/\n/g, '<br>')}</div>
-    <div class="footer">
-      <strong>Equipo Ecomoving SpA</strong><br>
-      Santiago, Chile
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" alt="Ecomoving" class="logo" />
+      </div>
+      <div class="content">
+        ${params.intro.replace(/\n/g, '<br>')}
+      </div>
+      <div class="cta">
+        ${params.cierre.replace(/\n/g, '<br>')}
+      </div>
+      <div class="footer">
+        <div class="signature-title">Equipo de Ventas</div>
+        <div class="signature-dept">Ecomoving SpA</div>
+        <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" alt="Ecomoving Logo" class="logo-footer" />
+        <div class="legal-text">
+          Este es un correo electrónico enviado de forma automática por Ecomoving SpA.<br>
+          Para no recibir más correos de prospección, responda indicando "Darse de baja".
+        </div>
+      </div>
     </div>
   </div>
 </body>
