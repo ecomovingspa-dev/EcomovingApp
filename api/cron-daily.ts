@@ -639,24 +639,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cobranzaResult = await ejecutarCobranza(MAX_COBRANZA_EMAILS);
     console.log(`📧 Cobranza: ${cobranzaResult.sent} enviados`);
 
-    // 5. Calcular cuota restante para Marketing (Prospección pausada por ahora)
+    // 5. Calcular cuota restante para Prospección y Marketing
     const cuotaRestante = BREVO_DAILY_LIMIT - cobranzaResult.sent;
 
-    /* 
-    // Módulo Prospección en Pausa hasta que esté listo
-    const prospeccionResult = await ejecutarProspeccion(Math.floor(cuotaRestante / 2));
+    // 6. Ejecutar PROSPECCIÓN
+    const prospeccionLimit = Math.floor(cuotaRestante / 2);
+    const prospeccionResult = await ejecutarProspeccion(prospeccionLimit);
     console.log(`🔍 Prospección: ${prospeccionResult.sent} enviados`);
-    */
-    const prospeccionResult = { processed: 0, sent: 0, ai_enhanced: 0, errors: [] };
 
-    // 7. Ejecutar MARKETING
-    const marketingResult = await ejecutarMarketing(cuotaRestante);
+    // 7. Ejecutar MARKETING (con la cuota sobrante real)
+    const cuotaRestanteMarketing = cuotaRestante - prospeccionResult.sent;
+    const marketingResult = await ejecutarMarketing(cuotaRestanteMarketing);
     console.log(`📬 Marketing: ${marketingResult.sent} enviados`);
 
     // 8. Reporte final
     return res.status(200).json({
         fecha: diaLaboral.fecha,
-        totalEnviados: cobranzaResult.sent + marketingResult.sent,
+        totalEnviados: cobranzaResult.sent + prospeccionResult.sent + marketingResult.sent,
         alertasInternas: {
             vencidas: alertasInternas.total,
             notificacionCreada: alertasInternas.notificacionCreada,
