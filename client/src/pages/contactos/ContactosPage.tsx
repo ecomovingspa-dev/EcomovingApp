@@ -41,6 +41,8 @@ interface ContactoConCuenta {
     segmento?: string;
     sector?: string;
   };
+  indice_secuencia?: number | null;
+  etapa_envio?: number | null;
 }
 
 
@@ -259,7 +261,7 @@ export default function ContactosPage() {
       if (!nombre && !correo) {
         nuevaEtapa = "prospeccion";
       } else if (!nombre && correo) {
-        nuevaEtapa = "nutricion";
+        nuevaEtapa = "prospeccion"; // Contactos con correo pero sin nombre van a Prospección
       } else if (nombre && correo) {
         nuevaEtapa = "marketing";
       }
@@ -556,7 +558,6 @@ export default function ContactosPage() {
             className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 transition-all font-medium"
           >
             <option value="">Etapa: Todas</option>
-            <option value="nutricion">🌱 Nutricion</option>
             <option value="prospeccion">🔍 Prospeccion</option>
             <option value="marketing">📬 Marketing</option>
           </select>
@@ -839,14 +840,14 @@ export default function ContactosPage() {
                               degradarAProspeccion(contacto);
                             }
                           }}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${(contacto.etapa === "marketing" || contacto.etapa === "nutricion")
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${(contacto.etapa === "marketing")
                             ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
                             : "bg-gray-300 dark:bg-gray-700"
                             }`}
-                          title={(contacto.etapa === "marketing" || contacto.etapa === "nutricion") ? "Campaña: Activo (Marketing)" : "Campaña: Desactivado (Prospección)"}
+                          title={(contacto.etapa === "marketing") ? "Campaña: Activo (Marketing)" : "Campaña: Desactivado (Prospección)"}
                         >
                           <span
-                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${(contacto.etapa === "marketing" || contacto.etapa === "nutricion")
+                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${(contacto.etapa === "marketing")
                               ? "translate-x-5"
                               : "translate-x-1"
                               }`}
@@ -888,10 +889,6 @@ export default function ContactosPage() {
                             </span>
                           );
                         })()
-                      ) : contacto.etapa === "nutricion" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-wider">
-                          🌱 Nutr.
-                        </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[9px] font-black uppercase tracking-wider">
                           📬 Mktg.

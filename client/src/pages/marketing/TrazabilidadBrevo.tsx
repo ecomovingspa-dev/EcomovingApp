@@ -55,7 +55,7 @@ export default function TrazabilidadBrevo() {
     const { data: contactsData, error } = await supabase
       .from("contactos")
       .select("*")
-      .in("etapa", ["prospeccion", "nutricion", "marketing"])
+      .in("etapa", ["prospeccion", "marketing"])
       .eq("estado", "activo")
       .not("correo", "is", null)
       .neq("correo", "")
@@ -69,7 +69,7 @@ export default function TrazabilidadBrevo() {
 
     // 1.5 Resolver manualmente los nombres de cuenta para eludir error FK de Supabase "ambiguous relationship"
     const validContacts = contactsData || [];
-    const accountIdsToFetch = [...new Set(validContacts.map(c => c.cuenta_id).filter(Boolean))];
+    const accountIdsToFetch = Array.from(new Set(validContacts.map(c => c.cuenta_id).filter(Boolean)));
     
     let accountsMap: Record<string, string> = {};
     if (accountIdsToFetch.length > 0) {
@@ -189,7 +189,11 @@ export default function TrazabilidadBrevo() {
 
       // REBOTES / BLOQUEOS
       if (status.includes('bounce') || status === 'spam' || status.includes('invalid')) {
-        return <AlertCircle className="h-5 w-5 text-red-500 animate-pulse" title={status.toUpperCase()} />;
+        return (
+          <span title={status.toUpperCase()}>
+            <AlertCircle className="h-5 w-5 text-red-500 animate-pulse" />
+          </span>
+        );
       }
 
       // APERTURAS
@@ -300,7 +304,6 @@ export default function TrazabilidadBrevo() {
             <SelectContent className="bg-gray-900 border-gray-800 text-white">
               <SelectItem value="todos">TODAS LAS ETAPAS</SelectItem>
               <SelectItem value="marketing">MARKETING</SelectItem>
-              <SelectItem value="nutricion">NUTRICIÓN</SelectItem>
               <SelectItem value="prospeccion">PROSPECCIÓN</SelectItem>
             </SelectContent>
           </Select>
@@ -358,7 +361,7 @@ export default function TrazabilidadBrevo() {
                         {c.empresa_rel_name || c.empresa || 'Empresa No Asignada'}
                       </div>
                       <div className={`text-[8px] font-black px-1.5 py-0.5 rounded-sm inline-block w-fit ${
-                        c.etapa === 'nutricion' ? 'bg-amber-500/10 text-amber-400 border border-amber-400/20' : 'bg-blue-500/10 text-blue-400 border border-blue-400/20'
+                        c.etapa === 'prospeccion' ? 'bg-amber-500/10 text-amber-400 border border-amber-400/20' : 'bg-blue-500/10 text-blue-400 border border-blue-400/20'
                       }`}>
                         {c.etapa?.toUpperCase() || 'MARKETING'}
                       </div>
