@@ -20,11 +20,44 @@ export default function CuentaForm() {
     web: "",
   });
 
+  const [availableSectors, setAvailableSectors] = useState<string[]>([
+    "Privado",
+    "Público"
+  ]);
+  const [availableSegments, setAvailableSegments] = useState<string[]>([
+    "Alimentos / Agrícola",
+    "Automotoras",
+    "Comercializadores",
+    "Constructoras / Inmobiliarias",
+    "Educación",
+    "Logística / Transporte",
+    "Minería / Industria",
+    "Salud",
+    "Servicios",
+    "Servicios Públicos"
+  ]);
+
   useEffect(() => {
     if (esEdicion) {
       cargarCuenta();
     }
+    cargarOpcionesFiltros();
   }, [id]);
+
+  const cargarOpcionesFiltros = async () => {
+    try {
+      const { data } = await supabase.from("cuentas").select("sector, segmento");
+      if (data) {
+        const dbSectors = data.map((c: any) => c.sector).filter(Boolean);
+        const dbSegments = data.map((c: any) => c.segmento).filter(Boolean);
+        
+        setAvailableSectors(prev => Array.from(new Set([...prev, ...dbSectors])).sort());
+        setAvailableSegments(prev => Array.from(new Set([...prev, ...dbSegments])).sort());
+      }
+    } catch (error) {
+      console.error("Error loading filter options:", error);
+    }
+  };
 
   const cargarCuenta = async () => {
     try {
@@ -166,26 +199,36 @@ export default function CuentaForm() {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Sector
               </label>
-              <input
-                type="text"
-                value={cuenta.sector}
+              <select
+                value={cuenta.sector || ""}
                 onChange={(e) => handleChange("sector", e.target.value)}
                 className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Ej: Retail, Construcción, etc."
-              />
+              >
+                <option value="">Selecciona un sector...</option>
+                {availableSectors.map((sec) => (
+                  <option key={sec} value={sec}>
+                    {sec}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Segmento
               </label>
-              <input
-                type="text"
-                value={cuenta.segmento}
+              <select
+                value={cuenta.segmento || ""}
                 onChange={(e) => handleChange("segmento", e.target.value)}
                 className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Ej: Corporativo, PYME, etc."
-              />
+              >
+                <option value="">Selecciona un segmento...</option>
+                {availableSegments.map((seg) => (
+                  <option key={seg} value={seg}>
+                    {seg}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
