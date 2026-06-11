@@ -407,83 +407,30 @@ export default function ConciliacionPage() {
 
     const handleTipoGastoChange = async (movimientoId: number, tipoGasto: string) => {
         try {
-            const mov = movimientos.find(m => m.id === movimientoId);
-            if (!mov) return;
+            // Update the database
+            const { error } = await supabase
+                .from("banco_movimientos")
+                .update({ tipo_gasto: tipoGasto || null })
+                .eq("id", movimientoId);
 
-            const isReconciling = !!tipoGasto;
+            if (error) throw error;
 
-            if (isReconciling) {
-                // 1. Update banco_movimientos - marcar como conciliado manual
-                const { error: errMov } = await supabase
-                    .from("banco_movimientos")
-                    .update({
-                        estado: "conciliado",
-                        tipo_conciliacion: "manual",
-                        tipo_gasto: tipoGasto
-                    })
-                    .eq("id", movimientoId);
+            // Update local state
+            setMovimientos(prev => prev.map(m =>
+                m.id === movimientoId ? { ...m, tipo_gasto: tipoGasto } : m
+            ));
 
-                if (errMov) throw errMov;
+            // If it's a new category, add it to the list and database
+            if (tipoGasto && !categorias.includes(tipoGasto)) {
+                await supabase
+                    .from("banco_categorias")
+                    .insert({ nombre: tipoGasto });
 
-                // 2. Registrar en tabla de auditoría conciliaciones_manuales
-                const { error: errManual } = await supabase
-                    .from("conciliaciones_manuales")
-                    .upsert({
-                        movimiento_id: movimientoId,
-                        categoria: tipoGasto,
-                        detalle: "Categorizado directamente desde la tabla de movimientos",
-                        referencia: null
-                    }, { onConflict: "movimiento_id" });
-
-                if (errManual) {
-                    console.warn("Error insertando auditoría manual:", errManual);
-                }
-
-                // Actualizar estado local
-                setMovimientos(prev => prev.map(m =>
-                    m.id === movimientoId
-                        ? { ...m, estado: "conciliado", tipo_conciliacion: "manual", tipo_gasto: tipoGasto }
-                        : m
-                ));
-
-                // If it's a new category, add it to the list and database
-                if (tipoGasto && !categorias.includes(tipoGasto)) {
-                    await supabase
-                        .from("banco_categorias")
-                        .insert({ nombre: tipoGasto });
-
-                    setCategorias(prev => [...prev, tipoGasto].sort());
-                }
-            } else {
-                // Deshacer conciliación si era manual
-                if (mov.tipo_conciliacion === 'manual') {
-                    await supabase.from('conciliaciones_manuales')
-                        .delete()
-                        .eq('movimiento_id', movimientoId);
-                }
-
-                const { error: errMov } = await supabase
-                    .from("banco_movimientos")
-                    .update({
-                        estado: "pendiente",
-                        tipo_conciliacion: null,
-                        tipo_gasto: null,
-                        conciliado_id: null
-                    })
-                    .eq("id", movimientoId);
-
-                if (errMov) throw errMov;
-
-                // Actualizar estado local
-                setMovimientos(prev => prev.map(m =>
-                    m.id === movimientoId
-                        ? { ...m, estado: "pendiente", tipo_conciliacion: undefined, tipo_gasto: null, conciliado_id: null }
-                        : m
-                ));
+                setCategorias(prev => [...prev, tipoGasto].sort());
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error("Error updating tipo_gasto:", error);
-            alert("Error al actualizar la categoría del movimiento: " + error.message);
+            alert("Error al actualizar el tipo de gasto");
         }
     };
 
@@ -2006,7 +1953,7 @@ export default function ConciliacionPage() {
                                 <TableHead className="w-[5ch]">ID</TableHead>
                                 <TableHead className="w-[100px]">Fecha</TableHead>
                                 <TableHead className="min-w-[250px]">Descripción</TableHead>
-                                <TableHead className="w-[150px]">Categoría</TableHead>
+                                <TableHead className="w-[150px]">Tipo de Gasto</TableHead>
                                 <TableHead className="text-right text-red-600 w-[120px]">Cargos</TableHead>
                                 <TableHead className="text-right text-green-600 w-[120px]">Abonos</TableHead>
                                 <TableHead className="text-right w-[120px]">Saldo</TableHead>
