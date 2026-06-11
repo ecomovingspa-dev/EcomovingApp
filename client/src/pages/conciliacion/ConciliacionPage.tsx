@@ -349,12 +349,12 @@ export default function ConciliacionPage() {
             // 4. Cargar Folios en Lote para el Caché
             const conciliados = (data || []).filter(m => m.estado === 'conciliado' && m.conciliado_id);
             if (conciliados.length > 0) {
-                const ventasIds = [...new Set(conciliados
+                const ventasIds = Array.from(new Set(conciliados
                     .filter(m => m.tipo_conciliacion === 'venta' || m.tipo_conciliacion === 'multiple')
-                    .map(m => m.conciliado_id))];
-                const comprasIds = [...new Set(conciliados
+                    .map(m => m.conciliado_id)));
+                const comprasIds = Array.from(new Set(conciliados
                     .filter(m => m.tipo_conciliacion === 'compra')
-                    .map(m => m.conciliado_id))];
+                    .map(m => m.conciliado_id)));
 
                 const newCache = { ...foliosCache };
                 let changed = false;
@@ -407,30 +407,83 @@ export default function ConciliacionPage() {
 
     const handleTipoGastoChange = async (movimientoId: number, tipoGasto: string) => {
         try {
-            // Update the database
-            const { error } = await supabase
-                .from("banco_movimientos")
-                .update({ tipo_gasto: tipoGasto || null })
-                .eq("id", movimientoId);
+            const mov = movimientos.find(m => m.id === movimientoId);
+            if (!mov) return;
 
-            if (error) throw error;
+            const isReconciling = !!tipoGasto;
 
-            // Update local state
-            setMovimientos(prev => prev.map(m =>
-                m.id === movimientoId ? { ...m, tipo_gasto: tipoGasto } : m
-            ));
+            if (isReconciling) {
+                // 1. Update banco_movimientos - marcar como conciliado manual
+                const { error: errMov } = await supabase
+                    .from("banco_movimientos")
+                    .update({
+                        estado: "conciliado",
+                        tipo_conciliacion: "manual",
+                        tipo_gasto: tipoGasto
+                    })
+                    .eq("id", movimientoId);
 
-            // If it's a new category, add it to the list and database
-            if (tipoGasto && !categorias.includes(tipoGasto)) {
-                await supabase
-                    .from("banco_categorias")
-                    .insert({ nombre: tipoGasto });
+                if (errMov) throw errMov;
 
-                setCategorias(prev => [...prev, tipoGasto].sort());
+                // 2. Registrar en tabla de auditoría conciliaciones_manuales
+                const { error: errManual } = await supabase
+                    .from("conciliaciones_manuales")
+                    .upsert({
+                        movimiento_id: movimientoId,
+                        categoria: tipoGasto,
+                        detalle: "Categorizado directamente desde la tabla de movimientos",
+                        referencia: null
+                    }, { onConflict: "movimiento_id" });
+
+                if (errManual) {
+                    console.warn("Error insertando auditoría manual:", errManual);
+                }
+
+                // Actualizar estado local
+                setMovimientos(prev => prev.map(m =>
+                    m.id === movimientoId
+                        ? { ...m, estado: "conciliado", tipo_conciliacion: "manual", tipo_gasto: tipoGasto }
+                        : m
+                ));
+
+                // If it's a new category, add it to the list and database
+                if (tipoGasto && !categorias.includes(tipoGasto)) {
+                    await supabase
+                        .from("banco_categorias")
+                        .insert({ nombre: tipoGasto });
+
+                    setCategorias(prev => [...prev, tipoGasto].sort());
+                }
+            } else {
+                // Deshacer conciliación si era manual
+                if (mov.tipo_conciliacion === 'manual') {
+                    await supabase.from('conciliaciones_manuales')
+                        .delete()
+                        .eq('movimiento_id', movimientoId);
+                }
+
+                const { error: errMov } = await supabase
+                    .from("banco_movimientos")
+                    .update({
+                        estado: "pendiente",
+                        tipo_conciliacion: null,
+                        tipo_gasto: null,
+                        conciliado_id: null
+                    })
+                    .eq("id", movimientoId);
+
+                if (errMov) throw errMov;
+
+                // Actualizar estado local
+                setMovimientos(prev => prev.map(m =>
+                    m.id === movimientoId
+                        ? { ...m, estado: "pendiente", tipo_conciliacion: undefined, tipo_gasto: null, conciliado_id: null }
+                        : m
+                ));
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error updating tipo_gasto:", error);
-            alert("Error al actualizar el tipo de gasto");
+            alert("Error al actualizar la categoría del movimiento: " + error.message);
         }
     };
 
@@ -907,7 +960,7 @@ export default function ConciliacionPage() {
                 .gte(esAbono ? "mnt_total" : "monto_total", montoBuscado - 1)
                 .lte(esAbono ? "mnt_total" : "monto_total", montoBuscado + 1)
                 .limit(10);
-            byMonto.forEach(d => {
+            byMonto?.forEach(d => {
                 const montoTotal = d.mnt_total || d.monto_total || 0;
                 const balance = d.saldo !== undefined && d.saldo !== null ? d.saldo : montoTotal;
                 candidatesRaw.push({
@@ -1084,13 +1137,17 @@ export default function ConciliacionPage() {
                     updateDoc.estado_pago = esPagoTotal ? "Pagada" : "Parcial";
                     await supabase.from("compras").update(updateDoc).eq("id", doc.id);
 
-                    await supabase.from("compras_abonos").insert({
-                        compra_id: doc.id,
-                        monto_abono: montoAAbonar,
-                        fecha_abono: new Date().toISOString().split("T")[0],
-                        tipo_abono: "Transferencia",
-                        detalle_abono: `Conciliación Múltiple [Movimiento ID: ${selectedMovimiento.id}] - ${selectedMovimiento.descripcion}`
-                    }).catch(e => console.warn("Aviso: No se pudo registrar abono en compras:", e));
+                    try {
+                        await supabase.from("compras_abonos").insert({
+                            compra_id: doc.id,
+                            monto_abono: montoAAbonar,
+                            fecha_abono: new Date().toISOString().split("T")[0],
+                            tipo_abono: "Transferencia",
+                            detalle_abono: `Conciliación Múltiple [Movimiento ID: ${selectedMovimiento.id}] - ${selectedMovimiento.descripcion}`
+                        });
+                    } catch (e: any) {
+                        console.warn("Aviso: No se pudo registrar abono en compras:", e);
+                    }
                 }
 
                 montoDisponible -= montoAAbonar;
@@ -1949,7 +2006,7 @@ export default function ConciliacionPage() {
                                 <TableHead className="w-[5ch]">ID</TableHead>
                                 <TableHead className="w-[100px]">Fecha</TableHead>
                                 <TableHead className="min-w-[250px]">Descripción</TableHead>
-                                <TableHead className="w-[150px]">Tipo de Gasto</TableHead>
+                                <TableHead className="w-[150px]">Categoría</TableHead>
                                 <TableHead className="text-right text-red-600 w-[120px]">Cargos</TableHead>
                                 <TableHead className="text-right text-green-600 w-[120px]">Abonos</TableHead>
                                 <TableHead className="text-right w-[120px]">Saldo</TableHead>
