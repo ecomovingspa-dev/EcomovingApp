@@ -436,7 +436,7 @@ export default function ConciliacionPage() {
 
 
 
-    // --- PARSING LOGIC SPECIFIC TO YOUR BCI EXCEL ---
+    // --- PARSING LOGIC SPECIFIC TO MULTIPLE BANKS ---
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -458,11 +458,14 @@ export default function ConciliacionPage() {
             let docIdx = -1;
             let ingresoIdx = -1;  // Abonos (dinero que entra)
             let egresoIdx = -1;   // Cargos (dinero que sale)
+            let cargoAbonoIdx = -1; // Santander specific
+            let montoIdx = -1;      // Santander specific
             let saldoIdx = -1;
             let bciGlosaIdx = -1;
             let bciComentarioIdx = -1;
             let bciRutIdx = -1;
             let bciNombreIdx = -1;
+            let detectedBank = "BCI";
 
             const cleanStr = (val: any) => String(val || "").toLowerCase().trim().replace(/\s+/g, ' ');
 
@@ -493,14 +496,24 @@ export default function ConciliacionPage() {
                 if (!row || row.length === 0) continue;
                 const rowStr = row.map(cleanStr).join(" ");
 
-                // Detect header row by looking for key BCI columns
-                const hasIngreso = rowStr.includes("ingreso");
-                const hasEgreso = rowStr.includes("egreso");
+                // Detect header row by looking for key columns
+                const hasIngreso = rowStr.includes("ingreso") || rowStr.includes("abono");
+                const hasEgreso = rowStr.includes("egreso") || rowStr.includes("cargo");
                 const hasFecha = rowStr.includes("fecha");
-                const hasGlosa = rowStr.includes("glosa");
+                const hasGlosa = rowStr.includes("glosa") || rowStr.includes("descripcion") || rowStr.includes("descripción") || rowStr.includes("movimiento");
+                const hasMonto = rowStr.includes("monto");
 
-                if (hasFecha && (hasIngreso || hasEgreso || hasGlosa)) {
+                if (hasFecha && (hasIngreso || hasEgreso || hasGlosa || hasMonto)) {
                     movementsStartIndex = i + 1;
+
+                    // Determine bank name based on headers
+                    if (rowStr.includes("cargo/abono") || (rowStr.includes("monto") && rowStr.includes("movimiento"))) {
+                        detectedBank = "Banco Santander";
+                    } else if (rowStr.includes("cargo") || rowStr.includes("abono") || rowStr.includes("sucursal") || rowStr.includes("operación") || rowStr.includes("operacion")) {
+                        detectedBank = "Banco Estado";
+                    } else {
+                        detectedBank = "BCI";
+                    }
 
                     // Map each column
                     row.forEach((cell: any, idx: number) => {
@@ -511,21 +524,33 @@ export default function ConciliacionPage() {
                             fechaIdx = idx;
                         }
 
-                        // Glosa detalle
+                        // Glosa detalle / descripción
                         if (val.includes("glosa") && val.includes("detalle")) {
                             bciGlosaIdx = idx;
                         } else if (val.includes("glosa") && bciGlosaIdx === -1) {
                             bciGlosaIdx = idx;
+                        } else if ((val.includes("descripcion") || val.includes("descripción") || val.includes("movimiento")) && bciGlosaIdx === -1) {
+                            bciGlosaIdx = idx;
                         }
 
-                        // Ingreso (Abonos - dinero que entra)
-                        if (val.includes("ingreso")) {
+                        // Ingreso (Abonos)
+                        if (val.includes("ingreso") || (val.includes("abono") && !val.includes("cargo/abono"))) {
                             ingresoIdx = idx;
                         }
 
-                        // Egreso (Cargos - dinero que sale)
-                        if (val.includes("egreso")) {
+                        // Egreso (Cargos)
+                        if (val.includes("egreso") || (val.includes("cargo") && !val.includes("cargo/abono"))) {
                             egresoIdx = idx;
+                        }
+
+                        // Cargo/Abono
+                        if (val.includes("cargo/abono")) {
+                            cargoAbonoIdx = idx;
+                        }
+
+                        // Monto
+                        if (val.includes("monto")) {
+                            montoIdx = idx;
                         }
 
                         // Saldo
@@ -551,16 +576,19 @@ export default function ConciliacionPage() {
                         }
 
                         // Número documento
-                        if (val.includes("numero") || val.includes("n°") || val.includes("num ") || val.includes("serie")) {
+                        if (val.includes("numero") || val.includes("n°") || val.includes("num ") || val.includes("serie") || val.includes("operacion") || val.includes("operación")) {
                             docIdx = idx;
                         }
                     });
 
-                    console.log("BCI Parser - Columnas detectadas:", {
+                    console.log("Parser - Columnas detectadas:", {
+                        banco: detectedBank,
                         fecha: fechaIdx,
                         glosa: bciGlosaIdx,
                         ingreso: ingresoIdx,
                         egreso: egresoIdx,
+                        cargoAbono: cargoAbonoIdx,
+                        monto: montoIdx,
                         saldo: saldoIdx,
                         comentario: bciComentarioIdx,
                         rut: bciRutIdx,
@@ -572,12 +600,12 @@ export default function ConciliacionPage() {
                 }
             }
 
-            if (movementsStartIndex === -1 || (ingresoIdx === -1 && egresoIdx === -1)) {
-                alert("No se detectó el formato de cartola BCI. Asegúrate de que el archivo tenga columnas de Fecha, Ingreso y/o Egreso.");
+            const hasValidAmounts = (ingresoIdx !== -1 || egresoIdx !== -1) || (montoIdx !== -1 && cargoAbonoIdx !== -1) || (detectedBank === "Banco Santander" && montoIdx !== -1);
+            if (movementsStartIndex === -1 || !hasValidAmounts) {
+                alert("No se detectó el formato de la cartola (BCI, Banco Estado o Banco Santander). Asegúrate de que el archivo tenga columnas de Fecha y columnas de montos válidas.");
                 setUploading(false);
                 return;
             }
-
 
             const parsedMovimientos: any[] = [];
             if (movementsStartIndex !== -1) {
@@ -595,19 +623,72 @@ export default function ConciliacionPage() {
                         const date = XLSX.SSF.parse_date_code(fechaRaw);
                         fecha = new Date(date.y, date.m - 1, date.d).toISOString().split('T')[0];
                     } else if (typeof fechaRaw === 'string') {
-                        const parts = fechaRaw.trim().split('/');
-                        if (parts.length === 3) fecha = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                        const cleanedDateStr = fechaRaw.trim();
+                        if (cleanedDateStr.includes('/')) {
+                            const parts = cleanedDateStr.split('/');
+                            if (parts.length === 3) {
+                                if (parts[0].length === 4) {
+                                    fecha = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                                } else {
+                                    fecha = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                                }
+                            }
+                        } else if (cleanedDateStr.includes('-')) {
+                            const parts = cleanedDateStr.split('-');
+                            if (parts.length === 3) {
+                                if (parts[0].length === 4) {
+                                    fecha = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                                } else {
+                                    fecha = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                                }
+                            }
+                        }
                     }
                     if (!fecha) continue;
 
                     // Description & Content
-                    const finalDesc = String(bciGlosaIdx !== -1 ? row[bciGlosaIdx] : row[1] || "Sin descripción");
+                    const finalDesc = String(bciGlosaIdx !== -1 ? row[bciGlosaIdx] : row[1] || "Sin descripción").trim();
                     const nDoc = docIdx !== -1 ? row[docIdx] : null;
 
-                    // Egreso = Cargos (dinero que sale), Ingreso = Abonos (dinero que entra)
-                    const cargo = egresoIdx !== -1 ? parseMoney(row[egresoIdx]) : 0;
-                    const abono = ingresoIdx !== -1 ? parseMoney(row[ingresoIdx]) : 0;
+                    let cargo = 0;
+                    let abono = 0;
                     const saldo = saldoIdx !== -1 ? parseMoney(row[saldoIdx]) : 0;
+
+                    if (detectedBank === "Banco Santander") {
+                        const mVal = montoIdx !== -1 ? parseMoney(row[montoIdx]) : 0;
+                        const caVal = cargoAbonoIdx !== -1 ? cleanStr(row[cargoAbonoIdx]) : "";
+                        const isCargo = (caVal === 'c' || caVal.includes('cargo') || mVal < 0);
+                        const absMonto = Math.abs(mVal);
+                        
+                        if (isCargo) {
+                            cargo = absMonto;
+                        } else {
+                            abono = absMonto;
+                        }
+                    } else {
+                        // BCI or Banco Estado
+                        cargo = egresoIdx !== -1 ? parseMoney(row[egresoIdx]) : 0;
+                        abono = ingresoIdx !== -1 ? parseMoney(row[ingresoIdx]) : 0;
+                    }
+
+                    // Extract counterpart info (RUT and Name) using RegEx
+                    let extractedRut: string | null = bciRutIdx !== -1 ? String(row[bciRutIdx] || "") : null;
+                    let extractedNombre: string | null = bciNombreIdx !== -1 ? String(row[bciNombreIdx] || "") : null;
+
+                    if (!extractedRut) {
+                        if (detectedBank === "Banco Estado") {
+                            const regexMatch = finalDesc.match(/RUT\s+([\d\.\-]+)\s+(.+)/i);
+                            if (regexMatch) {
+                                extractedRut = regexMatch[1].trim();
+                                extractedNombre = regexMatch[2].trim();
+                            }
+                        } else if (detectedBank === "Banco Santander") {
+                            const regexMatch = finalDesc.match(/(\b\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]\b)/);
+                            if (regexMatch) {
+                                extractedRut = regexMatch[1].trim();
+                            }
+                        }
+                    }
 
                     parsedMovimientos.push({
                         fecha,
@@ -619,14 +700,28 @@ export default function ConciliacionPage() {
                         estado: 'pendiente',
                         bci_glosa_detalle: bciGlosaIdx !== -1 ? String(row[bciGlosaIdx] || "") : "",
                         bci_comentario_transferencia: bciComentarioIdx !== -1 ? String(row[bciComentarioIdx] || "") : null,
-                        bci_rut: bciRutIdx !== -1 ? String(row[bciRutIdx] || "") : null,
-                        bci_nombre: bciNombreIdx !== -1 ? String(row[bciNombreIdx] || "") : null
+                        bci_rut: extractedRut,
+                        bci_nombre: extractedNombre
                     });
                 }
             }
 
             if (parsedMovimientos.length > 0) {
-                await descomponerYGuardar(file.name, saldoInicial, saldoFinal, parsedMovimientos);
+                // Determine sIni and sFin by comparing dates
+                const firstMov = parsedMovimientos[0];
+                const lastMov = parsedMovimientos[parsedMovimientos.length - 1];
+
+                if (firstMov.fecha <= lastMov.fecha) {
+                    // Chronological order (oldest first, e.g. Banco Estado, Banco Santander)
+                    saldoInicial = firstMov.saldo || 0;
+                    saldoFinal = lastMov.saldo || 0;
+                } else {
+                    // Reverse chronological order (newest first, e.g. BCI)
+                    saldoInicial = lastMov.saldo || 0;
+                    saldoFinal = firstMov.saldo || 0;
+                }
+
+                await descomponerYGuardar(file.name, detectedBank, saldoInicial, saldoFinal, parsedMovimientos);
             } else {
                 alert("No se encontraron movimientos válidos. Verifica que el archivo tenga columnas de Fecha, Cargo/Abono.");
             }
@@ -639,6 +734,7 @@ export default function ConciliacionPage() {
             e.target.value = "";
         }
     };
+
 
     // Generate unique hash for a movement to prevent duplicates
     // Must be stable across different uploads of the same movement
@@ -665,7 +761,7 @@ export default function ConciliacionPage() {
     };
 
 
-    const descomponerYGuardar = async (fileName: string, sIni: number, sFin: number, movs: any[]) => {
+    const descomponerYGuardar = async (fileName: string, bankName: string, sIni: number, sFin: number, movs: any[]) => {
         try {
             // Calculate periodo_mes from first movement date
             let periodoMes = "Detectado";
@@ -678,7 +774,7 @@ export default function ConciliacionPage() {
                 .from("banco_cartolas")
                 .insert({
                     nombre_archivo: fileName,
-                    banco: "BCI",
+                    banco: bankName,
                     periodo: "Detectado",
                     periodo_mes: periodoMes,
                     saldo_inicial: sIni,
@@ -1021,6 +1117,12 @@ export default function ConciliacionPage() {
     const totalSelectedAmount = useMemo(() => {
         return multipleSelectedDocs.reduce((sum, doc) => sum + doc.monto, 0);
     }, [multipleSelectedDocs]);
+
+    const getBancoName = useCallback((cartolaId?: number) => {
+        if (!cartolaId) return null;
+        const cartola = cartolas.find(c => c.id === cartolaId);
+        return cartola ? cartola.banco : null;
+    }, [cartolas]);
 
     const ejecutarConciliacionMultiple = async () => {
         if (!selectedMovimiento || multipleSelectedDocs.length === 0) return;
@@ -1987,7 +2089,14 @@ export default function ConciliacionPage() {
                                                     : ''
                                         }
                                     >
-                                        <TableCell className="text-xs text-gray-400 font-mono">{mov.id}</TableCell>
+                                        <TableCell className="text-xs text-gray-400 font-mono">
+                                            <div>{mov.id}</div>
+                                            {mov.cartola_id && (
+                                                <span className="text-[9px] text-gray-500 uppercase block font-sans font-semibold mt-1">
+                                                    {getBancoName(mov.cartola_id)}
+                                                </span>
+                                            )}
+                                        </TableCell>
                                         <TableCell className="font-medium whitespace-nowrap">{mov.fecha}</TableCell>
                                         <TableCell className="whitespace-normal break-words py-4 leading-relaxed min-w-[250px]">
                                             <div className="flex flex-col gap-1">

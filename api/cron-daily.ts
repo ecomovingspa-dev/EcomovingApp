@@ -546,13 +546,22 @@ async function ejecutarProspeccion(maxEmails: number): Promise<{
 
                     const htmlContent = generarHtmlProspeccion({ intro, cierre, empresa });
 
-                    await axios.post('https://api.brevo.com/v3/smtp/email', {
+                    const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', {
                         sender: { name: "Ecomoving", email: "ventas@ecomoving.cl" },
                         to: [{ email: contact.correo }],
                         subject: subject,
                         htmlContent: htmlContent
                     }, {
                         headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' }
+                    });
+
+                    const messageId = brevoRes.data?.messageId;
+
+                    // Registro de trazabilidad
+                    await supabase.from('trazabilidad_correos').insert({
+                        contacto_id: contact.id, email: contact.correo,
+                        fecha: getFechaChile(),
+                        estado: 'request', mensaje_id: messageId
                     });
 
                     const proximoEnvio = sumarDiasHabiles(new Date(), config.dias_espera || 3);

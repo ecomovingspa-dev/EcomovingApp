@@ -16,9 +16,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     try {
         console.log('🔄 Iniciando sincronización de estadísticas de Brevo...');
         
-        // 1. Obtener eventos de los últimos 30 días (hasta 5000 eventos via paginación)
+        // 1. Obtener eventos de los últimos 90 días (hasta 5000 eventos via paginación)
         const now = new Date();
-        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
+        const ninetyDaysAgo = new Date(now.getTime() - (90 * 24 * 60 * 60 * 1000));
         
         let allEvents: any[] = [];
         let offset = 0;
@@ -29,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 params: {
                     limit: 1000,
                     offset: offset,
-                    startDate: thirtyDaysAgo.toISOString().split('T')[0],
+                    startDate: ninetyDaysAgo.toISOString().split('T')[0],
                     endDate: now.toISOString().split('T')[0]
                 }
             });
