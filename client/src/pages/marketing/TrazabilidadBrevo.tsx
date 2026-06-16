@@ -92,17 +92,34 @@ export default function TrazabilidadBrevo() {
       }
     });
 
-    // 2. Obtener historial (trazabilidad_correos) de forma segura
+    // 2. Obtener historial (trazabilidad_correos) de forma segura y paginada (bypasseando límite de 1000 filas)
     let historyData: any[] = [];
     try {
-      const { data: hData, error: hError } = await supabase
-        .from("trazabilidad_correos")
-        .select("*")
-        .gte("fecha", days[0]?.date || '2026-03-01');
+      let allHistory: any[] = [];
+      let from = 0;
+      const limit = 1000;
+      const startDate = days[0]?.date || '2026-03-01';
       
-      if (!hError) historyData = hData || [];
+      while (true) {
+        const { data, error: hError } = await supabase
+          .from("trazabilidad_correos")
+          .select("*")
+          .gte("fecha", startDate)
+          .range(from, from + limit - 1);
+
+        if (hError) {
+          console.error("Error fetching history range:", hError);
+          break;
+        }
+
+        if (!data || data.length === 0) break;
+        allHistory = allHistory.concat(data);
+        if (data.length < limit) break;
+        from += limit;
+      }
+      historyData = allHistory;
     } catch (err) {
-      console.warn("⚠️ Tabla trazabilidad_correos no detectada. Usando fallback.");
+      console.warn("⚠️ Tabla trazabilidad_correos no detectada o error al paginar. Usando fallback.");
     }
 
     // 3. Vincular historial a contactos
@@ -264,6 +281,27 @@ export default function TrazabilidadBrevo() {
     return matchesSearch && matchesCriticos && matchesEtapa;
   });
 
+  const sortedAndFiltered = [...filtered].sort((a, b) => {
+    const aEsProspeccion = a.etapa === 'prospeccion';
+    const aTieneAperturas = a.historial?.some((h: any) => 
+      ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(h.estado?.toLowerCase())
+    ) || ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(a.ultimo_estado_brevo?.toLowerCase());
+
+    const bEsProspeccion = b.etapa === 'prospeccion';
+    const bTieneAperturas = b.historial?.some((h: any) => 
+      ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(h.estado?.toLowerCase())
+    ) || ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(b.ultimo_estado_brevo?.toLowerCase());
+
+    const aPrioridad = aEsProspeccion && aTieneAperturas;
+    const bPrioridad = bEsProspeccion && bTieneAperturas;
+
+    if (aPrioridad && !bPrioridad) return -1;
+    if (!aPrioridad && bPrioridad) return 1;
+    
+    // Si tienen la misma prioridad, ordenar alfabéticamente por nombre
+    return a.nombre.localeCompare(b.nombre);
+  });
+
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-1000">
       {/* Header & Controls */}
@@ -351,7 +389,7 @@ export default function TrazabilidadBrevo() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-900">
-              {filtered.map((c) => (
+              {sortedAndFiltered.map((c) => (
                 <tr key={c.id} className="group hover:bg-white/5 transition-colors">
                   <td className="px-4 py-5">
                     <div className="flex flex-col gap-1.5">
