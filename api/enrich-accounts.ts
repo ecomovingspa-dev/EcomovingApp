@@ -267,6 +267,21 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
                 }
             }
 
+            // 5. Clean up any empty/placeholder contacts for this account
+            if (contactosInsertados.length > 0) {
+                const { error: deleteEmptyError } = await supabase
+                    .from('contactos')
+                    .delete()
+                    .eq('cuenta_id', account.id)
+                    .or('correo.is.null,correo.eq.""');
+                
+                if (deleteEmptyError) {
+                    console.error(`Error deleting empty contacts for account ${companyName}:`, deleteEmptyError.message);
+                } else {
+                    console.log(`Cleaned up empty contacts for account: ${companyName}`);
+                }
+            }
+
             results.push({
                 cuenta: companyName,
                 status: "enriquecida",

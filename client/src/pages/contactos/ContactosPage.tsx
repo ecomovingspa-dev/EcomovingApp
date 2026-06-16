@@ -23,6 +23,8 @@ import {
   GraduationCap,
   Play,
   Check,
+  Loader2,
+  Sparkles,
 } from "lucide-react";
 
 interface ContactoConCuenta {
@@ -52,6 +54,83 @@ export default function ContactosPage() {
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [busqueda, setBusqueda] = useState("");
+  const [enriqueciendoId, setEnriqueciendoId] = useState<string | null>(null);
+  const [loadingEnriquecimiento, setLoadingEnriquecimiento] = useState(false);
+
+  const enriquecerContactoConIA = async (cuentaId: string, contactoId: string) => {
+    if (!cuentaId) return;
+    setEnriqueciendoId(cuentaId);
+    setMensaje("Buscando correo con IA...");
+    try {
+      const response = await fetch("/api/enrich-accounts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ cuentaId }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Error al enriquecer con IA");
+      }
+      
+      setMensaje("✓ Enriquecimiento completo");
+      setTimeout(() => setMensaje(""), 3000);
+      await cargarContactos();
+    } catch (err: any) {
+      console.error("Error al enriquecer contacto:", err);
+      setMensaje("Error al enriquecer: " + (err.message || "Error desconocido"));
+      setTimeout(() => setMensaje(""), 5000);
+    } finally {
+      setEnriqueciendoId(null);
+    }
+  };
+
+  const enriquecerFaltantes = async () => {
+    const faltantes = contactos.filter(c => (!c.correo || c.correo.trim() === "") && c.cuenta_id);
+    if (faltantes.length === 0) {
+      alert("No hay contactos faltantes de correo en la vista actual para enriquecer.");
+      return;
+    }
+
+    if (!confirm(`Se procesarán ${faltantes.length} empresas con la IA para buscar sus correos de contacto. ¿Deseas continuar?`)) {
+      return;
+    }
+
+    setLoadingEnriquecimiento(true);
+    let exitos = 0;
+    
+    try {
+      for (let i = 0; i < faltantes.length; i++) {
+        const c = faltantes[i];
+        setMensaje(`Enriqueciendo ${i + 1} de ${faltantes.length}: ${c.cuentas?.cliente || 'Empresa'}...`);
+        try {
+          const response = await fetch("/api/enrich-accounts", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ cuentaId: c.cuenta_id }),
+          });
+          const data = await response.json();
+          if (response.ok && data.success) {
+            exitos++;
+          }
+        } catch (err) {
+          console.error(`Error enriqueciendo cuenta ${c.cuenta_id}:`, err);
+        }
+      }
+      setMensaje(`✓ Proceso completado. Se enriquecieron ${exitos} empresas.`);
+      setTimeout(() => setMensaje(""), 4000);
+      await cargarContactos();
+    } catch (e: any) {
+      console.error("Error en enriquecerFaltantes:", e);
+      setMensaje("Error en proceso: " + e.message);
+      setTimeout(() => setMensaje(""), 5000);
+    } finally {
+      setLoadingEnriquecimiento(false);
+    }
+  };
   const [filtroSegmento, setFiltroSegmento] = useState("");
   const [filtroSector, setFiltroSector] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
@@ -505,7 +584,21 @@ export default function ContactosPage() {
             {totalRecords} contactos registrados
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {contactos.some(c => !c.correo || c.correo.trim() === "") && (
+            <Button
+              onClick={enriquecerFaltantes}
+              disabled={loadingEnriquecimiento}
+              className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md font-semibold"
+            >
+              {loadingEnriquecimiento ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-4 w-4" />
+              )}
+              {loadingEnriquecimiento ? "Buscando..." : "Buscar Correos Faltantes (IA)"}
+            </Button>
+          )}
           <Button
             onClick={() => setModalProspeccion(true)}
             className="bg-violet-700 hover:bg-violet-800 text-white shadow-md"
@@ -769,17 +862,36 @@ export default function ContactosPage() {
 
                     {/* Correo */}
                     <td className="px-4 py-3 whitespace-nowrap text-[11px]">
-                      <input
-                        type="email"
-                        defaultValue={contacto.correo || ""}
-                        onBlur={(e) => {
-                          if (e.target.value !== (contacto.correo || "")) {
-                            actualizarCampo(contacto.id, "correo", e.target.value);
-                          }
-                        }}
-                        className="bg-transparent border-none p-0 w-full text-gray-500 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 rounded outline-none"
-                        title={contacto.correo}
-                      />
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="email"
+                          defaultValue={contacto.correo || ""}
+                          onBlur={(e) => {
+                            if (e.target.value !== (contacto.correo || "")) {
+                              actualizarCampo(contacto.id, "correo", e.target.value);
+                            }
+                          }}
+                          className="bg-transparent border-none p-0 w-full text-gray-500 dark:text-gray-400 focus:ring-1 focus:ring-blue-500 rounded outline-none"
+                          title={contacto.correo}
+                          placeholder="Sin correo"
+                        />
+                        {(!contacto.correo || contacto.correo.trim() === "") && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/20 shrink-0"
+                            onClick={() => enriquecerContactoConIA(contacto.cuenta_id, contacto.id)}
+                            disabled={enriqueciendoId === contacto.cuenta_id}
+                            title="Buscar correo con IA (Google Search)"
+                          >
+                            {enriqueciendoId === contacto.cuenta_id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3 w-3" />
+                            )}
+                          </Button>
+                        )}
+                      </div>
                     </td>
 
                     {/* Celular / Teléfono */}

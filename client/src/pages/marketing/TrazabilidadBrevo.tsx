@@ -214,27 +214,29 @@ export default function TrazabilidadBrevo() {
       return <Mail className="h-5 w-5 text-blue-400" />;
     }
 
-    // 2. FALLBACK: Modelo antiguo (ultimo_envio único)
-    const ultimoEnvio = contacto.ultimo_envio?.split('T')[0];
-    if (ultimoEnvio === day) {
-      if (contacto.es_bloqueado) return <AlertCircle className="h-5 w-5 text-red-500 animate-pulse" />;
-      const lastStatus = (contacto.ultimo_estado_brevo || "").toLowerCase();
+    // 2. FALLBACK: Modelo antiguo (ultimo_envio único) - Solo si no hay historial real en absoluto
+    if (!contacto.historial || contacto.historial.length === 0) {
+      const ultimoEnvio = contacto.ultimo_envio?.split('T')[0];
+      if (ultimoEnvio === day) {
+        if (contacto.es_bloqueado) return <AlertCircle className="h-5 w-5 text-red-500 animate-pulse" />;
+        const lastStatus = (contacto.ultimo_estado_brevo || "").toLowerCase();
 
-      if (lastStatus.includes('bounce') || lastStatus === 'spam' || lastStatus.includes('invalid')) 
-        return <AlertCircle className="h-5 w-5 text-red-500" />;
+        if (lastStatus.includes('bounce') || lastStatus === 'spam' || lastStatus.includes('invalid')) 
+          return <AlertCircle className="h-5 w-5 text-red-500" />;
 
-      if (lastStatus === "opened" || lastStatus === "unique_opened" || lastStatus === "clicks" || lastStatus === "loadedbyproxy") 
-        return (
-          <div className="flex flex-col items-center gap-1.5">
-            <Eye className="h-5 w-5 text-purple-400" />
-            <button onClick={() => generateDraft(contacto)} className="p-0.5 bg-indigo-500 rounded-md hover:scale-110 transition-transform">
-              <Wrench className="h-3 w-3 text-white" />
-            </button>
-          </div>
-        );
-      if (lastStatus === "delivered" || lastStatus.includes("request")) 
-        return <CheckCircle2 className="h-5 w-5 text-emerald-400" />;
-      return <Mail className="h-5 w-5 text-blue-400" />;
+        if (lastStatus === "opened" || lastStatus === "unique_opened" || lastStatus === "clicks" || lastStatus === "loadedbyproxy") 
+          return (
+            <div className="flex flex-col items-center gap-1.5">
+              <Eye className="h-5 w-5 text-purple-400" />
+              <button onClick={() => generateDraft(contacto)} className="p-0.5 bg-indigo-500 rounded-md hover:scale-110 transition-transform">
+                <Wrench className="h-3 w-3 text-white" />
+              </button>
+            </div>
+          );
+        if (lastStatus === "delivered" || lastStatus.includes("request")) 
+          return <CheckCircle2 className="h-5 w-5 text-emerald-400" />;
+        return <Mail className="h-5 w-5 text-blue-400" />;
+      }
     }
     
     return <div className="h-1.5 w-1.5 bg-gray-800 rounded-full" />; // Dot default

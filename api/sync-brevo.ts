@@ -86,12 +86,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             // a) Para el Historial Histórico (Evita sobrescribir eventos importantes de un mismo mensaje)
             if (emailMap[email] && messageId) {
                 const existingMsg = bestStatusPerMessage[messageId];
-                if (!existingMsg || currentPriority > (statusPriority[existingMsg.status] || 0)) {
+                if (!existingMsg) {
                     bestStatusPerMessage[messageId] = {
                         email: email,
                         status: status,
                         date: eventDate
                     };
+                } else {
+                    // Mantener la fecha más antigua (fecha de envío original)
+                    const existingTime = new Date(existingMsg.date).getTime();
+                    const newTime = new Date(eventDate).getTime();
+                    if (newTime < existingTime) {
+                        existingMsg.date = eventDate;
+                    }
+                    // Mantener el estado de mayor prioridad (ej: opened > delivered)
+                    if (currentPriority > (statusPriority[existingMsg.status] || 0)) {
+                        existingMsg.status = status;
+                    }
                 }
             } else if (emailMap[email] && !messageId) {
                 // Fallback si Brevo no envía messageId (raro)
