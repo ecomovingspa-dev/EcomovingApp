@@ -6,6 +6,7 @@ export default function Marketing() {
   const [contactos, setContactos] = useState<any[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [cargando, setCargando] = useState(true);
+  const [tabActiva, setTabActiva] = useState<string>("todos");
 
   useEffect(() => {
     cargarDatos();
@@ -54,12 +55,25 @@ export default function Marketing() {
     }
   };
 
-  // Filtrar por búsqueda
-  const contactosFiltrados = contactos.filter(
-    (contacto) =>
+  // Auxiliar para obtener el número de etapa
+  const obtenerEtapa = (contacto: any): number => {
+    return parseInt(contacto.etapa_envio || "1");
+  };
+
+  // Filtrar por búsqueda y pestaña activa
+  const contactosFiltrados = contactos.filter((contacto) => {
+    const coincideBusqueda =
       contacto.nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-      contacto.correo?.toLowerCase().includes(busqueda.toLowerCase()),
-  );
+      contacto.correo?.toLowerCase().includes(busqueda.toLowerCase());
+
+    if (!coincideBusqueda) return false;
+
+    if (tabActiva === "todos") return true;
+    if (tabActiva === "completados") {
+      return obtenerEtapa(contacto) >= 100;
+    }
+    return String(obtenerEtapa(contacto)) === tabActiva;
+  });
 
   // Formatear fecha
   const formatearFecha = (fecha: string | null) => {
@@ -146,6 +160,45 @@ export default function Marketing() {
             className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           />
         </div>
+      </div>
+
+      {/* Pestañas de Etapas */}
+      <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
+        {[
+          { id: "todos", label: "Todos", count: contactos.length },
+          { id: "1", label: "Etapa 1", count: contactos.filter(c => obtenerEtapa(c) === 1).length },
+          { id: "2", label: "Etapa 2", count: contactos.filter(c => obtenerEtapa(c) === 2).length },
+          { id: "3", label: "Etapa 3", count: contactos.filter(c => obtenerEtapa(c) === 3).length },
+          { id: "4", label: "Etapa 4", count: contactos.filter(c => obtenerEtapa(c) === 4).length },
+          { id: "5", label: "Etapa 5", count: contactos.filter(c => obtenerEtapa(c) === 5).length },
+          { id: "6", label: "Etapa 6", count: contactos.filter(c => obtenerEtapa(c) === 6).length },
+          { id: "7", label: "Etapa 7", count: contactos.filter(c => obtenerEtapa(c) === 7).length },
+          { id: "completados", label: "Completados", count: contactos.filter(c => obtenerEtapa(c) >= 100).length }
+        ].map((tab) => {
+          const estaActiva = tabActiva === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setTabActiva(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-200 whitespace-nowrap border cursor-pointer ${
+                estaActiva
+                  ? "bg-indigo-600 dark:bg-indigo-500 border-indigo-600 dark:border-indigo-500 text-white shadow-md shadow-indigo-500/20"
+                  : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  estaActiva
+                    ? "bg-indigo-500 dark:bg-indigo-400 text-white"
+                    : "bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-400"
+                }`}
+              >
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Tabla */}
