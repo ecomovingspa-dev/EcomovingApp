@@ -43,10 +43,34 @@ export default function TrazabilidadBrevo() {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState("");
   const [soloCriticos, setSoloCriticos] = useState(false);
-  const [vendedor, setVendedor] = useState("Ejecutivo de Ventas A");
+  const [vendedor, setVendedor] = useState("Vendedor 1");
   const [filtroEtapa, setFiltroEtapa] = useState("todos");
   const [draftData, setDraftData] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleVendedorChange = (newVendedor: string) => {
+    const oldVendedor = vendedor;
+    setVendedor(newVendedor);
+    if (draftData && draftData.body) {
+      const oldSignature = `Saludos,\n\n${oldVendedor}\nEcomoving SpA`;
+      const newSignature = `Saludos,\n\n${newVendedor}\nEcomoving SpA`;
+      if (draftData.body.includes(oldSignature)) {
+        setDraftData({
+          ...draftData,
+          body: draftData.body.replace(oldSignature, newSignature)
+        });
+      } else {
+        const oldSignatureSimple = `Saludos,\n\n${oldVendedor}`;
+        const newSignatureSimple = `Saludos,\n\n${newVendedor}`;
+        if (draftData.body.includes(oldSignatureSimple)) {
+          setDraftData({
+            ...draftData,
+            body: draftData.body.replace(oldSignatureSimple, newSignatureSimple)
+          });
+        }
+      }
+    }
+  };
 
   const fetchContactos = async (days: CalendarDay[]) => {
     setLoading(true);
@@ -263,12 +287,23 @@ export default function TrazabilidadBrevo() {
     const company = c.nombre?.replace('Contacto Principal - ', '') || 'su empresa';
     const email = c.correo;
     
-    // Asunto según el último estado
-    const subject = `Sobre tu consulta de hidratación eficiente - Ecomoving`;
-    
-    const body = `Hola ${c.nombre?.split(' ')[0] || ''},\n\nTe escribo porque vi que estuvieron revisando nuestra propuesta de sostenibilidad y eficiencia operativa para ${company} hoy.\n\nNo quería que se quedaran con dudas tácticas sobre cómo el cambio a purificadores puede reducir sus costos logísticos de inmediato.\n\n¿Tendrían 10 minutos la próxima semana para una llamada rápida?\n\nSaludos,\n\n${vendedor}\nEcomoving SpA`;
+    // Check if contact has opens or clicks
+    const tieneAperturas = c.historial?.some((h: any) => 
+      ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(h.estado?.toLowerCase())
+    ) || ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(c.ultimo_estado_brevo?.toLowerCase());
 
-    setDraftData({ email, subject, body });
+    let subject = "";
+    let body = "";
+
+    if (tieneAperturas) {
+      subject = `Sobre tu consulta de hidratación eficiente - Ecomoving`;
+      body = `Hola ${c.nombre?.split(' ')[0] || ''},\n\nTe escribo porque vi que estuvieron revisando nuestra propuesta de sostenibilidad y eficiencia operativa para ${company} recientemente.\n\nNo quería que se quedaran con dudas tácticas sobre cómo el cambio a purificadores puede reducir sus costos logísticos de inmediato.\n\n¿Tendrían 10 minutos la próxima semana para una llamada rápida?\n\nSaludos,\n\n${vendedor}\nEcomoving SpA`;
+    } else {
+      subject = `Soluciones de hidratación eficiente para ${company} - Ecomoving`;
+      body = `Hola ${c.nombre?.split(' ')[0] || ''},\n\nEspero que te encuentres muy bien.\n\nTe escribo de Ecomoving para dar seguimiento a nuestra propuesta de sostenibilidad y eficiencia operativa para ${company}.\n\nMe gustaría saber si han tenido oportunidad de revisarla y si podríamos coordinar una breve llamada de 10 minutos la próxima semana para conversar al respecto.\n\nSaludos,\n\n${vendedor}\nEcomoving SpA`;
+    }
+
+    setDraftData({ email, subject, body, contactoId: c.id });
     setIsModalOpen(true);
   };
 
@@ -386,6 +421,8 @@ export default function TrazabilidadBrevo() {
                     {d.label}
                   </th>
                 ))}
+                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[80px] text-gray-500">CORTESÍA</th>
+                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[70px] text-gray-500">ENVIAR</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-900">
@@ -416,6 +453,27 @@ export default function TrazabilidadBrevo() {
                     </td>
                   ))}
 
+                  <td className="px-2 py-5 text-center border-l border-gray-900/10">
+                    <div className="flex justify-center items-center">
+                      {c.correo_cortesia_enviado ? (
+                        <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" title="Correo de cortesía enviado" />
+                      ) : (
+                        <Circle className="h-4.5 w-4.5 text-gray-700" title="Pendiente de envío" />
+                      )}
+                    </div>
+                  </td>
+
+                  <td className="px-2 py-5 text-center border-l border-gray-900/10">
+                    <div className="flex justify-center items-center">
+                      <button 
+                        onClick={() => generateDraft(c)} 
+                        className="p-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md hover:scale-110 transition-all flex items-center justify-center shadow-md shadow-indigo-600/25"
+                        title="Enviar correo"
+                      >
+                        <Mail className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -431,7 +489,7 @@ export default function TrazabilidadBrevo() {
               <Mail className="h-5 w-5" /> Redacción @Ventas IA
             </DialogTitle>
             <DialogDescription className="text-gray-500">
-              Borrador personalizado basado en la última apertura detectada.
+              Borrador personalizado y editable para enviar usando tu cuenta de correo.
             </DialogDescription>
           </DialogHeader>
 
@@ -442,7 +500,7 @@ export default function TrazabilidadBrevo() {
                 {['Vendedor 1', 'Vendedor 2'].map(v => (
                   <button 
                     key={v}
-                    onClick={() => setVendedor(v)}
+                    onClick={() => handleVendedorChange(v)}
                     className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${
                       vendedor === v ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-500 hover:bg-gray-700'
                     }`}
@@ -455,21 +513,30 @@ export default function TrazabilidadBrevo() {
 
             <div className="space-y-4">
               <div className="space-y-1">
+                <label className="text-[10px] font-black text-gray-500 uppercase">Destinatario</label>
+                <input 
+                  type="text" 
+                  value={draftData?.email || ""} 
+                  onChange={(e) => setDraftData(draftData ? { ...draftData, email: e.target.value } : null)}
+                  className="w-full bg-gray-900 border border-gray-800 text-white text-sm p-3 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                />
+              </div>
+              <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase">Asunto</label>
                 <input 
                   type="text" 
-                  value={draftData?.subject} 
-                  readOnly 
-                  className="w-full bg-gray-900 border-none text-white text-sm p-3 rounded-xl" 
+                  value={draftData?.subject || ""} 
+                  onChange={(e) => setDraftData(draftData ? { ...draftData, subject: e.target.value } : null)}
+                  className="w-full bg-gray-900 border border-gray-800 text-white text-sm p-3 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-[10px] font-black text-gray-500 uppercase">Cuerpo del Correo (Tono Humano)</label>
                 <Textarea 
-                  value={draftData?.body} 
-                  readOnly 
+                  value={draftData?.body || ""} 
+                  onChange={(e) => setDraftData(draftData ? { ...draftData, body: e.target.value } : null)}
                   rows={8}
-                  className="w-full bg-gray-900 border-none text-white text-sm p-3 rounded-xl resize-none" 
+                  className="w-full bg-gray-900 border border-gray-800 text-white text-sm p-3 rounded-xl resize-none focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
                 />
               </div>
             </div>
@@ -477,23 +544,49 @@ export default function TrazabilidadBrevo() {
 
           <DialogFooter className="flex justify-end gap-3 border-t border-gray-800 pt-6">
              <Button 
-               variant="outline" 
-               className="border-gray-800 text-gray-400 hover:bg-gray-900"
-               onClick={() => setIsModalOpen(false)}
+                variant="outline" 
+                className="border-gray-800 text-gray-400 hover:bg-gray-900"
+                onClick={() => setIsModalOpen(false)}
              >
               DESCARTAR
              </Button>
-             <Button 
-               className="bg-indigo-600 hover:bg-indigo-500 text-white font-black"
-               onClick={() => {
-                 const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}&body=${encodeURIComponent(draftData.body)}`;
-                 window.location.href = mailto;
-                 setIsModalOpen(false);
-                 toast.success("Borrador enviado al gestor de correos");
-               }}
-             >
-              ENVIAR AL GESTOR (Disparar)
-             </Button>
+              <Button 
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-black"
+                onClick={async () => {
+                  if (draftData) {
+                    const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}&body=${encodeURIComponent(draftData.body)}`;
+                    window.location.href = mailto;
+
+                    if (draftData.contactoId) {
+                      try {
+                        const { error } = await supabase
+                          .from("contactos")
+                          .update({ 
+                            correo_cortesia_enviado: true,
+                            ultimo_envio: new Date().toISOString()
+                          })
+                          .eq("id", draftData.contactoId);
+
+                        if (error) throw error;
+                        toast.success("Correo de cortesía registrado en la base de datos");
+
+                        // Actualizar estado local
+                        setContactos(prev => prev.map(c => 
+                          c.id === draftData.contactoId 
+                            ? { ...c, correo_cortesia_enviado: true, ultimo_envio: new Date().toISOString() } 
+                            : c
+                        ));
+                      } catch (dbErr) {
+                        console.error("Error al registrar envío de cortesía:", dbErr);
+                        toast.error("Error al actualizar la base de datos");
+                      }
+                    }
+                  }
+                  setIsModalOpen(false);
+                }}
+              >
+               ENVIAR AL GESTOR (Disparar)
+              </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
