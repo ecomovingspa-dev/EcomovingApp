@@ -45,6 +45,7 @@ export default function TrazabilidadBrevo() {
   const [soloCriticos, setSoloCriticos] = useState(false);
   const [vendedor, setVendedor] = useState("Vendedor 1");
   const [filtroEtapa, setFiltroEtapa] = useState("todos");
+  const [filtroSector, setFiltroSector] = useState("todos");
   const [draftData, setDraftData] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -91,28 +92,29 @@ export default function TrazabilidadBrevo() {
       return;
     }
 
-    // 1.5 Resolver manualmente los nombres de cuenta para eludir error FK de Supabase "ambiguous relationship"
+    // 1.5 Resolver manualmente los nombres de cuenta y sector para eludir error FK de Supabase
     const validContacts = contactsData || [];
     const accountIdsToFetch = Array.from(new Set(validContacts.map(c => c.cuenta_id).filter(Boolean)));
     
-    let accountsMap: Record<string, string> = {};
+    let accountsMap: Record<string, { cliente: string; sector: string }> = {};
     if (accountIdsToFetch.length > 0) {
       const { data: cuentasData } = await supabase
         .from("cuentas")
-        .select("id, cliente")
+        .select("id, cliente, sector")
         .in("id", accountIdsToFetch);
         
       if (cuentasData) {
         cuentasData.forEach((acc: any) => {
-          accountsMap[acc.id] = acc.cliente;
+          accountsMap[acc.id] = { cliente: acc.cliente, sector: acc.sector || 'privado' };
         });
       }
     }
 
-    // Embed the account name string directly in the contact object mapping for the template fallback:
+    // Embed the account name and sector directly in the contact object mapping:
     validContacts.forEach((c: any) => {
       if (c.cuenta_id && accountsMap[c.cuenta_id]) {
-        c.empresa_rel_name = accountsMap[c.cuenta_id];
+        c.empresa_rel_name = accountsMap[c.cuenta_id].cliente;
+        c.empresa_rel_sector = accountsMap[c.cuenta_id].sector;
       }
     });
 
@@ -313,7 +315,14 @@ export default function TrazabilidadBrevo() {
     const matchesCriticos = soloCriticos ? c.es_bloqueado : true;
     const matchesEtapa = filtroEtapa === "todos" ? true : (c.etapa === filtroEtapa);
     
-    return matchesSearch && matchesCriticos && matchesEtapa;
+    const contactSector = c.empresa_rel_sector?.toLowerCase() || "privado";
+    const matchesSector = filtroSector === "todos" ? true : (
+      filtroSector === "privado"
+        ? contactSector === "privado"
+        : (contactSector === "público" || contactSector === "publico")
+    );
+
+    return matchesSearch && matchesCriticos && matchesEtapa && matchesSector;
   });
 
   const sortedAndFiltered = [...filtered].sort((a, b) => {
@@ -393,19 +402,35 @@ export default function TrazabilidadBrevo() {
         </div>
       </div>
 
-      {/* Mini-Leyenda Superior */}
-      <div className="flex flex-wrap gap-4 px-4 py-2 bg-gray-900/40 rounded-xl border border-gray-800 w-fit">
-        <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
-          <Mail className="h-3 w-3 text-blue-400" /> Enviado
+      {/* Mini-Leyenda Superior & Filtro de Sector */}
+      <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-2 bg-gray-900/40 rounded-2xl border border-gray-800">
+        <div className="flex flex-wrap gap-4">
+          <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
+            <Mail className="h-3 w-3 text-blue-400" /> Enviado
+          </div>
+          <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
+            <CheckCircle2 className="h-3 w-3 text-emerald-400" /> Entregado
+          </div>
+          <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
+            <Eye className="h-3 w-3 text-purple-400" /> Abierto
+          </div>
+          <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
+            <Wrench className="h-3 w-3 text-indigo-400" /> Seguimiento
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
-          <CheckCircle2 className="h-3 w-3 text-emerald-400" /> Entregado
-        </div>
-        <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
-          <Eye className="h-3 w-3 text-purple-400" /> Abierto
-        </div>
-        <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
-          <Wrench className="h-3 w-3 text-indigo-400" /> Seguimiento
+
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] font-black uppercase text-gray-500">Sector:</span>
+          <Select onValueChange={(val) => setFiltroSector(val)} defaultValue="todos">
+            <SelectTrigger className="w-[120px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[28px] rounded-lg">
+              <SelectValue placeholder="SECTOR" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-gray-800 text-white">
+              <SelectItem value="todos">TODOS</SelectItem>
+              <SelectItem value="privado">PRIVADOS</SelectItem>
+              <SelectItem value="publico">PÚBLICOS</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
