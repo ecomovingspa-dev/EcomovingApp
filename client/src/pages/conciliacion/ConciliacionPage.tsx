@@ -471,23 +471,21 @@ export default function ConciliacionPage() {
 
             const parseMoney = (val: any): number => {
                 if (val === undefined || val === null || val === "") return 0;
-                if (typeof val === 'number') return val;
-                if (typeof val === 'string') {
-                    let clean = val.replace(/[^0-9,.-]/g, '');
-                    if (clean.includes(',') && clean.includes('.')) {
-                        if (clean.lastIndexOf(',') > clean.lastIndexOf('.')) {
-                            clean = clean.replace(/\./g, '').replace(',', '.');
-                        } else {
-                            clean = clean.replace(/,/g, '');
-                        }
-                    } else if (clean.includes(',')) {
-                        clean = clean.replace(',', '.');
-                    } else if ((clean.match(/\./g) || []).length > 1) {
-                        clean = clean.replace(/\./g, '');
-                    }
-                    return parseFloat(clean) || 0;
-                }
-                return 0;
+                
+                const strVal = String(val).trim();
+                if (strVal === "") return 0;
+                
+                const isNegative = strVal.startsWith('-');
+                let clean = strVal.replace(/[^0-9,.]/g, '');
+                
+                // Strip trailing decimal zeros (at most 2 zeros, e.g., .00, ,00, .0, ,0)
+                clean = clean.replace(/[,.]0{1,2}$/, '');
+                
+                // Since CLP (Chilean Peso) is integer-only, remove all other commas and dots
+                clean = clean.replace(/[,.]/g, '');
+                
+                const parsed = parseInt(clean, 10) || 0;
+                return isNegative ? -parsed : parsed;
             };
 
             // 1. Scan for Headers - Look for the row with column headers
