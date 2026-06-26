@@ -735,12 +735,13 @@ export default function ConciliacionPage() {
 
 
     // Generate unique hash for a movement to prevent duplicates
-    // Must be stable across different uploads of the same movement
-    const generateMovementHash = (mov: any): string => {
+    // Must be stable across different uploads of the same movement.
+    // Handles occurrenceIndex to support multiple identical rows in the same cartola.
+    const generateMovementHash = (mov: any, occurrenceIndex: number = 0): string => {
         // Safe string for hashing (handle tildes/unicode)
         const normalize = (val: any) => String(val || "").trim().toLowerCase();
 
-        const data = [
+        const dataParts = [
             normalize(mov.fecha),
             normalize(mov.descripcion),
             normalize(mov.cargos),
@@ -748,7 +749,13 @@ export default function ConciliacionPage() {
             normalize(mov.saldo),
             normalize(mov.bci_rut),
             normalize(mov.numero_documento)
-        ].join('|');
+        ];
+
+        if (occurrenceIndex > 0) {
+            dataParts.push(String(occurrenceIndex));
+        }
+
+        const data = dataParts.join('|');
 
         // DJB2 Hash implementation (better than simple integer addition)
         let hash = 5381;
@@ -786,9 +793,23 @@ export default function ConciliacionPage() {
                 return;
             }
 
+            const occurrenceCounts: Record<string, number> = {};
             const movimientosConId = movs.map(m => {
-                // Now passing only the movement, making hash stable across uploads
-                const uniqueId = generateMovementHash(m);
+                const normalize = (val: any) => String(val || "").trim().toLowerCase();
+                const key = [
+                    normalize(m.fecha),
+                    normalize(m.descripcion),
+                    normalize(m.cargos),
+                    normalize(m.abonos),
+                    normalize(m.saldo),
+                    normalize(m.bci_rut),
+                    normalize(m.numero_documento)
+                ].join('|');
+
+                const count = occurrenceCounts[key] || 0;
+                occurrenceCounts[key] = count + 1;
+
+                const uniqueId = generateMovementHash(m, count);
                 return {
                     ...m,
                     cartola_id: cartolaData.id,
