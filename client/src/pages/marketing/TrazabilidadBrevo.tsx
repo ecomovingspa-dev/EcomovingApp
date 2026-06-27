@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -48,6 +50,10 @@ export default function TrazabilidadBrevo() {
   const [filtroSector, setFiltroSector] = useState("todos");
   const [draftData, setDraftData] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [cuentas, setCuentas] = useState<any[]>([]);
+  const [selectedContact, setSelectedContact] = useState<any>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [guardandoContacto, setGuardandoContacto] = useState(false);
 
   const handleVendedorChange = (newVendedor: string) => {
     const oldVendedor = vendedor;
@@ -76,7 +82,21 @@ export default function TrazabilidadBrevo() {
   const fetchContactos = async (days: CalendarDay[]) => {
     setLoading(true);
     
-    // 1. Obtener base de contactos (Prospección, Nutrición y Marketing)
+    // 1. Obtener todas las cuentas para selectores e información
+    const { data: cuentasData, error: cuentasError } = await supabase
+      .from("cuentas")
+      .select("id, cliente, sector")
+      .order("cliente");
+
+    if (cuentasError) {
+      console.error("Error al cargar cuentas:", cuentasError);
+    } else {
+      setCuentas(cuentasData || []);
+    }
+
+    const currentCuentas = cuentasData || [];
+
+    // 1.2 Obtener base de contactos (Prospección, Nutrición y Marketing)
     const { data: contactsData, error } = await supabase
       .from("contactos")
       .select("*")
@@ -92,23 +112,13 @@ export default function TrazabilidadBrevo() {
       return;
     }
 
-    // 1.5 Resolver manualmente los nombres de cuenta y sector para eludir error FK de Supabase
     const validContacts = contactsData || [];
-    const accountIdsToFetch = Array.from(new Set(validContacts.map(c => c.cuenta_id).filter(Boolean)));
-    
-    let accountsMap: Record<string, { cliente: string; sector: string }> = {};
-    if (accountIdsToFetch.length > 0) {
-      const { data: cuentasData } = await supabase
-        .from("cuentas")
-        .select("id, cliente, sector")
-        .in("id", accountIdsToFetch);
-        
-      if (cuentasData) {
-        cuentasData.forEach((acc: any) => {
-          accountsMap[acc.id] = { cliente: acc.cliente, sector: acc.sector || 'privado' };
-        });
-      }
-    }
+
+    // Build accounts map
+    const accountsMap: Record<string, { cliente: string; sector: string }> = {};
+    currentCuentas.forEach((acc: any) => {
+      accountsMap[acc.id] = { cliente: acc.cliente, sector: acc.sector || 'privado' };
+    });
 
     // Embed the account name and sector directly in the contact object mapping:
     validContacts.forEach((c: any) => {
@@ -309,6 +319,67 @@ export default function TrazabilidadBrevo() {
     setIsModalOpen(true);
   };
 
+  const openEditModal = (c: any) => {
+    setSelectedContact({ ...c });
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveContact = async () => {
+    if (!selectedContact) return;
+    if (!selectedContact.nombre?.trim()) {
+      toast.error("El nombre es obligatorio");
+      return;
+    }
+    if (!selectedContact.cuenta_id) {
+      toast.error("Debe seleccionar una cuenta");
+      return;
+    }
+
+    setGuardandoContacto(true);
+    try {
+      const { id, empresa_rel_name, empresa_rel_sector, historial, ...updates } = selectedContact;
+      const { error } = await supabase
+        .from("contactos")
+        .update(updates)
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Contacto actualizado correctamente");
+      
+      await fetchContactos(calendarDays);
+      setIsEditModalOpen(false);
+    } catch (err: any) {
+      console.error("Error al actualizar contacto:", err);
+      toast.error("Error al actualizar el contacto");
+    } finally {
+      setGuardandoContacto(false);
+    }
+  };
+
+  const handleDeleteContact = async () => {
+    if (!selectedContact) return;
+    if (!confirm("¿Estás seguro de eliminar este contacto?")) return;
+
+    setGuardandoContacto(true);
+    try {
+      const { error } = await supabase
+        .from("contactos")
+        .delete()
+        .eq("id", selectedContact.id);
+
+      if (error) throw error;
+      toast.success("Contacto eliminado correctamente");
+
+      await fetchContactos(calendarDays);
+      setIsEditModalOpen(false);
+    } catch (err: any) {
+      console.error("Error al eliminar contacto:", err);
+      toast.error("Error al eliminar el contacto");
+    } finally {
+      setGuardandoContacto(false);
+    }
+  };
+
   const filtered = contactos.filter(c => {
     const matchesSearch = c.nombre.toLowerCase().includes(filtro.toLowerCase()) || 
                          c.correo.toLowerCase().includes(filtro.toLowerCase());
@@ -447,7 +518,7 @@ export default function TrazabilidadBrevo() {
                   </th>
                 ))}
                 <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[80px] text-gray-500">CORTESÍA</th>
-                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[70px] text-gray-500">ENVIAR</th>
+                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[110px] text-gray-500">ACCIONES</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-900">
@@ -489,13 +560,20 @@ export default function TrazabilidadBrevo() {
                   </td>
 
                   <td className="px-2 py-5 text-center border-l border-gray-900/10">
-                    <div className="flex justify-center items-center">
+                    <div className="flex justify-center items-center gap-2">
                       <button 
                         onClick={() => generateDraft(c)} 
                         className="p-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md hover:scale-110 transition-all flex items-center justify-center shadow-md shadow-indigo-600/25"
                         title="Enviar correo"
                       >
                         <Mail className="h-3.5 w-3.5" />
+                      </button>
+                      <button 
+                        onClick={() => openEditModal(c)} 
+                        className="p-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md hover:scale-110 transition-all flex items-center justify-center border border-gray-750"
+                        title="Gestionar contacto"
+                      >
+                        <Settings className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </td>
@@ -612,6 +690,157 @@ export default function TrazabilidadBrevo() {
               >
                ENVIAR AL GESTOR (Disparar)
               </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DE EDICIÓN Y GESTIÓN DE CONTACTO */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="bg-gray-950 border border-gray-800 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-indigo-400">
+              <Settings className="h-5 w-5" /> Gestionar Contacto
+            </DialogTitle>
+            <DialogDescription className="text-gray-500">
+              Edita la información del contacto o elimínalo de la base de datos.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 my-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Nombre Completo</Label>
+                <Input 
+                  type="text" 
+                  value={selectedContact?.nombre || ""} 
+                  onChange={(e) => setSelectedContact({ ...selectedContact, nombre: e.target.value })}
+                  className="bg-gray-900 border border-gray-850 text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Correo Electrónico</Label>
+                <Input 
+                  type="email" 
+                  value={selectedContact?.correo || ""} 
+                  onChange={(e) => setSelectedContact({ ...selectedContact, correo: e.target.value })}
+                  className="bg-gray-900 border border-gray-850 text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Celular</Label>
+                <Input 
+                  type="text" 
+                  value={selectedContact?.celular || ""} 
+                  onChange={(e) => setSelectedContact({ ...selectedContact, celular: e.target.value })}
+                  className="bg-gray-900 border border-gray-850 text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Teléfono Fijo</Label>
+                <Input 
+                  type="text" 
+                  value={selectedContact?.telefono || ""} 
+                  onChange={(e) => setSelectedContact({ ...selectedContact, telefono: e.target.value })}
+                  className="bg-gray-900 border border-gray-850 text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Departamento</Label>
+                <Input 
+                  type="text" 
+                  value={selectedContact?.departamento || ""} 
+                  onChange={(e) => setSelectedContact({ ...selectedContact, departamento: e.target.value })}
+                  className="bg-gray-900 border border-gray-850 text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Cuenta / Cliente</Label>
+                <Select 
+                  value={selectedContact?.cuenta_id || ""} 
+                  onValueChange={(val) => setSelectedContact({ ...selectedContact, cuenta_id: val })}
+                >
+                  <SelectTrigger className="bg-gray-900 border-gray-800 text-white focus:ring-1 focus:ring-indigo-500">
+                    <SelectValue placeholder="Seleccionar cuenta..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 border-gray-850 text-white max-h-60 overflow-y-auto">
+                    {cuentas.map((acc: any) => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.cliente}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Estado del Contacto</Label>
+                <Select 
+                  value={selectedContact?.estado || "activo"} 
+                  onValueChange={(val) => setSelectedContact({ ...selectedContact, estado: val })}
+                >
+                  <SelectTrigger className="bg-gray-900 border-gray-800 text-white focus:ring-1 focus:ring-indigo-500">
+                    <SelectValue placeholder="Seleccionar estado..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 border-gray-850 text-white">
+                    <SelectItem value="activo">Activo</SelectItem>
+                    <SelectItem value="inactivo">Inactivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Etapa de Secuencia</Label>
+                <Select 
+                  value={selectedContact?.etapa || "marketing"} 
+                  onValueChange={(val) => setSelectedContact({ ...selectedContact, etapa: val })}
+                >
+                  <SelectTrigger className="bg-gray-900 border-gray-800 text-white focus:ring-1 focus:ring-indigo-500">
+                    <SelectValue placeholder="Seleccionar etapa..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 border-gray-850 text-white">
+                    <SelectItem value="prospeccion">Prospección</SelectItem>
+                    <SelectItem value="marketing">Marketing</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex justify-between items-center gap-3 border-t border-gray-800 pt-6">
+            <Button 
+              variant="outline" 
+              className="border-red-900/50 hover:bg-red-950/20 text-red-400 hover:text-red-300 font-bold"
+              onClick={handleDeleteContact}
+              disabled={guardandoContacto}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              ELIMINAR
+            </Button>
+            
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                className="border-gray-800 text-gray-400 hover:bg-gray-900"
+                onClick={() => setIsEditModalOpen(false)}
+                disabled={guardandoContacto}
+              >
+                CANCELAR
+              </Button>
+              <Button 
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-black"
+                onClick={handleSaveContact}
+                disabled={guardandoContacto}
+              >
+                {guardandoContacto ? "GUARDANDO..." : "GUARDAR CAMBIOS"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
