@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -54,6 +56,13 @@ export default function TrazabilidadBrevo() {
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [guardandoContacto, setGuardandoContacto] = useState(false);
+
+  // Account states
+  const [selectedCuenta, setSelectedCuenta] = useState<any>(null);
+  const [isEditCuentaModalOpen, setIsEditCuentaModalOpen] = useState(false);
+  const [guardandoCuenta, setGuardandoCuenta] = useState(false);
+  const [busquedaCuentas, setBusquedaCuentas] = useState("");
+  const [isCuentaOpen, setIsCuentaOpen] = useState(false);
 
   const handleVendedorChange = (newVendedor: string) => {
     const oldVendedor = vendedor;
@@ -379,6 +388,82 @@ export default function TrazabilidadBrevo() {
       setGuardandoContacto(false);
     }
   };
+
+  const openEditCuentaModal = async (cuentaId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("cuentas")
+        .select("*")
+        .eq("id", cuentaId)
+        .single();
+      
+      if (error) throw error;
+      if (data) {
+        setSelectedCuenta(data);
+        setIsEditCuentaModalOpen(true);
+      }
+    } catch (err: any) {
+      console.error("Error fetching account:", err);
+      toast.error("Error al cargar los datos de la cuenta");
+    }
+  };
+
+  const handleSaveCuenta = async () => {
+    if (!selectedCuenta) return;
+    if (!selectedCuenta.cliente?.trim()) {
+      toast.error("El nombre del cliente es obligatorio");
+      return;
+    }
+
+    setGuardandoCuenta(true);
+    try {
+      const { id, ...updates } = selectedCuenta;
+      const { error } = await supabase
+        .from("cuentas")
+        .update(updates)
+        .eq("id", id);
+
+      if (error) throw error;
+      toast.success("Cuenta actualizada correctamente");
+      
+      await fetchContactos(calendarDays);
+      setIsEditCuentaModalOpen(false);
+    } catch (err: any) {
+      console.error("Error al actualizar cuenta:", err);
+      toast.error("Error al actualizar la cuenta");
+    } finally {
+      setGuardandoCuenta(false);
+    }
+  };
+
+  const handleDeleteCuenta = async () => {
+    if (!selectedCuenta) return;
+    if (!confirm("¿Estás seguro de eliminar esta cuenta? Esto podría eliminar o afectar sus contactos vinculados. ¿Deseas continuar?")) return;
+
+    setGuardandoCuenta(true);
+    try {
+      const { error } = await supabase
+        .from("cuentas")
+        .delete()
+        .eq("id", selectedCuenta.id);
+
+      if (error) throw error;
+      toast.success("Cuenta eliminada correctamente");
+
+      await fetchContactos(calendarDays);
+      setIsEditCuentaModalOpen(false);
+      setIsEditModalOpen(false);
+    } catch (err: any) {
+      console.error("Error al eliminar cuenta:", err);
+      toast.error("Error al eliminar la cuenta");
+    } finally {
+      setGuardandoCuenta(false);
+    }
+  };
+
+  const cuentasFiltradas = cuentas.filter(acc => 
+    acc.cliente?.toLowerCase().includes(busquedaCuentas.toLowerCase())
+  );
 
   const filtered = contactos.filter(c => {
     const matchesSearch = c.nombre.toLowerCase().includes(filtro.toLowerCase()) || 
@@ -760,22 +845,81 @@ export default function TrazabilidadBrevo() {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-[10px] font-black text-gray-500 uppercase">Cuenta / Cliente</Label>
-                <Select 
-                  value={selectedContact?.cuenta_id || ""} 
-                  onValueChange={(val) => setSelectedContact({ ...selectedContact, cuenta_id: val })}
-                >
-                  <SelectTrigger className="bg-gray-900 border-gray-800 text-white focus:ring-1 focus:ring-indigo-500">
-                    <SelectValue placeholder="Seleccionar cuenta..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-gray-850 text-white max-h-60 overflow-y-auto">
-                    {cuentas.map((acc: any) => (
-                      <SelectItem key={acc.id} value={acc.id}>
-                        {acc.cliente}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="flex justify-between items-center mb-1">
+                  <Label className="text-[10px] font-black text-gray-500 uppercase">Cuenta / Cliente</Label>
+                  {selectedContact?.cuenta_id && (
+                    <button
+                      type="button"
+                      onClick={() => openEditCuentaModal(selectedContact.cuenta_id)}
+                      className="text-[10px] font-black text-indigo-400 hover:text-indigo-300 uppercase flex items-center gap-1 hover:underline"
+                    >
+                      <Settings className="h-3 w-3" /> Editar Cuenta
+                    </button>
+                  )}
+                </div>
+                <Popover open={isCuentaOpen} onOpenChange={setIsCuentaOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={isCuentaOpen}
+                      className="w-full justify-between h-[36px] bg-gray-900 border border-gray-800 text-white hover:bg-gray-850 hover:text-white"
+                    >
+                      <span className="truncate">
+                        {selectedContact?.cuenta_id
+                          ? cuentas.find((acc) => acc.id === selectedContact.cuenta_id)?.cliente
+                          : "Seleccionar cuenta..."}
+                      </span>
+                      <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-gray-950 border border-gray-800 text-white shadow-xl animate-in fade-in-50 duration-200" align="start">
+                    <div className="flex flex-col h-[250px]">
+                      <div className="p-2 border-b border-gray-800">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            placeholder="Buscar cuenta..."
+                            className="pl-8 h-9 text-sm bg-gray-900 border-none text-white focus-visible:ring-1 focus-visible:ring-indigo-500 focus-visible:outline-none"
+                            value={busquedaCuentas}
+                            onChange={(e) => setBusquedaCuentas(e.target.value)}
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-1 custom-scrollbar">
+                        {cuentasFiltradas.length === 0 ? (
+                          <div className="py-6 text-center text-sm text-gray-500">
+                            No se encontraron cuentas.
+                          </div>
+                        ) : (
+                          cuentasFiltradas.map((acc) => (
+                            <button
+                              key={acc.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedContact({ ...selectedContact, cuenta_id: acc.id });
+                                setIsCuentaOpen(false);
+                                setBusquedaCuentas("");
+                              }}
+                              className={cn(
+                                "w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors text-left",
+                                selectedContact?.cuenta_id === acc.id
+                                  ? "bg-indigo-600 text-white"
+                                  : "hover:bg-gray-850 text-gray-300"
+                              )}
+                            >
+                              <span className="truncate pr-2">{acc.cliente}</span>
+                              {selectedContact?.cuenta_id === acc.id && (
+                                <CheckCircle2 className="h-4 w-4 shrink-0 text-white" />
+                              )}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
@@ -839,6 +983,156 @@ export default function TrazabilidadBrevo() {
                 disabled={guardandoContacto}
               >
                 {guardandoContacto ? "GUARDANDO..." : "GUARDAR CAMBIOS"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DE EDICIÓN Y GESTIÓN DE CUENTA */}
+      <Dialog open={isEditCuentaModalOpen} onOpenChange={setIsEditCuentaModalOpen}>
+        <DialogContent className="bg-gray-950 border border-gray-800 text-white max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-indigo-400">
+              <Building2 className="h-5 w-5" /> Gestionar Cuenta
+            </DialogTitle>
+            <DialogDescription className="text-gray-500">
+              Edita la información de la cuenta o elimínala del sistema.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 my-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Nombre del Cliente</Label>
+                <Input 
+                  type="text" 
+                  value={selectedCuenta?.cliente || ""} 
+                  onChange={(e) => setSelectedCuenta({ ...selectedCuenta, cliente: e.target.value })}
+                  className="bg-gray-900 border border-gray-850 text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">RUT</Label>
+                <Input 
+                  type="text" 
+                  value={selectedCuenta?.rut || ""} 
+                  onChange={(e) => setSelectedCuenta({ ...selectedCuenta, rut: e.target.value })}
+                  className="bg-gray-900 border border-gray-850 text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Sector</Label>
+                <Select 
+                  value={selectedCuenta?.sector || ""} 
+                  onValueChange={(val) => setSelectedCuenta({ ...selectedCuenta, sector: val })}
+                >
+                  <SelectTrigger className="bg-gray-900 border-gray-850 text-white focus:ring-1 focus:ring-indigo-500">
+                    <SelectValue placeholder="Seleccionar sector..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 border-gray-850 text-white">
+                    <SelectItem value="Privado">Privado</SelectItem>
+                    <SelectItem value="Público">Público</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Segmento</Label>
+                <Select 
+                  value={selectedCuenta?.segmento || ""} 
+                  onValueChange={(val) => setSelectedCuenta({ ...selectedCuenta, segmento: val })}
+                >
+                  <SelectTrigger className="bg-gray-900 border-gray-850 text-white focus:ring-1 focus:ring-indigo-500">
+                    <SelectValue placeholder="Seleccionar segmento..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 border-gray-850 text-white max-h-60 overflow-y-auto">
+                    {[
+                      "Alimentos / Agrícola",
+                      "Automotoras",
+                      "Comercializadores",
+                      "Constructoras / Inmobiliarias",
+                      "Educación",
+                      "Logística / Transporte",
+                      "Minería / Industria",
+                      "Salud",
+                      "Servicios",
+                      "Servicios Públicos"
+                    ].map(seg => (
+                      <SelectItem key={seg} value={seg}>{seg}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Ciudad</Label>
+                <Input 
+                  type="text" 
+                  value={selectedCuenta?.ciudad || ""} 
+                  onChange={(e) => setSelectedCuenta({ ...selectedCuenta, ciudad: e.target.value })}
+                  className="bg-gray-900 border border-gray-850 text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Sitio Web</Label>
+                <Input 
+                  type="url" 
+                  value={selectedCuenta?.web || ""} 
+                  onChange={(e) => setSelectedCuenta({ ...selectedCuenta, web: e.target.value })}
+                  className="bg-gray-900 border border-gray-850 text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1 w-[50%]">
+              <Label className="text-[10px] font-black text-gray-500 uppercase">Estado</Label>
+              <Select 
+                value={selectedCuenta?.estado || "activo"} 
+                onValueChange={(val) => setSelectedCuenta({ ...selectedCuenta, estado: val })}
+              >
+                <SelectTrigger className="bg-gray-900 border-gray-850 text-white focus:ring-1 focus:ring-indigo-500">
+                  <SelectValue placeholder="Seleccionar estado..." />
+                </SelectTrigger>
+                <SelectContent className="bg-gray-900 border-gray-850 text-white">
+                  <SelectItem value="activo">Activo</SelectItem>
+                  <SelectItem value="inactivo">Inactivo</SelectItem>
+                  <SelectItem value="prospecto">Prospecto</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="flex justify-between items-center gap-3 border-t border-gray-800 pt-6">
+            <Button 
+              variant="outline" 
+              className="border-red-900/50 hover:bg-red-950/20 text-red-400 hover:text-red-300 font-bold"
+              onClick={handleDeleteCuenta}
+              disabled={guardandoCuenta}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              ELIMINAR
+            </Button>
+            
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                className="border-gray-800 text-gray-400 hover:bg-gray-900"
+                onClick={() => setIsEditCuentaModalOpen(false)}
+                disabled={guardandoCuenta}
+              >
+                CANCELAR
+              </Button>
+              <Button 
+                className="bg-indigo-600 hover:bg-indigo-500 text-white font-black"
+                onClick={handleSaveCuenta}
+                disabled={guardandoCuenta}
+              >
+                {guardandoCuenta ? "GUARDANDO..." : "GUARDAR CAMBIOS"}
               </Button>
             </div>
           </DialogFooter>
