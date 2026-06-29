@@ -91,19 +91,41 @@ export default function TrazabilidadBrevo() {
   const fetchContactos = async (days: CalendarDay[]) => {
     setLoading(true);
     
-    // 1. Obtener todas las cuentas para selectores e información
-    const { data: cuentasData, error: cuentasError } = await supabase
-      .from("cuentas")
-      .select("id, cliente, sector")
-      .order("cliente");
+    // 1. Obtener todas las cuentas para selectores e información (soportando paginación de más de 1000 registros)
+    let allCuentas: any[] = [];
+    let from = 0;
+    let to = 999;
+    let hasMore = true;
 
-    if (cuentasError) {
+    try {
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("cuentas")
+          .select("id, cliente, sector")
+          .order("cliente")
+          .range(from, to);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allCuentas = [...allCuentas, ...data];
+          if (data.length < 1000) {
+            hasMore = false;
+          } else {
+            from += 1000;
+            to += 1000;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+      setCuentas(allCuentas);
+    } catch (cuentasError) {
       console.error("Error al cargar cuentas:", cuentasError);
-    } else {
-      setCuentas(cuentasData || []);
+      toast.error("Error al cargar la lista completa de cuentas");
     }
 
-    const currentCuentas = cuentasData || [];
+    const currentCuentas = allCuentas;
 
     // 1.2 Obtener base de contactos (Prospección, Nutrición y Marketing)
     const { data: contactsData, error } = await supabase
