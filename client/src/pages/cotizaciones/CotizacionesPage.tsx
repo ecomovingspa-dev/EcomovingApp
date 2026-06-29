@@ -52,7 +52,7 @@ export default function CotizacionesPage() {
   useEffect(() => {
     cargarCotizaciones();
     ejecutarCirugiaDeDatos(); // Limpieza automatizada de 40MB
-  }, [pagina]); 
+  }, []); 
 
   const ejecutarCirugiaDeDatos = async () => {
     if (localStorage.getItem('ecomoving_surgery_done_v2')) return;
@@ -108,42 +108,60 @@ export default function CotizacionesPage() {
     setCargando(true);
     setMensaje("");
     try {
-      const { data, error, count } = await supabase
-        .from("cotizaciones")
-        .select(
+      let allCotizaciones: any[] = [];
+      let from = 0;
+      let to = 999;
+      let hasMore = true;
+
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("cotizaciones")
+          .select(
+            `
+            id,
+            numero_cotizacion,
+            total_neto,
+            iva,
+            total,
+            mg,
+            ganancias,
+            estado_cotizacion,
+            items,
+            tiempo_entrega,
+            validez_oferta,
+            fecha,
+            id_mercado_publico,
+            contacto_id,
+            cuenta_id,
+            vendedor_id
           `
-          id,
-          numero_cotizacion,
-          total_neto,
-          iva,
-          total,
-          mg,
-          ganancias,
-          estado_cotizacion,
-          items,
-          tiempo_entrega,
-          validez_oferta,
-          fecha,
-          id_mercado_publico,
-          contacto_id,
-          cuenta_id,
-          vendedor_id
-        `,
-          { count: 'exact' }
-        )
-        .order("numero_cotizacion", { ascending: false })
-        .range(pagina * PAGE_SIZE, (pagina + 1) * PAGE_SIZE - 1);
+          )
+          .order("numero_cotizacion", { ascending: false })
+          .range(from, to);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      if (!data || data.length === 0) {
+        if (data && data.length > 0) {
+          allCotizaciones = [...allCotizaciones, ...data];
+          if (data.length < 1000) {
+            hasMore = false;
+          } else {
+            from += 1000;
+            to += 1000;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      if (allCotizaciones.length === 0) {
         setCotizaciones([]);
         return;
       }
 
-      // Traemos los nombres de cuentas y vendedores para los registros de ESTA PÁGINA (máximo 50)
-      const idsCuentas = Array.from(new Set((data || []).map(i => i.cuenta_id).filter(Boolean)));
-      const idsVends = Array.from(new Set((data || []).map(i => i.vendedor_id).filter(Boolean)));
+      // Traemos los nombres de cuentas y vendedores para todos los registros cargados
+      const idsCuentas = Array.from(new Set(allCotizaciones.map(i => i.cuenta_id).filter(Boolean)));
+      const idsVends = Array.from(new Set(allCotizaciones.map(i => i.vendedor_id).filter(Boolean)));
 
       const [{ data: ctas }, { data: vends }] = await Promise.all([
         supabase.from("cuentas").select("id, cliente").in("id", idsCuentas),
@@ -153,14 +171,13 @@ export default function CotizacionesPage() {
       const mapCuentas = (ctas || []).reduce((acc: any, curr) => ({ ...acc, [curr.id]: curr.cliente }), {});
       const mapVends = (vends || []).reduce((acc: any, curr) => ({ ...acc, [curr.id]: curr.nombre }), {});
 
-      const cotizacionesFormateadas = data.map((item: any) => ({
+      const cotizacionesFormateadas = allCotizaciones.map((item: any) => ({
         ...item,
         cuentas: { cliente: mapCuentas[item.cuenta_id] || "Sin Cliente" },
         vendedores: { nombre: mapVends[item.vendedor_id] || "Vendedor no asignado" },
       }));
 
       setCotizaciones(cotizacionesFormateadas);
-      if (count !== null) setTotalRecords(count);
     } catch (e: any) {
       console.error("Error al cargar:", e);
       setMensaje("Error al cargar cotizaciones: " + e.message);
@@ -206,6 +223,12 @@ export default function CotizacionesPage() {
     );
   }, [cotizaciones, busqueda]);
 
+  const cotizacionesPaginadas = useMemo(() => {
+    const start = pagina * PAGE_SIZE;
+    const end = start + PAGE_SIZE;
+    return cotizacionesFiltradas.slice(start, end);
+  }, [cotizacionesFiltradas, pagina]);
+
   /**
    * Motor de Estados Automático de Ecomoving (Sincronizado con Formulario)
    */
@@ -233,7 +256,7 @@ export default function CotizacionesPage() {
       facturada: { total: 0, count: 0, label: "Facturadas", color: "text-emerald-500", icon: <FileText className="h-4 w-4" /> },
     };
 
-    return cotizaciones.reduce((acc, cot) => {
+    return cotizacionesFiltradas.reduce((acc, cot) => {
       const estadoReal = obtenerEstadoAutomatico(cot);
       let key = estadoReal.toLowerCase();
       // Mapeo simple para las keys de stats
@@ -245,7 +268,7 @@ export default function CotizacionesPage() {
       }
       return acc;
     }, defaultStats);
-  }, [cotizaciones]);
+  }, [cotizacionesFiltradas]);
 
   const getEstadoColor = (estado?: string) => {
     switch (estado) {
@@ -409,7 +432,7 @@ export default function CotizacionesPage() {
                 ${new Intl.NumberFormat("es-CL").format(value.total)}
               </span>
               <span className="text-[10px] text-gray-400 dark:text-gray-500 font-medium mt-1">
-                {value.count} docs pág.
+                {value.count} docs.
               </span>
             </div>
           </div>
@@ -433,7 +456,10 @@ export default function CotizacionesPage() {
           type="text"
           placeholder="Buscar por número de cotización o cliente..."
           value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
+          onChange={(e) => {
+            setBusqueda(e.target.value);
+            setPagina(0);
+          }}
           className="pl-10 w-full bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"
           data-testid="input-busqueda-cotizacion"
         />
@@ -469,7 +495,7 @@ export default function CotizacionesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {cotizacionesFiltradas.map((cot) => (
+                  {cotizacionesPaginadas.map((cot) => (
                     <tr key={cot.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/50 transition-colors">
                       <td className="px-4 py-4 text-sm font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                         {cot.numero_cotizacion || "-"}
@@ -542,7 +568,7 @@ export default function CotizacionesPage() {
             {/* Pagination Controls */}
             <div className="px-4 py-4 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between bg-gray-50/30 dark:bg-gray-900/30">
               <div className="text-sm text-gray-500 dark:text-gray-400">
-                Mostrando {pagina * PAGE_SIZE + 1} a {Math.min((pagina + 1) * PAGE_SIZE, totalRecords)} de {totalRecords} cotizaciones
+                Mostrando {pagina * PAGE_SIZE + 1} a {Math.min((pagina + 1) * PAGE_SIZE, cotizacionesFiltradas.length)} de {cotizacionesFiltradas.length} cotizaciones
               </div>
               <div className="flex gap-2">
                 <Button
@@ -561,7 +587,7 @@ export default function CotizacionesPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setPagina(prev => prev + 1)}
-                  disabled={(pagina + 1) * PAGE_SIZE >= totalRecords || cargando}
+                  disabled={(pagina + 1) * PAGE_SIZE >= cotizacionesFiltradas.length || cargando}
                   className="h-8 dark:bg-gray-800 dark:border-gray-700"
                 >
                   Siguiente
