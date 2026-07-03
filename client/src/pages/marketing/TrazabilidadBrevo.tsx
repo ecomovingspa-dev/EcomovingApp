@@ -43,6 +43,12 @@ const translateStatus = (status: string) => {
   return s.toUpperCase();
 };
 
+const normalizeString = (str: string) => {
+  return str
+    ? str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    : "";
+};
+
 interface EmailTemplate {
   id: string;
   name: string;
@@ -825,12 +831,12 @@ export default function TrazabilidadBrevo() {
   };
 
   const cuentasFiltradas = cuentas.filter(acc => 
-    acc.cliente?.toLowerCase().includes(busquedaCuentas.toLowerCase())
+    normalizeString(acc.cliente).includes(normalizeString(busquedaCuentas))
   );
 
   const filtered = contactos.filter(c => {
     const accountName = c.empresa_rel_name || c.empresa || "";
-    const matchesSearch = accountName.toLowerCase().includes(filtro.toLowerCase());
+    const matchesSearch = normalizeString(accountName).includes(normalizeString(filtro));
     const matchesCriticos = soloCriticos ? c.es_bloqueado : true;
     const matchesEtapa = filtroEtapa === "todos" ? true : (c.etapa === filtroEtapa);
     
