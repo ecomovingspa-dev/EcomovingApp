@@ -488,8 +488,8 @@ export default function TrazabilidadBrevo() {
   );
 
   const filtered = contactos.filter(c => {
-    const matchesSearch = c.nombre.toLowerCase().includes(filtro.toLowerCase()) || 
-                         c.correo.toLowerCase().includes(filtro.toLowerCase());
+    const accountName = c.empresa_rel_name || c.empresa || "";
+    const matchesSearch = accountName.toLowerCase().includes(filtro.toLowerCase());
     const matchesCriticos = soloCriticos ? c.es_bloqueado : true;
     const matchesEtapa = filtroEtapa === "todos" ? true : (c.etapa === filtroEtapa);
     
@@ -542,7 +542,7 @@ export default function TrazabilidadBrevo() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <input 
             type="text" 
-            placeholder="Buscar contacto..." 
+            placeholder="Buscar cuenta..." 
             className="w-full bg-gray-800/50 border-gray-700 rounded-xl pl-10 text-sm py-2 focus:ring-amber-500/50" 
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}

@@ -79,6 +79,8 @@ export default function ComprasPage() {
     const [filtroProveedor, setFiltroProveedor] = useState("");
     const [filtroFolio, setFiltroFolio] = useState("");
     const [filtroEstado, setFiltroEstado] = useState<string>("todos");
+    const [filtroMes, setFiltroMes] = useState<string>("todos");
+    const [filtroAnio, setFiltroAnio] = useState<string>("todos");
 
     // Sincronización
     const [sincronizando, setSincronizando] = useState(false);
@@ -88,7 +90,7 @@ export default function ComprasPage() {
 
     useEffect(() => {
         cargarCompras();
-    }, [currentPage, filtroProveedor, filtroFolio, filtroEstado]);
+    }, [currentPage, filtroProveedor, filtroFolio, filtroEstado, filtroMes, filtroAnio]);
 
 
 
@@ -131,6 +133,26 @@ export default function ComprasPage() {
             }
             if (filtroEstado !== "todos") {
                 query = query.eq("estado_pago", filtroEstado);
+            }
+
+            if (filtroAnio !== "todos") {
+                if (filtroMes !== "todos") {
+                    const lastDay = new Date(parseInt(filtroAnio), parseInt(filtroMes), 0).getDate();
+                    const formattedMonth = filtroMes.padStart(2, "0");
+                    query = query.gte("fecha_emision", `${filtroAnio}-${formattedMonth}-01`)
+                                 .lte("fecha_emision", `${filtroAnio}-${formattedMonth}-${lastDay}`);
+                } else {
+                    query = query.gte("fecha_emision", `${filtroAnio}-01-01`)
+                                 .lte("fecha_emision", `${filtroAnio}-12-31`);
+                }
+            } else if (filtroMes !== "todos") {
+                const years = ["2023", "2024", "2025", "2026", "2027"];
+                const formattedMonth = filtroMes.padStart(2, "0");
+                const orConditions = years.map(yr => {
+                    const lastDay = new Date(parseInt(yr), parseInt(filtroMes), 0).getDate();
+                    return `and(fecha_emision.gte.${yr}-${formattedMonth}-01,fecha_emision.lte.${yr}-${formattedMonth}-${lastDay})`;
+                }).join(",");
+                query = query.or(orConditions);
             }
 
             const { data, error, count } = await query
@@ -496,7 +518,7 @@ export default function ComprasPage() {
                     <div className="flex items-center gap-3">
                         <ShoppingBag className="h-8 w-8 text-pink-600" />
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                            Libro de Compras
+                            Libros de Compras
                         </h1>
                     </div>
 
@@ -609,14 +631,8 @@ export default function ComprasPage() {
 
                 {/* Filters and Search */}
                 <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/50 flex justify-between items-center">
-                        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-                            Detalle de Compras y Gastos
-                        </h2>
-                    </div>
-
                     <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4 items-end">
                             <div className="space-y-1.5">
                                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Buscar Proveedor</Label>
                                 <div className="relative">
@@ -663,6 +679,53 @@ export default function ComprasPage() {
                                         <SelectItem value="Pendiente">Pendiente</SelectItem>
                                         <SelectItem value="Pagada">Pagada</SelectItem>
                                         <SelectItem value="Vencida">Vencida</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Mes</Label>
+                                <Select value={filtroMes} onValueChange={(val) => {
+                                    setFiltroMes(val);
+                                    setCurrentPage(1);
+                                }}>
+                                    <SelectTrigger className="h-10 border-gray-200 focus:ring-pink-500 transition-all">
+                                        <SelectValue placeholder="Todos" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="todos">Todos</SelectItem>
+                                        <SelectItem value="1">Enero</SelectItem>
+                                        <SelectItem value="2">Febrero</SelectItem>
+                                        <SelectItem value="3">Marzo</SelectItem>
+                                        <SelectItem value="4">Abril</SelectItem>
+                                        <SelectItem value="5">Mayo</SelectItem>
+                                        <SelectItem value="6">Junio</SelectItem>
+                                        <SelectItem value="7">Julio</SelectItem>
+                                        <SelectItem value="8">Agosto</SelectItem>
+                                        <SelectItem value="9">Septiembre</SelectItem>
+                                        <SelectItem value="10">Octubre</SelectItem>
+                                        <SelectItem value="11">Noviembre</SelectItem>
+                                        <SelectItem value="12">Diciembre</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Año</Label>
+                                <Select value={filtroAnio} onValueChange={(val) => {
+                                    setFiltroAnio(val);
+                                    setCurrentPage(1);
+                                }}>
+                                    <SelectTrigger className="h-10 border-gray-200 focus:ring-pink-500 transition-all">
+                                        <SelectValue placeholder="Todos" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="todos">Todos</SelectItem>
+                                        <SelectItem value="2027">2027</SelectItem>
+                                        <SelectItem value="2026">2026</SelectItem>
+                                        <SelectItem value="2025">2025</SelectItem>
+                                        <SelectItem value="2024">2024</SelectItem>
+                                        <SelectItem value="2023">2023</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
