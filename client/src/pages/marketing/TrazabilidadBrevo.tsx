@@ -4,7 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { 
   Mail, CheckCircle2, Eye, AlertCircle, Circle, 
   Search, RefreshCcw, Trash2, HelpCircle, 
-  Wrench, Truck, Settings, Building2 
+  Wrench, Truck, Settings, Building2,
+  Plus, Pencil, ArrowLeft, Sparkles, Check
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -41,6 +42,14 @@ const translateStatus = (status: string) => {
   return s.toUpperCase();
 };
 
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  isBuiltIn?: boolean;
+}
+
 export default function TrazabilidadBrevo() {
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
   const [contactos, setContactos] = useState<any[]>([]);
@@ -57,6 +66,18 @@ export default function TrazabilidadBrevo() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [guardandoContacto, setGuardandoContacto] = useState(false);
 
+  // --- Estados de Plantillas ---
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [selectedContactoDraft, setSelectedContactoDraft] = useState<any>(null);
+  const [editorMode, setEditorMode] = useState<"redactar" | "crear" | "editar">("redactar");
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  
+  // Campos formulario de plantilla
+  const [templateFormName, setTemplateFormName] = useState("");
+  const [templateFormSubject, setTemplateFormSubject] = useState("");
+  const [templateFormBody, setTemplateFormBody] = useState("");
+
   // Account states
   const [selectedCuenta, setSelectedCuenta] = useState<any>(null);
   const [isEditCuentaModalOpen, setIsEditCuentaModalOpen] = useState(false);
@@ -64,9 +85,53 @@ export default function TrazabilidadBrevo() {
   const [busquedaCuentas, setBusquedaCuentas] = useState("");
   const [isCuentaOpen, setIsCuentaOpen] = useState(false);
 
+  const resolveTemplateVariables = (subject: string, body: string, contact: any, vendedorName: string) => {
+    if (!contact) return { resolvedSubject: subject, resolvedBody: body };
+    
+    const company = contact.nombre?.replace('Contacto Principal - ', '') || 'su empresa';
+    const name = contact.nombre || '';
+    const firstName = name.split(' ')[0] || '';
+    const finalCompany = contact.empresa_rel_name || contact.empresa || company;
+
+    const replaceAll = (text: string) => {
+      if (!text) return "";
+      return text
+        .replace(/{nombre}/g, name)
+        .replace(/{nombre_corto}/g, firstName)
+        .replace(/{empresa}/g, finalCompany)
+        .replace(/{vendedor}/g, vendedorName);
+    };
+
+    return {
+      resolvedSubject: replaceAll(subject),
+      resolvedBody: replaceAll(body)
+    };
+  };
+
   const handleVendedorChange = (newVendedor: string) => {
     const oldVendedor = vendedor;
     setVendedor(newVendedor);
+    
+    // If we have selectedContactoDraft and selectedTemplateId, we can re-resolve the body with the new vendedor
+    if (selectedContactoDraft && selectedTemplateId && draftData) {
+      const currentTmpl = templates.find(t => t.id === selectedTemplateId);
+      if (currentTmpl) {
+        // Resolve template with old vendor to see if user has customized it
+        const oldResolved = resolveTemplateVariables(currentTmpl.subject, currentTmpl.body, selectedContactoDraft, oldVendedor);
+        
+        // If current body matches old resolved body, we can safely overwrite it with new resolved body
+        if (draftData.body === oldResolved.resolvedBody) {
+          const newResolved = resolveTemplateVariables(currentTmpl.subject, currentTmpl.body, selectedContactoDraft, newVendedor);
+          setDraftData({
+            ...draftData,
+            subject: draftData.subject === oldResolved.resolvedSubject ? newResolved.resolvedSubject : draftData.subject,
+            body: newResolved.resolvedBody
+          });
+          return;
+        }
+      }
+    }
+    
     if (draftData && draftData.body) {
       const oldSignature = `Saludos,\n\n${oldVendedor}\nEcomoving SpA`;
       const newSignature = `Saludos,\n\n${newVendedor}\nEcomoving SpA`;
@@ -85,6 +150,140 @@ export default function TrazabilidadBrevo() {
           });
         }
       }
+    }
+  };
+
+  const handleSaveTemplate = () => {
+    if (!templateFormName.trim()) {
+      toast.error("El nombre de la plantilla es obligatorio");
+      return;
+    }
+    if (!templateFormSubject.trim()) {
+      toast.error("El asunto de la plantilla es obligatorio");
+      return;
+    }
+    if (!templateFormBody.trim()) {
+      toast.error("El cuerpo de la plantilla es obligatorio");
+      return;
+    }
+
+    // Get custom templates from templates list
+    const customTemplatesOnly = templates.filter(t => !t.isBuiltIn);
+
+    if (editorMode === "crear") {
+      const newT: EmailTemplate = {
+        id: `custom-${Date.now()}`,
+        name: templateFormName,
+        subject: templateFormSubject,
+        body: templateFormBody
+      };
+      const updatedCustom = [...customTemplatesOnly, newT];
+      localStorage.setItem("ecomoving_custom_templates", JSON.stringify(updatedCustom));
+      
+      const defaultTemplates = templates.filter(t => t.isBuiltIn);
+      setTemplates([...defaultTemplates, ...updatedCustom]);
+      toast.success("Plantilla creada correctamente");
+      
+      // Auto-select the newly created template
+      setSelectedTemplateId(newT.id);
+      if (selectedContactoDraft) {
+        const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
+          newT.subject,
+          newT.body,
+          selectedContactoDraft,
+          vendedor
+        );
+        setDraftData({
+          email: selectedContactoDraft.correo,
+          subject: resolvedSubject,
+          body: resolvedBody,
+          contactoId: selectedContactoDraft.id
+        });
+      }
+    } else if (editorMode === "editar" && editingTemplateId) {
+      const updatedCustom = customTemplatesOnly.map(t => 
+        t.id === editingTemplateId 
+          ? { ...t, name: templateFormName, subject: templateFormSubject, body: templateFormBody } 
+          : t
+      );
+      localStorage.setItem("ecomoving_custom_templates", JSON.stringify(updatedCustom));
+      
+      const defaultTemplates = templates.filter(t => t.isBuiltIn);
+      setTemplates([...defaultTemplates, ...updatedCustom]);
+      toast.success("Plantilla actualizada correctamente");
+      if (selectedTemplateId === editingTemplateId) {
+        // Force refresh editor preview
+        const editedTemplate = updatedCustom.find(t => t.id === editingTemplateId);
+        if (editedTemplate && selectedContactoDraft) {
+          const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
+            editedTemplate.subject,
+            editedTemplate.body,
+            selectedContactoDraft,
+            vendedor
+          );
+          setDraftData({
+            email: selectedContactoDraft.correo,
+            subject: resolvedSubject,
+            body: resolvedBody,
+            contactoId: selectedContactoDraft.id
+          });
+        }
+      }
+    }
+
+    setEditorMode("redactar");
+    setEditingTemplateId(null);
+  };
+
+  const handleDeleteTemplate = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("¿Estás seguro de eliminar esta plantilla?")) return;
+
+    const customTemplatesOnly = templates.filter(t => !t.isBuiltIn && t.id !== id);
+    localStorage.setItem("ecomoving_custom_templates", JSON.stringify(customTemplatesOnly));
+
+    const defaultTemplates = templates.filter(t => t.isBuiltIn);
+    setTemplates([...defaultTemplates, ...customTemplatesOnly]);
+    toast.success("Plantilla eliminada correctamente");
+
+    if (selectedTemplateId === id) {
+      // If deleted active template, switch back to system default
+      const fallbackId = "builtin-sin-aperturas";
+      setSelectedTemplateId(fallbackId);
+      const fallbackT = defaultTemplates.find(t => t.id === fallbackId);
+      if (fallbackT && selectedContactoDraft) {
+        const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
+          fallbackT.subject,
+          fallbackT.body,
+          selectedContactoDraft,
+          vendedor
+        );
+        setDraftData({
+          email: selectedContactoDraft.correo,
+          subject: resolvedSubject,
+          body: resolvedBody,
+          contactoId: selectedContactoDraft.id
+        });
+      }
+    }
+  };
+
+  const handleSelectTemplate = (id: string, contact = selectedContactoDraft) => {
+    setSelectedTemplateId(id);
+    const tmpl = templates.find(t => t.id === id);
+    if (tmpl && contact) {
+      const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
+        tmpl.subject,
+        tmpl.body,
+        contact,
+        vendedor
+      );
+      setDraftData({
+        email: contact.correo,
+        subject: resolvedSubject,
+        body: resolvedBody,
+        contactoId: contact.id
+      });
     }
   };
 
@@ -220,6 +419,37 @@ export default function TrazabilidadBrevo() {
     }
     setCalendarDays(days);
     fetchContactos(days);
+
+    // Initialize templates
+    const defaultTemplates: EmailTemplate[] = [
+      {
+        id: "builtin-aperturas",
+        name: "Cortesía (Con aperturas)",
+        subject: "Sobre tu consulta de hidratación eficiente - Ecomoving",
+        body: "Hola {nombre_corto},\n\nTe escribo porque vi que estuvieron revisando nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa} recientemente.\n\nNo quería que se quedaran con dudas tácticas sobre cómo el cambio a purificadores puede reducir sus costos logísticos de inmediato.\n\n¿Tendrían 10 minutos la próxima semana para una llamada rápida?\n\nSaludos,\n\n{vendedor}\nEcomoving SpA",
+        isBuiltIn: true
+      },
+      {
+        id: "builtin-sin-aperturas",
+        name: "Cortesía (Sin aperturas)",
+        subject: "Soluciones de hidratación eficiente para {empresa} - Ecomoving",
+        body: "Hola {nombre_corto},\n\nEspero que te encuentres muy bien.\n\nTe escribo de Ecomoving para dar seguimiento a nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa}.\n\nMe gustaría saber si han tenido oportunidad de revisarla y si podríamos coordinar una breve llamada de 10 minutos la próxima semana para conversar al respecto.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA",
+        isBuiltIn: true
+      }
+    ];
+
+    try {
+      const custom = localStorage.getItem("ecomoving_custom_templates");
+      if (custom) {
+        const parsed = JSON.parse(custom);
+        setTemplates([...defaultTemplates, ...parsed]);
+      } else {
+        setTemplates(defaultTemplates);
+      }
+    } catch (e) {
+      console.error("Error loading templates:", e);
+      setTemplates(defaultTemplates);
+    }
   }, []);
 
   async function syncWithBrevo() {
@@ -327,26 +557,45 @@ export default function TrazabilidadBrevo() {
   };
 
   const generateDraft = (c: any) => {
-    const company = c.nombre?.replace('Contacto Principal - ', '') || 'su empresa';
-    const email = c.correo;
+    setSelectedContactoDraft(c);
     
     // Check if contact has opens or clicks
     const tieneAperturas = c.historial?.some((h: any) => 
       ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(h.estado?.toLowerCase())
     ) || ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(c.ultimo_estado_brevo?.toLowerCase());
 
-    let subject = "";
-    let body = "";
+    const initialTemplateId = tieneAperturas ? "builtin-aperturas" : "builtin-sin-aperturas";
+    setSelectedTemplateId(initialTemplateId);
+    
+    // Select templates from state or local fallbacks if state is not ready yet
+    const currentTemplates = templates.length > 0 ? templates : [
+      {
+        id: "builtin-aperturas",
+        name: "Cortesía (Con aperturas)",
+        subject: "Sobre tu consulta de hidratación eficiente - Ecomoving",
+        body: "Hola {nombre_corto},\n\nTe escribo porque vi que estuvieron revisando nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa} recientemente.\n\nNo quería que se quedaran con dudas tácticas sobre cómo el cambio a purificadores puede reducir sus costos logísticos de inmediato.\n\n¿Tendrían 10 minutos la próxima semana para una llamada rápida?\n\nSaludos,\n\n{vendedor}\nEcomoving SpA",
+        isBuiltIn: true
+      },
+      {
+        id: "builtin-sin-aperturas",
+        name: "Cortesía (Sin aperturas)",
+        subject: "Soluciones de hidratación eficiente para {empresa} - Ecomoving",
+        body: "Hola {nombre_corto},\n\nEspero que te encuentres muy bien.\n\nTe escribo de Ecomoving para dar seguimiento a nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa}.\n\nMe gustaría saber si han tenido oportunidad de revisarla y si podríamos coordinar una breve llamada de 10 minutos la próxima semana para conversar al respecto.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA",
+        isBuiltIn: true
+      }
+    ];
 
-    if (tieneAperturas) {
-      subject = `Sobre tu consulta de hidratación eficiente - Ecomoving`;
-      body = `Hola ${c.nombre?.split(' ')[0] || ''},\n\nTe escribo porque vi que estuvieron revisando nuestra propuesta de sostenibilidad y eficiencia operativa para ${company} recientemente.\n\nNo quería que se quedaran con dudas tácticas sobre cómo el cambio a purificadores puede reducir sus costos logísticos de inmediato.\n\n¿Tendrían 10 minutos la próxima semana para una llamada rápida?\n\nSaludos,\n\n${vendedor}\nEcomoving SpA`;
-    } else {
-      subject = `Soluciones de hidratación eficiente para ${company} - Ecomoving`;
-      body = `Hola ${c.nombre?.split(' ')[0] || ''},\n\nEspero que te encuentres muy bien.\n\nTe escribo de Ecomoving para dar seguimiento a nuestra propuesta de sostenibilidad y eficiencia operativa para ${company}.\n\nMe gustaría saber si han tenido oportunidad de revisarla y si podríamos coordinar una breve llamada de 10 minutos la próxima semana para conversar al respecto.\n\nSaludos,\n\n${vendedor}\nEcomoving SpA`;
-    }
+    const tmpl = currentTemplates.find(t => t.id === initialTemplateId) || currentTemplates[1];
+    const { resolvedSubject, resolvedBody } = resolveTemplateVariables(tmpl.subject, tmpl.body, c, vendedor);
 
-    setDraftData({ email, subject, body, contactoId: c.id });
+    setDraftData({ 
+      email: c.correo, 
+      subject: resolvedSubject, 
+      body: resolvedBody, 
+      contactoId: c.id 
+    });
+    
+    setEditorMode("redactar");
     setIsModalOpen(true);
   };
 
@@ -693,111 +942,312 @@ export default function TrazabilidadBrevo() {
 
       {/* MODAL DE REDACCION @VENTAS */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="bg-gray-950 border border-gray-800 text-white max-w-2xl">
+        <DialogContent className="bg-gray-950 border border-gray-800 text-white max-w-4xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 uppercase tracking-widest text-indigo-400">
-              <Mail className="h-5 w-5" /> Redacción @Ventas IA
+              <Mail className="h-5 w-5" /> Redacción e Inteligencia de Plantillas @Ventas
             </DialogTitle>
             <DialogDescription className="text-gray-500">
-              Borrador personalizado y editable para enviar usando tu cuenta de correo.
+              Personaliza, selecciona y mantén trazabilidad de los correos manuales enviados a este contacto.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 my-4">
-            <div className="flex items-center gap-4 bg-gray-900/50 p-3 rounded-xl border border-gray-800">
-              <span className="text-xs font-black uppercase text-gray-400 w-24">Remitente:</span>
-              <div className="flex gap-2">
-                {['Vendedor 1', 'Vendedor 2'].map(v => (
-                  <button 
-                    key={v}
-                    onClick={() => handleVendedorChange(v)}
-                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${
-                      vendedor === v ? 'bg-indigo-600 text-white' : 'bg-gray-800 text-gray-500 hover:bg-gray-700'
-                    }`}
-                  >
-                    {v}
-                  </button>
-                ))}
+          {/* Grid Layout */}
+          <div className="grid grid-cols-12 gap-6 my-4 border-t border-gray-900 pt-4">
+            
+            {/* Columna Izquierda: Plantillas */}
+            <div className="col-span-12 md:col-span-4 border-r border-gray-900 pr-4 flex flex-col justify-between h-[450px]">
+              <div className="flex flex-col space-y-3 overflow-hidden">
+                <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider">
+                  Plantillas Disponibles
+                </span>
+                
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[350px]">
+                  {templates.map(t => {
+                    const wasSent = selectedContactoDraft?.historial?.some((h: any) => 
+                      h.mensaje_id?.startsWith(`manual_template:${t.id}:`)
+                    );
+                    
+                    return (
+                      <div 
+                        key={t.id}
+                        onClick={() => handleSelectTemplate(t.id)}
+                        className={cn(
+                          "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2",
+                          selectedTemplateId === t.id
+                            ? "bg-indigo-600/10 border-indigo-500 text-white shadow-sm shadow-indigo-500/10"
+                            : "bg-gray-900/40 border-gray-800 text-gray-400 hover:bg-gray-900/80 hover:text-white"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden w-full">
+                          {wasSent ? (
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 animate-in fade-in zoom-in" title="Enviado" />
+                          ) : (
+                            <Circle className="h-3.5 w-3.5 text-gray-700 shrink-0" title="Pendiente" />
+                          )}
+                          <span className="text-xs font-bold truncate flex-1">{t.name}</span>
+                        </div>
+                        
+                        {!t.isBuiltIn && (
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingTemplateId(t.id);
+                                setTemplateFormName(t.name);
+                                setTemplateFormSubject(t.subject);
+                                setTemplateFormBody(t.body);
+                                setEditorMode("editar");
+                              }}
+                              className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800"
+                              title="Editar plantilla"
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteTemplate(t.id, e)}
+                              className="p-1 text-gray-400 hover:text-red-400 rounded hover:bg-gray-800"
+                              title="Eliminar plantilla"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-500 uppercase">Destinatario</label>
-                <input 
-                  type="text" 
-                  value={draftData?.email || ""} 
-                  onChange={(e) => setDraftData(draftData ? { ...draftData, email: e.target.value } : null)}
-                  className="w-full bg-gray-900 border border-gray-800 text-white text-sm p-3 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-500 uppercase">Asunto</label>
-                <input 
-                  type="text" 
-                  value={draftData?.subject || ""} 
-                  onChange={(e) => setDraftData(draftData ? { ...draftData, subject: e.target.value } : null)}
-                  className="w-full bg-gray-900 border border-gray-800 text-white text-sm p-3 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-500 uppercase">Cuerpo del Correo (Tono Humano)</label>
-                <Textarea 
-                  value={draftData?.body || ""} 
-                  onChange={(e) => setDraftData(draftData ? { ...draftData, body: e.target.value } : null)}
-                  rows={8}
-                  className="w-full bg-gray-900 border border-gray-800 text-white text-sm p-3 rounded-xl resize-none focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
-                />
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter className="flex justify-end gap-3 border-t border-gray-800 pt-6">
-             <Button 
-                variant="outline" 
-                className="border-gray-800 text-gray-400 hover:bg-gray-900"
-                onClick={() => setIsModalOpen(false)}
-             >
-              DESCARTAR
-             </Button>
-              <Button 
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-black"
-                onClick={async () => {
-                  if (draftData) {
-                    const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}&body=${encodeURIComponent(draftData.body)}`;
-                    window.location.href = mailto;
-
-                    if (draftData.contactoId) {
-                      try {
-                        const { error } = await supabase
-                          .from("contactos")
-                          .update({ 
-                            correo_cortesia_enviado: true,
-                            ultimo_envio: new Date().toISOString()
-                          })
-                          .eq("id", draftData.contactoId);
-
-                        if (error) throw error;
-                        toast.success("Correo de cortesía registrado en la base de datos");
-
-                        // Actualizar estado local
-                        setContactos(prev => prev.map(c => 
-                          c.id === draftData.contactoId 
-                            ? { ...c, correo_cortesia_enviado: true, ultimo_envio: new Date().toISOString() } 
-                            : c
-                        ));
-                      } catch (dbErr) {
-                        console.error("Error al registrar envío de cortesía:", dbErr);
-                        toast.error("Error al actualizar la base de datos");
-                      }
-                    }
-                  }
-                  setIsModalOpen(false);
+              
+              <Button
+                variant="outline"
+                className="mt-2 w-full border-dashed border-gray-800 text-gray-400 hover:text-white hover:bg-gray-900 text-xs font-black h-9 flex items-center justify-center gap-2 cursor-pointer"
+                onClick={() => {
+                  setTemplateFormName("");
+                  setTemplateFormSubject("");
+                  setTemplateFormBody("");
+                  setEditorMode("crear");
                 }}
               >
-               ENVIAR AL GESTOR (Disparar)
+                <Plus className="h-3.5 w-3.5" /> CREAR PLANTILLA
               </Button>
-          </DialogFooter>
+            </div>
+            
+            {/* Columna Derecha: Redactor o Editor de Plantilla */}
+            <div className="col-span-12 md:col-span-8 pl-4 flex flex-col justify-between h-[450px]">
+              
+              {editorMode === "redactar" ? (
+                <>
+                  <div className="space-y-4 flex-1 overflow-y-auto pr-1 max-h-[390px]">
+                    <div className="flex items-center gap-4 bg-gray-900/30 p-2.5 rounded-xl border border-gray-800">
+                      <span className="text-[10px] font-black uppercase text-gray-400 w-20">Remitente:</span>
+                      <div className="flex gap-2">
+                        {['Vendedor 1', 'Vendedor 2'].map(v => (
+                          <button 
+                            key={v}
+                            onClick={() => handleVendedorChange(v)}
+                            className={`px-3 py-1 rounded-lg text-[9px] font-black transition-all ${
+                              vendedor === v ? 'bg-indigo-600 text-white' : 'bg-gray-900 text-gray-500 hover:bg-gray-800'
+                            }`}
+                          >
+                            {v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-gray-500 uppercase">Destinatario</label>
+                        <input 
+                          type="text" 
+                          value={draftData?.email || ""} 
+                          onChange={(e) => setDraftData(draftData ? { ...draftData, email: e.target.value } : null)}
+                          className="w-full bg-gray-900/60 border border-gray-800 text-white text-xs p-2.5 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-gray-500 uppercase">Asunto</label>
+                        <input 
+                          type="text" 
+                          value={draftData?.subject || ""} 
+                          onChange={(e) => setDraftData(draftData ? { ...draftData, subject: e.target.value } : null)}
+                          className="w-full bg-gray-900/60 border border-gray-800 text-white text-xs p-2.5 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-gray-500 uppercase">Cuerpo del Correo (Editable)</label>
+                        <Textarea 
+                          value={draftData?.body || ""} 
+                          onChange={(e) => setDraftData(draftData ? { ...draftData, body: e.target.value } : null)}
+                          rows={7}
+                          className="w-full bg-gray-900/60 border border-gray-800 text-white text-xs p-2.5 rounded-xl resize-none focus:ring-1 focus:ring-indigo-500 focus:outline-none max-h-[180px] overflow-y-auto" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <DialogFooter className="flex justify-end gap-2 border-t border-gray-900 pt-4 mt-auto">
+                    <Button 
+                      variant="outline" 
+                      className="border-gray-800 text-gray-400 hover:bg-gray-900 text-xs font-black h-9"
+                      onClick={() => setIsModalOpen(false)}
+                    >
+                      DESCARTAR
+                    </Button>
+                    <Button 
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs h-9"
+                      onClick={async () => {
+                        if (draftData) {
+                          const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}&body=${encodeURIComponent(draftData.body)}`;
+                          window.location.href = mailto;
+
+                          if (draftData.contactoId) {
+                            try {
+                              const activeTmplId = selectedTemplateId || "builtin-sin-aperturas";
+                              const uniqueMsgId = `manual_template:${activeTmplId}:${Date.now()}`;
+                              const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+
+                              // 1. Update contact
+                              const { error: updateErr } = await supabase
+                                .from("contactos")
+                                .update({ 
+                                  correo_cortesia_enviado: true,
+                                  ultimo_envio: new Date().toISOString()
+                                })
+                                .eq("id", draftData.contactoId);
+
+                              if (updateErr) throw updateErr;
+
+                              // 2. Insert trace record
+                              const { error: traceErr } = await supabase
+                                .from("trazabilidad_correos")
+                                .insert({
+                                  contacto_id: draftData.contactoId,
+                                  email: draftData.email,
+                                  fecha: todayStr,
+                                  estado: "delivered",
+                                  mensaje_id: uniqueMsgId
+                                });
+
+                              if (traceErr) console.warn("Error inserting history trace:", traceErr);
+
+                              toast.success("Correo de cortesía y trazabilidad registrados");
+
+                              // 3. Update local state
+                              setContactos(prev => prev.map(c => {
+                                if (c.id === draftData.contactoId) {
+                                  const newTraceItem = {
+                                    id: `temp-${Date.now()}`,
+                                    contacto_id: draftData.contactoId,
+                                    email: draftData.email,
+                                    fecha: todayStr,
+                                    estado: "delivered",
+                                    mensaje_id: uniqueMsgId,
+                                    created_at: new Date().toISOString()
+                                  };
+                                  return { 
+                                    ...c, 
+                                    correo_cortesia_enviado: true, 
+                                    ultimo_envio: new Date().toISOString(),
+                                    historial: [...(c.historial || []), newTraceItem]
+                                  };
+                                }
+                                return c;
+                              }));
+                            } catch (dbErr) {
+                              console.error("Error al registrar envío de cortesía:", dbErr);
+                              toast.error("Error al actualizar la base de datos");
+                            }
+                          }
+                        }
+                        setIsModalOpen(false);
+                      }}
+                    >
+                      ENVIAR AL GESTOR (Disparar)
+                    </Button>
+                  </DialogFooter>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-3 flex-1 overflow-y-auto pr-1 max-h-[390px]">
+                    <div className="flex items-center gap-2 pb-1 border-b border-gray-900">
+                      <button 
+                        onClick={() => setEditorMode("redactar")}
+                        className="p-1 hover:bg-gray-900 rounded text-gray-400 hover:text-white"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                      </button>
+                      <span className="text-xs font-bold tracking-wider uppercase text-indigo-400 flex items-center gap-1.5">
+                        <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                        {editorMode === "crear" ? "Crear Nueva Plantilla" : "Editar Plantilla"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-gray-500 uppercase">Nombre de la Plantilla</label>
+                        <input 
+                          type="text" 
+                          placeholder="Ej: Seguimiento de propuesta"
+                          value={templateFormName} 
+                          onChange={(e) => setTemplateFormName(e.target.value)}
+                          className="w-full bg-gray-900/60 border border-gray-800 text-white text-xs p-2.5 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-gray-500 uppercase">Asunto</label>
+                        <input 
+                          type="text" 
+                          placeholder="Ej: Dudas sobre propuesta para {empresa}"
+                          value={templateFormSubject} 
+                          onChange={(e) => setTemplateFormSubject(e.target.value)}
+                          className="w-full bg-gray-900/60 border border-gray-800 text-white text-xs p-2.5 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black text-gray-500 uppercase">Cuerpo de la Plantilla</label>
+                        <Textarea 
+                          placeholder="Hola {nombre_corto}, te escribo..."
+                          value={templateFormBody} 
+                          onChange={(e) => setTemplateFormBody(e.target.value)}
+                          rows={6}
+                          className="w-full bg-gray-900/60 border border-gray-800 text-white text-xs p-2.5 rounded-xl resize-none focus:ring-1 focus:ring-indigo-500 focus:outline-none max-h-[140px] overflow-y-auto" 
+                        />
+                      </div>
+                      
+                      <div className="p-2.5 bg-gray-950 rounded-xl border border-gray-900 text-[10px] text-gray-500 space-y-1 font-medium">
+                        <div className="font-bold text-gray-400 uppercase text-[8px] tracking-wider">Placeholders Admitidos:</div>
+                        <div><code className="text-indigo-400 font-bold">{`{nombre}`}</code>: Nombre completo.</div>
+                        <div><code className="text-indigo-400 font-bold">{`{nombre_corto}`}</code>: Primer nombre.</div>
+                        <div><code className="text-indigo-400 font-bold">{`{empresa}`}</code>: Nombre de la empresa.</div>
+                        <div><code className="text-indigo-400 font-bold">{`{vendedor}`}</code>: Vendedor asignado.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <DialogFooter className="flex justify-end gap-2 border-t border-gray-900 pt-4 mt-auto">
+                    <Button 
+                      variant="outline" 
+                      className="border-gray-800 text-gray-400 hover:bg-gray-900 text-xs font-black h-9"
+                      onClick={() => {
+                        setEditorMode("redactar");
+                        setEditingTemplateId(null);
+                      }}
+                    >
+                      CANCELAR
+                    </Button>
+                    <Button 
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs h-9 cursor-pointer"
+                      onClick={handleSaveTemplate}
+                    >
+                      GUARDAR PLANTILLA
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
