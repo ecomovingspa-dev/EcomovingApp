@@ -1,6 +1,7 @@
 // v2.0.0 - Excel-style Sentinel Matrix
 import { useState, useEffect } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { useVendedores } from "../../hooks/useVendedores";
 import { 
   Mail, CheckCircle2, Eye, AlertCircle, Circle, 
   Search, RefreshCcw, Trash2, HelpCircle, 
@@ -51,6 +52,7 @@ interface EmailTemplate {
 }
 
 export default function TrazabilidadBrevo() {
+  const { vendedores } = useVendedores();
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
   const [contactos, setContactos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,6 +61,12 @@ export default function TrazabilidadBrevo() {
   const [vendedor, setVendedor] = useState("Vendedor 1");
   const [filtroEtapa, setFiltroEtapa] = useState("todos");
   const [filtroSector, setFiltroSector] = useState("todos");
+
+  useEffect(() => {
+    if (vendedores && vendedores.length > 0 && (vendedor === "Vendedor 1" || vendedor === "")) {
+      setVendedor(vendedores[0].nombre);
+    }
+  }, [vendedores]);
   const [draftData, setDraftData] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [cuentas, setCuentas] = useState<any[]>([]);
@@ -167,9 +175,6 @@ export default function TrazabilidadBrevo() {
       return;
     }
 
-    // Get custom templates from templates list
-    const customTemplatesOnly = templates.filter(t => !t.isBuiltIn);
-
     if (editorMode === "crear") {
       const newT: EmailTemplate = {
         id: `custom-${Date.now()}`,
@@ -177,11 +182,9 @@ export default function TrazabilidadBrevo() {
         subject: templateFormSubject,
         body: templateFormBody
       };
-      const updatedCustom = [...customTemplatesOnly, newT];
-      localStorage.setItem("ecomoving_custom_templates", JSON.stringify(updatedCustom));
-      
-      const defaultTemplates = templates.filter(t => t.isBuiltIn);
-      setTemplates([...defaultTemplates, ...updatedCustom]);
+      const updated = [...templates, newT];
+      localStorage.setItem("ecomoving_custom_templates", JSON.stringify(updated));
+      setTemplates(updated);
       toast.success("Plantilla creada correctamente");
       
       // Auto-select the newly created template
@@ -201,19 +204,18 @@ export default function TrazabilidadBrevo() {
         });
       }
     } else if (editorMode === "editar" && editingTemplateId) {
-      const updatedCustom = customTemplatesOnly.map(t => 
+      const updated = templates.map(t => 
         t.id === editingTemplateId 
           ? { ...t, name: templateFormName, subject: templateFormSubject, body: templateFormBody } 
           : t
       );
-      localStorage.setItem("ecomoving_custom_templates", JSON.stringify(updatedCustom));
-      
-      const defaultTemplates = templates.filter(t => t.isBuiltIn);
-      setTemplates([...defaultTemplates, ...updatedCustom]);
+      localStorage.setItem("ecomoving_custom_templates", JSON.stringify(updated));
+      setTemplates(updated);
       toast.success("Plantilla actualizada correctamente");
+      
       if (selectedTemplateId === editingTemplateId) {
         // Force refresh editor preview
-        const editedTemplate = updatedCustom.find(t => t.id === editingTemplateId);
+        const editedTemplate = updated.find(t => t.id === editingTemplateId);
         if (editedTemplate && selectedContactoDraft) {
           const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
             editedTemplate.subject,
@@ -239,31 +241,17 @@ export default function TrazabilidadBrevo() {
     e.stopPropagation();
     if (!confirm("¿Estás seguro de eliminar esta plantilla?")) return;
 
-    const customTemplatesOnly = templates.filter(t => !t.isBuiltIn && t.id !== id);
-    localStorage.setItem("ecomoving_custom_templates", JSON.stringify(customTemplatesOnly));
-
-    const defaultTemplates = templates.filter(t => t.isBuiltIn);
-    setTemplates([...defaultTemplates, ...customTemplatesOnly]);
+    const updated = templates.filter(t => t.id !== id);
+    localStorage.setItem("ecomoving_custom_templates", JSON.stringify(updated));
+    setTemplates(updated);
     toast.success("Plantilla eliminada correctamente");
 
     if (selectedTemplateId === id) {
-      // If deleted active template, switch back to system default
-      const fallbackId = "builtin-sin-aperturas";
-      setSelectedTemplateId(fallbackId);
-      const fallbackT = defaultTemplates.find(t => t.id === fallbackId);
-      if (fallbackT && selectedContactoDraft) {
-        const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
-          fallbackT.subject,
-          fallbackT.body,
-          selectedContactoDraft,
-          vendedor
-        );
-        setDraftData({
-          email: selectedContactoDraft.correo,
-          subject: resolvedSubject,
-          body: resolvedBody,
-          contactoId: selectedContactoDraft.id
-        });
+      if (updated.length > 0) {
+        handleSelectTemplate(updated[0].id);
+      } else {
+        setSelectedTemplateId("");
+        setDraftData(null);
       }
     }
   };
@@ -284,6 +272,108 @@ export default function TrazabilidadBrevo() {
         body: resolvedBody,
         contactoId: contact.id
       });
+    }
+  };
+
+  const toggleTemplateSentStatus = async (templateId: string, contact: any) => {
+    if (!contact) return;
+    
+    const wasSent = contact.historial?.some((h: any) => 
+      h.mensaje_id?.startsWith(`manual_template:${templateId}:`)
+    );
+
+    const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+
+    if (wasSent) {
+      const trace = contact.historial.find((h: any) => 
+        h.mensaje_id?.startsWith(`manual_template:${templateId}:`)
+      );
+      
+      if (trace) {
+        try {
+          const { error } = await supabase
+            .from("trazabilidad_correos")
+            .delete()
+            .eq("mensaje_id", trace.mensaje_id);
+
+          if (error) throw error;
+          
+          toast.success("Estado de envío removido");
+
+          setContactos(prev => prev.map(c => {
+            if (c.id === contact.id) {
+              return {
+                ...c,
+                historial: c.historial.filter((h: any) => h.mensaje_id !== trace.mensaje_id)
+              };
+            }
+            return c;
+          }));
+
+          setSelectedContactoDraft((prev: any) => {
+            if (prev && prev.id === contact.id) {
+              return {
+                ...prev,
+                historial: prev.historial.filter((h: any) => h.mensaje_id !== trace.mensaje_id)
+              };
+            }
+            return prev;
+          });
+        } catch (dbErr) {
+          console.error("Error al remover trazabilidad:", dbErr);
+          toast.error("Error al actualizar la base de datos");
+        }
+      }
+    } else {
+      const uniqueMsgId = `manual_template:${templateId}:${Date.now()}`;
+      try {
+        const { error: traceErr } = await supabase
+          .from("trazabilidad_correos")
+          .insert({
+            contacto_id: contact.id,
+            email: contact.correo,
+            fecha: todayStr,
+            estado: "delivered",
+            mensaje_id: uniqueMsgId
+          });
+
+        if (traceErr) throw traceErr;
+
+        toast.success("Marcado como enviado");
+
+        const newTraceItem = {
+          id: `temp-${Date.now()}`,
+          contacto_id: contact.id,
+          email: contact.correo,
+          fecha: todayStr,
+          estado: "delivered",
+          mensaje_id: uniqueMsgId,
+          created_at: new Date().toISOString()
+        };
+
+        setContactos(prev => prev.map(c => {
+          if (c.id === contact.id) {
+            return {
+              ...c,
+              historial: [...(c.historial || []), newTraceItem]
+            };
+          }
+          return c;
+        }));
+
+        setSelectedContactoDraft((prev: any) => {
+          if (prev && prev.id === contact.id) {
+            return {
+              ...prev,
+              historial: [...(prev.historial || []), newTraceItem]
+            };
+          }
+          return prev;
+        });
+      } catch (dbErr) {
+        console.error("Error al agregar trazabilidad:", dbErr);
+        toast.error("Error al actualizar la base de datos");
+      }
     }
   };
 
@@ -426,24 +516,22 @@ export default function TrazabilidadBrevo() {
         id: "builtin-aperturas",
         name: "Cortesía (Con aperturas)",
         subject: "Sobre tu consulta de hidratación eficiente - Ecomoving",
-        body: "Hola {nombre_corto},\n\nTe escribo porque vi que estuvieron revisando nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa} recientemente.\n\nNo quería que se quedaran con dudas tácticas sobre cómo el cambio a purificadores puede reducir sus costos logísticos de inmediato.\n\n¿Tendrían 10 minutos la próxima semana para una llamada rápida?\n\nSaludos,\n\n{vendedor}\nEcomoving SpA",
-        isBuiltIn: true
+        body: "Hola {nombre_corto},\n\nTe escribo porque vi que estuvieron revisando nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa} recientemente.\n\nNo quería que se quedaran con dudas tácticas sobre cómo el cambio a purificadores puede reducir sus costos logísticos de inmediato.\n\n¿Tendrían 10 minutos la próxima semana para una llamada rápida?\n\nSaludos,\n\n{vendedor}\nEcomoving SpA"
       },
       {
         id: "builtin-sin-aperturas",
         name: "Cortesía (Sin aperturas)",
         subject: "Soluciones de hidratación eficiente para {empresa} - Ecomoving",
-        body: "Hola {nombre_corto},\n\nEspero que te encuentres muy bien.\n\nTe escribo de Ecomoving para dar seguimiento a nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa}.\n\nMe gustaría saber si han tenido oportunidad de revisarla y si podríamos coordinar una breve llamada de 10 minutos la próxima semana para conversar al respecto.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA",
-        isBuiltIn: true
+        body: "Hola {nombre_corto},\n\nEspero que te encuentres muy bien.\n\nTe escribo de Ecomoving para dar seguimiento a nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa}.\n\nMe gustaría saber si han tenido oportunidad de revisarla y si podríamos coordinar una breve llamada de 10 minutos la próxima semana para conversar al respecto.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA"
       }
     ];
 
     try {
       const custom = localStorage.getItem("ecomoving_custom_templates");
       if (custom) {
-        const parsed = JSON.parse(custom);
-        setTemplates([...defaultTemplates, ...parsed]);
+        setTemplates(JSON.parse(custom));
       } else {
+        localStorage.setItem("ecomoving_custom_templates", JSON.stringify(defaultTemplates));
         setTemplates(defaultTemplates);
       }
     } catch (e) {
@@ -564,28 +652,32 @@ export default function TrazabilidadBrevo() {
       ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(h.estado?.toLowerCase())
     ) || ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(c.ultimo_estado_brevo?.toLowerCase());
 
-    const initialTemplateId = tieneAperturas ? "builtin-aperturas" : "builtin-sin-aperturas";
-    setSelectedTemplateId(initialTemplateId);
-    
-    // Select templates from state or local fallbacks if state is not ready yet
-    const currentTemplates = templates.length > 0 ? templates : [
+    const fallbackTmpls = [
       {
         id: "builtin-aperturas",
         name: "Cortesía (Con aperturas)",
         subject: "Sobre tu consulta de hidratación eficiente - Ecomoving",
-        body: "Hola {nombre_corto},\n\nTe escribo porque vi que estuvieron revisando nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa} recientemente.\n\nNo quería que se quedaran con dudas tácticas sobre cómo el cambio a purificadores puede reducir sus costos logísticos de inmediato.\n\n¿Tendrían 10 minutos la próxima semana para una llamada rápida?\n\nSaludos,\n\n{vendedor}\nEcomoving SpA",
-        isBuiltIn: true
+        body: "Hola {nombre_corto},\n\nTe escribo porque vi que estuvieron revisando nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa} recientemente.\n\nNo quería que se quedaran con dudas tácticas sobre cómo el cambio a purificadores puede reducir sus costos logísticos de inmediato.\n\n¿Tendrían 10 minutos la próxima semana para una llamada rápida?\n\nSaludos,\n\n{vendedor}\nEcomoving SpA"
       },
       {
         id: "builtin-sin-aperturas",
         name: "Cortesía (Sin aperturas)",
         subject: "Soluciones de hidratación eficiente para {empresa} - Ecomoving",
-        body: "Hola {nombre_corto},\n\nEspero que te encuentres muy bien.\n\nTe escribo de Ecomoving para dar seguimiento a nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa}.\n\nMe gustaría saber si han tenido oportunidad de revisarla y si podríamos coordinar una breve llamada de 10 minutos la próxima semana para conversar al respecto.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA",
-        isBuiltIn: true
+        body: "Hola {nombre_corto},\n\nEspero que te encuentres muy bien.\n\nTe escribo de Ecomoving para dar seguimiento a nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa}.\n\nMe gustaría saber si han tenido oportunidad de revisarla y si podríamos coordinar una breve llamada de 10 minutos la próxima semana para conversar al respecto.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA"
       }
     ];
 
-    const tmpl = currentTemplates.find(t => t.id === initialTemplateId) || currentTemplates[1];
+    const targetId = tieneAperturas ? "builtin-aperturas" : "builtin-sin-aperturas";
+    
+    let tmpl = templates.find(t => t.id === targetId);
+    if (!tmpl && templates.length > 0) {
+      tmpl = templates[0];
+    }
+    if (!tmpl) {
+      tmpl = tieneAperturas ? fallbackTmpls[0] : fallbackTmpls[1];
+    }
+
+    setSelectedTemplateId(tmpl.id);
     const { resolvedSubject, resolvedBody } = resolveTemplateVariables(tmpl.subject, tmpl.body, c, vendedor);
 
     setDraftData({ 
@@ -980,39 +1072,47 @@ export default function TrazabilidadBrevo() {
                         )}
                       >
                         <div className="flex items-center gap-2 overflow-hidden w-full">
-                          {wasSent ? (
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 animate-in fade-in zoom-in" title="Enviado" />
-                          ) : (
-                            <Circle className="h-3.5 w-3.5 text-gray-700 shrink-0" title="Pendiente" />
-                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleTemplateSentStatus(t.id, selectedContactoDraft);
+                            }}
+                            className="shrink-0 p-0.5 rounded hover:bg-gray-800/80 transition-colors cursor-pointer"
+                            title={wasSent ? "Marcar como Pendiente" : "Marcar como Enviado"}
+                          >
+                            {wasSent ? (
+                              <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0 animate-in fade-in zoom-in" />
+                            ) : (
+                              <Circle className="h-4 w-4 text-gray-700 shrink-0 hover:text-emerald-500 transition-colors" />
+                            )}
+                          </button>
                           <span className="text-xs font-bold truncate flex-1">{t.name}</span>
                         </div>
                         
-                        {!t.isBuiltIn && (
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingTemplateId(t.id);
-                                setTemplateFormName(t.name);
-                                setTemplateFormSubject(t.subject);
-                                setTemplateFormBody(t.body);
-                                setEditorMode("editar");
-                              }}
-                              className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800"
-                              title="Editar plantilla"
-                            >
-                              <Pencil className="h-3 w-3" />
-                            </button>
-                            <button
-                              onClick={(e) => handleDeleteTemplate(t.id, e)}
-                              className="p-1 text-gray-400 hover:text-red-400 rounded hover:bg-gray-800"
-                              title="Eliminar plantilla"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingTemplateId(t.id);
+                              setTemplateFormName(t.name);
+                              setTemplateFormSubject(t.subject);
+                              setTemplateFormBody(t.body);
+                              setEditorMode("editar");
+                            }}
+                            className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800"
+                            title="Editar plantilla"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteTemplate(t.id, e)}
+                            className="p-1 text-gray-400 hover:text-red-400 rounded hover:bg-gray-800"
+                            title="Eliminar plantilla"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -1041,18 +1141,34 @@ export default function TrazabilidadBrevo() {
                   <div className="space-y-4 flex-1 overflow-y-auto pr-1 max-h-[390px]">
                     <div className="flex items-center gap-4 bg-gray-900/30 p-2.5 rounded-xl border border-gray-800">
                       <span className="text-[10px] font-black uppercase text-gray-400 w-20">Remitente:</span>
-                      <div className="flex gap-2">
-                        {['Vendedor 1', 'Vendedor 2'].map(v => (
-                          <button 
-                            key={v}
-                            onClick={() => handleVendedorChange(v)}
-                            className={`px-3 py-1 rounded-lg text-[9px] font-black transition-all ${
-                              vendedor === v ? 'bg-indigo-600 text-white' : 'bg-gray-900 text-gray-500 hover:bg-gray-800'
-                            }`}
-                          >
-                            {v}
-                          </button>
-                        ))}
+                      <div className="flex gap-2 flex-wrap">
+                        {vendedores && vendedores.length > 0 ? (
+                          vendedores.map(v => (
+                            <button 
+                              key={v.id}
+                              type="button"
+                              onClick={() => handleVendedorChange(v.nombre)}
+                              className={`px-3 py-1 rounded-lg text-[9px] font-black transition-all cursor-pointer ${
+                                vendedor === v.nombre ? 'bg-indigo-600 text-white' : 'bg-gray-900 text-gray-500 hover:bg-gray-800'
+                              }`}
+                            >
+                              {v.nombre}
+                            </button>
+                          ))
+                        ) : (
+                          ['Vendedor 1', 'Vendedor 2'].map(v => (
+                            <button 
+                              key={v}
+                              type="button"
+                              onClick={() => handleVendedorChange(v)}
+                              className={`px-3 py-1 rounded-lg text-[9px] font-black transition-all cursor-pointer ${
+                                vendedor === v ? 'bg-indigo-600 text-white' : 'bg-gray-900 text-gray-500 hover:bg-gray-800'
+                              }`}
+                            >
+                              {v}
+                            </button>
+                          ))
+                        )}
                       </div>
                     </div>
 
