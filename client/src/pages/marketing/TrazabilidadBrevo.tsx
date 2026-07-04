@@ -519,26 +519,42 @@ export default function TrazabilidadBrevo() {
     // Initialize templates
     const defaultTemplates: EmailTemplate[] = [
       {
-        id: "builtin-aperturas",
-        name: "Cortesía (Con aperturas)",
-        subject: "Sobre tu consulta de hidratación eficiente - Ecomoving",
-        body: "Hola {nombre_corto},\n\nTe escribo porque vi que estuvieron revisando nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa} recientemente.\n\nNo quería que se quedaran con dudas tácticas sobre cómo el cambio a purificadores puede reducir sus costos logísticos de inmediato.\n\n¿Tendrían 10 minutos la próxima semana para una llamada rápida?\n\nSaludos,\n\n{vendedor}\nEcomoving SpA"
+        id: "builtin-prospeccion-1",
+        name: "1. Consulta de Relación (Ice-Breaker)",
+        subject: "Consulta rápida sobre regalos o merchandising en {empresa}",
+        body: "Hola {nombre_corto},\n\nEspero que estés teniendo una excelente semana.\n\nTe escribo brevemente con la esperanza de poder conversar contigo sobre la gestión de regalos corporativos o merchandising para {empresa}.\n\nSé que coordinar estos artículos suele ser un dolor de cabeza silencioso (buscar proveedores que respondan rápido, asegurarse de que los logos queden perfectos y cruzar los dedos para que todo llegue a tiempo para el evento).\n\nSolo quería preguntar de manera muy abierta y relajada: ¿tienen planificado algún proyecto de regalos corporativos o merchandising en carpeta para estos meses en el que te vendría bien una mano?\n\nNo pretendo venderte nada a la fuerza hoy. Pero si te sirve tener una opción de confianza y rápida para cotizar cuando lo necesites, me avisas y te comparto algunas ideas o nuestro catálogo digital.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA"
       },
       {
-        id: "builtin-sin-aperturas",
-        name: "Cortesía (Sin aperturas)",
-        subject: "Soluciones de hidratación eficiente para {empresa} - Ecomoving",
-        body: "Hola {nombre_corto},\n\nEspero que te encuentres muy bien.\n\nTe escribo de Ecomoving para dar seguimiento a nuestra propuesta de sostenibilidad y eficiencia operativa para {empresa}.\n\nMe gustaría saber si han tenido oportunidad de revisarla y si podríamos coordinar una breve llamada de 10 minutos la próxima semana para conversar al respecto.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA"
+        id: "builtin-prospeccion-2",
+        name: "2. Seguimiento Empático (Valor sin presión)",
+        subject: "Re: Consulta rápida sobre regalos o merchandising en {empresa}",
+        body: "Hola {nombre_corto},\n\nEspero que vaya todo muy bien.\n\nTe escribo de manera muy breve en seguimiento a mi correo anterior, sobre el merchandising y regalos para su equipo en {empresa}.\n\nEntiendo perfectamente que en el día a día las agendas están a mil por hora, por lo que solo quería reiterarte nuestra total disposición. Si en algún momento planifican algún evento corporativo, bienvenida de colaboradores o fechas especiales, acá estamos para simplificarte el proceso y buscar ideas atractivas sin compromiso.\n\nSi estás con muchos pendientes ahora, no se preocupen en responder. Pero si te gustaría tener nuestro catálogo guardado para más adelante, me avisas con un breve \"sí\" y te lo envío encantado.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA"
+      },
+      {
+        id: "builtin-prospeccion-3",
+        name: "3. Email de Despedida (Breakup suave)",
+        subject: "Cerrando contacto / Merchandising en {empresa}",
+        body: "Hola {nombre_corto},\n\nEspero que te encuentres muy bien.\n\nTe escribo por última vez para no saturar tu bandeja de entrada. Como no hemos coincidido en esta oportunidad, asumo que el tema de regalos o merchandising no está dentro de tus prioridades o necesidades actuales en {empresa}, lo cual es totalmente comprensible.\n\nSi en el futuro cercano deciden buscar alternativas o necesitas solucionar una producción a contrarreloj con excelente calidad, nos encantará poder ayudarte.\n\nTe deseo el mayor de los éxitos en tus proyectos y metas del año. Si en algún momento nos necesitas, ya tienes mi contacto por esta vía.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA"
       }
     ];
 
     try {
       const custom = localStorage.getItem("ecomoving_custom_templates");
+      let loadedTemplates: EmailTemplate[] = [];
       if (custom) {
-        setTemplates(JSON.parse(custom));
+        loadedTemplates = JSON.parse(custom);
+      }
+
+      // Si no tiene las plantillas de prospección o está vacío, las inyectamos/reseteamos
+      const tieneProspeccion = loadedTemplates.some(t => t.id.startsWith("builtin-prospeccion"));
+      if (loadedTemplates.length === 0 || !tieneProspeccion) {
+        // Filtrar antiguas plantillas por defecto (las que empiezan con builtin-aperturas o builtin-sin-aperturas)
+        const filtradas = loadedTemplates.filter(t => !t.id.startsWith("builtin-"));
+        const combinadas = [...defaultTemplates, ...filtradas];
+        localStorage.setItem("ecomoving_custom_templates", JSON.stringify(combinadas));
+        setTemplates(combinadas);
       } else {
-        localStorage.setItem("ecomoving_custom_templates", JSON.stringify(defaultTemplates));
-        setTemplates(defaultTemplates);
+        setTemplates(loadedTemplates);
       }
     } catch (e) {
       console.error("Error loading templates:", e);
