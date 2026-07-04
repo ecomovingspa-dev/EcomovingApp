@@ -1100,7 +1100,8 @@ export default function ConciliacionPage() {
             .filter((d: any) => {
                 const montoTotal = d.mnt_total || d.monto_total || 0;
                 const balance = d.saldo !== undefined && d.saldo !== null ? d.saldo : montoTotal;
-                return balance > 0; // Solo mostrar documentos con saldo pendiente
+                // Mostrar si tiene saldo pendiente O si no está conciliado (bancarizado)
+                return balance > 0 || !d.conciliado;
             })
             .map((d: any) => {
                 const montoTotal = d.mnt_total || d.monto_total || 0;
@@ -1175,50 +1176,60 @@ export default function ConciliacionPage() {
             let montoDisponible = montoMovimiento;
 
             for (const doc of multipleSelectedDocs) {
-                if (montoDisponible <= 0) break;
-
                 const docData = doc.documento_relacionado as any;
                 const saldoActual = (docData.saldo !== undefined && docData.saldo !== null) ? Number(docData.saldo) : Number(doc.monto_total);
+                const yaPagado = docData.estado_deuda === "Pagada" || docData.estado_pago === "Pagada" || docData.estado === "Pagada" || docData.estado === "PA" || saldoActual === 0;
 
-                // El abono para este doc es el mínimo entre su saldo y lo que queda del movimiento
-                const montoAAbonar = Math.min(saldoActual, montoDisponible);
-                const nuevoSaldo = Math.max(0, saldoActual - montoAAbonar);
-                const esPagoTotal = nuevoSaldo <= 100;
-
-                const updateDoc: any = {
-                    conciliado: esPagoTotal,
-                    saldo: esPagoTotal ? 0 : nuevoSaldo,
-                };
-
-                if (doc.tipo === 'venta') {
-                    updateDoc.estado_deuda = esPagoTotal ? "Pagada" : "Parcial";
-                    await supabase.from("ventas").update(updateDoc).eq("id", doc.id);
-                    
-                    await supabase.from("abonos").insert({
-                        venta_id: doc.id,
-                        monto_abono: montoAAbonar,
-                        fecha_abono: new Date().toISOString().split("T")[0],
-                        tipo_abono: "Transferencia",
-                        detalle_abono: `Conciliación Múltiple [Movimiento ID: ${selectedMovimiento.id}] - ${selectedMovimiento.descripcion}`
-                    });
+                if (yaPagado) {
+                    // Si ya está pagado, solo lo bancarizamos (conciliado = true) sin alterar saldos ni abonos
+                    if (doc.tipo === 'venta') {
+                        await supabase.from("ventas").update({ conciliado: true }).eq("id", doc.id);
+                    } else {
+                        await supabase.from("compras").update({ conciliado: true }).eq("id", doc.id);
+                    }
                 } else {
-                    updateDoc.estado_pago = esPagoTotal ? "Pagada" : "Parcial";
-                    await supabase.from("compras").update(updateDoc).eq("id", doc.id);
+                    // Si está pendiente, se comporta según los fondos disponibles
+                    if (montoDisponible <= 0) continue;
 
-                    try {
-                        await supabase.from("compras_abonos").insert({
-                            compra_id: doc.id,
+                    const montoAAbonar = Math.min(saldoActual, montoDisponible);
+                    const nuevoSaldo = Math.max(0, saldoActual - montoAAbonar);
+                    const esPagoTotal = nuevoSaldo <= 100;
+
+                    const updateDoc: any = {
+                        conciliado: esPagoTotal,
+                        saldo: esPagoTotal ? 0 : nuevoSaldo,
+                    };
+
+                    if (doc.tipo === 'venta') {
+                        updateDoc.estado_deuda = esPagoTotal ? "Pagada" : "Parcial";
+                        await supabase.from("ventas").update(updateDoc).eq("id", doc.id);
+                        
+                        await supabase.from("abonos").insert({
+                            venta_id: doc.id,
                             monto_abono: montoAAbonar,
                             fecha_abono: new Date().toISOString().split("T")[0],
                             tipo_abono: "Transferencia",
                             detalle_abono: `Conciliación Múltiple [Movimiento ID: ${selectedMovimiento.id}] - ${selectedMovimiento.descripcion}`
                         });
-                    } catch (e: any) {
-                        console.warn("Aviso: No se pudo registrar abono en compras:", e);
-                    }
-                }
+                    } else {
+                        updateDoc.estado_pago = esPagoTotal ? "Pagada" : "Parcial";
+                        await supabase.from("compras").update(updateDoc).eq("id", doc.id);
 
-                montoDisponible -= montoAAbonar;
+                        try {
+                            await supabase.from("compras_abonos").insert({
+                                compra_id: doc.id,
+                                monto_abono: montoAAbonar,
+                                fecha_abono: new Date().toISOString().split("T")[0],
+                                tipo_abono: "Transferencia",
+                                detalle_abono: `Conciliación Múltiple [Movimiento ID: ${selectedMovimiento.id}] - ${selectedMovimiento.descripcion}`
+                            });
+                        } catch (e: any) {
+                            console.warn("Aviso: No se pudo registrar abono en compras:", e);
+                        }
+                    }
+
+                    montoDisponible -= montoAAbonar;
+                }
             }
 
             setConciliarOpen(false);
@@ -1267,34 +1278,47 @@ export default function ConciliacionPage() {
             const montoMovimiento = Math.abs(selectedMovimiento.cargos || selectedMovimiento.abonos || 0);
 
             const saldoActual = (docData.saldo !== undefined && docData.saldo !== null) ? Number(docData.saldo) : Number(item.monto_total);
-            let nuevoSaldo = saldoActual - montoMovimiento;
-            if (nuevoSaldo < 0) nuevoSaldo = 0;
+            const yaPagado = docData.estado_deuda === "Pagada" || docData.estado_pago === "Pagada" || docData.estado === "Pagada" || docData.estado === "PA" || saldoActual === 0;
 
-            const esPagoTotal = nuevoSaldo <= 100;
-            const updateDoc: any = {
-                conciliado: esPagoTotal,
-                saldo: esPagoTotal ? 0 : nuevoSaldo,
-                [item.tipo === "venta" ? "estado_deuda" : "estado_pago"]: esPagoTotal ? "Pagada" : "Parcial"
-            };
+            if (yaPagado) {
+                // Si ya está pagado, solo marcamos como conciliado (bancarizado)
+                const { error: errDoc } = await supabase
+                    .from(item.tipo === "venta" ? "ventas" : "compras")
+                    .update({ conciliado: true })
+                    .eq("id", item.id);
 
-            const { error: errDoc } = await supabase
-                .from(item.tipo === "venta" ? "ventas" : "compras")
-                .update(updateDoc)
-                .eq("id", item.id);
+                if (errDoc) throw errDoc;
+            } else {
+                // Si está pendiente, restamos el saldo, actualizamos estado y registramos abono
+                let nuevoSaldo = saldoActual - montoMovimiento;
+                if (nuevoSaldo < 0) nuevoSaldo = 0;
 
-            if (errDoc) throw errDoc;
+                const esPagoTotal = nuevoSaldo <= 100;
+                const updateDoc: any = {
+                    conciliado: esPagoTotal,
+                    saldo: esPagoTotal ? 0 : nuevoSaldo,
+                    [item.tipo === "venta" ? "estado_deuda" : "estado_pago"]: esPagoTotal ? "Pagada" : "Parcial"
+                };
 
-            // 3. Record in 'abonos' or 'compras_abonos'
-            const abonosTable = item.tipo === "venta" ? "abonos" : "compras_abonos";
-            const foreignKey = item.tipo === "venta" ? "venta_id" : "compra_id";
+                const { error: errDoc } = await supabase
+                    .from(item.tipo === "venta" ? "ventas" : "compras")
+                    .update(updateDoc)
+                    .eq("id", item.id);
 
-            await supabase.from(abonosTable).insert({
-                [foreignKey]: item.id,
-                monto_abono: montoMovimiento,
-                fecha_abono: new Date().toISOString().split("T")[0],
-                tipo_abono: "Transferencia",
-                detalle_abono: `Conciliación bancaria - Movimiento: ${selectedMovimiento.descripcion}`
-            });
+                if (errDoc) throw errDoc;
+
+                // 3. Record in 'abonos' or 'compras_abonos'
+                const abonosTable = item.tipo === "venta" ? "abonos" : "compras_abonos";
+                const foreignKey = item.tipo === "venta" ? "venta_id" : "compra_id";
+
+                await supabase.from(abonosTable).insert({
+                    [foreignKey]: item.id,
+                    monto_abono: montoMovimiento,
+                    fecha_abono: new Date().toISOString().split("T")[0],
+                    tipo_abono: "Transferencia",
+                    detalle_abono: `Conciliación bancaria - Movimiento: ${selectedMovimiento.descripcion}`
+                });
+            }
 
             // 4. UI Updates
             setConciliarOpen(false);
@@ -2539,9 +2563,15 @@ export default function ConciliacionPage() {
                                                                     onCheckedChange={() => { }}
                                                                 />
                                                                 <div className="flex-1">
-                                                                    <div className="flex items-center gap-2">
+                                                                    <div className="flex items-center gap-2 flex-wrap">
                                                                         <span className="font-bold text-sm">Folio {doc.folio}</span>
                                                                         <Badge variant="outline" className="text-[10px] uppercase py-0">{doc.tipo}</Badge>
+                                                                        <Badge
+                                                                            variant="outline"
+                                                                            className={`text-[10px] ${doc.estado === 'Pagada' || doc.estado === 'PA' ? 'text-green-600 border-green-200 bg-green-50' : 'text-yellow-600 border-yellow-200 bg-yellow-50'}`}
+                                                                        >
+                                                                            {doc.estado === 'PA' ? 'Pagada' : doc.estado}
+                                                                        </Badge>
                                                                         {doc.conciliado ? (
                                                                             <Badge variant="default" className="bg-emerald-500 text-white border-none text-[9px] px-1.5 py-0">
                                                                                 <Check className="w-2 h-2 mr-1" /> CONCILIADA
