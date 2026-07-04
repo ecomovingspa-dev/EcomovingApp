@@ -1252,11 +1252,34 @@ export default function TrazabilidadBrevo() {
                       className="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs h-9"
                       onClick={async () => {
                         if (draftData) {
-                          const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}&body=${encodeURIComponent(draftData.body)}`;
-                          window.location.href = mailto;
+                          try {
+                            const telefonos: Record<string, string> = {
+                              "Mario Osorio C.": "+56 9 7958 7293",
+                              "Jimena Lara F.": "+56 9 6528 0052"
+                            };
+                            const tel = telefonos[vendedor] || "+56 9 7958 7293";
 
-                          if (draftData.contactoId) {
-                            try {
+                            // Limpiar firma de texto plano del cuerpo para que Outlook coloque su firma nativa abajo
+                            let cleanBody = draftData.body;
+                            const signatureToSearch = `Saludos,\n\n${vendedor}\n${tel}\nwww.ecomoving.cl`;
+                            if (cleanBody.includes(signatureToSearch)) {
+                              cleanBody = cleanBody.replace(signatureToSearch, "").trim();
+                            }
+                            const signatureToSearchSimple = `Saludos,\n\n${vendedor}`;
+                            if (cleanBody.includes(signatureToSearchSimple)) {
+                              cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
+                            }
+
+                            // 1. Copiar cuerpo limpio al portapapeles
+                            await navigator.clipboard.writeText(cleanBody);
+
+                            // 2. Abrir Outlook solo con destinatario y asunto (para inyección de firma nativa)
+                            const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}`;
+                            window.location.href = mailto;
+
+                            toast.success("Correo copiado. Presiona Ctrl + V en Outlook.");
+
+                            if (draftData.contactoId) {
                               const activeTmplId = selectedTemplateId || "builtin-sin-aperturas";
                               const uniqueMsgId = `manual_template:${activeTmplId}:${Date.now()}`;
                               const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
@@ -1285,8 +1308,6 @@ export default function TrazabilidadBrevo() {
 
                               if (traceErr) console.warn("Error inserting history trace:", traceErr);
 
-                              toast.success("Correo de cortesía y trazabilidad registrados");
-
                               // 3. Update local state
                               setContactos(prev => prev.map(c => {
                                 if (c.id === draftData.contactoId) {
@@ -1308,10 +1329,10 @@ export default function TrazabilidadBrevo() {
                                 }
                                 return c;
                               }));
-                            } catch (dbErr) {
-                              console.error("Error al registrar envío de cortesía:", dbErr);
-                              toast.error("Error al actualizar la base de datos");
                             }
+                          } catch (err: any) {
+                            console.error("Error al registrar envío o copiar:", err);
+                            toast.error("Error al procesar el envío");
                           }
                         }
                         setIsModalOpen(false);
