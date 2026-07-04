@@ -107,13 +107,21 @@ export default function TrazabilidadBrevo() {
     const firstName = name.split(' ')[0] || '';
     const finalCompany = contact.empresa_rel_name || contact.empresa || company;
 
+    // Obtener teléfono según el vendedor
+    const telefonos: Record<string, string> = {
+      "Mario Osorio C.": "+56 9 7958 7293",
+      "Jimena Lara F.": "+56 9 3924 6386"
+    };
+    const telefonoVendedor = telefonos[vendedorName] || "+56 9 7958 7293";
+
     const replaceAll = (text: string) => {
       if (!text) return "";
       return text
         .replace(/{nombre}/g, name)
         .replace(/{nombre_corto}/g, firstName)
         .replace(/{empresa}/g, finalCompany)
-        .replace(/{vendedor}/g, vendedorName);
+        .replace(/{vendedor}/g, vendedorName)
+        .replace(/{telefono}/g, telefonoVendedor);
     };
 
     return {
@@ -126,6 +134,14 @@ export default function TrazabilidadBrevo() {
     const oldVendedor = vendedor;
     setVendedor(newVendedor);
     
+    // Obtener teléfonos para la firma
+    const telefonos: Record<string, string> = {
+      "Mario Osorio C.": "+56 9 7958 7293",
+      "Jimena Lara F.": "+56 9 3924 6386"
+    };
+    const oldTelefono = telefonos[oldVendedor] || "+56 9 7958 7293";
+    const newTelefono = telefonos[newVendedor] || "+56 9 7958 7293";
+
     // If we have selectedContactoDraft and selectedTemplateId, we can re-resolve the body with the new vendedor
     if (selectedContactoDraft && selectedTemplateId && draftData) {
       const currentTmpl = templates.find(t => t.id === selectedTemplateId);
@@ -147,8 +163,8 @@ export default function TrazabilidadBrevo() {
     }
     
     if (draftData && draftData.body) {
-      const oldSignature = `Saludos,\n\n${oldVendedor}\nEcomoving SpA`;
-      const newSignature = `Saludos,\n\n${newVendedor}\nEcomoving SpA`;
+      const oldSignature = `Saludos,\n\n${oldVendedor}\n${oldTelefono}\nwww.ecomoving.cl`;
+      const newSignature = `Saludos,\n\n${newVendedor}\n${newTelefono}\nwww.ecomoving.cl`;
       if (draftData.body.includes(oldSignature)) {
         setDraftData({
           ...draftData,
@@ -522,19 +538,19 @@ export default function TrazabilidadBrevo() {
         id: "builtin-prospeccion-1",
         name: "1. Consulta de Relación (Ice-Breaker)",
         subject: "Consulta rápida sobre regalos o merchandising en {empresa}",
-        body: "Hola {nombre_corto},\n\nEspero que estés teniendo una excelente semana.\n\nTe escribo brevemente con la esperanza de poder conversar contigo sobre la gestión de regalos corporativos o merchandising para {empresa}.\n\nSé que coordinar estos artículos suele ser un dolor de cabeza silencioso (buscar proveedores que respondan rápido, asegurarse de que los logos queden perfectos y cruzar los dedos para que todo llegue a tiempo para el evento).\n\nSolo quería preguntar de manera muy abierta y relajada: ¿tienen planificado algún proyecto de regalos corporativos o merchandising en carpeta para estos meses en el que te vendría bien una mano?\n\nNo pretendo venderte nada a la fuerza hoy. Pero si te sirve tener una opción de confianza y rápida para cotizar cuando lo necesites, me avisas y te comparto algunas ideas o nuestro catálogo digital.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA"
+        body: "Hola {nombre_corto},\n\nEspero que estés teniendo una excelente semana.\n\nTe escribo brevemente con la esperanza de poder conversar contigo sobre la gestión de regalos corporativos o merchandising para {empresa}.\n\nSé que coordinar estos artículos suele ser un dolor de cabeza silencioso (buscar proveedores que respondan rápido, asegurarse de que los logos queden perfectos y cruzar los dedos para que todo llegue a tiempo para el evento).\n\nSolo quería preguntar de manera muy abierta y relajada: ¿tienen planificado algún proyecto de regalos corporativos o merchandising en carpeta para estos meses en el que te vendría bien una mano?\n\nNo pretendo venderte nada a la fuerza hoy. Pero si te sirve tener una opción de confianza y rápida para cotizar cuando lo necesites, me avisas y te comparto algunas ideas o nuestro catálogo digital.\n\nSaludos,\n\n{vendedor}\n{telefono}\nwww.ecomoving.cl"
       },
       {
         id: "builtin-prospeccion-2",
         name: "2. Seguimiento Empático (Valor sin presión)",
         subject: "Re: Consulta rápida sobre regalos o merchandising en {empresa}",
-        body: "Hola {nombre_corto},\n\nEspero que vaya todo muy bien.\n\nTe escribo de manera muy breve en seguimiento a mi correo anterior, sobre el merchandising y regalos para su equipo en {empresa}.\n\nEntiendo perfectamente que en el día a día las agendas están a mil por hora, por lo que solo quería reiterarte nuestra total disposición. Si en algún momento planifican algún evento corporativo, bienvenida de colaboradores o fechas especiales, acá estamos para simplificarte el proceso y buscar ideas atractivas sin compromiso.\n\nSi estás con muchos pendientes ahora, no se preocupen en responder. Pero si te gustaría tener nuestro catálogo guardado para más adelante, me avisas con un breve \"sí\" y te lo envío encantado.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA"
+        body: "Hola {nombre_corto},\n\nEspero que vaya todo muy bien.\n\nTe escribo de manera muy breve en seguimiento a mi correo anterior, sobre el merchandising y regalos para su equipo en {empresa}.\n\nEntiendo perfectamente que en el día a día las agendas están a mil por hora, por lo que solo quería reiterarte nuestra total disposición. Si en algún momento planifican algún evento corporativo, bienvenida de colaboradores o fechas especiales, acá estamos para simplificarte el proceso y buscar ideas atractivas sin compromiso.\n\nSi estás con muchos pendientes ahora, no se preocupen en responder. Pero si te gustaría tener nuestro catálogo guardado para más adelante, me avisas con un breve \"sí\" y te lo envío encantado.\n\nSaludos,\n\n{vendedor}\n{telefono}\nwww.ecomoving.cl"
       },
       {
         id: "builtin-prospeccion-3",
         name: "3. Email de Despedida (Breakup suave)",
         subject: "Cerrando contacto / Merchandising en {empresa}",
-        body: "Hola {nombre_corto},\n\nEspero que te encuentres muy bien.\n\nTe escribo por última vez para no saturar tu bandeja de entrada. Como no hemos coincidido en esta oportunidad, asumo que el tema de regalos o merchandising no está dentro de tus prioridades o necesidades actuales en {empresa}, lo cual es totalmente comprensible.\n\nSi en el futuro cercano deciden buscar alternativas o necesitas solucionar una producción a contrarreloj con excelente calidad, nos encantará poder ayudarte.\n\nTe deseo el mayor de los éxitos en tus proyectos y metas del año. Si en algún momento nos necesitas, ya tienes mi contacto por esta vía.\n\nSaludos,\n\n{vendedor}\nEcomoving SpA"
+        body: "Hola {nombre_corto},\n\nEspero que te encuentres muy bien.\n\nTe escribo por última vez para no saturar tu bandeja de entrada. Como no hemos coincidido en esta oportunidad, asumo que el tema de regalos o merchandising no está dentro de tus prioridades o necesidades actuales en {empresa}, lo cual es totalmente comprensible.\n\nSi en el futuro cercano deciden buscar alternativas o necesitas solucionar una producción a contrarreloj con excelente calidad, nos encantará poder ayudarte.\n\nTe deseo el mayor de los éxitos en tus proyectos y metas del año. Si en algún momento nos necesitas, ya tienes mi contacto por esta vía.\n\nSaludos,\n\n{vendedor}\n{telefono}\nwww.ecomoving.cl"
       }
     ];
 
