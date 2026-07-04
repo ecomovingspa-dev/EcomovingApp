@@ -1237,24 +1237,6 @@ export default function TrazabilidadBrevo() {
                           rows={7}
                         />
                       </div>
-                      <div className="space-y-1.5 pt-2 border-t border-gray-900">
-                        <label className="text-[9px] font-black text-gray-400 uppercase">Vista Previa de la Firma Incorporada</label>
-                        <div className="p-3 bg-gray-900/40 border border-gray-800/80 rounded-xl space-y-2">
-                          <p className="text-[11px] text-gray-400">Saludos,</p>
-                          <img 
-                            src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" 
-                            alt="Logo Ecomoving" 
-                            className="h-10 opacity-90 block"
-                          />
-                          <div>
-                            <p className="text-xs font-bold text-white">{vendedor}</p>
-                            <p className="text-[10px] text-gray-400">
-                              {vendedor === "Jimena Lara F." ? "+56 9 6528 0052" : "+56 9 7958 7293"}
-                            </p>
-                            <p className="text-[10px] text-sky-400 font-medium">www.ecomoving.cl</p>
-                          </div>
-                        </div>
-                      </div>
                     </div>
                   </div>
 
@@ -1270,119 +1252,69 @@ export default function TrazabilidadBrevo() {
                       className="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs h-9"
                       onClick={async () => {
                         if (draftData) {
-                          try {
-                            // Obtener teléfono según el vendedor actual para limpieza
-                            const telefonos: Record<string, string> = {
-                              "Mario Osorio C.": "+56 9 7958 7293",
-                              "Jimena Lara F.": "+56 9 6528 0052"
-                            };
-                            const tel = telefonos[vendedor] || "+56 9 7958 7293";
+                          const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}&body=${encodeURIComponent(draftData.body)}`;
+                          window.location.href = mailto;
 
-                            // Limpiar la firma de texto plano del cuerpo para que se reemplace por la firma HTML premium con logo
-                            let cleanBody = draftData.body;
-                            const signatureToSearch = `Saludos,\n\n${vendedor}\n${tel}\nwww.ecomoving.cl`;
-                            if (cleanBody.includes(signatureToSearch)) {
-                              cleanBody = cleanBody.replace(signatureToSearch, "").trim();
-                            }
-                            const signatureToSearchSimple = `Saludos,\n\n${vendedor}`;
-                            if (cleanBody.includes(signatureToSearchSimple)) {
-                              cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
-                            }
+                          if (draftData.contactoId) {
+                            try {
+                              const activeTmplId = selectedTemplateId || "builtin-sin-aperturas";
+                              const uniqueMsgId = `manual_template:${activeTmplId}:${Date.now()}`;
+                              const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
 
-                            // Convertir saltos de línea a <br> para el HTML del portapapeles
-                            const bodyHtml = cleanBody.replace(/\n/g, "<br>");
+                              // 1. Update contact
+                              const { error: updateErr } = await supabase
+                                .from("contactos")
+                                .update({ 
+                                  correo_cortesia_enviado: true,
+                                  ultimo_envio: new Date().toISOString()
+                                })
+                                .eq("id", draftData.contactoId);
 
-                            // Estructura HTML enriquecida para el portapapeles, con el logotipo horizontal
-                            const htmlContent = `
-<div style="font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #333333; line-height: 1.5;">
-  ${bodyHtml}
-  <div style="margin-top: 25px; font-family: Calibri, Arial, sans-serif;">
-    <div style="margin-bottom: 12px; color: #555555;">Saludos,</div>
-    <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" alt="Ecomoving" style="height: 45px; display: block; border: 0;" />
-    <strong style="font-size: 12pt; color: #111111;">${vendedor}</strong><br>
-    <span style="color: #555555;">${tel}</span><br>
-    <a href="https://www.ecomoving.cl" style="color: #0284c7; text-decoration: none;">www.ecomoving.cl</a>
-  </div>
-</div>
-`;
+                              if (updateErr) throw updateErr;
 
-                            // 1. Copiar texto enriquecido (HTML) y texto plano al portapapeles de forma simultánea
-                            const blobHtml = new Blob([htmlContent], { type: "text/html" });
-                            const blobText = new Blob([cleanBody], { type: "text/plain" });
-                            const item = new ClipboardItem({
-                              "text/html": blobHtml,
-                              "text/plain": blobText
-                            });
-                            await navigator.clipboard.write([item]);
+                              // 2. Insert trace record
+                              const { error: traceErr } = await supabase
+                                .from("trazabilidad_correos")
+                                .insert({
+                                  contacto_id: draftData.contactoId,
+                                  email: draftData.email,
+                                  fecha: todayStr,
+                                  estado: "delivered",
+                                  mensaje_id: uniqueMsgId
+                                });
 
-                            // 2. Abrir Outlook mediante mailto conteniendo solo Destinatario y Asunto
-                            const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}`;
-                            window.location.href = mailto;
+                              if (traceErr) console.warn("Error inserting history trace:", traceErr);
 
-                            toast.success("Correo y firma gráfica copiados. Pega con Ctrl + V en Outlook.");
+                              toast.success("Correo de cortesía y trazabilidad registrados");
 
-                            if (draftData.contactoId) {
-                              try {
-                                const activeTmplId = selectedTemplateId || "builtin-sin-aperturas";
-                                const uniqueMsgId = `manual_template:${activeTmplId}:${Date.now()}`;
-                                const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
-
-                                // 1. Update contact
-                                const { error: updateErr } = await supabase
-                                  .from("contactos")
-                                  .update({ 
-                                    correo_cortesia_enviado: true,
-                                    ultimo_envio: new Date().toISOString()
-                                  })
-                                  .eq("id", draftData.contactoId);
-
-                                if (updateErr) throw updateErr;
-
-                                // 2. Insert trace record
-                                const { error: traceErr } = await supabase
-                                  .from("trazabilidad_correos")
-                                  .insert({
+                              // 3. Update local state
+                              setContactos(prev => prev.map(c => {
+                                if (c.id === draftData.contactoId) {
+                                  const newTraceItem = {
+                                    id: `temp-${Date.now()}`,
                                     contacto_id: draftData.contactoId,
                                     email: draftData.email,
                                     fecha: todayStr,
                                     estado: "delivered",
-                                    mensaje_id: uniqueMsgId
-                                  });
-
-                                if (traceErr) console.warn("Error inserting history trace:", traceErr);
-
-                                // 3. Update local state
-                                setContactos(prev => prev.map(c => {
-                                  if (c.id === draftData.contactoId) {
-                                    const newTraceItem = {
-                                      id: `temp-${Date.now()}`,
-                                      contacto_id: draftData.contactoId,
-                                      email: draftData.email,
-                                      fecha: todayStr,
-                                      estado: "delivered",
-                                      mensaje_id: uniqueMsgId,
-                                      created_at: new Date().toISOString()
-                                    };
-                                    return { 
-                                      ...c, 
-                                      correo_cortesia_enviado: true, 
-                                      ultimo_envio: new Date().toISOString(),
-                                      historial: [...(c.historial || []), newTraceItem]
-                                    };
-                                  }
-                                  return c;
-                                }));
-                              } catch (dbErr) {
-                                console.error("Error al registrar envío de cortesía:", dbErr);
-                                toast.error("Error al actualizar la base de datos");
-                              }
+                                    mensaje_id: uniqueMsgId,
+                                    created_at: new Date().toISOString()
+                                  };
+                                  return { 
+                                    ...c, 
+                                    correo_cortesia_enviado: true, 
+                                    ultimo_envio: new Date().toISOString(),
+                                    historial: [...(c.historial || []), newTraceItem]
+                                  };
+                                }
+                                return c;
+                              }));
+                            } catch (dbErr) {
+                              console.error("Error al registrar envío de cortesía:", dbErr);
+                              toast.error("Error al actualizar la base de datos");
                             }
-                            setIsModalOpen(false);
-                          } catch (err: any) {
-                            toast.error("Error: " + err.message);
-                            console.error(err);
                           }
                         }
+                        setIsModalOpen(false);
                       }}
                     >
                       ENVIAR AL GESTOR (Disparar)
