@@ -1253,33 +1253,39 @@ export default function TrazabilidadBrevo() {
                       className="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs h-9"
                       onClick={async () => {
                         if (draftData) {
-                          const toastId = toast.loading("Enviando correo a través de Brevo...");
                           try {
-                            // Enviar correo a través de la API en el backend
-                            const res = await fetch("/api/send-manual-email", {
-                              method: "POST",
-                              headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({
-                                to: draftData.email,
-                                subject: draftData.subject,
-                                body: draftData.body,
-                                vendedor: vendedor
-                              })
-                            });
+                            // Obtener teléfono según el vendedor actual para limpieza
+                            const telefonos: Record<string, string> = {
+                              "Mario Osorio C.": "+56 9 7958 7293",
+                              "Jimena Lara F.": "+56 9 6528 0052"
+                            };
+                            const tel = telefonos[vendedor] || "+56 9 7958 7293";
 
-                            if (!res.ok) {
-                              const errData = await res.json();
-                              throw new Error(errData.error || "Fallo en API /api/send-manual-email");
+                            // Limpiar la firma de texto plano del cuerpo para que se use la firma oficial de Outlook del usuario
+                            let cleanBody = draftData.body;
+                            const signatureToSearch = `Saludos,\n\n${vendedor}\n${tel}\nwww.ecomoving.cl`;
+                            if (cleanBody.includes(signatureToSearch)) {
+                              cleanBody = cleanBody.replace(signatureToSearch, "").trim();
+                            }
+                            const signatureToSearchSimple = `Saludos,\n\n${vendedor}`;
+                            if (cleanBody.includes(signatureToSearchSimple)) {
+                              cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
                             }
 
-                            const data = await res.json();
-                            const messageId = data.messageId || `manual_template:${selectedTemplateId || "builtin-sin-aperturas"}:${Date.now()}`;
+                            // 1. Copiar el cuerpo limpio al portapapeles de forma automática
+                            await navigator.clipboard.writeText(cleanBody);
 
-                            toast.success("Correo enviado exitosamente", { id: toastId });
+                            // 2. Abrir Outlook mediante mailto conteniendo solo Destinatario y Asunto
+                            // Al no enviar texto en el cuerpo, Outlook colocará su firma nativa con el logo abajo por defecto
+                            const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}`;
+                            window.location.href = mailto;
+
+                            toast.success("Texto copiado. Pega en Outlook (Ctrl + V) sobre tu firma.");
 
                             if (draftData.contactoId) {
                               try {
                                 const activeTmplId = selectedTemplateId || "builtin-sin-aperturas";
+                                const uniqueMsgId = `manual_template:${activeTmplId}:${Date.now()}`;
                                 const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
 
                                 // 1. Update contact
@@ -1301,7 +1307,7 @@ export default function TrazabilidadBrevo() {
                                     email: draftData.email,
                                     fecha: todayStr,
                                     estado: "delivered",
-                                    mensaje_id: messageId
+                                    mensaje_id: uniqueMsgId
                                   });
 
                                 if (traceErr) console.warn("Error inserting history trace:", traceErr);
@@ -1315,7 +1321,7 @@ export default function TrazabilidadBrevo() {
                                       email: draftData.email,
                                       fecha: todayStr,
                                       estado: "delivered",
-                                      mensaje_id: messageId,
+                                      mensaje_id: uniqueMsgId,
                                       created_at: new Date().toISOString()
                                     };
                                     return { 
@@ -1334,7 +1340,7 @@ export default function TrazabilidadBrevo() {
                             }
                             setIsModalOpen(false);
                           } catch (err: any) {
-                            toast.error("Error al enviar: " + err.message, { id: toastId });
+                            toast.error("Error: " + err.message);
                             console.error(err);
                           }
                         }
