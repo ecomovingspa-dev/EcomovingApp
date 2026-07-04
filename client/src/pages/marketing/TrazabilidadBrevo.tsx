@@ -110,7 +110,7 @@ export default function TrazabilidadBrevo() {
     // Obtener teléfono según el vendedor
     const telefonos: Record<string, string> = {
       "Mario Osorio C.": "+56 9 7958 7293",
-      "Jimena Lara F.": "+56 9 3924 6386"
+      "Jimena Lara F.": "+56 9 6528 0052"
     };
     const telefonoVendedor = telefonos[vendedorName] || "+56 9 7958 7293";
 
@@ -137,7 +137,7 @@ export default function TrazabilidadBrevo() {
     // Obtener teléfonos para la firma
     const telefonos: Record<string, string> = {
       "Mario Osorio C.": "+56 9 7958 7293",
-      "Jimena Lara F.": "+56 9 3924 6386"
+      "Jimena Lara F.": "+56 9 6528 0052"
     };
     const oldTelefono = telefonos[oldVendedor] || "+56 9 7958 7293";
     const newTelefono = telefonos[newVendedor] || "+56 9 7958 7293";
@@ -1256,7 +1256,7 @@ export default function TrazabilidadBrevo() {
                           // Obtener teléfono según el vendedor actual
                           const telefonos: Record<string, string> = {
                             "Mario Osorio C.": "+56 9 7958 7293",
-                            "Jimena Lara F.": "+56 9 3924 6386"
+                            "Jimena Lara F.": "+56 9 6528 0052"
                           };
                           const tel = telefonos[vendedor] || "+56 9 7958 7293";
 
