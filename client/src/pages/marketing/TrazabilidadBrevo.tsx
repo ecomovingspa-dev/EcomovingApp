@@ -1235,8 +1235,25 @@ export default function TrazabilidadBrevo() {
                           value={draftData?.body || ""} 
                           onChange={(e) => setDraftData(draftData ? { ...draftData, body: e.target.value } : null)}
                           rows={7}
-                          className="w-full bg-gray-900/60 border border-gray-800 text-white text-xs p-2.5 rounded-xl resize-none focus:ring-1 focus:ring-indigo-500 focus:outline-none max-h-[180px] overflow-y-auto" 
                         />
+                      </div>
+                      <div className="space-y-1.5 pt-2 border-t border-gray-900">
+                        <label className="text-[9px] font-black text-gray-400 uppercase">Vista Previa de la Firma Incorporada</label>
+                        <div className="p-3 bg-gray-900/40 border border-gray-800/80 rounded-xl space-y-2">
+                          <p className="text-[11px] text-gray-400">Saludos,</p>
+                          <img 
+                            src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" 
+                            alt="Logo Ecomoving" 
+                            className="h-10 opacity-90 block"
+                          />
+                          <div>
+                            <p className="text-xs font-bold text-white">{vendedor}</p>
+                            <p className="text-[10px] text-gray-400">
+                              {vendedor === "Jimena Lara F." ? "+56 9 6528 0052" : "+56 9 7958 7293"}
+                            </p>
+                            <p className="text-[10px] text-sky-400 font-medium">www.ecomoving.cl</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1261,7 +1278,7 @@ export default function TrazabilidadBrevo() {
                             };
                             const tel = telefonos[vendedor] || "+56 9 7958 7293";
 
-                            // Limpiar la firma de texto plano del cuerpo para que se use la firma oficial de Outlook del usuario
+                            // Limpiar la firma de texto plano del cuerpo para que se reemplace por la firma HTML premium con logo
                             let cleanBody = draftData.body;
                             const signatureToSearch = `Saludos,\n\n${vendedor}\n${tel}\nwww.ecomoving.cl`;
                             if (cleanBody.includes(signatureToSearch)) {
@@ -1272,15 +1289,37 @@ export default function TrazabilidadBrevo() {
                               cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
                             }
 
-                            // 1. Copiar el cuerpo limpio al portapapeles de forma automática
-                            await navigator.clipboard.writeText(cleanBody);
+                            // Convertir saltos de línea a <br> para el HTML del portapapeles
+                            const bodyHtml = cleanBody.replace(/\n/g, "<br>");
+
+                            // Estructura HTML enriquecida para el portapapeles, con el logotipo horizontal
+                            const htmlContent = `
+<div style="font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #333333; line-height: 1.5;">
+  ${bodyHtml}
+  <div style="margin-top: 25px; font-family: Calibri, Arial, sans-serif;">
+    <div style="margin-bottom: 12px; color: #555555;">Saludos,</div>
+    <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" alt="Ecomoving" style="height: 45px; display: block; border: 0;" />
+    <strong style="font-size: 12pt; color: #111111;">${vendedor}</strong><br>
+    <span style="color: #555555;">${tel}</span><br>
+    <a href="https://www.ecomoving.cl" style="color: #0284c7; text-decoration: none;">www.ecomoving.cl</a>
+  </div>
+</div>
+`;
+
+                            // 1. Copiar texto enriquecido (HTML) y texto plano al portapapeles de forma simultánea
+                            const blobHtml = new Blob([htmlContent], { type: "text/html" });
+                            const blobText = new Blob([cleanBody], { type: "text/plain" });
+                            const item = new ClipboardItem({
+                              "text/html": blobHtml,
+                              "text/plain": blobText
+                            });
+                            await navigator.clipboard.write([item]);
 
                             // 2. Abrir Outlook mediante mailto conteniendo solo Destinatario y Asunto
-                            // Al no enviar texto en el cuerpo, Outlook colocará su firma nativa con el logo abajo por defecto
                             const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}`;
                             window.location.href = mailto;
 
-                            toast.success("Texto copiado. Pega en Outlook (Ctrl + V) sobre tu firma.");
+                            toast.success("Correo y firma gráfica copiados. Pega con Ctrl + V en Outlook.");
 
                             if (draftData.contactoId) {
                               try {
