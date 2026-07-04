@@ -1253,8 +1253,70 @@ export default function TrazabilidadBrevo() {
                       className="bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs h-9"
                       onClick={async () => {
                         if (draftData) {
-                          const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}&body=${encodeURIComponent(draftData.body)}`;
-                          window.location.href = mailto;
+                          // Obtener teléfono según el vendedor actual
+                          const telefonos: Record<string, string> = {
+                            "Mario Osorio C.": "+56 9 7958 7293",
+                            "Jimena Lara F.": "+56 9 3924 6386"
+                          };
+                          const tel = telefonos[vendedor] || "+56 9 7958 7293";
+
+                          // Limpiar la firma de texto plano del cuerpo para no duplicarla con la de HTML
+                          let cleanBody = draftData.body;
+                          const signatureToSearch = `Saludos,\n\n${vendedor}\n${tel}\nwww.ecomoving.cl`;
+                          if (cleanBody.includes(signatureToSearch)) {
+                            cleanBody = cleanBody.replace(signatureToSearch, "").trim();
+                          }
+                          const signatureToSearchSimple = `Saludos,\n\n${vendedor}`;
+                          if (cleanBody.includes(signatureToSearchSimple)) {
+                            cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
+                          }
+
+                          // Convertir saltos de línea a <br>
+                          const bodyHtml = cleanBody.replace(/\n/g, "<br>");
+
+                          // Estructura HTML profesional del correo con el logotipo horizontal
+                          const htmlContent = `
+<html>
+<head>
+  <style>
+    body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #333333; line-height: 1.5; }
+    .signature { margin-top: 25px; font-family: Calibri, Arial, sans-serif; }
+    .logo-img { height: 45px; margin-top: 10px; margin-bottom: 10px; display: block; border: 0; }
+  </style>
+</head>
+<body>
+  ${bodyHtml}
+  <div class="signature">
+    <div style="margin-bottom: 12px; color: #555555;">Saludos,</div>
+    <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" alt="Ecomoving" class="logo-img" />
+    <strong style="font-size: 12pt; color: #111111;">${vendedor}</strong><br>
+    <span style="color: #555555;">${tel}</span><br>
+    <a href="https://www.ecomoving.cl" style="color: #0284c7; text-decoration: none;">www.ecomoving.cl</a>
+  </div>
+</body>
+</html>
+`;
+
+                          // Construir formato EML (RFC 822) con la cabecera X-Unsent para abrir en modo borrador
+                          const emlContent = [
+                            `To: ${draftData.email}`,
+                            `Subject: ${draftData.subject}`,
+                            `X-Unsent: 1`,
+                            `Content-Type: text/html; charset=utf-8`,
+                            ``,
+                            htmlContent
+                          ].join("\r\n");
+
+                          // Disparar la descarga del archivo .eml
+                          const blob = new Blob([emlContent], { type: "message/rfc822" });
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `correo-${draftData.email.split('@')[0]}.eml`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          window.URL.revokeObjectURL(url);
 
                           if (draftData.contactoId) {
                             try {
