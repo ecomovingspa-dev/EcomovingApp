@@ -377,6 +377,13 @@ export function ConfiguracionProspeccion({ open, onOpenChange }: Props) {
                                                 </button>
                                                 <button
                                                     type="button"
+                                                    onClick={() => insertVariable('asunto_template', '{contacto}')}
+                                                    className="text-[9px] px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-800/60 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-all font-mono font-bold active:scale-95"
+                                                >
+                                                    {"{contacto}"}
+                                                </button>
+                                                <button
+                                                    type="button"
                                                     onClick={() => insertVariable('asunto_template', '{correo}')}
                                                     className="text-[9px] px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-800/60 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-all font-mono font-bold active:scale-95"
                                                 >
@@ -404,6 +411,13 @@ export function ConfiguracionProspeccion({ open, onOpenChange }: Props) {
                                                     className="text-[9px] px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-800/60 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-all font-mono font-bold active:scale-95"
                                                 >
                                                     {"{empresa}"}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => insertVariable('mensaje_intro', '{contacto}')}
+                                                    className="text-[9px] px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-800/60 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-all font-mono font-bold active:scale-95"
+                                                >
+                                                    {"{contacto}"}
                                                 </button>
                                                 <button
                                                     type="button"
@@ -455,6 +469,13 @@ export function ConfiguracionProspeccion({ open, onOpenChange }: Props) {
                                                 </button>
                                                 <button
                                                     type="button"
+                                                    onClick={() => insertVariable('mensaje_cierre', '{contacto}')}
+                                                    className="text-[9px] px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-800/60 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-all font-mono font-bold active:scale-95"
+                                                >
+                                                    {"{contacto}"}
+                                                </button>
+                                                <button
+                                                    type="button"
                                                     onClick={() => insertVariable('mensaje_cierre', '{correo}')}
                                                     className="text-[9px] px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400 border border-violet-100 dark:border-violet-800/60 hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-all font-mono font-bold active:scale-95"
                                                 >
@@ -493,10 +514,10 @@ export function ConfiguracionProspeccion({ open, onOpenChange }: Props) {
                                     <div className="bg-gray-50 dark:bg-[#161b22]/50 border border-gray-200 dark:border-gray-800 rounded-xl p-4 text-xs text-gray-500 dark:text-gray-400 space-y-2">
                                         <p className="font-bold uppercase tracking-widest text-[10px] text-gray-400">Vista previa del correo</p>
                                         <p className="font-semibold text-gray-700 dark:text-gray-300">
-                                            Asunto: {selectedEtapa.asunto_template.replace("{empresa}", "Empresa Ejemplo S.A.")}
+                                            Asunto: {selectedEtapa.asunto_template.replace(/{empresa}/g, "Empresa Ejemplo S.A.").replace(/{contacto}/g, "Mario")}
                                         </p>
                                         <div className="border-t border-gray-200 dark:border-gray-700 pt-2 space-y-2 leading-relaxed">
-                                            <p>{selectedEtapa.mensaje_intro.replace("{empresa}", "Empresa Ejemplo S.A.").replace("{correo}", "contacto@ejemplo.cl").replace("{dominio}", "ejemplo.cl")}</p>
+                                            <p>{selectedEtapa.mensaje_intro.replace(/{empresa}/g, "Empresa Ejemplo S.A.").replace(/{correo}/g, "contacto@ejemplo.cl").replace(/{dominio}/g, "ejemplo.cl").replace(/{contacto}/g, "Mario")}</p>
                                             
                                             {selectedEtapa.imagen_url && (
                                                 <div className="my-3 text-center border border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-900">
@@ -512,7 +533,7 @@ export function ConfiguracionProspeccion({ open, onOpenChange }: Props) {
                                                 </div>
                                             )}
 
-                                            <p className="italic text-gray-400">{selectedEtapa.mensaje_cierre}</p>
+                                            <p className="italic text-gray-400">{selectedEtapa.mensaje_cierre.replace(/{empresa}/g, "Empresa Ejemplo S.A.").replace(/{correo}/g, "contacto@ejemplo.cl").replace(/{dominio}/g, "ejemplo.cl").replace(/{contacto}/g, "Mario")}</p>
                                         </div>
                                     </div>
                                 </div>

@@ -107,19 +107,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const dummyCorreo = email;
         const dummyDominio = email.split('@')[1] || "ejemplo.cl";
 
+        const dummyContacto = "Mario";
+
         const intro = (stage.mensaje_intro || "")
             .replace(/{empresa}/g, dummyEmpresa)
             .replace(/{correo}/g, dummyCorreo)
-            .replace(/{dominio}/g, dummyDominio);
+            .replace(/{dominio}/g, dummyDominio)
+            .replace(/{contacto}/g, dummyContacto);
 
         const cierre = (stage.mensaje_cierre || "")
             .replace(/{empresa}/g, dummyEmpresa)
             .replace(/{correo}/g, dummyCorreo)
-            .replace(/{dominio}/g, dummyDominio);
+            .replace(/{dominio}/g, dummyDominio)
+            .replace(/{contacto}/g, dummyContacto);
 
         const subject = (stage.asunto_template || "")
             .replace(/{empresa}/g, dummyEmpresa)
-            .replace(/{correo}/g, dummyCorreo);
+            .replace(/{correo}/g, dummyCorreo)
+            .replace(/{contacto}/g, dummyContacto);
 
         const htmlContent = generarHtmlProspeccion({ intro, cierre, empresa: dummyEmpresa });
 

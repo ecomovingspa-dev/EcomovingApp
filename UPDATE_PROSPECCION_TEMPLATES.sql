@@ -14,42 +14,32 @@ TRUNCATE TABLE configuracion_prospeccion RESTART IDENTITY;
 INSERT INTO configuracion_prospeccion (nombre, etiqueta, orden, dias_espera, asunto_template, mensaje_intro, mensaje_cierre, imagen_url)
 VALUES
 (
-    'pres_contacto_sin_verificar',
-    'Presentación - Contacto sin verificar',
+    'consulta_directa',
+    '1. Consulta Directa (Ice-Breaker)',
     1,
-    0,
-    'Contacto de Ecomoving SpA - Merchandising Corporativo Sustentable',
-    'Estimado/a, espero que se encuentre muy bien.' || chr(10) || chr(10) || 'Le escribo de parte de Ecomoving SpA, donde nos dedicamos a crear regalos corporativos y merchandising de triple impacto. Diseñamos productos sustentables de alta calidad, fabricados a partir de materiales reciclados y orgánicos, ideales para acompañar las iniciativas ambientales de su empresa y destacar el compromiso con la sostenibilidad.' || chr(10) || chr(10) || 'Nos encantaría enviarle nuestro catálogo y conversar brevemente sobre cómo podemos apoyar sus campañas internas y eventos corporativos con soluciones ecológicas a medida.',
-    'Quedo muy atento a su respuesta para coordinar una llamada corta de presentación. ¡Que tenga una excelente semana!',
+    3,
+    'Consulta rápida sobre merchandising en {empresa}',
+    'Hola {contacto}, espero que estés teniendo una excelente semana.' || chr(10) || chr(10) || 'Te escribo brevemente con la esperanza de poder conversar contigo o con quien corresponda en {empresa} sobre la gestión de merchandising o regalos corporativos.' || chr(10) || chr(10) || 'Sé perfectamente que coordinar estos artículos suele ser un dolor de cabeza silencioso (buscar proveedores que respondan rápido, asegurarse de que los logos queden perfectos y cruzar los dedos para que todo llegue a tiempo para el evento o la campaña).' || chr(10) || chr(10) || 'Solo quería pasar a saludar y preguntar de manera muy abierta y relajada: ¿tienen planificado algún proyecto de regalos corporativos o merchandising en carpeta para estos meses en el que te vendría bien una mano?',
+    'No pretendo quitarte tiempo vendiéndote algo a la fuerza hoy. Pero si te sirve tener una opción confiable, rápida y de alta calidad a mano para comparar o cotizar cuando lo necesites, me avisas y te comparto nuestras ideas más populares o el catálogo digital.' || chr(10) || chr(10) || '¡Que tengas un excelente día!',
     ''
 ),
 (
-    'seg_contacto_sin_verificar',
-    'Seguimiento - Contacto sin verificar',
+    'alternativa_valor',
+    '2. Alternativa de Valor (Follow-up)',
     2,
-    3,
-    'Seguimiento: Merchandising Corporativo Sustentable - Ecomoving SpA',
-    'Estimado/a, espero que se encuentre muy bien. Hace unos días le escribí para presentarle nuestras soluciones de regalos corporativos ecológicos y ver si podíamos colaborar en sus próximas actividades.' || chr(10) || chr(10) || 'Comprendo que el día a día suele ser muy ocupado, por lo que solo quería reiterarle nuestra disponibilidad y compartirle nuevamente una muestra visual de lo que hacemos. Nos adaptamos a los plazos y presupuestos de su empresa con productos certificados de triple impacto.',
-    'Si le interesa conocer más o revisar una propuesta a medida, quedo a su total disposición para conversar unos minutos. ¡Que tenga un excelente día!',
-    ''
-),
-(
-    'pres_solo_correo_web',
-    'Presentación - Solo correo de la web',
-    3,
-    0,
-    'Consulta de Ecomoving SpA - Merchandising Sustentable',
-    'Estimado equipo de {empresa}, espero que estén teniendo una excelente semana.' || chr(10) || chr(10) || 'Nos ponemos en contacto desde Ecomoving SpA. Somos especialistas en el desarrollo de merchandising sustentable y regalos corporativos de alta calidad en Chile, apoyando a diversas marcas a comunicar su compromiso ecológico a través de productos útiles, circulares y de bajo impacto ambiental.' || chr(10) || chr(10) || 'Escribimos a este canal general con la intención de llegar al encargado de Compras, Marketing o Sustentabilidad. Les agradeceríamos mucho si nos pudieran orientar sobre con quién dirigirnos o reenviar este mensaje a la persona adecuada para presentarle nuestra propuesta de valor.',
-    'Agradecemos de antemano su colaboración y su valioso tiempo. ¡Mucho éxito en sus actividades!',
-    ''
-),
-(
-    'seg_solo_correo_web',
-    'Seguimiento - Solo correo de la web',
     4,
+    'Re: Consulta rápida sobre merchandising en {empresa}',
+    'Hola {contacto}, espero que vaya todo muy bien.' || chr(10) || chr(10) || 'Te escribo de manera muy breve en seguimiento a mi correo anterior, sobre el merchandising y regalos para su equipo en {empresa}.' || chr(10) || chr(10) || 'Entiendo perfectamente que las agendas en el día a día están a mil por hora, por lo que solo quería reiterarte nuestra total disposición. Si en algún momento planifican algún evento corporativo, bienvenida de colaboradores o fechas especiales, acá estamos para simplificarte el proceso y buscar ideas atractivas sin compromiso.',
+    'Si estás tapado/a de pendientes en este momento, no te preocupes en responder ahora. Pero si te gustaría tener nuestro catálogo guardado para más adelante, me avisas con un breve "sí" y te lo envío encantado.' || chr(10) || chr(10) || '¡Un abrazo y mucho éxito en tus actividades!',
+    ''
+),
+(
+    'email_despedida',
+    '3. Email de Despedida (Breakup)',
+    3,
     5,
-    'Seguimiento: Consulta sobre Merchandising Sustentable',
-    'Estimado equipo de {empresa}, espero que se encuentren muy bien. Les escribimos hace unos días con la intención de contactar al área de Compras o Sustentabilidad para presentarles nuestro catálogo de regalos corporativos ecológicos.' || chr(10) || chr(10) || 'Sabemos que las bandejas de entrada reciben muchos mensajes, por lo que les recordamos brevemente nuestra consulta. Agradeceríamos enormemente si nos pudiesen indicar el correo del encargado o derivar este mensaje para evaluar juntos cómo reducir la huella de carbono de sus regalos corporativos.',
-    'Agradecemos mucho su tiempo y orientación. ¡Saludos cordiales al equipo!',
+    'Cerrando contacto / Merchandising en {empresa}',
+    'Hola {contacto}, espero que te encuentres muy bien.' || chr(10) || chr(10) || 'Te escribo por última vez para no saturar tu bandeja de entrada. Como no hemos coincidido en esta oportunidad, asumo que el tema de regalos o merchandising no está dentro de tus prioridades o necesidades actuales en {empresa}, lo cual es totalmente comprensible.' || chr(10) || chr(10) || 'Si en el futuro cercano deciden buscar alternativas o necesitas solucionar una producción a contrarreloj con excelente calidad, nos encantará poder ayudarte.',
+    'Te deseo el mayor de los éxitos en tus proyectos y metas del año. Si en algún momento nos necesitas, ya tienes mi contacto por esta vía.' || chr(10) || chr(10) || '¡Que tengas una excelente semana!',
     ''
 );

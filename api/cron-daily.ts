@@ -529,9 +529,26 @@ async function ejecutarProspeccion(maxEmails: number): Promise<{
                     const correo = contact.correo || "";
                     const dominio = correo.split('@')[1] || "";
                     
-                    let subject = config.asunto_template.replace(/{empresa}/g, empresa).replace(/{correo}/g, correo);
-                    let intro = config.mensaje_intro.replace(/{empresa}/g, empresa).replace(/{correo}/g, correo).replace(/{dominio}/g, dominio);
-                    let cierre = config.mensaje_cierre.replace(/{empresa}/g, empresa).replace(/{correo}/g, correo).replace(/{dominio}/g, dominio);
+                    // Extraer primer nombre del contacto y capitalizarlo de manera amigable
+                    const nombreContacto = contact.nombre && contact.nombre.trim() !== "" ? contact.nombre.trim() : "";
+                    const primerNombre = nombreContacto ? nombreContacto.split(/\s+/)[0] : "";
+                    const capitalizar = (str: string) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
+                    const contacto = primerNombre ? capitalizar(primerNombre) : "estimado/a";
+                    
+                    let subject = config.asunto_template
+                        .replace(/{empresa}/g, empresa)
+                        .replace(/{correo}/g, correo)
+                        .replace(/{contacto}/g, contacto);
+                    let intro = config.mensaje_intro
+                        .replace(/{empresa}/g, empresa)
+                        .replace(/{correo}/g, correo)
+                        .replace(/{dominio}/g, dominio)
+                        .replace(/{contacto}/g, contacto);
+                    let cierre = config.mensaje_cierre
+                        .replace(/{empresa}/g, empresa)
+                        .replace(/{correo}/g, correo)
+                        .replace(/{dominio}/g, dominio)
+                        .replace(/{contacto}/g, contacto);
 
                     if (process.env.OLLAMA_URL || process.env.USE_OLLAMA === 'true') {
                         try {
