@@ -234,6 +234,38 @@ export default function TrazabilidadBrevo() {
       localStorage.setItem("ecomoving_custom_templates", JSON.stringify(updated));
       setTemplates(updated);
       toast.success("Plantilla actualizada correctamente");
+
+      // Si es una plantilla de prospección oficial, guardamos de forma asíncrona en Supabase configuracion_prospeccion
+      if (editingTemplateId.startsWith("builtin-prospeccion-")) {
+        const ordenStr = editingTemplateId.replace("builtin-prospeccion-", "");
+        const orden = parseInt(ordenStr);
+        if (!isNaN(orden)) {
+          let intro = templateFormBody;
+          let cierre = "";
+          const idx = templateFormBody.indexOf("Saludos,");
+          if (idx !== -1) {
+            intro = templateFormBody.substring(0, idx).trim();
+            cierre = templateFormBody.substring(idx).trim();
+          }
+
+          supabase
+            .from("configuracion_prospeccion")
+            .update({
+              asunto_template: templateFormSubject,
+              mensaje_intro: intro,
+              mensaje_cierre: cierre
+            })
+            .eq("orden", orden)
+            .then(({ error }) => {
+              if (error) {
+                console.error("Error updating prospection template in database:", error);
+                toast.error("Error al persistir en la base de datos");
+              } else {
+                toast.success("Plantilla sincronizada con la base de datos");
+              }
+            });
+        }
+      }
       
       if (selectedTemplateId === editingTemplateId) {
         // Force refresh editor preview
@@ -532,7 +564,7 @@ export default function TrazabilidadBrevo() {
     setCalendarDays(days);
     fetchContactos(days);
 
-    // Initialize templates
+    // Initialize templates from Supabase configuracion_prospeccion and localStorage
     const defaultTemplates: EmailTemplate[] = [
       {
         id: "builtin-prospeccion-1",
@@ -554,28 +586,51 @@ export default function TrazabilidadBrevo() {
       }
     ];
 
-    try {
-      const custom = localStorage.getItem("ecomoving_custom_templates");
-      let loadedTemplates: EmailTemplate[] = [];
-      if (custom) {
-        loadedTemplates = JSON.parse(custom);
+    const loadTemplates = async () => {
+      let prospectionTemplates = [...defaultTemplates];
+      try {
+        // Cargar etapas de prospección desde Supabase en tiempo real
+        const { data: dbEtapas, error: dbErr } = await supabase
+          .from("configuracion_prospeccion")
+          .select("*")
+          .eq("activo", true)
+          .order("orden", { ascending: true });
+
+        if (!dbErr && dbEtapas && dbEtapas.length > 0) {
+          prospectionTemplates = dbEtapas.map(etapa => ({
+            id: `builtin-prospeccion-${etapa.orden}`,
+            name: `${etapa.orden}. ${etapa.nombre}`,
+            subject: etapa.asunto_template || "",
+            body: `${etapa.mensaje_intro || ""}\n\n${etapa.mensaje_cierre || ""}`.trim()
+          }));
+        } else if (dbErr) {
+          console.warn("Could not load dynamic templates from Supabase, using defaults:", dbErr.message);
+        }
+      } catch (err) {
+        console.error("Error fetching templates from database:", err);
       }
 
-      // Si no tiene las plantillas de prospección o está vacío, las inyectamos/reseteamos
-      const tieneProspeccion = loadedTemplates.some(t => t.id.startsWith("builtin-prospeccion"));
-      if (loadedTemplates.length === 0 || !tieneProspeccion) {
-        // Filtrar antiguas plantillas por defecto (las que empiezan con builtin-aperturas o builtin-sin-aperturas)
-        const filtradas = loadedTemplates.filter(t => !t.id.startsWith("builtin-"));
-        const combinadas = [...defaultTemplates, ...filtradas];
+      try {
+        const custom = localStorage.getItem("ecomoving_custom_templates");
+        let loadedTemplates: EmailTemplate[] = [];
+        if (custom) {
+          loadedTemplates = JSON.parse(custom);
+        }
+
+        // Separar las creadas por el usuario de las predeterminadas antiguas
+        const customUserTemplates = loadedTemplates.filter(t => !t.id.startsWith("builtin-"));
+        
+        // Unir las plantillas de prospección actualizadas de la base de datos con las personalizadas del usuario
+        const combinadas = [...prospectionTemplates, ...customUserTemplates];
         localStorage.setItem("ecomoving_custom_templates", JSON.stringify(combinadas));
         setTemplates(combinadas);
-      } else {
-        setTemplates(loadedTemplates);
+      } catch (e) {
+        console.error("Error combining templates with localStorage:", e);
+        setTemplates(prospectionTemplates);
       }
-    } catch (e) {
-      console.error("Error loading templates:", e);
-      setTemplates(defaultTemplates);
-    }
+    };
+
+    loadTemplates();
   }, []);
 
   async function syncWithBrevo() {
@@ -1128,7 +1183,7 @@ export default function TrazabilidadBrevo() {
                           <span className="text-xs font-bold truncate flex-1">{t.name}</span>
                         </div>
                         
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <div className="flex items-center gap-0.5 shrink-0">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1138,14 +1193,14 @@ export default function TrazabilidadBrevo() {
                               setTemplateFormBody(t.body);
                               setEditorMode("editar");
                             }}
-                            className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800"
+                            className="p-1 text-gray-400 hover:text-white rounded hover:bg-gray-800 opacity-60 hover:opacity-100 transition-opacity"
                             title="Editar plantilla"
                           >
                             <Pencil className="h-3 w-3" />
                           </button>
                           <button
                             onClick={(e) => handleDeleteTemplate(t.id, e)}
-                            className="p-1 text-gray-400 hover:text-red-400 rounded hover:bg-gray-800"
+                            className="p-1 text-gray-400 hover:text-red-400 rounded hover:bg-gray-800 opacity-60 hover:opacity-100 transition-opacity"
                             title="Eliminar plantilla"
                           >
                             <Trash2 className="h-3 w-3" />
