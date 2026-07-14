@@ -110,8 +110,7 @@ export default function TrazabilidadBrevo() {
     }).filter(Boolean).join(' ');
     
     const firstName = name.split(' ')[0] || '';
-    const company = name || 'su empresa';
-    const finalCompany = contact.empresa_rel_name || contact.empresa || company;
+    const finalCompany = contact.empresa_rel_name || contact.empresa || 'su empresa';
 
     // Obtener teléfono según el vendedor
     const telefonos: Record<string, string> = {
@@ -123,12 +122,12 @@ export default function TrazabilidadBrevo() {
     const replaceAll = (text: string) => {
       if (!text) return "";
       return text
-        .replace(/{nombre}/g, name)
-        .replace(/{nombre_corto}/g, firstName)
-        .replace(/{contacto}/g, firstName)
-        .replace(/{empresa}/g, finalCompany)
-        .replace(/{vendedor}/g, vendedorName)
-        .replace(/{telefono}/g, telefonoVendedor);
+        .replace(/{\s*nombre\s*}/gi, name)
+        .replace(/{\s*nombre_corto\s*}/gi, firstName)
+        .replace(/{\s*contacto\s*}/gi, firstName)
+        .replace(/{\s*empresa\s*}/gi, finalCompany)
+        .replace(/{\s*vendedor\s*}/gi, vendedorName)
+        .replace(/{\s*telefono\s*}/gi, telefonoVendedor);
     };
 
     return {
