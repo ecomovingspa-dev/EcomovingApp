@@ -51,6 +51,7 @@ interface KPI {
 }
 
 export default function DashboardMetrics() {
+    const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [data, setData] = useState<DashboardData[]>([]);
     const [kpi, setKpi] = useState<KPI>({
         totalSales: 0,
@@ -68,22 +69,19 @@ export default function DashboardMetrics() {
             try {
                 setLoading(true);
 
-                // Define the range: last 12 months
-                const months: DashboardData[] = [];
-                const now = new Date();
-                const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
-                twelveMonthsAgo.setHours(0, 0, 0, 0);
-                const isoDate = twelveMonthsAgo.toISOString();
-                const dateOnly = twelveMonthsAgo.toISOString().split('T')[0];
+                // Define the range: January 1st to December 31st of selectedYear
+                const startOfYear = `${selectedYear}-01-01`;
+                const endOfYear = `${selectedYear}-12-31`;
 
-                for (let i = 11; i >= 0; i--) {
-                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const months: DashboardData[] = [];
+                for (let m = 0; m < 12; m++) {
+                    const d = new Date(selectedYear, m, 1);
+                    const monthKey = `${selectedYear}-${String(m + 1).padStart(2, '0')}`;
                     const monthName = d.toLocaleString('es-CL', { month: 'short' });
                     months.push({
                         key: monthKey,
                         period: monthName.charAt(0).toUpperCase() + monthName.slice(1),
-                        fullName: `${monthName} ${d.getFullYear()}`,
+                        fullName: `${monthName} ${selectedYear}`,
                         sales: 0,
                         expenses: 0,
                         profit: 0,
@@ -97,16 +95,28 @@ export default function DashboardMetrics() {
                     .from("ventas")
                     .select("mnt_neto, saldo, fch_emis, fch_venc, anulada")
                     .eq("anulada", false)
-                    .gte("fch_emis", dateOnly);
+                    .gte("fch_emis", startOfYear)
+                    .lte("fch_emis", endOfYear);
 
                 if (venError) throw venError;
 
-                // 2. Fetch Compras (Gastos Operativos — Libro de Compras)
+                // 1b. Fetch all active unpaid Ventas for Riesgo Cobranza (ignoring emissions date limit initially)
+                const { data: allVentasCobranza, error: cobError } = await supabase
+                    .from("ventas")
+                    .select("saldo, fch_venc, anulada, fch_emis")
+                    .eq("anulada", false)
+                    .gt("saldo", 0);
+
+                if (cobError) throw cobError;
+
+                // 2. Fetch Compras (Gastos Operativos — Libro de Compras, filtrando por estado_contable !== 'Anulada')
                 const { data: compras, error: comError } = await supabase
                     .from("compras")
-                    .select("monto_total, fecha_emision")
+                    .select("monto_total, fecha_emision, estado_contable")
                     .not("fecha_emision", "is", null)
-                    .gte("fecha_emision", dateOnly);
+                    .neq("estado_contable", "Anulada")
+                    .gte("fecha_emision", startOfYear)
+                    .lte("fecha_emision", endOfYear);
 
                 if (comError) throw comError;
 
@@ -166,29 +176,42 @@ export default function DashboardMetrics() {
                     d.trend = Math.max(0, slope * i + intercept);
                 });
 
-                // Cobranza: saldo pendiente y vencido desde ventas
+                // Cobranza: saldo pendiente y vencido desde todas las ventas activas del año seleccionado
                 let pending = 0;
                 let overdue = 0;
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
-                ventas?.forEach((v) => {
-                    if (v.saldo && v.saldo > 0) {
-                        pending += v.saldo;
-                        if (v.fch_venc) {
-                            const fch = new Date(v.fch_venc);
-                            fch.setHours(0, 0, 0, 0);
-                            if (fch < today) overdue += v.saldo;
+                allVentasCobranza?.forEach((v) => {
+                    if (!v.fch_emis) return;
+                    const date = new Date(v.fch_emis);
+                    if (date.getFullYear() === selectedYear) {
+                        if (v.saldo && v.saldo > 0) {
+                            pending += v.saldo;
+                            if (v.fch_venc) {
+                                const fch = new Date(v.fch_venc);
+                                fch.setHours(0, 0, 0, 0);
+                                if (fch < today) overdue += v.saldo;
+                            }
                         }
                     }
                 });
 
-                // Monthly Growth (vs previous month)
+                // Monthly Growth (vs previous month with sales, preventing early-month -100% reports)
                 let growth = 0;
                 if (months.length >= 2) {
-                    const current = months[n - 1].sales;
-                    const previous = months[n - 2].sales;
-                    if (previous > 0) growth = ((current - previous) / previous) * 100;
+                    let activeIndex = months.length - 1;
+                    const currentYear = new Date().getFullYear();
+                    if (selectedYear === currentYear) {
+                        while (activeIndex > 0 && months[activeIndex].sales === 0) {
+                            activeIndex--;
+                        }
+                    }
+                    if (activeIndex > 0) {
+                        const current = months[activeIndex].sales;
+                        const previous = months[activeIndex - 1].sales;
+                        if (previous > 0) growth = ((current - previous) / previous) * 100;
+                    }
                 }
 
                 setData(months);
@@ -210,11 +233,42 @@ export default function DashboardMetrics() {
         }
 
         fetchData();
-    }, []);
+    }, [selectedYear]);
 
     const formatCurrency = (val: number) => {
         return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(val);
     };
+
+    const efficiency = useMemo(() => {
+        const factor = kpi.totalSales > 0 ? (kpi.totalExpenses / kpi.totalSales) * 100 : 0;
+        if (kpi.totalSales === 0) {
+            return {
+                score: "Sin Ventas",
+                colorClass: "text-gray-300"
+            };
+        }
+        if (factor < 50) {
+            return {
+                score: "Altamente Eficiente",
+                colorClass: "text-emerald-300"
+            };
+        } else if (factor < 80) {
+            return {
+                score: "Optimizado",
+                colorClass: "text-teal-300"
+            };
+        } else if (factor <= 100) {
+            return {
+                score: "Moderado",
+                colorClass: "text-amber-300"
+            };
+        } else {
+            return {
+                score: "Crítico / Déficit",
+                colorClass: "text-rose-300"
+            };
+        }
+    }, [kpi.totalSales, kpi.totalExpenses]);
 
     if (loading) {
         return <div className="p-8 text-center text-gray-500">Cargando dashboard...</div>;
@@ -232,8 +286,20 @@ export default function DashboardMetrics() {
                     </h2>
                     <p className="text-gray-500 dark:text-gray-400 flex items-center gap-2">
                         <Calendar className="h-4 w-4" />
-                        Reporte de inteligencia - últimos 12 meses (Caja y Devengado)
+                        Reporte de inteligencia - Año {selectedYear} (Caja y Devengado)
                     </p>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">Filtrar por Año:</span>
+                    <select
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(Number(e.target.value))}
+                        className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm cursor-pointer"
+                    >
+                        <option value={2026}>2026</option>
+                        <option value={2025}>2025</option>
+                        <option value={2024}>2024</option>
+                    </select>
                 </div>
             </div>
 
@@ -403,7 +469,7 @@ export default function DashboardMetrics() {
                                 </span>
                                 <div className="text-right">
                                     <p className="text-[10px] uppercase font-medium opacity-70">Puntaje Eficiencia</p>
-                                    <p className="text-xs font-bold text-emerald-300">Muy Optimizado</p>
+                                    <p className={`text-xs font-bold ${efficiency.colorClass}`}>{efficiency.score}</p>
                                 </div>
                             </div>
                         </div>

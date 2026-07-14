@@ -166,13 +166,6 @@ export default function Marketing() {
       <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700">
         {[
           { id: "todos", label: "Todos", count: contactos.length },
-          { id: "1", label: "Etapa 1", count: contactos.filter(c => obtenerEtapa(c) === 1).length },
-          { id: "2", label: "Etapa 2", count: contactos.filter(c => obtenerEtapa(c) === 2).length },
-          { id: "3", label: "Etapa 3", count: contactos.filter(c => obtenerEtapa(c) === 3).length },
-          { id: "4", label: "Etapa 4", count: contactos.filter(c => obtenerEtapa(c) === 4).length },
-          { id: "5", label: "Etapa 5", count: contactos.filter(c => obtenerEtapa(c) === 5).length },
-          { id: "6", label: "Etapa 6", count: contactos.filter(c => obtenerEtapa(c) === 6).length },
-          { id: "7", label: "Etapa 7", count: contactos.filter(c => obtenerEtapa(c) === 7).length },
           { id: "completados", label: "Completados", count: contactos.filter(c => obtenerEtapa(c) >= 100).length }
         ].map((tab) => {
           const estaActiva = tabActiva === tab.id;
