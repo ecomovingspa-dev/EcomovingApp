@@ -1047,21 +1047,22 @@ export default function TrazabilidadBrevo() {
             </SelectTrigger>
             <SelectContent className="bg-gray-900 border-gray-800 text-white">
               <SelectItem value="todos">TODOS LOS EJECUTIVOS</SelectItem>
-              <SelectItem value="mis_asignados">MIS ASIGNADOS</SelectItem>
               <SelectItem value="sin_asignar">SIN ASIGNAR</SelectItem>
               <SelectItem value="Mario Osorio C.">MARIO OSORIO C.</SelectItem>
               <SelectItem value="Jimena Lara F.">JIMENA LARA F.</SelectItem>
             </SelectContent>
           </Select>
 
-          <button 
-            onClick={syncWithBrevo}
-            disabled={loading}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-black transition-all disabled:opacity-50"
-          >
-            <RefreshCcw className="h-4 w-4" />
-            SINCRONIZAR BREVO
-          </button>
+          <Select onValueChange={(val) => setFiltroSector(val)} defaultValue="todos">
+            <SelectTrigger className="w-[120px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+              <SelectValue placeholder="SECTOR" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-gray-800 text-white">
+              <SelectItem value="todos">SECTOR: TODOS</SelectItem>
+              <SelectItem value="privado">PRIVADOS</SelectItem>
+              <SelectItem value="publico">PÚBLICOS</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -1082,18 +1083,15 @@ export default function TrazabilidadBrevo() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-black uppercase text-gray-500">Sector:</span>
-          <Select onValueChange={(val) => setFiltroSector(val)} defaultValue="todos">
-            <SelectTrigger className="w-[120px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[28px] rounded-lg">
-              <SelectValue placeholder="SECTOR" />
-            </SelectTrigger>
-            <SelectContent className="bg-gray-900 border-gray-800 text-white">
-              <SelectItem value="todos">TODOS</SelectItem>
-              <SelectItem value="privado">PRIVADOS</SelectItem>
-              <SelectItem value="publico">PÚBLICOS</SelectItem>
-            </SelectContent>
-          </Select>
+        <div>
+          <button 
+            onClick={syncWithBrevo}
+            disabled={loading}
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg text-[9px] font-black transition-all disabled:opacity-50 h-[28px]"
+          >
+            <RefreshCcw className="h-3 w-3" />
+            SINCRONIZAR BREVO
+          </button>
         </div>
       </div>
 
