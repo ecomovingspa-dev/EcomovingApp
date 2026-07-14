@@ -659,8 +659,8 @@ export default function TrazabilidadBrevo() {
   }
 
   const getStatusIcon = (contacto: any, day: string) => {
-    // 1. PRIORIDAD: Historial Real (soporta múltiples envíos por mes)
-    const eventosDelDia = (contacto.historial || []).filter((h: any) => h.fecha === day);
+    // Excluir plantillas de cortesía manuales del historial del día para no marcar checkmarks en la trazabilidad Brevo
+    const eventosDelDia = (contacto.historial || []).filter((h: any) => h.fecha === day && !h.mensaje_id?.startsWith("manual_template:"));
     
     if (eventosDelDia.length > 0) {
       // Jerarquía de importancia para el negocio
