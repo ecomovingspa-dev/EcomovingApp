@@ -102,9 +102,15 @@ export default function TrazabilidadBrevo() {
   const resolveTemplateVariables = (subject: string, body: string, contact: any, vendedorName: string) => {
     if (!contact) return { resolvedSubject: subject, resolvedBody: body };
     
-    const company = contact.nombre?.replace('Contacto Principal - ', '') || 'su empresa';
-    const name = contact.nombre || '';
+    // Clean and normalize the name (e.g. "Contacto Principal - VERONICA FONSECA" -> "Veronica Fonseca")
+    const rawName = (contact.nombre || '').replace('Contacto Principal - ', '').trim();
+    const name = rawName.split(' ').map(word => {
+      if (!word) return '';
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    }).filter(Boolean).join(' ');
+    
     const firstName = name.split(' ')[0] || '';
+    const company = name || 'su empresa';
     const finalCompany = contact.empresa_rel_name || contact.empresa || company;
 
     // Obtener teléfono según el vendedor
@@ -119,6 +125,7 @@ export default function TrazabilidadBrevo() {
       return text
         .replace(/{nombre}/g, name)
         .replace(/{nombre_corto}/g, firstName)
+        .replace(/{contacto}/g, firstName)
         .replace(/{empresa}/g, finalCompany)
         .replace(/{vendedor}/g, vendedorName)
         .replace(/{telefono}/g, telefonoVendedor);
@@ -1447,8 +1454,8 @@ export default function TrazabilidadBrevo() {
                       
                       <div className="p-2.5 bg-gray-950 rounded-xl border border-gray-900 text-[10px] text-gray-500 space-y-1 font-medium">
                         <div className="font-bold text-gray-400 uppercase text-[8px] tracking-wider">Placeholders Admitidos:</div>
+                        <div><code className="text-indigo-400 font-bold">{`{contacto}`}</code> o <code className="text-indigo-400 font-bold">{`{nombre_corto}`}</code>: Primer nombre.</div>
                         <div><code className="text-indigo-400 font-bold">{`{nombre}`}</code>: Nombre completo.</div>
-                        <div><code className="text-indigo-400 font-bold">{`{nombre_corto}`}</code>: Primer nombre.</div>
                         <div><code className="text-indigo-400 font-bold">{`{empresa}`}</code>: Nombre de la empresa.</div>
                         <div><code className="text-indigo-400 font-bold">{`{vendedor}`}</code>: Vendedor asignado.</div>
                       </div>
