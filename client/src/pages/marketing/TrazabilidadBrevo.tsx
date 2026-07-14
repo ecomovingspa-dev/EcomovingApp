@@ -6,7 +6,7 @@ import {
   Mail, CheckCircle2, Eye, AlertCircle, Circle, 
   Search, RefreshCcw, Trash2, HelpCircle, 
   Wrench, Truck, Settings, Building2,
-  Plus, Pencil, ArrowLeft, Sparkles, Check
+  Plus, Pencil, ArrowLeft, Sparkles, Check, Lock
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -67,6 +67,7 @@ export default function TrazabilidadBrevo() {
   const [vendedor, setVendedor] = useState("Vendedor 1");
   const [filtroEtapa, setFiltroEtapa] = useState("todos");
   const [filtroSector, setFiltroSector] = useState("todos");
+  const [filtroEjecutivo, setFiltroEjecutivo] = useState("todos");
 
   useEffect(() => {
     if (vendedores && vendedores.length > 0 && (vendedor === "Vendedor 1" || vendedor === "")) {
@@ -963,7 +964,15 @@ export default function TrazabilidadBrevo() {
         : (contactSector === "público" || contactSector === "publico")
     );
 
-    return matchesSearch && matchesCriticos && matchesEtapa && matchesSector;
+    const matchesEjecutivo = filtroEjecutivo === "todos" ? true : (
+      filtroEjecutivo === "sin_asignar" 
+        ? (!c.correo_cortesia_vendedor || c.correo_cortesia_vendedor.trim() === "")
+        : (filtroEjecutivo === "mis_asignados"
+            ? c.correo_cortesia_vendedor === vendedor
+            : c.correo_cortesia_vendedor === filtroEjecutivo)
+    );
+
+    return matchesSearch && matchesCriticos && matchesEtapa && matchesSector && matchesEjecutivo;
   });
 
   const sortedAndFiltered = [...filtered].sort((a, b) => {
@@ -1021,7 +1030,6 @@ export default function TrazabilidadBrevo() {
           >
             {soloCriticos ? "FILTRANDO CRÍTICOS" : "TODOS"}
           </button>
-
           <Select onValueChange={(val) => setFiltroEtapa(val)} defaultValue="todos">
             <SelectTrigger className="w-[140px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
               <SelectValue placeholder="ETAPA" />
@@ -1032,6 +1040,20 @@ export default function TrazabilidadBrevo() {
               <SelectItem value="prospeccion">PROSPECCIÓN</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select onValueChange={(val) => setFiltroEjecutivo(val)} defaultValue="todos">
+            <SelectTrigger className="w-[155px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+              <SelectValue placeholder="EJECUTIVO" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-gray-800 text-white">
+              <SelectItem value="todos">TODOS LOS EJECUTIVOS</SelectItem>
+              <SelectItem value="mis_asignados">MIS ASIGNADOS</SelectItem>
+              <SelectItem value="sin_asignar">SIN ASIGNAR</SelectItem>
+              <SelectItem value="Mario Osorio C.">MARIO OSORIO C.</SelectItem>
+              <SelectItem value="Jimena Lara F.">JIMENA LARA F.</SelectItem>
+            </SelectContent>
+          </Select>
+
           <button 
             onClick={syncWithBrevo}
             disabled={loading}
@@ -1209,13 +1231,29 @@ export default function TrazabilidadBrevo() {
 
                   <td className="px-2 py-5 text-center border-l border-gray-900/10">
                     <div className="flex justify-center items-center gap-2">
-                      <button 
-                        onClick={() => generateDraft(c)} 
-                        className="p-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md hover:scale-110 transition-all flex items-center justify-center shadow-md shadow-indigo-600/25"
-                        title="Enviar correo"
-                      >
-                        <Mail className="h-3.5 w-3.5" />
-                      </button>
+                      {(() => {
+                        const isLocked = c.correo_cortesia_vendedor && c.correo_cortesia_vendedor !== vendedor;
+                        if (isLocked) {
+                          return (
+                            <button 
+                              disabled
+                              className="p-1 bg-gray-900 border border-gray-805 text-red-500 rounded-md cursor-not-allowed opacity-50 flex items-center justify-center"
+                              title={`Bloqueado: Asignado en exclusiva a ${c.correo_cortesia_vendedor}`}
+                            >
+                              <Lock className="h-3.5 w-3.5 text-red-500" />
+                            </button>
+                          );
+                        }
+                        return (
+                          <button 
+                            onClick={() => generateDraft(c)} 
+                            className="p-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md hover:scale-110 transition-all flex items-center justify-center shadow-md shadow-indigo-600/25 cursor-pointer"
+                            title="Enviar correo"
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                          </button>
+                        );
+                      })()}
                       <button 
                         onClick={() => openEditModal(c)} 
                         className="p-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md hover:scale-110 transition-all flex items-center justify-center border border-gray-750"
