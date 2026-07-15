@@ -68,6 +68,7 @@ export default function TrazabilidadBrevo() {
   const [filtroEtapa, setFiltroEtapa] = useState("todos");
   const [filtroSector, setFiltroSector] = useState("todos");
   const [filtroEjecutivo, setFiltroEjecutivo] = useState("todos");
+  const [filtroSegmento, setFiltroSegmento] = useState("todos");
 
   useEffect(() => {
     if (vendedores && vendedores.length > 0 && (vendedor === "Vendedor 1" || vendedor === "")) {
@@ -519,16 +520,21 @@ export default function TrazabilidadBrevo() {
     const validContacts = contactsData || [];
 
     // Build accounts map
-    const accountsMap: Record<string, { cliente: string; sector: string }> = {};
+    const accountsMap: Record<string, { cliente: string; sector: string; segmento?: string }> = {};
     currentCuentas.forEach((acc: any) => {
-      accountsMap[acc.id] = { cliente: acc.cliente, sector: acc.sector || 'privado' };
+      accountsMap[acc.id] = { 
+        cliente: acc.cliente, 
+        sector: acc.sector || 'privado',
+        segmento: acc.segmento || ''
+      };
     });
 
-    // Embed the account name and sector directly in the contact object mapping:
+    // Embed the account name, sector and segment directly in the contact object mapping:
     validContacts.forEach((c: any) => {
       if (c.cuenta_id && accountsMap[c.cuenta_id]) {
         c.empresa_rel_name = accountsMap[c.cuenta_id].cliente;
         c.empresa_rel_sector = accountsMap[c.cuenta_id].sector;
+        c.empresa_rel_segmento = accountsMap[c.cuenta_id].segmento;
       }
     });
 
@@ -972,7 +978,11 @@ export default function TrazabilidadBrevo() {
             : c.correo_cortesia_vendedor === filtroEjecutivo)
     );
 
-    return matchesSearch && matchesCriticos && matchesEtapa && matchesSector && matchesEjecutivo;
+    const matchesSegmento = filtroSegmento === "todos" ? true : (
+      (c.empresa_rel_segmento || "").toLowerCase() === filtroSegmento.toLowerCase()
+    );
+
+    return matchesSearch && matchesCriticos && matchesEtapa && matchesSector && matchesEjecutivo && matchesSegmento;
   });
 
   const sortedAndFiltered = [...filtered].sort((a, b) => {
@@ -1041,14 +1051,14 @@ export default function TrazabilidadBrevo() {
         </div>
       </div>
 
-      {/* Fila 2: Filtros (Búsqueda, Todos/Críticos, Etapa, Ejecutivo, Sector) */}
+      {/* Fila 2: Filtros (Búsqueda, Todos/Críticos, Etapa, Ejecutivo, Sector, Segmento) */}
       <div className="flex flex-wrap items-center gap-3 bg-gray-900/40 p-4 rounded-2xl border border-gray-800 backdrop-blur-sm">
-        <div className="flex flex-1 max-w-sm relative">
+        <div className="w-[280px] relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <input 
             type="text" 
             placeholder="Buscar cuenta..." 
-            className="w-full bg-gray-800/50 border-gray-700 rounded-xl pl-10 text-sm py-2 focus:ring-amber-500/50" 
+            className="w-full bg-gray-800/50 border-gray-700 rounded-xl pl-10 text-sm py-2 focus:ring-amber-500/50 h-[36px]" 
             value={filtro}
             onChange={(e) => setFiltro(e.target.value)}
           />
@@ -1094,6 +1104,29 @@ export default function TrazabilidadBrevo() {
             <SelectItem value="todos">SECTOR: TODOS</SelectItem>
             <SelectItem value="privado">PRIVADOS</SelectItem>
             <SelectItem value="publico">PÚBLICOS</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select onValueChange={(val) => setFiltroSegmento(val)} defaultValue="todos">
+          <SelectTrigger className="w-[130px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+            <SelectValue placeholder="SEGMENTO" />
+          </SelectTrigger>
+          <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-60 overflow-y-auto">
+            <SelectItem value="todos">SEGMENTO: TODOS</SelectItem>
+            {[
+              "Alimentos / Agrícola",
+              "Automotoras",
+              "Comercializadores",
+              "Constructoras / Inmobiliarias",
+              "Educación",
+              "Logística / Transporte",
+              "Minería / Industria",
+              "Salud",
+              "Servicios",
+              "Servicios Públicos"
+            ].map(seg => (
+              <SelectItem key={seg} value={seg}>{seg}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
