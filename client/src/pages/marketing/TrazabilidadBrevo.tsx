@@ -1116,6 +1116,7 @@ export default function TrazabilidadBrevo() {
             {[
               "Alimentos / Agrícola",
               "Automotoras",
+              "Caja de Compensación",
               "Comercializadores",
               "Constructoras / Inmobiliarias",
               "Educación",
@@ -1988,6 +1989,7 @@ export default function TrazabilidadBrevo() {
                     {[
                       "Alimentos / Agrícola",
                       "Automotoras",
+                      "Caja de Compensación",
                       "Comercializadores",
                       "Constructoras / Inmobiliarias",
                       "Educación",

@@ -27,6 +27,7 @@ export default function CuentaForm() {
   const [availableSegments, setAvailableSegments] = useState<string[]>([
     "Alimentos / Agrícola",
     "Automotoras",
+    "Caja de Compensación",
     "Comercializadores",
     "Constructoras / Inmobiliarias",
     "Educación",
