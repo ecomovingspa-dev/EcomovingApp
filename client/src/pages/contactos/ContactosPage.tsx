@@ -3,6 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { 
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
+} from "@/components/ui/dialog";
 import { ConfiguracionProspeccion } from "../../components/contactos/ConfiguracionProspeccion";
 import {
   Popover,
@@ -140,6 +143,10 @@ export default function ContactosPage() {
   const [contactoAGraduar, setContactoAGraduar] = useState<ContactoConCuenta | null>(null);
   const [nombreGraduacion, setNombreGraduacion] = useState("");
   const [graduando, setGraduando] = useState(false);
+
+  // Desactivación/Degradación
+  const [showDesactivarModal, setShowDesactivarModal] = useState(false);
+  const [contactoADesactivar, setContactoADesactivar] = useState<ContactoConCuenta | null>(null);
 
   // Estados para paginación
   const [paginaActual, setPaginaActual] = useState(1);
@@ -538,26 +545,25 @@ export default function ContactosPage() {
     setGraduando(false);
   };
 
-  const degradarAProspeccion = async (contacto: ContactoConCuenta) => {
-    const yaProspectado = contacto.indice_secuencia === -1 || (contacto.indice_secuencia && contacto.indice_secuencia > 0);
-    const mensajeConfirm = yaProspectado
-      ? "⚠️ Este contacto ya pasó por la campaña de Prospección anteriormente. ¿Estás seguro de degradarlo por SEGUNDA VEZ? La campaña de Marketing/Nutrición se congelará y volverá a enviar correos fríos desde el paso 1."
-      : "¿Estás seguro de degradar este contacto a Prospección? La campaña de Marketing/Nutrición se congelará y comenzará la secuencia fría desde el paso 1.";
+  const iniciarDesactivacion = (contacto: ContactoConCuenta) => {
+    setContactoADesactivar(contacto);
+    setShowDesactivarModal(true);
+  };
 
-    if (!confirm(mensajeConfirm)) return;
-
+  const ejecutarDegradacion = async () => {
+    if (!contactoADesactivar) return;
     try {
-      const marketingStage = contacto.etapa_envio || 1;
+      const marketingStage = contactoADesactivar.etapa_envio || 1;
       const { error } = await supabase
         .from("contactos")
         .update({
           etapa: "prospeccion",
           etapa_envio: 1,
           proximo_envio: null,
-          estado: "activo", // Se mantiene activo para que parta enviando prospección
-          indice_secuencia: marketingStage // Guardar el progreso de marketing
+          estado: "activo",
+          indice_secuencia: marketingStage
         })
-        .eq("id", contacto.id);
+        .eq("id", contactoADesactivar.id);
       if (error) throw error;
       setMensaje("✅ Contacto degradado a Prospección. Iniciando secuencia fría.");
       cargarContactos(true);
@@ -565,9 +571,34 @@ export default function ContactosPage() {
     } catch (err: any) {
       console.error("Error al degradar contacto:", err);
       setMensaje("❌ Error al degradar contacto: " + err.message);
+    } finally {
+      setShowDesactivarModal(false);
+      setContactoADesactivar(null);
     }
   };
 
+  const ejecutarDesactivacion = async () => {
+    if (!contactoADesactivar) return;
+    try {
+      const { error } = await supabase
+        .from("contactos")
+        .update({
+          estado: "inactivo",
+          proximo_envio: null
+        })
+        .eq("id", contactoADesactivar.id);
+      if (error) throw error;
+      setMensaje("✅ Contacto pausado. Estado establecido como Inactivo.");
+      cargarContactos(true);
+      setTimeout(() => setMensaje(""), 4000);
+    } catch (err: any) {
+      console.error("Error al desactivar contacto:", err);
+      setMensaje("❌ Error al desactivar contacto: " + err.message);
+    } finally {
+      setShowDesactivarModal(false);
+      setContactoADesactivar(null);
+    }
+  };
   const totalPaginas = Math.ceil(totalRecords / filasPorPagina);
   const totalContactosFiltrados = totalRecords;
 
@@ -944,28 +975,25 @@ export default function ContactosPage() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
-                            if (contacto.etapa === "prospeccion") {
-                              // Activar -> Graduar a Marketing
+                            if (contacto.etapa === "prospeccion" || contacto.estado === "inactivo") {
                               iniciarGraduacion(contacto);
                             } else {
-                              // Desactivar -> Degradación a Prospección
-                              degradarAProspeccion(contacto);
+                              iniciarDesactivacion(contacto);
                             }
                           }}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${(contacto.etapa === "marketing")
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${(contacto.etapa === "marketing" && contacto.estado === "activo")
                             ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
                             : "bg-gray-300 dark:bg-gray-700"
                             }`}
-                          title={(contacto.etapa === "marketing") ? "Campaña: Activo (Marketing)" : "Campaña: Desactivado (Prospección)"}
+                          title={(contacto.etapa === "marketing" && contacto.estado === "activo") ? "Campaña: Activo (Marketing)" : "Campaña: Desactivado / Pausado"}
                         >
                           <span
-                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${(contacto.etapa === "marketing")
+                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${(contacto.etapa === "marketing" && contacto.estado === "activo")
                               ? "translate-x-5"
                               : "translate-x-1"
                               }`}
                           />
                         </button>
-                        
                         {contacto.etapa !== "prospeccion" && (contacto.indice_secuencia === -1 || (contacto.indice_secuencia !== null && contacto.indice_secuencia !== undefined && contacto.indice_secuencia > 0)) ? (
                           <span 
                             className="text-amber-500 dark:text-amber-400 shrink-0 cursor-help" 
@@ -1165,6 +1193,75 @@ export default function ContactosPage() {
                 ) : (
                   <><GraduationCap className="h-4 w-4 mr-2" />Confirmar Graduación</>
                 )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Desactivación / Degradación */}
+      {showDesactivarModal && contactoADesactivar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+            {/* Header */}
+            <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-red-50 dark:bg-red-900/20">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-5 w-5 text-red-600 dark:text-red-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-sm">Desactivar Campaña de Marketing</h3>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    {contactoADesactivar.cuentas?.cliente || "Empresa"} · {contactoADesactivar.correo}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Selecciona la acción que deseas aplicar al detener los envíos automáticos de marketing:
+              </p>
+              
+              <div className="space-y-3">
+                {/* Opción A */}
+                <button 
+                  onClick={ejecutarDegradacion}
+                  className="w-full text-left p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all flex flex-col gap-1 outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <span className="text-xs font-bold text-gray-900 dark:text-white">Opción A: Degradar a Prospección</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                    Congela Marketing y transfiere el contacto a la campaña fría (correos uno a uno desde el paso 1). Mantiene el contacto activo.
+                  </span>
+                </button>
+
+                {/* Opción C */}
+                <button 
+                  onClick={ejecutarDesactivacion}
+                  className="w-full text-left p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-red-500 dark:hover:border-red-500 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-all flex flex-col gap-1 outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <span className="text-xs font-bold text-gray-900 dark:text-white">Opción C: Desactivar / Pausar Contacto</span>
+                  <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
+                    Marca el contacto como Inactivo. Se congela toda campaña y se retira del Sentinel.
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-end">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowDesactivarModal(false);
+                  setContactoADesactivar(null);
+                }}
+                className="text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Cancelar
               </Button>
             </div>
           </div>
