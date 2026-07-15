@@ -14,6 +14,25 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
+const SEGMENTOS_POR_DEFECTO = [
+  "Expomin",
+  "Servicios",
+  "Mineras",
+  "Educación",
+  "Comercializadores",
+  "Alimentos / Agrícola",
+  "Corporación",
+  "Salud",
+  "Gran Empresa",
+  "Municipalidad",
+  "Servicios Públicos",
+  "Gobierno Central",
+  "Laboratorios",
+  "Comercial/Industrial - Shell Chile",
+  "Pequeña Empresa",
+  "Caja de Compensación"
+];
+
 import {
   Trash2,
   UserPlus,
@@ -155,7 +174,7 @@ export default function ContactosPage() {
 
   // Estados para opciones de filtros
   const [availableSectors, setAvailableSectors] = useState<string[]>([]);
-  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
+  const [availableSegments, setAvailableSegments] = useState<string[]>(SEGMENTOS_POR_DEFECTO);
   const [totalEtapasProspeccion, setTotalEtapasProspeccion] = useState<number>(3);
 
   // Estados para edición de cuenta
@@ -186,7 +205,8 @@ export default function ContactosPage() {
       const { data: qSectors } = await supabase.from("cuentas").select("sector, segmento");
       if (qSectors) {
         setAvailableSectors(Array.from(new Set(qSectors.map((c: any) => c.sector).filter(Boolean))));
-        setAvailableSegments(Array.from(new Set(qSectors.map((c: any) => c.segmento).filter(Boolean))));
+        const dbSegments = qSectors.map((c: any) => c.segmento).filter(Boolean);
+        setAvailableSegments(Array.from(new Set([...SEGMENTOS_POR_DEFECTO, ...dbSegments])));
       }
       
       const { data: qCuentas, error: errorCuentas } = await supabase

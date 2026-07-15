@@ -25,17 +25,22 @@ export default function CuentaForm() {
     "Público"
   ]);
   const [availableSegments, setAvailableSegments] = useState<string[]>([
-    "Alimentos / Agrícola",
-    "Automotoras",
-    "Caja de Compensación",
-    "Comercializadores",
-    "Constructoras / Inmobiliarias",
-    "Educación",
-    "Logística / Transporte",
-    "Minería / Industria",
-    "Salud",
+    "Expomin",
     "Servicios",
-    "Servicios Públicos"
+    "Mineras",
+    "Educación",
+    "Comercializadores",
+    "Alimentos / Agrícola",
+    "Corporación",
+    "Salud",
+    "Gran Empresa",
+    "Municipalidad",
+    "Servicios Públicos",
+    "Gobierno Central",
+    "Laboratorios",
+    "Comercial/Industrial - Shell Chile",
+    "Pequeña Empresa",
+    "Caja de Compensación"
   ]);
 
   useEffect(() => {

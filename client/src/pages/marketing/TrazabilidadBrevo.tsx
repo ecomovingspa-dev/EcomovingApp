@@ -1114,17 +1114,22 @@ export default function TrazabilidadBrevo() {
           <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-60 overflow-y-auto">
             <SelectItem value="todos">SEGMENTO: TODOS</SelectItem>
             {[
-              "Alimentos / Agrícola",
-              "Automotoras",
-              "Caja de Compensación",
-              "Comercializadores",
-              "Constructoras / Inmobiliarias",
-              "Educación",
-              "Logística / Transporte",
-              "Minería / Industria",
-              "Salud",
+              "Expomin",
               "Servicios",
-              "Servicios Públicos"
+              "Mineras",
+              "Educación",
+              "Comercializadores",
+              "Alimentos / Agrícola",
+              "Corporación",
+              "Salud",
+              "Gran Empresa",
+              "Municipalidad",
+              "Servicios Públicos",
+              "Gobierno Central",
+              "Laboratorios",
+              "Comercial/Industrial - Shell Chile",
+              "Pequeña Empresa",
+              "Caja de Compensación"
             ].map(seg => (
               <SelectItem key={seg} value={seg}>{seg}</SelectItem>
             ))}
@@ -1987,17 +1992,22 @@ export default function TrazabilidadBrevo() {
                   </SelectTrigger>
                   <SelectContent className="bg-gray-900 border-gray-850 text-white max-h-60 overflow-y-auto">
                     {[
-                      "Alimentos / Agrícola",
-                      "Automotoras",
-                      "Caja de Compensación",
-                      "Comercializadores",
-                      "Constructoras / Inmobiliarias",
-                      "Educación",
-                      "Logística / Transporte",
-                      "Minería / Industria",
-                      "Salud",
+                      "Expomin",
                       "Servicios",
-                      "Servicios Públicos"
+                      "Mineras",
+                      "Educación",
+                      "Comercializadores",
+                      "Alimentos / Agrícola",
+                      "Corporación",
+                      "Salud",
+                      "Gran Empresa",
+                      "Municipalidad",
+                      "Servicios Públicos",
+                      "Gobierno Central",
+                      "Laboratorios",
+                      "Comercial/Industrial - Shell Chile",
+                      "Pequeña Empresa",
+                      "Caja de Compensación"
                     ].map(seg => (
                       <SelectItem key={seg} value={seg}>{seg}</SelectItem>
                     ))}

@@ -6,6 +6,25 @@ import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCc
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
+const SEGMENTOS_POR_DEFECTO = [
+  "Expomin",
+  "Servicios",
+  "Mineras",
+  "Educación",
+  "Comercializadores",
+  "Alimentos / Agrícola",
+  "Corporación",
+  "Salud",
+  "Gran Empresa",
+  "Municipalidad",
+  "Servicios Públicos",
+  "Gobierno Central",
+  "Laboratorios",
+  "Comercial/Industrial - Shell Chile",
+  "Pequeña Empresa",
+  "Caja de Compensación"
+];
+
 export default function CuentasPage() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [cuentasFiltradas, setCuentasFiltradas] = useState<Cuenta[]>([]);
@@ -31,7 +50,7 @@ export default function CuentasPage() {
 
   // Estados para opciones de filtros (se cargan una vez al inicio)
   const [availableSectors, setAvailableSectors] = useState<string[]>([]);
-  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
+  const [availableSegments, setAvailableSegments] = useState<string[]>(SEGMENTOS_POR_DEFECTO);
   const [totalRecords, setTotalRecords] = useState(0);
 
   // Determinar si hay algún filtro activo
@@ -48,7 +67,8 @@ export default function CuentasPage() {
       const { data } = await supabase.from("cuentas").select("sector, segmento");
       if (data) {
         setAvailableSectors(Array.from(new Set(data.map((c: any) => c.sector).filter(Boolean))));
-        setAvailableSegments(Array.from(new Set(data.map((c: any) => c.segmento).filter(Boolean))));
+        const dbSegments = data.map((c: any) => c.segmento).filter(Boolean);
+        setAvailableSegments(Array.from(new Set([...SEGMENTOS_POR_DEFECTO, ...dbSegments])));
       }
     } catch (e) {
       console.error("Error cargando opciones de filtros:", e);
