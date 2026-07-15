@@ -999,7 +999,9 @@ export default function TrazabilidadBrevo() {
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-1000">
       {/* Header & Controls */}
+      {/* Fila 1: Header, Simbología y Sincronizar */}
       <div className="flex flex-wrap items-center justify-between gap-4 bg-gray-900/40 p-4 rounded-2xl border border-gray-800 backdrop-blur-sm">
+        {/* Izquierda: Logo y Título */}
         <div className="flex items-center gap-3">
           <div className="p-3 bg-amber-500/10 rounded-xl">
             <RefreshCcw className={`h-5 w-5 text-amber-500 ${loading ? "animate-spin" : ""}`} />
@@ -1010,65 +1012,8 @@ export default function TrazabilidadBrevo() {
           </div>
         </div>
 
-        <div className="flex flex-1 max-w-sm relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-          <input 
-            type="text" 
-            placeholder="Buscar cuenta..." 
-            className="w-full bg-gray-800/50 border-gray-700 rounded-xl pl-10 text-sm py-2 focus:ring-amber-500/50" 
-            value={filtro}
-            onChange={(e) => setFiltro(e.target.value)}
-          />
-        </div>
-
-        <div className="flex gap-2">
-          <button 
-            onClick={() => setSoloCriticos(!soloCriticos)}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              soloCriticos ? "bg-red-500 text-white shadow-lg shadow-red-500/50" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-            }`}
-          >
-            {soloCriticos ? "FILTRANDO CRÍTICOS" : "TODOS"}
-          </button>
-          <Select onValueChange={(val) => setFiltroEtapa(val)} defaultValue="todos">
-            <SelectTrigger className="w-[140px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
-              <SelectValue placeholder="ETAPA" />
-            </SelectTrigger>
-            <SelectContent className="bg-gray-900 border-gray-800 text-white">
-              <SelectItem value="todos">TODAS LAS ETAPAS</SelectItem>
-              <SelectItem value="marketing">MARKETING</SelectItem>
-              <SelectItem value="prospeccion">PROSPECCIÓN</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select onValueChange={(val) => setFiltroEjecutivo(val)} defaultValue="todos">
-            <SelectTrigger className="w-[155px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
-              <SelectValue placeholder="EJECUTIVO" />
-            </SelectTrigger>
-            <SelectContent className="bg-gray-900 border-gray-800 text-white">
-              <SelectItem value="todos">TODOS LOS EJECUTIVOS</SelectItem>
-              <SelectItem value="sin_asignar">SIN ASIGNAR</SelectItem>
-              <SelectItem value="Mario Osorio C.">MARIO OSORIO C.</SelectItem>
-              <SelectItem value="Jimena Lara F.">JIMENA LARA F.</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select onValueChange={(val) => setFiltroSector(val)} defaultValue="todos">
-            <SelectTrigger className="w-[120px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
-              <SelectValue placeholder="SECTOR" />
-            </SelectTrigger>
-            <SelectContent className="bg-gray-900 border-gray-800 text-white">
-              <SelectItem value="todos">SECTOR: TODOS</SelectItem>
-              <SelectItem value="privado">PRIVADOS</SelectItem>
-              <SelectItem value="publico">PÚBLICOS</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Mini-Leyenda Superior & Filtro de Sector */}
-      <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-2 bg-gray-900/40 rounded-2xl border border-gray-800">
-        <div className="flex flex-wrap gap-4">
+        {/* Centro: Simbología */}
+        <div className="flex flex-wrap gap-4 items-center justify-center">
           <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
             <Mail className="h-3 w-3 text-blue-400" /> Enviado
           </div>
@@ -1083,16 +1028,74 @@ export default function TrazabilidadBrevo() {
           </div>
         </div>
 
+        {/* Derecha: Botón Sincronizar */}
         <div>
           <button 
             onClick={syncWithBrevo}
             disabled={loading}
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1 rounded-lg text-[9px] font-black transition-all disabled:opacity-50 h-[28px]"
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-black transition-all disabled:opacity-50 h-[36px]"
           >
-            <RefreshCcw className="h-3 w-3" />
+            <RefreshCcw className="h-3.5 w-3.5" />
             SINCRONIZAR BREVO
           </button>
         </div>
+      </div>
+
+      {/* Fila 2: Filtros (Búsqueda, Todos/Críticos, Etapa, Ejecutivo, Sector) */}
+      <div className="flex flex-wrap items-center gap-3 bg-gray-900/40 p-4 rounded-2xl border border-gray-800 backdrop-blur-sm">
+        <div className="flex flex-1 max-w-sm relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+          <input 
+            type="text" 
+            placeholder="Buscar cuenta..." 
+            className="w-full bg-gray-800/50 border-gray-700 rounded-xl pl-10 text-sm py-2 focus:ring-amber-500/50" 
+            value={filtro}
+            onChange={(e) => setFiltro(e.target.value)}
+          />
+        </div>
+
+        <button 
+          onClick={() => setSoloCriticos(!soloCriticos)}
+          className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+            soloCriticos ? "bg-red-500 text-white shadow-lg shadow-red-500/50" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+          }`}
+        >
+          {soloCriticos ? "FILTRANDO CRÍTICOS" : "TODOS"}
+        </button>
+
+        <Select onValueChange={(val) => setFiltroEtapa(val)} defaultValue="todos">
+          <SelectTrigger className="w-[140px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+            <SelectValue placeholder="ETAPA" />
+          </SelectTrigger>
+          <SelectContent className="bg-gray-900 border-gray-800 text-white">
+            <SelectItem value="todos">TODAS LAS ETAPAS</SelectItem>
+            <SelectItem value="marketing">MARKETING</SelectItem>
+            <SelectItem value="prospeccion">PROSPECCIÓN</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select onValueChange={(val) => setFiltroEjecutivo(val)} defaultValue="todos">
+          <SelectTrigger className="w-[155px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+            <SelectValue placeholder="EJECUTIVO" />
+          </SelectTrigger>
+          <SelectContent className="bg-gray-900 border-gray-800 text-white">
+            <SelectItem value="todos">TODOS LOS EJECUTIVOS</SelectItem>
+            <SelectItem value="sin_asignar">SIN ASIGNAR</SelectItem>
+            <SelectItem value="Mario Osorio C.">MARIO OSORIO C.</SelectItem>
+            <SelectItem value="Jimena Lara F.">JIMENA LARA F.</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select onValueChange={(val) => setFiltroSector(val)} defaultValue="todos">
+          <SelectTrigger className="w-[120px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+            <SelectValue placeholder="SECTOR" />
+          </SelectTrigger>
+          <SelectContent className="bg-gray-900 border-gray-800 text-white">
+            <SelectItem value="todos">SECTOR: TODOS</SelectItem>
+            <SelectItem value="privado">PRIVADOS</SelectItem>
+            <SelectItem value="publico">PÚBLICOS</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* The Matrix */}
