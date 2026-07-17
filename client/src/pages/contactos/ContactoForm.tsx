@@ -65,7 +65,7 @@ export default function ContactoForm() {
       const { data, error } = await supabase
         .from("cuentas")
         .select("id, cliente, rut, estado")
-        .eq("estado", "activo") // Solo cuentas con estado activo
+        .neq("estado", "inactivo") // Permitir cuentas con estado activo o prospecto (excluye inactivo)
         .order("cliente");
 
       if (error) throw error;
@@ -334,7 +334,7 @@ export default function ContactoForm() {
                         <div className="flex-1 overflow-y-auto p-1 custom-scrollbar">
                           {cuentasFiltradas.length === 0 ? (
                             <div className="py-6 text-center text-sm text-gray-500">
-                              No se encontraron cuentas activas.
+                              No se encontraron cuentas activas o prospectos.
                             </div>
                           ) : (
                             cuentasFiltradas.map((cuenta) => (
