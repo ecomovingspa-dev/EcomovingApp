@@ -26,6 +26,25 @@ const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+const SEGMENTOS_POR_DEFECTO = [
+  "Expomin",
+  "Servicios",
+  "Mineras",
+  "Educación",
+  "Comercializadores",
+  "Alimentos / Agrícola",
+  "Corporación",
+  "Salud",
+  "Gran Empresa",
+  "Municipalidad",
+  "Servicios Públicos",
+  "Gobierno Central",
+  "Laboratorios",
+  "Comercial/Industrial - Shell Chile",
+  "Pequeña Empresa",
+  "Caja de Compensación"
+];
+
 // March 2026 Working Days (Calculated dynamically below)
 interface CalendarDay {
   date: string;
@@ -69,6 +88,7 @@ export default function TrazabilidadBrevo() {
   const [filtroSector, setFiltroSector] = useState("todos");
   const [filtroEjecutivo, setFiltroEjecutivo] = useState("todos");
   const [filtroSegmento, setFiltroSegmento] = useState("todos");
+  const [availableSegments, setAvailableSegments] = useState<string[]>(SEGMENTOS_POR_DEFECTO);
 
   useEffect(() => {
     if (vendedores && vendedores.length > 0 && (vendedor === "Vendedor 1" || vendedor === "")) {
@@ -475,7 +495,7 @@ export default function TrazabilidadBrevo() {
       while (hasMore) {
         const { data, error } = await supabase
           .from("cuentas")
-          .select("id, cliente, sector")
+          .select("id, cliente, sector, segmento")
           .order("cliente")
           .range(from, to);
 
@@ -494,6 +514,8 @@ export default function TrazabilidadBrevo() {
         }
       }
       setCuentas(allCuentas);
+      const dbSegments = allCuentas.map((c: any) => c.segmento).filter(Boolean);
+      setAvailableSegments(Array.from(new Set([...SEGMENTOS_POR_DEFECTO, ...dbSegments])));
     } catch (cuentasError) {
       console.error("Error al cargar cuentas:", cuentasError);
       toast.error("Error al cargar la lista completa de cuentas");
@@ -1113,24 +1135,7 @@ export default function TrazabilidadBrevo() {
           </SelectTrigger>
           <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-60 overflow-y-auto">
             <SelectItem value="todos">SEGMENTO: TODOS</SelectItem>
-            {[
-              "Expomin",
-              "Servicios",
-              "Mineras",
-              "Educación",
-              "Comercializadores",
-              "Alimentos / Agrícola",
-              "Corporación",
-              "Salud",
-              "Gran Empresa",
-              "Municipalidad",
-              "Servicios Públicos",
-              "Gobierno Central",
-              "Laboratorios",
-              "Comercial/Industrial - Shell Chile",
-              "Pequeña Empresa",
-              "Caja de Compensación"
-            ].map(seg => (
+            {availableSegments.map(seg => (
               <SelectItem key={seg} value={seg}>{seg}</SelectItem>
             ))}
           </SelectContent>
@@ -1991,24 +1996,7 @@ export default function TrazabilidadBrevo() {
                     <SelectValue placeholder="Seleccionar segmento..." />
                   </SelectTrigger>
                   <SelectContent className="bg-gray-900 border-gray-850 text-white max-h-60 overflow-y-auto">
-                    {[
-                      "Expomin",
-                      "Servicios",
-                      "Mineras",
-                      "Educación",
-                      "Comercializadores",
-                      "Alimentos / Agrícola",
-                      "Corporación",
-                      "Salud",
-                      "Gran Empresa",
-                      "Municipalidad",
-                      "Servicios Públicos",
-                      "Gobierno Central",
-                      "Laboratorios",
-                      "Comercial/Industrial - Shell Chile",
-                      "Pequeña Empresa",
-                      "Caja de Compensación"
-                    ].map(seg => (
+                    {availableSegments.map(seg => (
                       <SelectItem key={seg} value={seg}>{seg}</SelectItem>
                     ))}
                   </SelectContent>
