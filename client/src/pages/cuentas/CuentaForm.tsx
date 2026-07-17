@@ -143,6 +143,10 @@ export default function CuentaForm() {
     setCuenta((prev) => ({ ...prev, [field]: value }));
   };
 
+  const filteredSegments = availableSegments.filter((seg) =>
+    seg.toLowerCase().includes(searchSegment.toLowerCase())
+  );
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Header */}
@@ -260,54 +264,59 @@ export default function CuentaForm() {
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl" align="start">
-                  <Command>
-                    <CommandInput 
-                      placeholder="Buscar o escribir nuevo segmento..." 
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl" align="start">
+                  <div className="flex flex-col space-y-2">
+                    <input
+                      type="text"
+                      placeholder="Buscar o escribir nuevo segmento..."
                       value={searchSegment}
-                      onValueChange={setSearchSegment}
+                      onChange={(e) => setSearchSegment(e.target.value)}
+                      className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      autoFocus
                     />
-                    <CommandList className="max-h-[200px] overflow-y-auto">
-                      <CommandEmpty>No se encontraron segmentos.</CommandEmpty>
-                      <CommandGroup>
-                        {availableSegments.map((seg) => (
-                          <CommandItem
+                    <div className="max-h-[200px] overflow-y-auto space-y-1 custom-scrollbar">
+                      {filteredSegments.length === 0 ? (
+                        <div className="py-3 text-center text-xs text-gray-500">
+                          No se encontraron segmentos.
+                        </div>
+                      ) : (
+                        filteredSegments.map((seg) => (
+                          <button
                             key={seg}
-                            value={seg}
-                            onSelect={() => {
+                            type="button"
+                            onClick={() => {
                               handleChange("segmento", seg);
                               setSegmentOpen(false);
                               setSearchSegment("");
                             }}
+                            className={cn(
+                              "w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100",
+                              cuenta.segmento === seg && "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400"
+                            )}
                           >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                cuenta.segmento === seg ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {seg}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
+                            <span>{seg}</span>
+                            {cuenta.segmento === seg && <Check className="h-4 w-4 shrink-0" />}
+                          </button>
+                        ))
+                      )}
+                    </div>
                     {searchSegment.trim() && !availableSegments.some(s => s.toLowerCase() === searchSegment.trim().toLowerCase()) && (
-                      <div className="p-2 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+                      <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
                         <Button
                           type="button"
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="w-full text-blue-600 hover:text-blue-700 dark:text-blue-400 font-semibold flex items-center justify-center gap-1"
+                          className="w-full text-blue-600 hover:text-blue-700 dark:text-blue-400 border-blue-200 hover:border-blue-300 dark:border-blue-900/50 font-bold flex items-center justify-center gap-1 cursor-pointer"
                           onClick={() => {
                             agregarNuevoSegmentoAlCatálogo(searchSegment.trim());
                           }}
                         >
                           <Plus className="h-4 w-4" />
-                          Crear segmento "{searchSegment}"
+                          Crear segmento "{searchSegment.trim()}"
                         </Button>
                       </div>
                     )}
-                  </Command>
+                  </div>
                 </PopoverContent>
               </Popover>
               {cuenta.segmento && !availableSegments.includes(cuenta.segmento) && (

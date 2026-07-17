@@ -22,12 +22,9 @@ export default function CuentasPage() {
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
   const [enriqueciendoId, setEnriqueciendoId] = useState<string | null>(null);
 
-  // Estados para catálogo
-  const [gestionOpen, setGestionOpen] = useState(false);
-  const [catalogSegments, setCatalogSegments] = useState<{ id: string; nombre: string }[]>([]);
-  const [nuevoSegmento, setNuevoSegmento] = useState("");
-  const [editandoIndex, setEditandoIndex] = useState<number | null>(null);
-  const [editandoNombre, setEditandoNombre] = useState("");
+  // Estados para edición inline de segmentos
+  const [openSegmentId, setOpenSegmentId] = useState<string | null>(null);
+  const [searchSegment, setSearchSegment] = useState("");
 
   // Estados para filtros y búsqueda
   const [busqueda, setBusqueda] = useState("");
@@ -74,63 +71,25 @@ export default function CuentasPage() {
     }
   };
 
-  const cargarCatalogo = async () => {
+  const agregarNuevoSegmentoAlCatálogo = async (nuevoNombre: string, cuentaId: string) => {
     try {
       const { data, error } = await supabase
         .from("catalogo_segmentos")
-        .select("*")
-        .order("nombre");
-      if (error) throw error;
-      setCatalogSegments(data || []);
-    } catch (e) {
-      console.error("Error al cargar catálogo:", e);
-    }
-  };
+        .insert([{ nombre: nuevoNombre }])
+        .select("nombre")
+        .single();
 
-  const handleCrearSegmento = async () => {
-    if (!nuevoSegmento.trim()) return;
-    try {
-      const { error } = await supabase
-        .from("catalogo_segmentos")
-        .insert([{ nombre: nuevoSegmento.trim() }]);
       if (error) throw error;
-      setNuevoSegmento("");
-      await cargarCatalogo();
-      await cargarOpcionesFiltros();
-    } catch (e: any) {
-      alert("Error al crear segmento: " + e.message);
-    }
-  };
 
-  const handleEditarSegmento = async (id: string, index: number) => {
-    if (!editandoNombre.trim()) return;
-    try {
-      const { error } = await supabase
-        .from("catalogo_segmentos")
-        .update({ nombre: editandoNombre.trim() })
-        .eq("id", id);
-      if (error) throw error;
-      setEditandoIndex(null);
-      setEditandoNombre("");
-      await cargarCatalogo();
-      await cargarOpcionesFiltros();
-    } catch (e: any) {
-      alert("Error al actualizar segmento: " + e.message);
-    }
-  };
-
-  const handleEliminarSegmento = async (id: string) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar este segmento del catálogo? Esto no modificará las cuentas existentes pero el segmento ya no estará disponible en el catálogo.")) return;
-    try {
-      const { error } = await supabase
-        .from("catalogo_segmentos")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
-      await cargarCatalogo();
-      await cargarOpcionesFiltros();
-    } catch (e: any) {
-      alert("Error al eliminar segmento: " + e.message);
+      if (data) {
+        setAvailableSegments(prev => Array.from(new Set([...prev, data.nombre])).sort());
+        await actualizarCuentaInline(cuentaId, "segmento", data.nombre);
+        setOpenSegmentId(null);
+        setSearchSegment("");
+      }
+    } catch (error: any) {
+      console.error("Error al crear segmento inline:", error);
+      alert("Error al crear segmento: " + error.message);
     }
   };
 
@@ -274,20 +233,12 @@ export default function CuentasPage() {
             Gestión inteligente de empresas. <span className="text-blue-500 font-bold underline">Nota:</span> Correo y Teléfono ahora se gestionan en la pestaña de <Link to="/contactos" className="hover:text-blue-600">Contactos</Link>.
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => { setGestionOpen(true); cargarCatalogo(); }}
-            className="px-5 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-bold transition-all flex items-center gap-2"
-          >
-            📋 Gestionar Catálogo
-          </button>
-          <Link
-            to="/cuentas/nueva"
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-blue-500/20 flex items-center gap-2"
-          >
-            ➕ Nueva Cuenta
-          </Link>
-        </div>
+        <Link
+          to="/cuentas/nueva"
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-blue-500/20 flex items-center gap-2"
+        >
+          ➕ Nueva Cuenta
+        </Link>
       </div>
 
       {/* Buscador y Filtros */}
@@ -466,12 +417,86 @@ export default function CuentasPage() {
                       className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
                     />
                   </td>
-                  <td className="px-4 py-2 min-w-[150px]">
-                    <input
-                      defaultValue={cuenta.segmento || ""}
-                      onBlur={(e) => actualizarCuentaInline(cuenta.id, "segmento", e.target.value)}
-                      className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
-                    />
+                  <td className="px-4 py-2 min-w-[200px]">
+                    <Popover 
+                      open={openSegmentId === cuenta.id} 
+                      onOpenChange={(open) => {
+                        if (open) {
+                          setOpenSegmentId(cuenta.id);
+                        } else {
+                          setOpenSegmentId(null);
+                          setSearchSegment("");
+                        }
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          className={cn(
+                            "w-full text-left px-2 py-2 rounded-lg text-sm transition-all focus:ring-1 focus:ring-blue-500 hover:bg-gray-50 dark:hover:bg-gray-700/50",
+                            cuenta.segmento ? "text-gray-900 dark:text-white font-medium" : "text-gray-400 dark:text-gray-500 italic"
+                          )}
+                        >
+                          {cuenta.segmento || "Seleccionar..."}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-64 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl z-50" align="start">
+                        <div className="flex flex-col space-y-2">
+                          <input
+                            type="text"
+                            placeholder="Buscar o escribir nuevo..."
+                            value={searchSegment}
+                            onChange={(e) => setSearchSegment(e.target.value)}
+                            className="w-full border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1.5 text-xs bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            autoFocus
+                          />
+                          <div className="max-h-[150px] overflow-y-auto space-y-1 custom-scrollbar">
+                            {availableSegments
+                              .filter((seg) => seg.toLowerCase().includes(searchSegment.toLowerCase()))
+                              .length === 0 ? (
+                                <div className="py-2 text-center text-xs text-gray-500">
+                                  No se encontraron segmentos.
+                                </div>
+                              ) : (
+                                availableSegments
+                                  .filter((seg) => seg.toLowerCase().includes(searchSegment.toLowerCase()))
+                                  .map((seg) => (
+                                    <button
+                                      key={seg}
+                                      type="button"
+                                      onClick={async () => {
+                                        await actualizarCuentaInline(cuenta.id, "segmento", seg);
+                                        setOpenSegmentId(null);
+                                        setSearchSegment("");
+                                      }}
+                                      className={cn(
+                                        "w-full flex items-center justify-between px-2 py-1.5 text-xs rounded-md transition-colors text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100",
+                                        cuenta.segmento === seg && "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold"
+                                      )}
+                                    >
+                                      <span>{seg}</span>
+                                      {cuenta.segmento === seg && <Check className="h-3.5 w-3.5 shrink-0" />}
+                                    </button>
+                                  ))
+                              )}
+                          </div>
+                          {searchSegment.trim() && !availableSegments.some(s => s.toLowerCase() === searchSegment.trim().toLowerCase()) && (
+                            <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
+                              <button
+                                type="button"
+                                className="w-full text-blue-600 hover:text-blue-700 dark:text-blue-400 text-xs font-bold flex items-center justify-center gap-1 py-1 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded cursor-pointer"
+                                onClick={() => {
+                                  agregarNuevoSegmentoAlCatálogo(searchSegment.trim(), cuenta.id);
+                                }}
+                              >
+                                <Plus className="h-3 w-3" />
+                                Crear "{searchSegment.trim()}"
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   </td>
                   <td className="px-4 py-2 min-w-[120px]">
                     <input
@@ -557,109 +582,6 @@ export default function CuentasPage() {
           </div>
         )
       }
-
-
-
-      {/* Modal de Gestión de Catálogo de Segmentos */}
-      <Dialog open={gestionOpen} onOpenChange={setGestionOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-2xl rounded-2xl p-6 z-[9999]">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Building2 className="h-6 w-6 text-blue-500" />
-              Gestión de Catálogo de Segmentos
-            </DialogTitle>
-            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
-              Administra el listado oficial de segmentos disponibles en el sistema. Los cambios aquí no alteran cuentas históricas en masa.
-            </DialogDescription>
-          </DialogHeader>
-
-          {/* Formulario para agregar */}
-          <div className="flex gap-2 mt-4">
-            <input
-              type="text"
-              placeholder="Nombre del nuevo segmento..."
-              value={nuevoSegmento}
-              onChange={(e) => setNuevoSegmento(e.target.value)}
-              className="flex-1 border border-gray-300 dark:border-gray-600 rounded-xl px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
-            />
-            <button
-              onClick={handleCrearSegmento}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="h-4 w-4" /> Agregar
-            </button>
-          </div>
-
-          {/* Lista de segmentos */}
-          <div className="flex-1 overflow-y-auto mt-4 border border-gray-100 dark:border-gray-700 rounded-xl max-h-[400px]">
-            <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-900/50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Nombre</th>
-                  <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase w-28">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {catalogSegments.map((seg, idx) => (
-                  <tr key={seg.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/20">
-                    <td className="px-4 py-3">
-                      {editandoIndex === idx ? (
-                        <input
-                          type="text"
-                          value={editandoNombre}
-                          onChange={(e) => setEditandoNombre(e.target.value)}
-                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                        />
-                      ) : (
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{seg.nombre}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex justify-end gap-2">
-                        {editandoIndex === idx ? (
-                          <>
-                            <button
-                              onClick={() => handleEditarSegmento(seg.id, idx)}
-                              className="p-1.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors cursor-pointer"
-                              title="Guardar"
-                            >
-                              <Save className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => { setEditandoIndex(null); setEditandoNombre(""); }}
-                              className="p-1.5 bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer"
-                              title="Cancelar"
-                            >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => { setEditandoIndex(idx); setEditandoNombre(seg.nombre); }}
-                              className="p-1.5 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition-colors cursor-pointer"
-                              title="Editar"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() => handleEliminarSegmento(seg.id)}
-                              className="p-1.5 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg transition-colors cursor-pointer"
-                              title="Eliminar"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div >
   );
 }
