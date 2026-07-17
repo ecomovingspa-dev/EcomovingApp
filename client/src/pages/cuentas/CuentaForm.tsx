@@ -5,9 +5,8 @@ import type { Cuenta } from "../../types";
 import { SEGMENTOS_MAESTROS } from "../../utils/constants";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown, AlertTriangle, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, AlertTriangle, Plus, Trash2 } from "lucide-react";
 
 export default function CuentaForm() {
   const navigate = useNavigate();
@@ -84,6 +83,25 @@ export default function CuentaForm() {
     } catch (error: any) {
       console.error("Error al agregar segmento al catálogo:", error);
       setMensaje("❌ Error al crear segmento: " + error.message);
+    }
+  };
+
+  const eliminarSegmentoDelCatálogo = async (nombre: string) => {
+    try {
+      const { error } = await supabase
+        .from("catalogo_segmentos")
+        .delete()
+        .eq("nombre", nombre);
+      if (error) throw error;
+      setAvailableSegments(prev => prev.filter(s => s !== nombre));
+      if (cuenta.segmento === nombre) {
+        handleChange("segmento", "");
+      }
+      setMensaje("✅ Segmento eliminado");
+      setTimeout(() => setMensaje(""), 2000);
+    } catch (error: any) {
+      console.error("Error al eliminar segmento del catálogo:", error);
+      setMensaje("❌ Error al eliminar segmento: " + error.message);
     }
   };
 
@@ -281,22 +299,40 @@ export default function CuentaForm() {
                         </div>
                       ) : (
                         filteredSegments.map((seg) => (
-                          <button
+                          <div
                             key={seg}
-                            type="button"
-                            onClick={() => {
-                              handleChange("segmento", seg);
-                              setSegmentOpen(false);
-                              setSearchSegment("");
-                            }}
-                            className={cn(
-                              "w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100",
-                              cuenta.segmento === seg && "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400"
-                            )}
+                            className="group/item flex items-center justify-between px-3 py-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                           >
-                            <span>{seg}</span>
-                            {cuenta.segmento === seg && <Check className="h-4 w-4 shrink-0" />}
-                          </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleChange("segmento", seg);
+                                setSegmentOpen(false);
+                                setSearchSegment("");
+                              }}
+                              className="flex-1 text-left text-sm text-gray-900 dark:text-gray-100"
+                            >
+                              {seg}
+                            </button>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {cuenta.segmento === seg && <Check className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
+                              {!SEGMENTOS_MAESTROS.includes(seg) && (
+                                <button
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (confirm(`¿Estás seguro de que deseas eliminar el segmento "${seg}" del catálogo?`)) {
+                                      await eliminarSegmentoDelCatálogo(seg);
+                                    }
+                                  }}
+                                  className="opacity-0 group-hover/item:opacity-100 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition-all cursor-pointer"
+                                  title="Eliminar de la lista"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         ))
                       )}
                     </div>

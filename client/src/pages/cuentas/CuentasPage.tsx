@@ -93,6 +93,20 @@ export default function CuentasPage() {
     }
   };
 
+  const eliminarSegmentoDelCatálogo = async (nombre: string) => {
+    try {
+      const { error } = await supabase
+        .from("catalogo_segmentos")
+        .delete()
+        .eq("nombre", nombre);
+      if (error) throw error;
+      setAvailableSegments(prev => prev.filter(s => s !== nombre));
+    } catch (error: any) {
+      console.error("Error al eliminar segmento del catálogo:", error);
+      alert("Error al eliminar segmento: " + error.message);
+    }
+  };
+
 
 
   useEffect(() => {
@@ -461,22 +475,40 @@ export default function CuentasPage() {
                                 availableSegments
                                   .filter((seg) => seg.toLowerCase().includes(searchSegment.toLowerCase()))
                                   .map((seg) => (
-                                    <button
+                                    <div
                                       key={seg}
-                                      type="button"
-                                      onClick={async () => {
-                                        await actualizarCuentaInline(cuenta.id, "segmento", seg);
-                                        setOpenSegmentId(null);
-                                        setSearchSegment("");
-                                      }}
-                                      className={cn(
-                                        "w-full flex items-center justify-between px-2 py-1.5 text-xs rounded-md transition-colors text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100",
-                                        cuenta.segmento === seg && "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-bold"
-                                      )}
+                                      className="group/item flex items-center justify-between px-2 py-1 text-xs rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                                     >
-                                      <span>{seg}</span>
-                                      {cuenta.segmento === seg && <Check className="h-3.5 w-3.5 shrink-0" />}
-                                    </button>
+                                      <button
+                                        type="button"
+                                        onClick={async () => {
+                                          await actualizarCuentaInline(cuenta.id, "segmento", seg);
+                                          setOpenSegmentId(null);
+                                          setSearchSegment("");
+                                        }}
+                                        className="flex-1 text-left text-gray-900 dark:text-gray-100 font-medium"
+                                      >
+                                        {seg}
+                                      </button>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {cuenta.segmento === seg && <Check className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />}
+                                        {!SEGMENTOS_MAESTROS.includes(seg) && (
+                                          <button
+                                            type="button"
+                                            onClick={async (e) => {
+                                              e.stopPropagation();
+                                              if (confirm(`¿Estás seguro de que deseas eliminar el segmento "${seg}" del catálogo?`)) {
+                                                await eliminarSegmentoDelCatálogo(seg);
+                                              }
+                                            }}
+                                            className="opacity-0 group-hover/item:opacity-100 p-0.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition-all cursor-pointer"
+                                            title="Eliminar de la lista"
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
                                   ))
                               )}
                           </div>
