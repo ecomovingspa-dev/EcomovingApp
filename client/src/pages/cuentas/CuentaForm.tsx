@@ -2,6 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
+import { SEGMENTOS_MAESTROS } from "../../utils/constants";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { Check, ChevronsUpDown, AlertTriangle, Plus } from "lucide-react";
 
 export default function CuentaForm() {
   const navigate = useNavigate();
@@ -24,24 +30,9 @@ export default function CuentaForm() {
     "Privado",
     "Público"
   ]);
-  const [availableSegments, setAvailableSegments] = useState<string[]>([
-    "Expomin",
-    "Servicios",
-    "Mineras",
-    "Educación",
-    "Comercializadores",
-    "Alimentos / Agrícola",
-    "Corporación",
-    "Salud",
-    "Gran Empresa",
-    "Municipalidad",
-    "Servicios Públicos",
-    "Gobierno Central",
-    "Laboratorios",
-    "Comercial/Industrial - Shell Chile",
-    "Pequeña Empresa",
-    "Caja de Compensación"
-  ]);
+  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
+  const [segmentOpen, setSegmentOpen] = useState(false);
+  const [searchSegment, setSearchSegment] = useState("");
 
   useEffect(() => {
     if (esEdicion) {
@@ -52,16 +43,47 @@ export default function CuentaForm() {
 
   const cargarOpcionesFiltros = async () => {
     try {
-      const { data } = await supabase.from("cuentas").select("sector, segmento");
-      if (data) {
-        const dbSectors = data.map((c: any) => c.sector).filter(Boolean);
-        const dbSegments = data.map((c: any) => c.segmento).filter(Boolean);
-        
+      // 1. Cargar sectores de las cuentas
+      const { data: accountsData } = await supabase.from("cuentas").select("sector");
+      if (accountsData) {
+        const dbSectors = accountsData.map((c: any) => c.sector).filter(Boolean);
         setAvailableSectors(prev => Array.from(new Set([...prev, ...dbSectors])).sort());
-        setAvailableSegments(prev => Array.from(new Set([...prev, ...dbSegments])).sort());
+      }
+
+      // 2. Cargar segmentos oficiales del catálogo
+      const { data: catalogData } = await supabase.from("catalogo_segmentos").select("nombre");
+      if (catalogData && catalogData.length > 0) {
+        const dbSegments = catalogData.map((s: any) => s.nombre).filter(Boolean);
+        setAvailableSegments(Array.from(new Set([...SEGMENTOS_MAESTROS, ...dbSegments])).sort());
+      } else {
+        setAvailableSegments([...SEGMENTOS_MAESTROS].sort());
       }
     } catch (error) {
       console.error("Error loading filter options:", error);
+    }
+  };
+
+  const agregarNuevoSegmentoAlCatálogo = async (nuevoNombre: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("catalogo_segmentos")
+        .insert([{ nombre: nuevoNombre }])
+        .select("nombre")
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setAvailableSegments(prev => Array.from(new Set([...prev, data.nombre])).sort());
+        handleChange("segmento", data.nombre);
+        setSegmentOpen(false);
+        setSearchSegment("");
+        setMensaje("✅ Segmento creado y asignado");
+        setTimeout(() => setMensaje(""), 2000);
+      }
+    } catch (error: any) {
+      console.error("Error al agregar segmento al catálogo:", error);
+      setMensaje("❌ Error al crear segmento: " + error.message);
     }
   };
 
@@ -219,22 +241,81 @@ export default function CuentaForm() {
               </select>
             </div>
 
-            <div>
+            <div className="flex flex-col">
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Segmento
               </label>
-              <select
-                value={cuenta.segmento || ""}
-                onChange={(e) => handleChange("segmento", e.target.value)}
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Selecciona un segmento...</option>
-                {availableSegments.map((seg) => (
-                  <option key={seg} value={seg}>
-                    {seg}
-                  </option>
-                ))}
-              </select>
+              <Popover open={segmentOpen} onOpenChange={setSegmentOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={segmentOpen}
+                    className="w-full justify-between h-[50px] border border-gray-300 dark:border-gray-600 rounded-lg px-4 bg-white dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-600 text-left font-normal"
+                  >
+                    <span className="truncate">
+                      {cuenta.segmento || "Selecciona o crea un segmento..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl" align="start">
+                  <Command>
+                    <CommandInput 
+                      placeholder="Buscar o escribir nuevo segmento..." 
+                      value={searchSegment}
+                      onValueChange={setSearchSegment}
+                    />
+                    <CommandList className="max-h-[200px] overflow-y-auto">
+                      <CommandEmpty>No se encontraron segmentos.</CommandEmpty>
+                      <CommandGroup>
+                        {availableSegments.map((seg) => (
+                          <CommandItem
+                            key={seg}
+                            value={seg}
+                            onSelect={() => {
+                              handleChange("segmento", seg);
+                              setSegmentOpen(false);
+                              setSearchSegment("");
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                cuenta.segmento === seg ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {seg}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                    {searchSegment.trim() && !availableSegments.some(s => s.toLowerCase() === searchSegment.trim().toLowerCase()) && (
+                      <div className="p-2 border-t border-gray-100 dark:border-gray-700 flex justify-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-blue-600 hover:text-blue-700 dark:text-blue-400 font-semibold flex items-center justify-center gap-1"
+                          onClick={() => {
+                            agregarNuevoSegmentoAlCatálogo(searchSegment.trim());
+                          }}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Crear segmento "{searchSegment}"
+                        </Button>
+                      </div>
+                    )}
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {cuenta.segmento && !availableSegments.includes(cuenta.segmento) && (
+                <p className="text-xs text-amber-500 font-medium mt-1.5 flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  El segmento actual "{cuenta.segmento}" es histórico/inválido. Favor seleccionar uno del catálogo.
+                </p>
+              )}
             </div>
           </div>
         </div>

@@ -2,28 +2,17 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles } from "lucide-react";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles, Edit2, Save } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-
-const SEGMENTOS_POR_DEFECTO = [
-  "Expomin",
-  "Servicios",
-  "Mineras",
-  "Educación",
-  "Comercializadores",
-  "Alimentos / Agrícola",
-  "Corporación",
-  "Salud",
-  "Gran Empresa",
-  "Municipalidad",
-  "Servicios Públicos",
-  "Gobierno Central",
-  "Laboratorios",
-  "Comercial/Industrial - Shell Chile",
-  "Pequeña Empresa",
-  "Caja de Compensación"
-];
+import { SEGMENTOS_MAESTROS } from "../../utils/constants";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 export default function CuentasPage() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
@@ -33,9 +22,12 @@ export default function CuentasPage() {
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
   const [enriqueciendoId, setEnriqueciendoId] = useState<string | null>(null);
 
-
-
-
+  // Estados para catálogo
+  const [gestionOpen, setGestionOpen] = useState(false);
+  const [catalogSegments, setCatalogSegments] = useState<{ id: string; nombre: string }[]>([]);
+  const [nuevoSegmento, setNuevoSegmento] = useState("");
+  const [editandoIndex, setEditandoIndex] = useState<number | null>(null);
+  const [editandoNombre, setEditandoNombre] = useState("");
 
   // Estados para filtros y búsqueda
   const [busqueda, setBusqueda] = useState("");
@@ -50,7 +42,7 @@ export default function CuentasPage() {
 
   // Estados para opciones de filtros (se cargan una vez al inicio)
   const [availableSectors, setAvailableSectors] = useState<string[]>([]);
-  const [availableSegments, setAvailableSegments] = useState<string[]>(SEGMENTOS_POR_DEFECTO);
+  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
   const [totalRecords, setTotalRecords] = useState(0);
 
   // Determinar si hay algún filtro activo
@@ -63,15 +55,82 @@ export default function CuentasPage() {
 
   const cargarOpcionesFiltros = async () => {
     try {
-      // Cargamos solo las columnas necesarias para los filtros, sin descargar toda la tabla
-      const { data } = await supabase.from("cuentas").select("sector, segmento");
-      if (data) {
-        setAvailableSectors(Array.from(new Set(data.map((c: any) => c.sector).filter(Boolean))));
-        const dbSegments = data.map((c: any) => c.segmento).filter(Boolean);
-        setAvailableSegments(Array.from(new Set([...SEGMENTOS_POR_DEFECTO, ...dbSegments])));
+      // 1. Cargar sectores de las cuentas
+      const { data: accountsData } = await supabase.from("cuentas").select("sector");
+      if (accountsData) {
+        setAvailableSectors(Array.from(new Set(accountsData.map((c: any) => c.sector).filter(Boolean))));
+      }
+
+      // 2. Cargar segmentos de la tabla de catálogo
+      const { data: catalogData } = await supabase.from("catalogo_segmentos").select("nombre");
+      if (catalogData && catalogData.length > 0) {
+        const dbSegments = catalogData.map((s: any) => s.nombre).filter(Boolean);
+        setAvailableSegments(Array.from(new Set([...SEGMENTOS_MAESTROS, ...dbSegments])).sort());
+      } else {
+        setAvailableSegments([...SEGMENTOS_MAESTROS].sort());
       }
     } catch (e) {
       console.error("Error cargando opciones de filtros:", e);
+    }
+  };
+
+  const cargarCatalogo = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("catalogo_segmentos")
+        .select("*")
+        .order("nombre");
+      if (error) throw error;
+      setCatalogSegments(data || []);
+    } catch (e) {
+      console.error("Error al cargar catálogo:", e);
+    }
+  };
+
+  const handleCrearSegmento = async () => {
+    if (!nuevoSegmento.trim()) return;
+    try {
+      const { error } = await supabase
+        .from("catalogo_segmentos")
+        .insert([{ nombre: nuevoSegmento.trim() }]);
+      if (error) throw error;
+      setNuevoSegmento("");
+      await cargarCatalogo();
+      await cargarOpcionesFiltros();
+    } catch (e: any) {
+      alert("Error al crear segmento: " + e.message);
+    }
+  };
+
+  const handleEditarSegmento = async (id: string, index: number) => {
+    if (!editandoNombre.trim()) return;
+    try {
+      const { error } = await supabase
+        .from("catalogo_segmentos")
+        .update({ nombre: editandoNombre.trim() })
+        .eq("id", id);
+      if (error) throw error;
+      setEditandoIndex(null);
+      setEditandoNombre("");
+      await cargarCatalogo();
+      await cargarOpcionesFiltros();
+    } catch (e: any) {
+      alert("Error al actualizar segmento: " + e.message);
+    }
+  };
+
+  const handleEliminarSegmento = async (id: string) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar este segmento del catálogo? Esto no modificará las cuentas existentes pero el segmento ya no estará disponible en el catálogo.")) return;
+    try {
+      const { error } = await supabase
+        .from("catalogo_segmentos")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      await cargarCatalogo();
+      await cargarOpcionesFiltros();
+    } catch (e: any) {
+      alert("Error al eliminar segmento: " + e.message);
     }
   };
 
@@ -215,12 +274,20 @@ export default function CuentasPage() {
             Gestión inteligente de empresas. <span className="text-blue-500 font-bold underline">Nota:</span> Correo y Teléfono ahora se gestionan en la pestaña de <Link to="/contactos" className="hover:text-blue-600">Contactos</Link>.
           </p>
         </div>
-        <Link
-          to="/cuentas/nueva"
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-blue-500/20 flex items-center gap-2"
-        >
-          ➕ Nueva Cuenta
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => { setGestionOpen(true); cargarCatalogo(); }}
+            className="px-5 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl font-bold transition-all flex items-center gap-2"
+          >
+            📋 Gestionar Catálogo
+          </button>
+          <Link
+            to="/cuentas/nueva"
+            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-blue-500/20 flex items-center gap-2"
+          >
+            ➕ Nueva Cuenta
+          </Link>
+        </div>
       </div>
 
       {/* Buscador y Filtros */}
@@ -493,6 +560,106 @@ export default function CuentasPage() {
 
 
 
+      {/* Modal de Gestión de Catálogo de Segmentos */}
+      <Dialog open={gestionOpen} onOpenChange={setGestionOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-2xl rounded-2xl p-6 z-[9999]">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Building2 className="h-6 w-6 text-blue-500" />
+              Gestión de Catálogo de Segmentos
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400">
+              Administra el listado oficial de segmentos disponibles en el sistema. Los cambios aquí no alteran cuentas históricas en masa.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Formulario para agregar */}
+          <div className="flex gap-2 mt-4">
+            <input
+              type="text"
+              placeholder="Nombre del nuevo segmento..."
+              value={nuevoSegmento}
+              onChange={(e) => setNuevoSegmento(e.target.value)}
+              className="flex-1 border border-gray-300 dark:border-gray-600 rounded-xl px-4 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleCrearSegmento}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="h-4 w-4" /> Agregar
+            </button>
+          </div>
+
+          {/* Lista de segmentos */}
+          <div className="flex-1 overflow-y-auto mt-4 border border-gray-100 dark:border-gray-700 rounded-xl max-h-[400px]">
+            <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900/50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase">Nombre</th>
+                  <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 dark:text-gray-400 uppercase w-28">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                {catalogSegments.map((seg, idx) => (
+                  <tr key={seg.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/20">
+                    <td className="px-4 py-3">
+                      {editandoIndex === idx ? (
+                        <input
+                          type="text"
+                          value={editandoNombre}
+                          onChange={(e) => setEditandoNombre(e.target.value)}
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                        />
+                      ) : (
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">{seg.nombre}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-2">
+                        {editandoIndex === idx ? (
+                          <>
+                            <button
+                              onClick={() => handleEditarSegmento(seg.id, idx)}
+                              className="p-1.5 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors cursor-pointer"
+                              title="Guardar"
+                            >
+                              <Save className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => { setEditandoIndex(null); setEditandoNombre(""); }}
+                              className="p-1.5 bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors cursor-pointer"
+                              title="Cancelar"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => { setEditandoIndex(idx); setEditandoNombre(seg.nombre); }}
+                              className="p-1.5 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/50 rounded-lg transition-colors cursor-pointer"
+                              title="Editar"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEliminarSegmento(seg.id)}
+                              className="p-1.5 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg transition-colors cursor-pointer"
+                              title="Eliminar"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div >
   );
 }

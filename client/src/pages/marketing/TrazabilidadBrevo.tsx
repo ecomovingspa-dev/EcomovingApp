@@ -21,29 +21,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { SEGMENTOS_MAESTROS } from "../../utils/constants";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-const SEGMENTOS_POR_DEFECTO = [
-  "Expomin",
-  "Servicios",
-  "Mineras",
-  "Educación",
-  "Comercializadores",
-  "Alimentos / Agrícola",
-  "Corporación",
-  "Salud",
-  "Gran Empresa",
-  "Municipalidad",
-  "Servicios Públicos",
-  "Gobierno Central",
-  "Laboratorios",
-  "Comercial/Industrial - Shell Chile",
-  "Pequeña Empresa",
-  "Caja de Compensación"
-];
 
 // March 2026 Working Days (Calculated dynamically below)
 interface CalendarDay {
@@ -88,7 +70,7 @@ export default function TrazabilidadBrevo() {
   const [filtroSector, setFiltroSector] = useState("todos");
   const [filtroEjecutivo, setFiltroEjecutivo] = useState("todos");
   const [filtroSegmento, setFiltroSegmento] = useState("todos");
-  const [availableSegments, setAvailableSegments] = useState<string[]>(SEGMENTOS_POR_DEFECTO);
+  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
 
   useEffect(() => {
     if (vendedores && vendedores.length > 0 && (vendedor === "Vendedor 1" || vendedor === "")) {
@@ -514,8 +496,14 @@ export default function TrazabilidadBrevo() {
         }
       }
       setCuentas(allCuentas);
+      // 1.1.2 Cargar segmentos oficiales del catálogo
+      const { data: catalogData } = await supabase.from("catalogo_segmentos").select("nombre");
+      let currentCatalog: string[] = [...SEGMENTOS_MAESTROS];
+      if (catalogData && catalogData.length > 0) {
+        currentCatalog = Array.from(new Set([...currentCatalog, ...catalogData.map((s: any) => s.nombre).filter(Boolean)]));
+      }
       const dbSegments = allCuentas.map((c: any) => c.segmento).filter(Boolean);
-      setAvailableSegments(Array.from(new Set([...SEGMENTOS_POR_DEFECTO, ...dbSegments])));
+      setAvailableSegments(Array.from(new Set([...currentCatalog, ...dbSegments])).sort());
     } catch (cuentasError) {
       console.error("Error al cargar cuentas:", cuentasError);
       toast.error("Error al cargar la lista completa de cuentas");
