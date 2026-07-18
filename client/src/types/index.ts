@@ -9,6 +9,8 @@ export interface Cuenta {
   ciudad?: string;
   web?: string;
   origen?: string;
+  cuenta_foco?: boolean;
+  etapa_prospeccion?: string;
   created_at?: string; // ISO 8601
   contactos?: {
     id: string;

@@ -26,6 +26,15 @@ export default function CuentasPage() {
   const [openSegmentId, setOpenSegmentId] = useState<string | null>(null);
   const [searchSegment, setSearchSegment] = useState("");
 
+  // Estados para prospección
+  const [filtroFoco, setFiltroFoco] = useState<string>("todos");
+  const [filtroEtapa, setFiltroEtapa] = useState<string>("todas");
+  const [stats, setStats] = useState({
+    porInvestigar: 0,
+    porLlamar: 0,
+    enProceso: 0,
+  });
+
   // Estados para filtros y búsqueda
   const [busqueda, setBusqueda] = useState("");
   const [busquedaAplicada, setBusquedaAplicada] = useState("");
@@ -48,7 +57,36 @@ export default function CuentasPage() {
 
   useEffect(() => {
     cargarOpcionesFiltros();
+    cargarEstadisticasProspeccion();
   }, []);
+
+  const cargarEstadisticasProspeccion = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("cuentas")
+        .select("etapa_prospeccion")
+        .eq("cuenta_foco", true);
+
+      if (error) throw error;
+
+      const counts = {
+        porInvestigar: 0,
+        porLlamar: 0,
+        enProceso: 0,
+      };
+
+      if (data) {
+        data.forEach((c: any) => {
+          if (c.etapa_prospeccion === "Por Investigar") counts.porInvestigar++;
+          else if (c.etapa_prospeccion === "Por Llamar") counts.porLlamar++;
+          else if (c.etapa_prospeccion === "En Proceso") counts.enProceso++;
+        });
+      }
+      setStats(counts);
+    } catch (err) {
+      console.error("Error al cargar estadísticas de prospección:", err);
+    }
+  };
 
   const cargarOpcionesFiltros = async () => {
     try {
@@ -118,7 +156,7 @@ export default function CuentasPage() {
       setTotalRecords(0);
       setCargando(false);
     }
-  }, [paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, hayFiltroActivo]);
+  }, [paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, filtroFoco, filtroEtapa, hayFiltroActivo]);
 
 
   const cargarCuentas = async () => {
@@ -141,6 +179,12 @@ export default function CuentasPage() {
       }
       if (filtroEstado) {
         query = query.eq("estado", filtroEstado);
+      }
+      if (filtroFoco === "foco") {
+        query = query.eq("cuenta_foco", true);
+      }
+      if (filtroEtapa !== "todas") {
+        query = query.eq("etapa_prospeccion", filtroEtapa);
       }
 
       const { data, error, count } = await query
@@ -168,11 +212,13 @@ export default function CuentasPage() {
     setFiltroSector("");
     setFiltroSegmento("");
     setFiltroEstado("");
+    setFiltroFoco("todos");
+    setFiltroEtapa("todas");
     setPaginaActual(1);
   };
 
 
-  const actualizarCuentaInline = async (id: string, campo: keyof Cuenta, valor: string) => {
+  const actualizarCuentaInline = async (id: string, campo: keyof Cuenta, valor: any) => {
     const cuentaOriginal = cuentas.find(c => c.id === id);
     if (cuentaOriginal && cuentaOriginal[campo] === valor) return;
 
@@ -187,6 +233,11 @@ export default function CuentasPage() {
 
       // Actualizar estado local
       setCuentas(prev => prev.map(c => c.id === id ? { ...c, [campo]: valor } : c));
+      
+      // Recargar estadísticas si cambió la etapa o el foco
+      if (campo === "cuenta_foco" || campo === "etapa_prospeccion") {
+        cargarEstadisticasProspeccion();
+      }
     } catch (err) {
       console.error("Error al actualizar:", err);
       setError("Error al guardar los cambios");
@@ -255,6 +306,72 @@ export default function CuentasPage() {
         </Link>
       </div>
 
+      {/* Panel de Agenda de Prospección Rápida */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <button
+          onClick={() => {
+            const act = filtroFoco === "foco" && filtroEtapa === "Por Investigar";
+            setFiltroFoco(act ? "todos" : "foco");
+            setFiltroEtapa(act ? "todas" : "Por Investigar");
+            setPaginaActual(1);
+          }}
+          className={cn(
+            "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
+            filtroFoco === "foco" && filtroEtapa === "Por Investigar"
+              ? "bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-400 ring-2 ring-amber-500/20"
+              : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-500"
+          )}
+        >
+          <div>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">🔍 Por Investigar (Foco)</p>
+            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.porInvestigar}</p>
+          </div>
+          <span className="text-2xl">🔍</span>
+        </button>
+
+        <button
+          onClick={() => {
+            const act = filtroFoco === "foco" && filtroEtapa === "Por Llamar";
+            setFiltroFoco(act ? "todos" : "foco");
+            setFiltroEtapa(act ? "todas" : "Por Llamar");
+            setPaginaActual(1);
+          }}
+          className={cn(
+            "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
+            filtroFoco === "foco" && filtroEtapa === "Por Llamar"
+              ? "bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-400 ring-2 ring-blue-500/20"
+              : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500"
+          )}
+        >
+          <div>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">📞 Por Llamar (Foco)</p>
+            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.porLlamar}</p>
+          </div>
+          <span className="text-2xl">📞</span>
+        </button>
+
+        <button
+          onClick={() => {
+            const act = filtroFoco === "foco" && filtroEtapa === "En Proceso";
+            setFiltroFoco(act ? "todos" : "foco");
+            setFiltroEtapa(act ? "todas" : "En Proceso");
+            setPaginaActual(1);
+          }}
+          className={cn(
+            "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
+            filtroFoco === "foco" && filtroEtapa === "En Proceso"
+              ? "bg-purple-500/15 border-purple-500 text-purple-700 dark:text-purple-400 ring-2 ring-purple-500/20"
+              : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500"
+          )}
+        >
+          <div>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">💬 En Contacto (Foco)</p>
+            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.enProceso}</p>
+          </div>
+          <span className="text-2xl">💬</span>
+        </button>
+      </div>
+
       {/* Buscador y Filtros */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6 space-y-6">
         <div className="flex gap-3">
@@ -286,11 +403,33 @@ export default function CuentasPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
           {[
             { label: "Estado", val: filtroEstado, set: setFiltroEstado, opts: ["activo", "inactivo", "prospecto"] },
             { label: "Sector", val: filtroSector, set: setFiltroSector, opts: availableSectors },
             { label: "Segmento", val: filtroSegmento, set: setFiltroSegmento, opts: availableSegments },
+            {
+              label: "Prioridad",
+              val: filtroFoco,
+              set: setFiltroFoco,
+              opts: [
+                { value: "todos", label: "Prioridad: Todas" },
+                { value: "foco", label: "⭐ Solo Foco" }
+              ]
+            },
+            {
+              label: "Etapa Prosp.",
+              val: filtroEtapa,
+              set: setFiltroEtapa,
+              opts: [
+                { value: "todas", label: "Etapa: Todas" },
+                { value: "Sin contactar", label: "⚪ Sin contactar" },
+                { value: "Por Investigar", label: "🔍 Por Investigar" },
+                { value: "Por Llamar", label: "📞 Por Llamar" },
+                { value: "En Proceso", label: "💬 En Proceso" },
+                { value: "Calificado", label: "✅ Calificado" }
+              ]
+            }
           ].map((f, i) => (
             <div key={i}>
               <select
@@ -298,10 +437,18 @@ export default function CuentasPage() {
                 onChange={(e) => f.set(e.target.value)}
                 className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all font-medium capitalize"
               >
-                <option value="">{f.label}: Todos</option>
-                {f.opts.map((opt) => (
-                  <option key={opt} value={opt || ""}>{opt}</option>
-                ))}
+                {Array.isArray(f.opts) && typeof f.opts[0] === 'string' ? (
+                  <>
+                    <option value="">{f.label}: Todos</option>
+                    {f.opts.map((opt) => (
+                      <option key={opt} value={opt || ""}>{opt}</option>
+                    ))}
+                  </>
+                ) : (
+                  (f.opts as any[]).map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))
+                )}
               </select>
             </div>
           ))}
@@ -325,7 +472,7 @@ export default function CuentasPage() {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
-              {["Cliente", "RUT", "Estado", "Sector", "Segmento", "Ciudad", ""].map((h, i) => (
+              {["Cliente", "RUT", "Estado", "Sector", "Segmento", "Etapa", "Ciudad", ""].map((h, i) => (
                 <th key={i} className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{h}</th>
               ))}
             </tr>
@@ -352,6 +499,16 @@ export default function CuentasPage() {
                 >
                   <td className="px-4 py-2 min-w-[450px]">
                     <div className="flex items-start gap-2">
+                      {/* Botón de estrella de prioridad */}
+                      <button
+                        type="button"
+                        onClick={() => actualizarCuentaInline(cuenta.id, "cuenta_foco", !cuenta.cuenta_foco)}
+                        className="mt-1 p-1 text-gray-300 dark:text-gray-600 hover:text-yellow-500 transition-all transform hover:scale-110 shrink-0 cursor-pointer"
+                        title={cuenta.cuenta_foco ? "Quitar prioridad" : "Marcar como prioridad (Foco)"}
+                      >
+                        <span className={`text-lg leading-none ${cuenta.cuenta_foco ? "text-yellow-500 fill-current font-bold" : "opacity-30"}`}>★</span>
+                      </button>
+
                       {cuenta.contactos && cuenta.contactos.length > 0 ? (
                         <Popover>
                           <PopoverTrigger asChild>
@@ -529,6 +686,25 @@ export default function CuentasPage() {
                         </div>
                       </PopoverContent>
                     </Popover>
+                  </td>
+                  <td className="px-4 py-2 min-w-[150px]">
+                    <select
+                      value={cuenta.etapa_prospeccion || "Sin contactar"}
+                      onChange={(e) => actualizarCuentaInline(cuenta.id, "etapa_prospeccion", e.target.value)}
+                      className={`text-xs font-bold rounded-lg px-3 py-1.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 cursor-pointer ${
+                        cuenta.etapa_prospeccion === "Sin contactar" ? "text-gray-500" :
+                        cuenta.etapa_prospeccion === "Por Investigar" ? "text-amber-600 dark:text-amber-400" :
+                        cuenta.etapa_prospeccion === "Por Llamar" ? "text-blue-600 dark:text-blue-400 font-bold" :
+                        cuenta.etapa_prospeccion === "En Proceso" ? "text-purple-600 dark:text-purple-400" :
+                        "text-green-600 dark:text-green-400 font-bold"
+                      }`}
+                    >
+                      <option value="Sin contactar">⚪ Sin contactar</option>
+                      <option value="Por Investigar">🔍 Por Investigar</option>
+                      <option value="Por Llamar">📞 Por Llamar</option>
+                      <option value="En Proceso">💬 En Proceso</option>
+                      <option value="Calificado">✅ Calificado</option>
+                    </select>
                   </td>
                   <td className="px-4 py-2 min-w-[120px]">
                     <input

@@ -23,6 +23,8 @@ export default function CuentaForm() {
     estado: "activo",
     ciudad: "",
     web: "",
+    cuenta_foco: false,
+    etapa_prospeccion: "Sin contactar",
   });
 
   const [availableSectors, setAvailableSectors] = useState<string[]>([
@@ -157,7 +159,7 @@ export default function CuentaForm() {
     }
   };
 
-  const handleChange = (field: keyof Cuenta, value: string) => {
+  const handleChange = (field: keyof Cuenta, value: any) => {
     setCuenta((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -242,6 +244,36 @@ export default function CuentaForm() {
                 <option value="activo">Activo</option>
                 <option value="inactivo">Inactivo</option>
                 <option value="prospecto">Prospecto</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-xl p-4 md:col-span-2">
+              <input
+                type="checkbox"
+                id="cuenta_foco"
+                checked={cuenta.cuenta_foco || false}
+                onChange={(e) => handleChange("cuenta_foco", e.target.checked)}
+                className="h-5 w-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              />
+              <label htmlFor="cuenta_foco" className="text-sm font-bold text-gray-900 dark:text-white cursor-pointer select-none">
+                ⭐ ¿Esta es una Cuenta Foco? (Prioridad para prospección manual dirigida)
+              </label>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Etapa de Prospección
+              </label>
+              <select
+                value={cuenta.etapa_prospeccion || "Sin contactar"}
+                onChange={(e) => handleChange("etapa_prospeccion", e.target.value)}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
+              >
+                <option value="Sin contactar">⚪ Sin contactar</option>
+                <option value="Por Investigar">🔍 Por Investigar (Sin contacto indicado)</option>
+                <option value="Por Llamar">📞 Por Llamar (Contacto listo)</option>
+                <option value="En Proceso">💬 En Proceso / Seguimiento</option>
+                <option value="Calificado">✅ Calificado (Pasa a Marketing)</option>
               </select>
             </div>
 
