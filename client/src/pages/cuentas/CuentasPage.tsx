@@ -77,7 +77,7 @@ export default function CuentasPage() {
 
       if (data) {
         data.forEach((c: any) => {
-          if (c.etapa_prospeccion === "Por Investigar") counts.porInvestigar++;
+          if (c.etapa_prospeccion === "Por Investigar" || c.etapa_prospeccion === "Sin contactar" || !c.etapa_prospeccion) counts.porInvestigar++;
           else if (c.etapa_prospeccion === "Por Llamar") counts.porLlamar++;
           else if (c.etapa_prospeccion === "En Proceso") counts.enProceso++;
         });
@@ -184,7 +184,11 @@ export default function CuentasPage() {
         query = query.eq("cuenta_foco", true);
       }
       if (filtroEtapa !== "todas") {
-        query = query.eq("etapa_prospeccion", filtroEtapa);
+        if (filtroEtapa === "Por Investigar") {
+          query = query.or("etapa_prospeccion.eq.Por Investigar,etapa_prospeccion.eq.Sin contactar,etapa_prospeccion.is.null");
+        } else {
+          query = query.eq("etapa_prospeccion", filtroEtapa);
+        }
       }
 
       const { data, error, count } = await query
