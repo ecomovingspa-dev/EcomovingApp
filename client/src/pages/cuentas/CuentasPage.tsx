@@ -30,9 +30,9 @@ export default function CuentasPage() {
   const [filtroFoco, setFiltroFoco] = useState<string>("todos");
   const [filtroEtapa, setFiltroEtapa] = useState<string>("todas");
   const [stats, setStats] = useState({
-    porInvestigar: 0,
-    porLlamar: 0,
-    enProceso: 0,
+    totalFoco: 0,
+    sinVerificar: 0,
+    verificado: 0,
   });
 
   // Estados para filtros y búsqueda
@@ -70,16 +70,19 @@ export default function CuentasPage() {
       if (error) throw error;
 
       const counts = {
-        porInvestigar: 0,
-        porLlamar: 0,
-        enProceso: 0,
+        totalFoco: 0,
+        sinVerificar: 0,
+        verificado: 0,
       };
 
       if (data) {
+        counts.totalFoco = data.length;
         data.forEach((c: any) => {
-          if (c.etapa_prospeccion === "Por Investigar" || c.etapa_prospeccion === "Sin contactar" || !c.etapa_prospeccion) counts.porInvestigar++;
-          else if (c.etapa_prospeccion === "Por Llamar") counts.porLlamar++;
-          else if (c.etapa_prospeccion === "En Proceso") counts.enProceso++;
+          if (c.etapa_prospeccion === "Verificado") {
+            counts.verificado++;
+          } else {
+            counts.sinVerificar++;
+          }
         });
       }
       setStats(counts);
@@ -184,8 +187,8 @@ export default function CuentasPage() {
         query = query.eq("cuenta_foco", true);
       }
       if (filtroEtapa !== "todas") {
-        if (filtroEtapa === "Por Investigar") {
-          query = query.or("etapa_prospeccion.eq.Por Investigar,etapa_prospeccion.eq.Sin contactar,etapa_prospeccion.is.null");
+        if (filtroEtapa === "Sin Verificar") {
+          query = query.or("etapa_prospeccion.eq.Sin Verificar,etapa_prospeccion.is.null");
         } else {
           query = query.eq("etapa_prospeccion", filtroEtapa);
         }
@@ -314,65 +317,65 @@ export default function CuentasPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <button
           onClick={() => {
-            const act = filtroFoco === "foco" && filtroEtapa === "Por Investigar";
+            const act = filtroFoco === "foco" && filtroEtapa === "todas";
             setFiltroFoco(act ? "todos" : "foco");
-            setFiltroEtapa(act ? "todas" : "Por Investigar");
+            setFiltroEtapa("todas");
             setPaginaActual(1);
           }}
           className={cn(
             "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
-            filtroFoco === "foco" && filtroEtapa === "Por Investigar"
+            filtroFoco === "foco" && filtroEtapa === "todas"
+              ? "bg-yellow-500/15 border-yellow-500 text-yellow-700 dark:text-yellow-400 ring-2 ring-yellow-500/20"
+              : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-yellow-400 dark:hover:border-yellow-500"
+          )}
+        >
+          <div>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">⭐ Cuentas Foco Totales</p>
+            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.totalFoco}</p>
+          </div>
+          <span className="text-2xl">⭐</span>
+        </button>
+
+        <button
+          onClick={() => {
+            const act = filtroFoco === "foco" && filtroEtapa === "Sin Verificar";
+            setFiltroFoco(act ? "todos" : "foco");
+            setFiltroEtapa(act ? "todas" : "Sin Verificar");
+            setPaginaActual(1);
+          }}
+          className={cn(
+            "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
+            filtroFoco === "foco" && filtroEtapa === "Sin Verificar"
               ? "bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-400 ring-2 ring-amber-500/20"
               : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-500"
           )}
         >
           <div>
-            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">🔍 Por Investigar (Foco)</p>
-            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.porInvestigar}</p>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">🔍 Sin Verificar (Foco)</p>
+            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.sinVerificar}</p>
           </div>
           <span className="text-2xl">🔍</span>
         </button>
 
         <button
           onClick={() => {
-            const act = filtroFoco === "foco" && filtroEtapa === "Por Llamar";
+            const act = filtroFoco === "foco" && filtroEtapa === "Verificado";
             setFiltroFoco(act ? "todos" : "foco");
-            setFiltroEtapa(act ? "todas" : "Por Llamar");
+            setFiltroEtapa(act ? "todas" : "Verificado");
             setPaginaActual(1);
           }}
           className={cn(
             "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
-            filtroFoco === "foco" && filtroEtapa === "Por Llamar"
-              ? "bg-blue-500/15 border-blue-500 text-blue-700 dark:text-blue-400 ring-2 ring-blue-500/20"
-              : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500"
+            filtroFoco === "foco" && filtroEtapa === "Verificado"
+              ? "bg-green-500/15 border-green-500 text-green-700 dark:text-green-400 ring-2 ring-green-500/20"
+              : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-green-400 dark:hover:border-green-500"
           )}
         >
           <div>
-            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">📞 Por Llamar (Foco)</p>
-            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.porLlamar}</p>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">✅ Verificado (Foco)</p>
+            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.verificado}</p>
           </div>
-          <span className="text-2xl">📞</span>
-        </button>
-
-        <button
-          onClick={() => {
-            const act = filtroFoco === "foco" && filtroEtapa === "En Proceso";
-            setFiltroFoco(act ? "todos" : "foco");
-            setFiltroEtapa(act ? "todas" : "En Proceso");
-            setPaginaActual(1);
-          }}
-          className={cn(
-            "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
-            filtroFoco === "foco" && filtroEtapa === "En Proceso"
-              ? "bg-purple-500/15 border-purple-500 text-purple-700 dark:text-purple-400 ring-2 ring-purple-500/20"
-              : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-500"
-          )}
-        >
-          <div>
-            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">💬 En Contacto (Foco)</p>
-            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.enProceso}</p>
-          </div>
-          <span className="text-2xl">💬</span>
+          <span className="text-2xl">✅</span>
         </button>
       </div>
 
@@ -427,11 +430,8 @@ export default function CuentasPage() {
               set: setFiltroEtapa,
               opts: [
                 { value: "todas", label: "Etapa: Todas" },
-                { value: "Sin contactar", label: "⚪ Sin contactar" },
-                { value: "Por Investigar", label: "🔍 Por Investigar" },
-                { value: "Por Llamar", label: "📞 Por Llamar" },
-                { value: "En Proceso", label: "💬 En Proceso" },
-                { value: "Calificado", label: "✅ Calificado" }
+                { value: "Sin Verificar", label: "🔍 Sin Verificar" },
+                { value: "Verificado", label: "✅ Verificado" }
               ]
             }
           ].map((f, i) => (
@@ -693,21 +693,16 @@ export default function CuentasPage() {
                   </td>
                   <td className="px-4 py-2 min-w-[150px]">
                     <select
-                      value={cuenta.etapa_prospeccion || "Sin contactar"}
+                      value={cuenta.etapa_prospeccion || "Sin Verificar"}
                       onChange={(e) => actualizarCuentaInline(cuenta.id, "etapa_prospeccion", e.target.value)}
                       className={`text-xs font-bold rounded-lg px-3 py-1.5 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 cursor-pointer ${
-                        cuenta.etapa_prospeccion === "Sin contactar" ? "text-gray-500" :
-                        cuenta.etapa_prospeccion === "Por Investigar" ? "text-amber-600 dark:text-amber-400" :
-                        cuenta.etapa_prospeccion === "Por Llamar" ? "text-blue-600 dark:text-blue-400 font-bold" :
-                        cuenta.etapa_prospeccion === "En Proceso" ? "text-purple-600 dark:text-purple-400" :
-                        "text-green-600 dark:text-green-400 font-bold"
+                        cuenta.etapa_prospeccion === "Verificado" 
+                          ? "text-green-600 dark:text-green-400 font-bold" 
+                          : "text-amber-600 dark:text-amber-400"
                       }`}
                     >
-                      <option value="Sin contactar">⚪ Sin contactar</option>
-                      <option value="Por Investigar">🔍 Por Investigar</option>
-                      <option value="Por Llamar">📞 Por Llamar</option>
-                      <option value="En Proceso">💬 En Proceso</option>
-                      <option value="Calificado">✅ Calificado</option>
+                      <option value="Sin Verificar">🔍 Sin Verificar</option>
+                      <option value="Verificado">✅ Verificado</option>
                     </select>
                   </td>
                   <td className="px-4 py-2 min-w-[120px]">

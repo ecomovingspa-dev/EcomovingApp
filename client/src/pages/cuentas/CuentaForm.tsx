@@ -24,7 +24,7 @@ export default function CuentaForm() {
     ciudad: "",
     web: "",
     cuenta_foco: false,
-    etapa_prospeccion: "Sin contactar",
+    etapa_prospeccion: "Sin Verificar",
   });
 
   const [availableSectors, setAvailableSectors] = useState<string[]>([
@@ -265,15 +265,12 @@ export default function CuentaForm() {
                 Etapa de Prospección
               </label>
               <select
-                value={cuenta.etapa_prospeccion || "Sin contactar"}
+                value={cuenta.etapa_prospeccion || "Sin Verificar"}
                 onChange={(e) => handleChange("etapa_prospeccion", e.target.value)}
                 className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
               >
-                <option value="Sin contactar">⚪ Sin contactar</option>
-                <option value="Por Investigar">🔍 Por Investigar (Sin contacto indicado)</option>
-                <option value="Por Llamar">📞 Por Llamar (Contacto listo)</option>
-                <option value="En Proceso">💬 En Proceso / Seguimiento</option>
-                <option value="Calificado">✅ Calificado (Pasa a Marketing)</option>
+                <option value="Sin Verificar">🔍 Sin Verificar</option>
+                <option value="Verificado">✅ Verificado</option>
               </select>
             </div>
 
