@@ -501,7 +501,7 @@ export default function CuentasPage() {
                       : "hover:bg-blue-50/30 dark:hover:bg-blue-900/10"
                   }`}
                 >
-                  <td className="px-4 py-2 min-w-[450px]">
+                  <td className="px-4 py-2 min-w-[280px]">
                     <div className="flex items-start gap-2">
                       {/* Botón de estrella de prioridad */}
                       <button
