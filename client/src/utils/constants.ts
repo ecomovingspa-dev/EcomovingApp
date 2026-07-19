@@ -1,8 +1,6 @@
 // Listado maestro y oficial de segmentos predeterminados
 export const SEGMENTOS_MAESTROS = [
-  "Expomin",
   "Servicios",
-  "Mineras",
   "Educación",
   "Comercializadores",
   "Alimentos / Agrícola",

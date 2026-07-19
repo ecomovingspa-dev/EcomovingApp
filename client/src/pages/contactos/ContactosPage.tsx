@@ -15,9 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const SEGMENTOS_POR_DEFECTO = [
-  "Expomin",
   "Servicios",
-  "Mineras",
   "Educación",
   "Comercializadores",
   "Alimentos / Agrícola",
