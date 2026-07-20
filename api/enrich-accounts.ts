@@ -376,6 +376,7 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
 
     } catch (err: any) {
         console.error("Error en enrich-accounts:", err);
-        return res.status(500).json({ error: err.message });
+        const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+        return res.status(500).json({ error: errMsg });
     }
 }
