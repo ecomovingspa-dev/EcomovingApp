@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles, Edit2, Save, Check, Users } from "lucide-react";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles, Edit2, Save, Check, Users, Compass } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { SEGMENTOS_MAESTROS } from "../../utils/constants";
@@ -22,6 +22,11 @@ export default function CuentasPage() {
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
   const [enriqueciendoId, setEnriqueciendoId] = useState<string | null>(null);
   const [buscandoSimilaresId, setBuscandoSimilaresId] = useState<string | null>(null);
+  const [cuentaIdActiva, setCuentaIdActiva] = useState<string | null>(null);
+  const [modalBasicAbierto, setModalBasicAbierto] = useState(false);
+  const [datosBasicosPropuestos, setDatosBasicosPropuestos] = useState<{ web: string; telefono: string; ciudad: string; segmento: string }>({ web: "", telefono: "", ciudad: "", segmento: "" });
+  const [modalContactosAbierto, setModalContactosAbierto] = useState(false);
+  const [contactosPropuestos, setContactosPropuestos] = useState<{ nombre: string | null; correo: string; cargo: string; telefono?: string; celular?: string; departamento?: string }[]>([]);
   const [modalSimilaresAbierto, setModalSimilaresAbierto] = useState(false);
   const [listaSimilaresEncontradas, setListaSimilaresEncontradas] = useState<{ cliente: string; web?: string; ciudad?: string }[]>([]);
   const [empresaOriginalNombre, setEmpresaOriginalNombre] = useState("");
@@ -270,6 +275,8 @@ export default function CuentasPage() {
     }
   };
 
+  const [buscandoContactosId, setBuscandoContactosId] = useState<string | null>(null);
+
   const enriquecerConIA = async (cuentaId: string) => {
     setEnriqueciendoId(cuentaId);
     setError("");
@@ -279,19 +286,114 @@ export default function CuentasPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ cuentaId, findSimilar: false }),
+        body: JSON.stringify({ cuentaId, mode: 'basic' }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Error al enriquecer con IA");
       }
-      await cargarCuentas();
+      
+      const resData = data.data || {};
+      setDatosBasicosPropuestos({
+        web: resData.web || "",
+        telefono: resData.telefono || "",
+        ciudad: resData.ciudad || "",
+        segmento: resData.segmento || ""
+      });
+      setCuentaIdActiva(cuentaId);
+      setModalBasicAbierto(true);
     } catch (err: any) {
       console.error("Error al enriquecer con IA:", err);
       setError(err.message || "Error al enriquecer con IA");
       setTimeout(() => setError(""), 5000);
     } finally {
       setEnriqueciendoId(null);
+    }
+  };
+
+  const guardarDatosBasicosConfirmados = async () => {
+    if (!cuentaIdActiva) return;
+    try {
+      const payload = {
+        web: datosBasicosPropuestos.web || null,
+        telefono: datosBasicosPropuestos.telefono || null,
+        ciudad: datosBasicosPropuestos.ciudad || null,
+        segmento: datosBasicosPropuestos.segmento || null,
+        origen: 'AI'
+      };
+      
+      const { error } = await supabase
+        .from("cuentas")
+        .update(payload)
+        .eq("id", cuentaIdActiva);
+        
+      if (error) throw error;
+      setModalBasicAbierto(false);
+      await cargarCuentas();
+    } catch (err: any) {
+      console.error("Error al guardar datos enriquecidos:", err);
+      alert("Error al guardar datos enriquecidos: " + err.message);
+    }
+  };
+
+  const buscarContactosConIA = async (cuentaId: string) => {
+    setBuscandoContactosId(cuentaId);
+    setError("");
+    try {
+      const response = await fetch("/api/enrich-accounts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ cuentaId, mode: 'contacts' }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Error al buscar contactos con IA");
+      }
+      
+      const contactsList = data.data?.contactos || [];
+      setContactosPropuestos(contactsList);
+      setCuentaIdActiva(cuentaId);
+      setModalContactosAbierto(true);
+    } catch (err: any) {
+      console.error("Error al buscar contactos con IA:", err);
+      setError(err.message || "Error al buscar contactos con IA");
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setBuscandoContactosId(null);
+    }
+  };
+
+  const guardarContactosConfirmados = async () => {
+    if (!cuentaIdActiva) return;
+    try {
+      const filteredContacts = contactosPropuestos.filter(c => c.correo && c.correo.includes('@'));
+      if (filteredContacts.length > 0) {
+        const insertPayload = filteredContacts.map(c => ({
+          cuenta_id: cuentaIdActiva,
+          nombre: c.nombre || "Contacto",
+          correo: c.correo.trim().toLowerCase(),
+          celular: c.celular || c.telefono || null,
+          telefono: c.telefono || null,
+          departamento: c.cargo || c.departamento || "Adquisiciones",
+          estado: "activo",
+          origen: "AI"
+        }));
+
+        const { error } = await supabase.from("contactos").insert(insertPayload);
+        if (error) throw error;
+
+        await supabase
+          .from("cuentas")
+          .update({ estado: "activo" })
+          .eq("id", cuentaIdActiva);
+      }
+      setModalContactosAbierto(false);
+      await cargarCuentas();
+    } catch (err: any) {
+      console.error("Error al guardar contactos:", err);
+      alert("Error al guardar contactos: " + err.message);
     }
   };
 
@@ -304,27 +406,68 @@ export default function CuentasPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ cuentaId, findSimilar: true }),
+        body: JSON.stringify({ cuentaId, mode: 'similar' }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Error al buscar empresas similares");
       }
       
-      const originalName = data.results?.[0]?.cuenta || "";
-      const creadas = data.results?.[0]?.similaresCreadas || [];
+      const { data: accountData } = await supabase.from("cuentas").select("cliente").eq("id", cuentaId).single();
+      const originalName = accountData?.cliente || "";
+      const similares = data.data?.similares || [];
       
       setEmpresaOriginalNombre(originalName);
-      setListaSimilaresEncontradas(creadas);
+      setListaSimilaresEncontradas(similares);
+      setCuentaIdActiva(cuentaId);
       setModalSimilaresAbierto(true);
-      
-      await cargarCuentas();
     } catch (err: any) {
       console.error("Error al buscar similares con IA:", err);
       setError(err.message || "Error al buscar empresas similares con IA");
       setTimeout(() => setError(""), 5000);
     } finally {
       setBuscandoSimilaresId(null);
+    }
+  };
+
+  const guardarSimilaresConfirmadas = async () => {
+    if (!cuentaIdActiva) return;
+    try {
+      const { data: activeAcc } = await supabase.from("cuentas").select("sector, segmento").eq("id", cuentaIdActiva).single();
+      const sector = activeAcc?.sector || 'privado';
+      const segmento = activeAcc?.segmento || 'Servicios';
+
+      for (const emp of listaSimilaresEncontradas) {
+        if (!emp.cliente || emp.cliente.trim() === "") continue;
+
+        const { data: existingEmp } = await supabase
+          .from("cuentas")
+          .select("id")
+          .ilike("cliente", emp.cliente.trim())
+          .maybeSingle();
+
+        if (existingEmp) continue;
+
+        await supabase.from("cuentas").insert([
+          {
+            cliente: emp.cliente.trim(),
+            web: emp.web || null,
+            ciudad: emp.ciudad || "Santiago",
+            sector,
+            segmento,
+            estado: "prospecto",
+            etapa_prospeccion: "Sin Verificar",
+            origen: "AI",
+            cuenta_foco: true,
+            vendedor_id: null
+          }
+        ]);
+      }
+      setModalSimilaresAbierto(false);
+      await cargarCuentas();
+    } catch (err: any) {
+      console.error("Error al guardar similares:", err);
+      alert("Error al guardar similares: " + err.message);
     }
   };
 
@@ -513,7 +656,7 @@ export default function CuentasPage() {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
-              {["Cliente", "RUT", "Estado", "Sector", "Segmento", "Etapa", "Ciudad", ""].map((h, i) => (
+              {["Cliente", "Estado", "Sector", "Segmento", "Etapa", "Ciudad", ""].map((h, i) => (
                 <th key={i} className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{h}</th>
               ))}
             </tr>
@@ -540,15 +683,22 @@ export default function CuentasPage() {
                 >
                   <td className="px-4 py-2 min-w-[280px]">
                     <div className="flex items-start gap-2">
-                      {/* Botón de estrella de prioridad */}
-                      <button
-                        type="button"
-                        onClick={() => actualizarCuentaInline(cuenta.id, "cuenta_foco", !cuenta.cuenta_foco)}
-                        className="mt-1 p-1 text-gray-300 dark:text-gray-600 hover:text-yellow-500 transition-all transform hover:scale-110 shrink-0 cursor-pointer"
-                        title={cuenta.cuenta_foco ? "Quitar prioridad" : "Marcar como prioridad (Foco)"}
-                      >
-                        <span className={`text-lg leading-none ${cuenta.cuenta_foco ? "text-yellow-500 fill-current font-bold" : "opacity-30"}`}>★</span>
-                      </button>
+                      <div className="flex flex-col items-center gap-1 shrink-0 min-w-[28px]">
+                        {/* Botón de estrella de prioridad */}
+                        <button
+                          type="button"
+                          onClick={() => actualizarCuentaInline(cuenta.id, "cuenta_foco", !cuenta.cuenta_foco)}
+                          className="p-0.5 text-gray-300 dark:text-gray-600 hover:text-yellow-500 transition-all transform hover:scale-110 cursor-pointer"
+                          title={cuenta.cuenta_foco ? "Quitar prioridad" : "Marcar como prioridad (Foco)"}
+                        >
+                          <span className={`text-lg leading-none ${cuenta.cuenta_foco ? "text-yellow-500 fill-current font-bold" : "opacity-30"}`}>★</span>
+                        </button>
+                        {cuenta.origen === 'AI' && (
+                          <span className="px-1 py-0.5 rounded bg-cyan-200 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300 text-[8px] font-black uppercase tracking-widest leading-none">
+                            IA
+                          </span>
+                        )}
+                      </div>
 
                       {cuenta.contactos && cuenta.contactos.length > 0 ? (
                         <Popover>
@@ -598,19 +748,7 @@ export default function CuentasPage() {
                           👤 {cuenta.vendedores?.nombre || "Sin Asignar (IA)"}
                         </span>
                       </div>
-                      {cuenta.origen === 'AI' && (
-                        <span className="mt-2 px-1.5 py-0.5 rounded bg-cyan-200 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300 text-[8px] font-black uppercase tracking-widest leading-none">
-                          IA
-                        </span>
-                      )}
                     </div>
-                  </td>
-                  <td className="px-4 py-2">
-                    <input
-                      defaultValue={cuenta.rut || ""}
-                      onBlur={(e) => actualizarCuentaInline(cuenta.id, "rut", e.target.value)}
-                      className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all font-mono"
-                    />
                   </td>
                   <td className="px-4 py-2">
                     <select
@@ -775,9 +913,21 @@ export default function CuentasPage() {
                         <button
                           onClick={() => enriquecerConIA(cuenta.id)}
                           className="p-2 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 transition-colors rounded-lg cursor-pointer"
-                          title="Enriquecer con IA (datos y contactos)"
+                          title="Enriquecer Datos Básicos con IA"
                         >
                           <Sparkles className="h-4 w-4" />
+                        </button>
+                      )}
+
+                      {buscandoContactosId === cuenta.id ? (
+                        <Loader2 className="h-4 w-4 text-emerald-500 animate-spin" />
+                      ) : (
+                        <button
+                          onClick={() => buscarContactosConIA(cuenta.id)}
+                          className="p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors rounded-lg cursor-pointer"
+                          title="Buscar Contactos Clave con IA"
+                        >
+                          <Users className="h-4 w-4" />
                         </button>
                       )}
 
@@ -789,7 +939,7 @@ export default function CuentasPage() {
                           className="p-2 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors rounded-lg cursor-pointer"
                           title="Buscar 5 empresas similares en Chile"
                         >
-                          <Users className="h-4 w-4" />
+                          <Compass className="h-4 w-4" />
                         </button>
                       )}
 
@@ -849,23 +999,155 @@ export default function CuentasPage() {
           </div>
         )
       }
-      {/* Modal de empresas similares encontradas */}
+      {/* Modal 1: Datos Básicos Encontrados */}
+      <Dialog open={modalBasicAbierto} onOpenChange={setModalBasicAbierto}>
+        <DialogContent className="max-w-md p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-cyan-500" />
+              Datos de Cuenta Propuestos por IA
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Revisa y edita los datos básicos encontrados antes de aplicarlos a la cuenta.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Sitio Web</label>
+              <input
+                type="text"
+                value={datosBasicosPropuestos.web}
+                onChange={(e) => setDatosBasicosPropuestos(p => ({ ...p, web: e.target.value }))}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                placeholder="www.ejemplo.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Teléfono</label>
+              <input
+                type="text"
+                value={datosBasicosPropuestos.telefono}
+                onChange={(e) => setDatosBasicosPropuestos(p => ({ ...p, telefono: e.target.value }))}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                placeholder="+56 2..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Ciudad</label>
+              <input
+                type="text"
+                value={datosBasicosPropuestos.ciudad}
+                onChange={(e) => setDatosBasicosPropuestos(p => ({ ...p, ciudad: e.target.value }))}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                placeholder="Santiago"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Segmento</label>
+              <select
+                value={datosBasicosPropuestos.segmento}
+                onChange={(e) => setDatosBasicosPropuestos(p => ({ ...p, segmento: e.target.value }))}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecciona segmento...</option>
+                {SEGMENTOS_MAESTROS.map(seg => (
+                  <option key={seg} value={seg}>{seg}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={() => setModalBasicAbierto(false)}
+              className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-200 rounded-xl font-bold transition-all text-sm cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={guardarDatosBasicosConfirmados}
+              className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold transition-all shadow-md text-sm cursor-pointer"
+            >
+              Aceptar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal 2: Contactos Encontrados */}
+      <Dialog open={modalContactosAbierto} onOpenChange={setModalContactosAbierto}>
+        <DialogContent className="max-w-md p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Users className="h-5 w-5 text-emerald-500" />
+              Contactos Clave Sugeridos
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Hemos encontrado los siguientes contactos para esta cuenta. Presiona Aceptar para guardarlos.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+            {contactosPropuestos.length === 0 ? (
+              <div className="py-8 text-center text-sm text-gray-500">
+                No se encontraron contactos para esta empresa.
+              </div>
+            ) : (
+              contactosPropuestos.map((contact, idx) => (
+                <div 
+                  key={idx}
+                  className="p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-850 flex flex-col"
+                >
+                  <span className="font-bold text-sm text-gray-900 dark:text-white">
+                    {contact.nombre || "Área de Contacto"}
+                  </span>
+                  <span className="text-xs text-blue-500 font-medium">{contact.correo}</span>
+                  <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold mt-1 uppercase">
+                    💼 {contact.cargo || contact.departamento || "Adquisiciones"}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={() => setModalContactosAbierto(false)}
+              className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-200 rounded-xl font-bold transition-all text-sm cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={guardarContactosConfirmados}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-md text-sm cursor-pointer"
+            >
+              Aceptar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal 3: Empresas Similares Encontradas */}
       <Dialog open={modalSimilaresAbierto} onOpenChange={setModalSimilaresAbierto}>
         <DialogContent className="max-w-md p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Users className="h-5 w-5 text-violet-500" />
+              <Compass className="h-5 w-5 text-violet-500" />
               Empresas Similares Encontradas
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Hemos buscado competidores de <span className="font-bold text-gray-950 dark:text-white">"{empresaOriginalNombre}"</span> en Chile y los registramos en tu CRM como prospectos Foco (Estrella Amarilla).
+              Hemos detectado los siguientes competidores de <span className="font-bold text-gray-950 dark:text-white">"{empresaOriginalNombre}"</span> en Chile. Presiona Aceptar para crearlos.
             </DialogDescription>
           </DialogHeader>
 
           <div className="mt-4 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
             {listaSimilaresEncontradas.length === 0 ? (
               <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400 font-medium">
-                No se encontraron nuevas empresas similares (posiblemente ya existían todas en tu base de datos).
+                No se encontraron nuevas empresas similares.
               </div>
             ) : (
               listaSimilaresEncontradas.map((emp, index) => (
@@ -881,14 +1163,9 @@ export default function CuentasPage() {
                       <span>📍 {emp.ciudad}</span>
                     )}
                     {emp.web && (
-                      <a 
-                        href={emp.web.startsWith('http') ? emp.web : `https://${emp.web}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:underline truncate max-w-[200px]"
-                      >
+                      <span className="text-blue-500 truncate max-w-[200px]">
                         🔗 {emp.web}
-                      </a>
+                      </span>
                     )}
                   </div>
                 </div>
@@ -896,12 +1173,18 @@ export default function CuentasPage() {
             )}
           </div>
 
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex justify-end gap-3">
             <button
               onClick={() => setModalSimilaresAbierto(false)}
-              className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg text-sm cursor-pointer"
+              className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-200 rounded-xl font-bold transition-all text-sm cursor-pointer"
             >
-              Entendido
+              Cancelar
+            </button>
+            <button
+              onClick={guardarSimilaresConfirmadas}
+              className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold transition-all shadow-md text-sm cursor-pointer"
+            >
+              Aceptar
             </button>
           </div>
         </DialogContent>
