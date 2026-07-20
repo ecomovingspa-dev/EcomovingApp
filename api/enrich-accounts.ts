@@ -50,43 +50,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const companyName = account.cliente;
         const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
 
-        if (mode === 'contacts') {
-            // BUSCAR CONTACTOS
-            console.log(`🤖 Buscando contactos clave para "${companyName}"...`);
-            const prompt = `
-Encuentra contactos clave (personas reales con nombre, cargo y correo) que trabajen en la empresa "${companyName}" en Chile.
-Prioriza áreas como Adquisiciones, Compras, Sustentabilidad, Finanzas, Abastecimiento o Comercial.
-Si no encuentras personas específicas, puedes proponer correos de áreas específicas (ej. adquisiciones@empresa.com, compras@empresa.com) y colocar nombre nulo o el nombre del área.
-Responde estrictamente en formato JSON válido, con la siguiente estructura exacta:
-{
-  "contactos": [
-    {
-      "nombre": "Nombre de la persona (deja null si es del área o genérico)",
-      "correo": "correo electrónico corporativo válido",
-      "cargo": "Compras, Adquisiciones, Finanzas, etc.",
-      "telefono": "Teléfono corporativo o celular (o null)",
-      "celular": "Celular de contacto (o null)",
-      "departamento": "Compras / Abastecimiento / etc."
-    }
-  ]
-}
-`;
-            const response = await axios.post(geminiUrl, {
-                contents: [{ parts: [{ text: prompt }] }],
-                tools: [{ google_search: {} }],
-                generationConfig: { temperature: 0.2 }
-            });
-
-            const rawText = response.data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-            let cleaned = rawText.trim();
-            if (cleaned.startsWith("```")) {
-                cleaned = cleaned.replace(/^```(json)?/i, "").replace(/```$/, "");
-            }
-            const data = JSON.parse(cleaned.trim());
-            return res.status(200).json({ success: true, mode: 'contacts', data });
-
-        } else if (mode === 'similar') {
-            // BUSCAR EMPRESAS SIMILARES
+        if (mode === 'similar') {
+            // BUSCAR EMPRESAS SIMILARES Y GUARDARLAS DIRECTAMENTE
             console.log(`🤖 Buscando 5 empresas competidoras/similares a "${companyName}" en Chile...`);
             const sector = account.sector || 'privado';
             const segmento = account.segmento || 'Servicios';
@@ -116,11 +81,51 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura exac
             if (cleaned.startsWith("```")) {
                 cleaned = cleaned.replace(/^```(json)?/i, "").replace(/```$/, "");
             }
-            const data = JSON.parse(cleaned.trim());
-            return res.status(200).json({ success: true, mode: 'similar', data });
+            const similarData = JSON.parse(cleaned.trim());
+            const empresasSimilares = similarData.similares || [];
+
+            const creadas = [];
+            for (const emp of empresasSimilares) {
+                if (!emp.cliente || emp.cliente.trim() === "") continue;
+
+                // Verificar si ya existe
+                const { data: existingEmp } = await supabase
+                    .from("cuentas")
+                    .select("id")
+                    .ilike("cliente", emp.cliente.trim())
+                    .maybeSingle();
+
+                if (existingEmp) continue;
+
+                // Insertar nueva cuenta similar como Foco
+                const { error: insertErr } = await supabase.from("cuentas").insert([
+                    {
+                        cliente: emp.cliente.trim(),
+                        web: emp.web || null,
+                        ciudad: emp.ciudad || "Santiago",
+                        sector,
+                        segmento,
+                        estado: "prospecto",
+                        etapa_prospeccion: "Sin Verificar",
+                        origen: "AI",
+                        cuenta_foco: true,
+                        vendedor_id: null
+                    }
+                ]);
+
+                if (!insertErr) {
+                    creadas.push({
+                        cliente: emp.cliente.trim(),
+                        web: emp.web || null,
+                        ciudad: emp.ciudad || "Santiago"
+                    });
+                }
+            }
+
+            return res.status(200).json({ success: true, mode: 'similar', creadas });
 
         } else {
-            // MODO BASIC (Sparkles - Enriquecer datos básicos de la cuenta)
+            // ENRIQUECER DATOS BASICOS DE LA CUENTA Y GUARDARLOS DIRECTAMENTE
             console.log(`🤖 Enriqueciendo datos básicos para "${companyName}"...`);
             const prompt = `
 Encuentra información pública oficial sobre la empresa "${companyName}".
@@ -157,8 +162,32 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura exac
             if (cleaned.startsWith("```")) {
                 cleaned = cleaned.replace(/^```(json)?/i, "").replace(/```$/, "");
             }
-            const data = JSON.parse(cleaned.trim());
-            return res.status(200).json({ success: true, mode: 'basic', data });
+            const enrichmentData = JSON.parse(cleaned.trim());
+
+            // Actualizar la Cuenta en Supabase directamente
+            const { error: updateError } = await supabase
+                .from('cuentas')
+                .update({
+                    web: enrichmentData.web || account.web,
+                    telefono: enrichmentData.telefono || account.telefono,
+                    ciudad: enrichmentData.ciudad || account.ciudad || "Santiago",
+                    segmento: enrichmentData.segmento || account.segmento || "Servicios",
+                    origen: 'AI'
+                })
+                .eq('id', account.id);
+
+            if (updateError) throw updateError;
+
+            return res.status(200).json({ 
+                success: true, 
+                mode: 'basic', 
+                data: {
+                    web: enrichmentData.web || account.web,
+                    telefono: enrichmentData.telefono || account.telefono,
+                    ciudad: enrichmentData.ciudad || account.ciudad || "Santiago",
+                    segmento: enrichmentData.segmento || account.segmento || "Servicios"
+                }
+            });
         }
 
     } catch (err: any) {
