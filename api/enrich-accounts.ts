@@ -7,7 +7,8 @@ const supabaseUrl = process.env.SUPABASE_URL || "https://xgdmyjzyejjmwdqkufhp.su
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const GEMINI_API_KEY = process.env.VITE_GEMINI_API_KEY || "AIzaSyC7bM_4Fr_Z2DDFMhZPqCTnA7oQLrKBV2I";
+const rawKey = process.env.VITE_GEMINI_API_KEY || "AIzaSyC7bM_4Fr_Z2DDFMhZPqCTnA7oQLrKBV2I";
+const GEMINI_API_KEY = rawKey.replace(/^['"]|['"]$/g, '');
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Configurar CORS
