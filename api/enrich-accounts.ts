@@ -282,6 +282,82 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
                 }
             }
 
+            // 6. Buscar 5 empresas competidoras/similares en Chile
+            console.log(`🤖 Buscando 5 empresas similares a "${companyName}" en Chile...`);
+            const similarPrompt = `
+Encuentra 5 empresas competidoras directas o muy similares a "${companyName}" que operen en Chile.
+El sector es "${sector}" y el segmento es "${segmento}".
+
+Responde estrictamente en formato JSON válido, con la siguiente estructura:
+{
+  "similares": [
+    {
+      "cliente": "Nombre oficial de la empresa competidora",
+      "web": "URL completa del sitio web oficial de la empresa o null",
+      "ciudad": "Ciudad de su casa matriz en Chile o null"
+    }
+  ]
+}
+`;
+            try {
+              const similarResponse = await axios.post(geminiUrl, {
+                  contents: [{ parts: [{ text: similarPrompt }] }],
+                  tools: [{ google_search: {} }],
+                  generationConfig: { temperature: 0.3 }
+              });
+
+              const similarText = similarResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+              let similarCleaned = similarText.trim();
+              if (similarCleaned.startsWith("```")) {
+                  similarCleaned = similarCleaned.replace(/^```(json)?/i, "");
+                  similarCleaned = similarCleaned.replace(/```$/, "");
+              }
+              const similarData = JSON.parse(similarCleaned.trim());
+              const empresasSimilares = similarData.similares || [];
+
+              console.log(`Encontradas ${empresasSimilares.length} empresas similares.`);
+
+              for (const emp of empresasSimilares) {
+                if (!emp.cliente || emp.cliente.trim() === "") continue;
+
+                // Verificar si ya existe por nombre
+                const { data: existingEmp } = await supabase
+                  .from("cuentas")
+                  .select("id")
+                  .ilike("cliente", emp.cliente.trim())
+                  .maybeSingle();
+
+                if (existingEmp) {
+                  console.log(`La empresa similar "${emp.cliente}" ya existe en la base de datos.`);
+                  continue;
+                }
+
+                // Insertar nueva cuenta similar como prospecto Sin Verificar
+                const { error: insertEmpError } = await supabase
+                  .from("cuentas")
+                  .insert([
+                    {
+                      cliente: emp.cliente.trim(),
+                      web: emp.web || null,
+                      ciudad: emp.ciudad || "Santiago",
+                      sector: sector,
+                      segmento: segmento,
+                      estado: "prospecto",
+                      etapa_prospeccion: "Sin Verificar",
+                      origen: "AI"
+                    }
+                  ]);
+
+                if (insertEmpError) {
+                  console.error(`Error al insertar empresa similar "${emp.cliente}":`, insertEmpError.message);
+                } else {
+                  console.log(`Insertada empresa similar: "${emp.cliente}"`);
+                }
+              }
+            } catch (simErr: any) {
+              console.error(`Error al buscar/guardar empresas similares para ${companyName}:`, simErr.message || simErr);
+            }
+
             results.push({
                 cuenta: companyName,
                 status: "enriquecida",
