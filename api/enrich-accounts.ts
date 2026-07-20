@@ -7,8 +7,10 @@ const supabaseUrl = process.env.SUPABASE_URL || "https://xgdmyjzyejjmwdqkufhp.su
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const rawKey = process.env.VITE_GEMINI_API_KEY || "AIzaSyC7bM_4Fr_Z2DDFMhZPqCTnA7oQLrKBV2I";
-const GEMINI_API_KEY = rawKey.replace(/^['"]|['"]$/g, '');
+let GEMINI_API_KEY = (process.env.VITE_GEMINI_API_KEY || "").trim().replace(/^['"]|['"]$/g, '');
+if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("AIzaSyANy1") || GEMINI_API_KEY === "AIzaSyANy1lc4pJU0YhaS_fL1N2JNfHJHK2F15E") {
+    GEMINI_API_KEY = "AIzaSyC7bM_4Fr_Z2DDFMhZPqCTnA7oQLrKBV2I";
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Configurar CORS
