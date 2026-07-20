@@ -31,7 +31,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    const { cuentaId } = req.body;
+    const { cuentaId, findSimilar } = req.body;
 
     try {
         let accountsToProcess = [];
@@ -285,9 +285,10 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
                 }
             }
 
-            // 6. Buscar 5 empresas competidoras/similares en Chile
-            console.log(`🤖 Buscando 5 empresas similares a "${companyName}" en Chile...`);
-            const similarPrompt = `
+            if (findSimilar) {
+              // 6. Buscar 5 empresas competidoras/similares en Chile
+              console.log(`🤖 Buscando 5 empresas similares a "${companyName}" en Chile...`);
+              const similarPrompt = `
 Encuentra 5 empresas competidoras directas o muy similares a "${companyName}" que operen en Chile.
 El sector es "${sector}" y el segmento es "${segmento}".
 
@@ -302,65 +303,66 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
   ]
 }
 `;
-            try {
-              const similarResponse = await axios.post(geminiUrl, {
-                  contents: [{ parts: [{ text: similarPrompt }] }],
-                  tools: [{ google_search: {} }],
-                  generationConfig: { temperature: 0.3 }
-              });
+              try {
+                const similarResponse = await axios.post(geminiUrl, {
+                    contents: [{ parts: [{ text: similarPrompt }] }],
+                    tools: [{ google_search: {} }],
+                    generationConfig: { temperature: 0.3 }
+                });
 
-              const similarText = similarResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
-              let similarCleaned = similarText.trim();
-              if (similarCleaned.startsWith("```")) {
-                  similarCleaned = similarCleaned.replace(/^```(json)?/i, "");
-                  similarCleaned = similarCleaned.replace(/```$/, "");
-              }
-              const similarData = JSON.parse(similarCleaned.trim());
-              const empresasSimilares = similarData.similares || [];
-
-              console.log(`Encontradas ${empresasSimilares.length} empresas similares.`);
-
-              for (const emp of empresasSimilares) {
-                if (!emp.cliente || emp.cliente.trim() === "") continue;
-
-                // Verificar si ya existe por nombre
-                const { data: existingEmp } = await supabase
-                  .from("cuentas")
-                  .select("id")
-                  .ilike("cliente", emp.cliente.trim())
-                  .maybeSingle();
-
-                if (existingEmp) {
-                  console.log(`La empresa similar "${emp.cliente}" ya existe en la base de datos.`);
-                  continue;
+                const similarText = similarResponse.data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+                let similarCleaned = similarText.trim();
+                if (similarCleaned.startsWith("```")) {
+                    similarCleaned = similarCleaned.replace(/^```(json)?/i, "");
+                    similarCleaned = similarCleaned.replace(/```$/, "");
                 }
+                const similarData = JSON.parse(similarCleaned.trim());
+                const empresasSimilares = similarData.similares || [];
 
-                // Insertar nueva cuenta similar como prospecto Sin Verificar
-                const { error: insertEmpError } = await supabase
-                  .from("cuentas")
-                  .insert([
-                    {
-                      cliente: emp.cliente.trim(),
-                      web: emp.web || null,
-                      ciudad: emp.ciudad || "Santiago",
-                      sector: sector,
-                      segmento: segmento,
-                      estado: "prospecto",
-                      etapa_prospeccion: "Sin Verificar",
-                      origen: "AI",
-                      cuenta_foco: true,
-                      vendedor_id: null
-                    }
-                  ]);
+                console.log(`Encontradas ${empresasSimilares.length} empresas similares.`);
 
-                if (insertEmpError) {
-                  console.error(`Error al insertar empresa similar "${emp.cliente}":`, insertEmpError.message);
-                } else {
-                  console.log(`Insertada empresa similar: "${emp.cliente}"`);
+                for (const emp of empresasSimilares) {
+                  if (!emp.cliente || emp.cliente.trim() === "") continue;
+
+                  // Verificar si ya existe por nombre
+                  const { data: existingEmp } = await supabase
+                    .from("cuentas")
+                    .select("id")
+                    .ilike("cliente", emp.cliente.trim())
+                    .maybeSingle();
+
+                  if (existingEmp) {
+                    console.log(`La empresa similar "${emp.cliente}" ya existe en la base de datos.`);
+                    continue;
+                  }
+
+                  // Insertar nueva cuenta similar como prospecto Sin Verificar
+                  const { error: insertEmpError } = await supabase
+                    .from("cuentas")
+                    .insert([
+                      {
+                        cliente: emp.cliente.trim(),
+                        web: emp.web || null,
+                        ciudad: emp.ciudad || "Santiago",
+                        sector: sector,
+                        segmento: segmento,
+                        estado: "prospecto",
+                        etapa_prospeccion: "Sin Verificar",
+                        origen: "AI",
+                        cuenta_foco: true,
+                        vendedor_id: null
+                      }
+                    ]);
+
+                  if (insertEmpError) {
+                    console.error(`Error al insertar empresa similar "${emp.cliente}":`, insertEmpError.message);
+                  } else {
+                    console.log(`Insertada empresa similar: "${emp.cliente}"`);
+                  }
                 }
+              } catch (simErr: any) {
+                console.error(`Error al buscar/guardar empresas similares para ${companyName}:`, simErr.message || simErr);
               }
-            } catch (simErr: any) {
-              console.error(`Error al buscar/guardar empresas similares para ${companyName}:`, simErr.message || simErr);
             }
 
             results.push({

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles, Edit2, Save, Check } from "lucide-react";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles, Edit2, Save, Check, Users } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { SEGMENTOS_MAESTROS } from "../../utils/constants";
@@ -21,6 +21,7 @@ export default function CuentasPage() {
   const [error, setError] = useState("");
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
   const [enriqueciendoId, setEnriqueciendoId] = useState<string | null>(null);
+  const [buscandoSimilaresId, setBuscandoSimilaresId] = useState<string | null>(null);
 
   // Estados para edición inline de segmentos
   const [openSegmentId, setOpenSegmentId] = useState<string | null>(null);
@@ -275,7 +276,7 @@ export default function CuentasPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ cuentaId }),
+        body: JSON.stringify({ cuentaId, findSimilar: false }),
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
@@ -288,6 +289,31 @@ export default function CuentasPage() {
       setTimeout(() => setError(""), 5000);
     } finally {
       setEnriqueciendoId(null);
+    }
+  };
+
+  const buscarSimilaresConIA = async (cuentaId: string) => {
+    setBuscandoSimilaresId(cuentaId);
+    setError("");
+    try {
+      const response = await fetch("/api/enrich-accounts", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ cuentaId, findSimilar: true }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Error al buscar empresas similares");
+      }
+      await cargarCuentas();
+    } catch (err: any) {
+      console.error("Error al buscar similares con IA:", err);
+      setError(err.message || "Error al buscar empresas similares con IA");
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setBuscandoSimilaresId(null);
     }
   };
 
@@ -738,9 +764,21 @@ export default function CuentasPage() {
                         <button
                           onClick={() => enriquecerConIA(cuenta.id)}
                           className="p-2 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 dark:hover:bg-cyan-950/40 transition-colors rounded-lg cursor-pointer"
-                          title="Enriquecer con IA"
+                          title="Enriquecer con IA (datos y contactos)"
                         >
                           <Sparkles className="h-4 w-4" />
+                        </button>
+                      )}
+
+                      {buscandoSimilaresId === cuenta.id ? (
+                        <Loader2 className="h-4 w-4 text-violet-500 animate-spin" />
+                      ) : (
+                        <button
+                          onClick={() => buscarSimilaresConIA(cuenta.id)}
+                          className="p-2 text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:hover:bg-violet-950/40 transition-colors rounded-lg cursor-pointer"
+                          title="Buscar 5 empresas similares en Chile"
+                        >
+                          <Users className="h-4 w-4" />
                         </button>
                       )}
 
