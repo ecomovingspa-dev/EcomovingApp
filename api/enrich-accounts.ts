@@ -376,7 +376,8 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
 
     } catch (err: any) {
         console.error("Error en enrich-accounts:", err);
+        const urlFailed = err.config?.url || "unknown";
         const errMsg = err.response?.data ? JSON.stringify(err.response.data) : err.message;
-        return res.status(500).json({ error: errMsg });
+        return res.status(500).json({ error: `${errMsg} at ${urlFailed}`, stack: err.stack });
     }
 }
