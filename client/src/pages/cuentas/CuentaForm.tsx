@@ -420,7 +420,7 @@ export default function CuentaForm() {
                 Sitio Web
               </label>
               <input
-                type="url"
+                type="text"
                 value={cuenta.web}
                 onChange={(e) => handleChange("web", e.target.value)}
                 className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
