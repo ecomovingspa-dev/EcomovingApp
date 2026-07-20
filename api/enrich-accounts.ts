@@ -285,6 +285,8 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
                 }
             }
 
+            const similaresCreadas = [];
+
             if (findSimilar) {
               // 6. Buscar 5 empresas competidoras/similares en Chile
               console.log(`🤖 Buscando 5 empresas similares a "${companyName}" en Chile...`);
@@ -358,6 +360,11 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
                     console.error(`Error al insertar empresa similar "${emp.cliente}":`, insertEmpError.message);
                   } else {
                     console.log(`Insertada empresa similar: "${emp.cliente}"`);
+                    similaresCreadas.push({
+                      cliente: emp.cliente.trim(),
+                      web: emp.web || null,
+                      ciudad: emp.ciudad || "Santiago"
+                    });
                   }
                 }
               } catch (simErr: any) {
@@ -372,7 +379,8 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
                 telefono,
                 sector,
                 segmento,
-                contactosEncontrados: contactosInsertados
+                contactosEncontrados: contactosInsertados,
+                similaresCreadas
             });
         }
 
