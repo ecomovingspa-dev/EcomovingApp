@@ -11,6 +11,8 @@ export interface Cuenta {
   origen?: string;
   cuenta_foco?: boolean;
   etapa_prospeccion?: string;
+  vendedor_id?: string | null;
+  vendedores?: { nombre: string } | null;
   created_at?: string; // ISO 8601
   contactos?: {
     id: string;
@@ -33,6 +35,8 @@ export interface Contacto {
   nivel?: string;
   estado?: string;
   cuenta_id: string;
+  vendedor_id?: string | null;
+  vendedores?: { nombre: string } | null;
   origen?: string;
   created_at?: string; // ISO 8601
 }

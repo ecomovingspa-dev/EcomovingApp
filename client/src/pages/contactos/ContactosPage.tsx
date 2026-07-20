@@ -260,6 +260,7 @@ export default function ContactosPage() {
         .select(
           `
           *,
+          vendedores(nombre),
           cuentas:cuentas!contactos_cuenta_id_fkey${(filtroSegmento || filtroSector) ? "!inner" : ""}(cliente, segmento, sector)
         `,
           { count: "exact" }
@@ -906,6 +907,9 @@ export default function ContactosPage() {
                             </span>
                           ) : null}
                         </div>
+                        <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold mt-1">
+                          👤 {contacto.vendedores?.nombre || "Sin Asignar (IA)"}
+                        </span>
                       </div>
                     </td>
 

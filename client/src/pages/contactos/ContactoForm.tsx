@@ -5,6 +5,7 @@ import type { Contacto, Cuenta } from "../../types";
 import { ArrowLeft, Save, Search, Check, User, Mail, Phone, Building2, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useVendedores } from "../../hooks/useVendedores";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -39,6 +40,7 @@ export default function ContactoForm() {
   const [mensaje, setMensaje] = useState("");
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [cuentaOpen, setCuentaOpen] = useState(false);
+  const { vendedores } = useVendedores();
   const [contacto, setContacto] = useState<Partial<Contacto>>({
     nombre: "",
     correo: "",
@@ -47,6 +49,7 @@ export default function ContactoForm() {
     departamento: "",
     estado: "activo",
     cuenta_id: "",
+    vendedor_id: "",
   });
 
   const [busquedaCuentas, setBusquedaCuentas] = useState("");
@@ -94,7 +97,13 @@ export default function ContactoForm() {
     setMensaje("");
 
     try {
-      const { error } = await supabase.from("contactos").insert([contacto]);
+      const payload = {
+        ...contacto,
+        vendedor_id: contacto.vendedor_id || null,
+      };
+      delete (payload as any).vendedores;
+
+      const { error } = await supabase.from("contactos").insert([payload]);
 
       if (error) throw error;
       setMensaje("✅ Contacto creado");
@@ -397,6 +406,25 @@ export default function ContactoForm() {
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="vendedor_id" className="text-sm font-semibold">
+                    Usuario / Vendedor Responsable
+                  </Label>
+                  <select
+                    id="vendedor_id"
+                    value={contacto.vendedor_id || ""}
+                    onChange={(e) => handleChange("vendedor_id", e.target.value)}
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium text-sm h-11"
+                  >
+                    <option value="">Sin Asignar (Creado por IA)</option>
+                    {vendedores.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        👤 {v.nombre}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </CardContent>
             </Card>

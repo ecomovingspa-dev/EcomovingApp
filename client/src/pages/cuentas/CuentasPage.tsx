@@ -169,7 +169,7 @@ export default function CuentasPage() {
 
       let query = supabase
         .from("cuentas")
-        .select("*, contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono)", { count: "exact" });
+        .select("*, vendedores(nombre), contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono)", { count: "exact" });
 
       if (busqueda) {
         query = query.or(`cliente.ilike.%${busqueda}%,rut.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`);
@@ -550,12 +550,17 @@ export default function CuentasPage() {
                         <div className="w-5 shrink-0" />
                       )}
                       
-                      <textarea
-                        defaultValue={cuenta.cliente || ""}
-                        onBlur={(e) => actualizarCuentaInline(cuenta.id, "cliente", e.target.value)}
-                        rows={2}
-                        className="flex-1 bg-transparent border-none rounded-lg px-2 py-1 text-sm font-bold text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all resize-none"
-                      />
+                      <div className="flex-grow flex flex-col">
+                        <textarea
+                          defaultValue={cuenta.cliente || ""}
+                          onBlur={(e) => actualizarCuentaInline(cuenta.id, "cliente", e.target.value)}
+                          rows={2}
+                          className="w-full bg-transparent border-none rounded-lg px-2 py-1 text-sm font-bold text-gray-900 dark:text-white focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all resize-none"
+                        />
+                        <span className="text-[11px] text-gray-400 dark:text-gray-500 font-bold px-2 pb-1">
+                          👤 {cuenta.vendedores?.nombre || "Sin Asignar (IA)"}
+                        </span>
+                      </div>
                       {cuenta.origen === 'AI' && (
                         <span className="mt-2 px-1.5 py-0.5 rounded bg-cyan-200 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300 text-[8px] font-black uppercase tracking-widest leading-none">
                           IA

@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
 import { SEGMENTOS_MAESTROS } from "../../utils/constants";
+import { useVendedores } from "../../hooks/useVendedores";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ export default function CuentaForm() {
 
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
+  const { vendedores } = useVendedores();
   const [cuenta, setCuenta] = useState<Partial<Cuenta>>({
     cliente: "",
     rut: "",
@@ -25,6 +27,7 @@ export default function CuentaForm() {
     web: "",
     cuenta_foco: false,
     etapa_prospeccion: "Sin Verificar",
+    vendedor_id: "",
   });
 
   const [availableSectors, setAvailableSectors] = useState<string[]>([
@@ -135,16 +138,22 @@ export default function CuentaForm() {
     setMensaje("");
 
     try {
+      const payload = {
+        ...cuenta,
+        vendedor_id: cuenta.vendedor_id || null,
+      };
+      delete (payload as any).vendedores;
+
       if (esEdicion) {
         const { error } = await supabase
           .from("cuentas")
-          .update(cuenta)
+          .update(payload)
           .eq("id", id);
 
         if (error) throw error;
         setMensaje("✅ Cuenta actualizada");
       } else {
-        const { error } = await supabase.from("cuentas").insert([cuenta]);
+        const { error } = await supabase.from("cuentas").insert([payload]);
 
         if (error) throw error;
         setMensaje("✅ Cuenta creada");
@@ -287,6 +296,24 @@ export default function CuentaForm() {
                 {availableSectors.map((sec) => (
                   <option key={sec} value={sec}>
                     {sec}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Usuario / Vendedor Responsable
+              </label>
+              <select
+                value={cuenta.vendedor_id || ""}
+                onChange={(e) => handleChange("vendedor_id", e.target.value)}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent font-medium"
+              >
+                <option value="">Sin Asignar (Creado por IA)</option>
+                {vendedores.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    👤 {v.nombre}
                   </option>
                 ))}
               </select>

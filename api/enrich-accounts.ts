@@ -347,7 +347,9 @@ Responde estrictamente en formato JSON válido, con la siguiente estructura:
                       segmento: segmento,
                       estado: "prospecto",
                       etapa_prospeccion: "Sin Verificar",
-                      origen: "AI"
+                      origen: "AI",
+                      cuenta_foco: true,
+                      vendedor_id: null
                     }
                   ]);
 
