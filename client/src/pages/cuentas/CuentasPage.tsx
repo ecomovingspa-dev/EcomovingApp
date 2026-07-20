@@ -723,7 +723,13 @@ export default function CuentasPage() {
                       {guardandoId === cuenta.id ? (
                         <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
                       ) : (
-                        <CheckCircle2 className="h-4 w-4 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <Link
+                          to={`/cuentas/editar/${cuenta.id}`}
+                          className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 transition-colors rounded-lg cursor-pointer"
+                          title="Editar Cuenta"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Link>
                       )}
 
                       {enriqueciendoId === cuenta.id ? (

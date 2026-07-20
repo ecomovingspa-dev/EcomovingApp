@@ -48,6 +48,7 @@ export default function App() {
             {/* Cuentas */}
             <Route path="cuentas" element={<CuentasPage />} />
             <Route path="cuentas/nueva" element={<CuentaForm />} />
+            <Route path="cuentas/editar/:id" element={<CuentaForm />} />
             {/* Contactos */}
             <Route path="contactos" element={<ContactosPage />} />
             <Route path="contactos/nuevo" element={<ContactoForm />} />
