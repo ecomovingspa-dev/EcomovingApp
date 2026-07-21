@@ -536,9 +536,8 @@ export default function CuentasPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {[
-            { label: "Estado", val: filtroEstado, set: setFiltroEstado, opts: ["activo", "inactivo", "prospecto"] },
             { label: "Sector", val: filtroSector, set: setFiltroSector, opts: availableSectors },
             { label: "Segmento", val: filtroSegmento, set: setFiltroSegmento, opts: availableSegments },
             {
@@ -602,7 +601,7 @@ export default function CuentasPage() {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
-              {["Cliente", "Estado", "Sector", "Segmento", "Etapa", "Ciudad", ""].map((h, i) => (
+              {["Cliente", "Sector", "Segmento", "Etapa", "Ciudad", ""].map((h, i) => (
                 <th key={i} className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{h}</th>
               ))}
             </tr>
@@ -610,7 +609,7 @@ export default function CuentasPage() {
           <tbody className={`divide-y divide-gray-100 dark:divide-gray-700 transition-opacity duration-200 ${cargando ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
             {cargando && cuentasPaginadas.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-20 text-center">
+                <td colSpan={6} className="px-6 py-20 text-center">
                   <div className="flex flex-col items-center justify-center space-y-4">
                     <Loader2 className="h-10 w-10 text-blue-500 animate-spin mx-auto" />
                     <div className="text-gray-600 dark:text-gray-400 font-medium">⏳ Sincronizando cuentas...</div>
@@ -695,20 +694,6 @@ export default function CuentasPage() {
                         </span>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-4 py-2">
-                    <select
-                      value={cuenta.estado || "activo"}
-                      onChange={(e) => actualizarCuentaInline(cuenta.id, "estado", e.target.value)}
-                      className={`text-xs font-bold rounded-full px-4 py-1.5 border-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none cursor-pointer ${cuenta.estado === "activo" ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" :
-                        cuenta.estado === "prospecto" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" :
-                          "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-400"
-                        }`}
-                    >
-                      <option value="activo">ACTIVO</option>
-                      <option value="prospecto">PROSPECTO</option>
-                      <option value="inactivo">INACTIVO</option>
-                    </select>
                   </td>
 
                   <td className="px-4 py-2 min-w-[120px]">
@@ -891,7 +876,7 @@ export default function CuentasPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="px-6 py-20 text-center">
+                <td colSpan={6} className="px-6 py-20 text-center">
                   <div className="flex flex-col items-center justify-center space-y-4 text-gray-500 dark:text-gray-400">
                     <Search className="h-12 w-12 opacity-20" />
                     <div className="max-w-xs mx-auto">
