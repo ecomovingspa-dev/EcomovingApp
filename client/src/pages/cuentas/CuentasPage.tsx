@@ -100,10 +100,21 @@ export default function CuentasPage() {
 
   const cargarOpcionesFiltros = async () => {
     try {
-      // 1. Cargar sectores de las cuentas
+      // 1. Cargar sectores de las cuentas y normalizar mayúsculas/espacios
       const { data: accountsData } = await supabase.from("cuentas").select("sector");
       if (accountsData) {
-        setAvailableSectors(Array.from(new Set(accountsData.map((c: any) => c.sector).filter(Boolean))));
+        const sectorSet = new Set<string>();
+        accountsData.forEach((c: any) => {
+          if (c.sector && typeof c.sector === 'string') {
+            const trimmed = c.sector.trim();
+            if (trimmed) {
+              // Standardize casing: First letter uppercase, rest lowercase
+              const normalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+              sectorSet.add(normalized);
+            }
+          }
+        });
+        setAvailableSectors(Array.from(sectorSet).sort());
       }
 
       // 2. Cargar segmentos de la tabla de catálogo
@@ -182,7 +193,7 @@ export default function CuentasPage() {
         query = query.or(`cliente.ilike.%${busqueda}%,rut.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`);
       }
       if (filtroSector) {
-        query = query.eq("sector", filtroSector);
+        query = query.ilike("sector", filtroSector);
       }
       if (filtroSegmento) {
         query = query.eq("segmento", filtroSegmento);

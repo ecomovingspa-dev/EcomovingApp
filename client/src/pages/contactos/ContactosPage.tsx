@@ -202,7 +202,17 @@ export default function ContactosPage() {
     try {
       const { data: qSectors } = await supabase.from("cuentas").select("sector, segmento");
       if (qSectors) {
-        setAvailableSectors(Array.from(new Set(qSectors.map((c: any) => c.sector).filter(Boolean))));
+        const sectorSet = new Set<string>();
+        qSectors.forEach((c: any) => {
+          if (c.sector && typeof c.sector === 'string') {
+            const trimmed = c.sector.trim();
+            if (trimmed) {
+              const normalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+              sectorSet.add(normalized);
+            }
+          }
+        });
+        setAvailableSectors(Array.from(sectorSet).sort());
         const dbSegments = qSectors.map((c: any) => c.segmento).filter(Boolean);
         setAvailableSegments(Array.from(new Set([...SEGMENTOS_POR_DEFECTO, ...dbSegments])));
       }
