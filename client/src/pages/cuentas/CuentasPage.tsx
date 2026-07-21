@@ -22,6 +22,12 @@ export default function CuentasPage() {
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
   const [enriqueciendoId, setEnriqueciendoId] = useState<string | null>(null);
   const [buscandoSimilaresId, setBuscandoSimilaresId] = useState<string | null>(null);
+  const [cuentaIdActiva, setCuentaIdActiva] = useState<string | null>(null);
+  const [modalBasicAbierto, setModalBasicAbierto] = useState(false);
+  const [datosBasicosPropuestos, setDatosBasicosPropuestos] = useState<{ web: string; telefono: string; ciudad: string; segmento: string }>({ web: "", telefono: "", ciudad: "", segmento: "" });
+  const [modalSimilaresAbierto, setModalSimilaresAbierto] = useState(false);
+  const [listaSimilaresEncontradas, setListaSimilaresEncontradas] = useState<{ cliente: string; web?: string; ciudad?: string }[]>([]);
+  const [empresaOriginalNombre, setEmpresaOriginalNombre] = useState("");
 
   // Estados para edición inline de segmentos
   const [openSegmentId, setOpenSegmentId] = useState<string | null>(null);
@@ -282,13 +288,47 @@ export default function CuentasPage() {
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Error al enriquecer con IA");
       }
-      await cargarCuentas();
+      
+      const resData = data.data || {};
+      setDatosBasicosPropuestos({
+        web: resData.web || "",
+        telefono: resData.telefono || "",
+        ciudad: resData.ciudad || "",
+        segmento: resData.segmento || ""
+      });
+      setCuentaIdActiva(cuentaId);
+      setModalBasicAbierto(true);
     } catch (err: any) {
       console.error("Error al enriquecer con IA:", err);
       setError(err.message || "Error al enriquecer con IA");
       setTimeout(() => setError(""), 5000);
     } finally {
       setEnriqueciendoId(null);
+    }
+  };
+
+  const guardarDatosBasicosConfirmados = async () => {
+    if (!cuentaIdActiva) return;
+    try {
+      const payload = {
+        web: datosBasicosPropuestos.web || null,
+        telefono: datosBasicosPropuestos.telefono || null,
+        ciudad: datosBasicosPropuestos.ciudad || null,
+        segmento: datosBasicosPropuestos.segmento || null,
+        origen: 'AI'
+      };
+      
+      const { error } = await supabase
+        .from("cuentas")
+        .update(payload)
+        .eq("id", cuentaIdActiva);
+        
+      if (error) throw error;
+      setModalBasicAbierto(false);
+      await cargarCuentas();
+    } catch (err: any) {
+      console.error("Error al guardar datos enriquecidos:", err);
+      alert("Error al guardar datos enriquecidos: " + err.message);
     }
   };
 
@@ -307,13 +347,62 @@ export default function CuentasPage() {
       if (!response.ok || !data.success) {
         throw new Error(data.error || "Error al buscar empresas similares");
       }
-      await cargarCuentas();
+      
+      const { data: accountData } = await supabase.from("cuentas").select("cliente").eq("id", cuentaId).single();
+      const originalName = accountData?.cliente || "";
+      const similares = data.data?.similares || [];
+      
+      setEmpresaOriginalNombre(originalName);
+      setListaSimilaresEncontradas(similares);
+      setCuentaIdActiva(cuentaId);
+      setModalSimilaresAbierto(true);
     } catch (err: any) {
       console.error("Error al buscar similares con IA:", err);
       setError(err.message || "Error al buscar empresas similares con IA");
       setTimeout(() => setError(""), 5000);
     } finally {
       setBuscandoSimilaresId(null);
+    }
+  };
+
+  const guardarSimilaresConfirmadas = async () => {
+    if (!cuentaIdActiva) return;
+    try {
+      const { data: activeAcc } = await supabase.from("cuentas").select("sector, segmento").eq("id", cuentaIdActiva).single();
+      const sector = activeAcc?.sector || 'privado';
+      const segmento = activeAcc?.segmento || 'Servicios';
+
+      for (const emp of listaSimilaresEncontradas) {
+        if (!emp.cliente || emp.cliente.trim() === "") continue;
+
+        const { data: existingEmp } = await supabase
+          .from("cuentas")
+          .select("id")
+          .ilike("cliente", emp.cliente.trim())
+          .maybeSingle();
+
+        if (existingEmp) continue;
+
+        await supabase.from("cuentas").insert([
+          {
+            cliente: emp.cliente.trim(),
+            web: emp.web || null,
+            ciudad: emp.ciudad || "Santiago",
+            sector,
+            segmento,
+            estado: "prospecto",
+            etapa_prospeccion: "Sin Verificar",
+            origen: "AI",
+            cuenta_foco: true,
+            vendedor_id: null
+          }
+        ]);
+      }
+      setModalSimilaresAbierto(false);
+      await cargarCuentas();
+    } catch (err: any) {
+      console.error("Error al guardar similares:", err);
+      alert("Error al guardar similares: " + err.message);
     }
   };
 
@@ -833,6 +922,144 @@ export default function CuentasPage() {
           </div>
         )
       }
+
+      {/* Modal 1: Datos Básicos Encontrados */}
+      <Dialog open={modalBasicAbierto} onOpenChange={setModalBasicAbierto}>
+        <DialogContent className="max-w-md p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-cyan-500" />
+              Datos de Cuenta Propuestos por IA
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Revisa y edita los datos básicos encontrados antes de aplicarlos a la cuenta.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Sitio Web</label>
+              <input
+                type="text"
+                value={datosBasicosPropuestos.web}
+                onChange={(e) => setDatosBasicosPropuestos(p => ({ ...p, web: e.target.value }))}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                placeholder="www.ejemplo.com"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Teléfono</label>
+              <input
+                type="text"
+                value={datosBasicosPropuestos.telefono}
+                onChange={(e) => setDatosBasicosPropuestos(p => ({ ...p, telefono: e.target.value }))}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                placeholder="+56 2..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Ciudad</label>
+              <input
+                type="text"
+                value={datosBasicosPropuestos.ciudad}
+                onChange={(e) => setDatosBasicosPropuestos(p => ({ ...p, ciudad: e.target.value }))}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                placeholder="Santiago"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-1">Segmento</label>
+              <select
+                value={datosBasicosPropuestos.segmento}
+                onChange={(e) => setDatosBasicosPropuestos(p => ({ ...p, segmento: e.target.value }))}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Selecciona segmento...</option>
+                {SEGMENTOS_MAESTROS.map(seg => (
+                  <option key={seg} value={seg}>{seg}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={() => setModalBasicAbierto(false)}
+              className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-200 rounded-xl font-bold transition-all text-sm cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={guardarDatosBasicosConfirmados}
+              className="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl font-bold transition-all shadow-md text-sm cursor-pointer"
+            >
+              Aceptar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal 2: Empresas Similares Encontradas */}
+      <Dialog open={modalSimilaresAbierto} onOpenChange={setModalSimilaresAbierto}>
+        <DialogContent className="max-w-md p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Compass className="h-5 w-5 text-violet-500" />
+              Empresas Similares Encontradas
+            </DialogTitle>
+            <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Hemos detectado los siguientes competidores de <span className="font-bold text-gray-950 dark:text-white">"{empresaOriginalNombre}"</span> en Chile. Presiona Aceptar para crearlos.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-3 max-h-[300px] overflow-y-auto custom-scrollbar">
+            {listaSimilaresEncontradas.length === 0 ? (
+              <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400 font-medium">
+                No se encontraron nuevas empresas similares.
+              </div>
+            ) : (
+              listaSimilaresEncontradas.map((emp, index) => (
+                <div 
+                  key={index}
+                  className="flex flex-col p-3 rounded-xl bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800"
+                >
+                  <span className="font-bold text-sm text-gray-900 dark:text-white">
+                    ⭐ {emp.cliente}
+                  </span>
+                  <div className="flex items-center gap-4 mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                    {emp.ciudad && (
+                      <span>📍 {emp.ciudad}</span>
+                    )}
+                    {emp.web && (
+                      <span className="text-blue-500 truncate max-w-[200px]">
+                        🔗 {emp.web}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              onClick={() => setModalSimilaresAbierto(false)}
+              className="px-4 py-2.5 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 text-gray-700 dark:text-gray-200 rounded-xl font-bold transition-all text-sm cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={guardarSimilaresConfirmadas}
+              className="px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-bold transition-all shadow-md text-sm cursor-pointer"
+            >
+              Aceptar
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div >
   );
 }
