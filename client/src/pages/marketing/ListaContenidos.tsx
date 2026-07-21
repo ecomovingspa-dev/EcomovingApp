@@ -186,49 +186,49 @@ export default function ListaContenidos() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                        <table className="w-full text-left border-collapse table-fixed">
                             <thead className="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                                 <tr>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-20 text-center">ID</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-1/4">Asunto</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32">Archivo</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-64">Imagen Supabase (URL)</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contenido</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center w-24">Vista</th>
-                                    <th className="px-4 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-36">Acciones</th>
+                                    <th className="px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14 text-center">ID</th>
+                                    <th className="px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-40">Asunto</th>
+                                    <th className="px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-36">Archivo</th>
+                                    <th className="px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-48">Imagen Supabase (URL)</th>
+                                    <th className="px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Contenido</th>
+                                    <th className="px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center w-20">Vista</th>
+                                    <th className="px-3 py-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right w-24">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-700/50">
                                 {mensajes.map((msg) => (
                                     <tr key={msg.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
-                                        <td className="px-4 py-4">
-                                            <span className="inline-flex items-center justify-center px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-sm font-medium">
+                                        <td className="px-3 py-3 text-center">
+                                            <span className="inline-flex items-center justify-center px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-medium">
                                                 {msg.nombre_envio}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-4">
-                                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                                        <td className="px-3 py-3">
+                                            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 line-clamp-2">
                                                 {msg.asunto}
                                             </p>
                                         </td>
-                                        <td className="px-4 py-4">
+                                        <td className="px-3 py-3">
                                             {msg.nombre_imagen ? (
-                                                <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-                                                    <ImageIcon className="h-3.5 w-3.5 flex-shrink-0" />
-                                                    <span className="font-mono text-xs truncate">{msg.nombre_imagen}</span>
+                                                <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400 min-w-0">
+                                                    <ImageIcon className="h-3.5 w-3.5 flex-shrink-0 text-indigo-400" />
+                                                    <span className="font-mono text-[11px] truncate" title={msg.nombre_imagen}>{msg.nombre_imagen}</span>
                                                 </div>
                                             ) : (
                                                 <span className="text-xs text-gray-400">-</span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-4 min-w-[240px]">
+                                        <td className="px-3 py-3">
                                             {editandoUrl === msg.id ? (
                                                 <div className="flex flex-col gap-2 animate-in slide-in-from-top-1">
                                                     <textarea
                                                         value={urlTemporal}
                                                         onChange={(e) => setUrlTemporal(e.target.value)}
                                                         placeholder="Pega la URL pública de Supabase..."
-                                                        className="w-full px-3 py-2 text-[11px] font-mono border border-indigo-300 dark:border-indigo-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 outline-none h-20 resize-none shadow-inner"
+                                                        className="w-full px-2 py-1 text-[11px] font-mono border border-indigo-300 dark:border-indigo-700 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-indigo-500 outline-none h-16 resize-none shadow-inner"
                                                         autoFocus
                                                     />
                                                     <div className="flex gap-2">
@@ -243,7 +243,7 @@ export default function ListaContenidos() {
                                                                 setEditandoUrl(null);
                                                                 setUrlTemporal("");
                                                             }}
-                                                            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-xs font-bold transition-all"
+                                                            className="px-2.5 py-1 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-xs font-bold transition-all"
                                                         >
                                                             X
                                                         </button>
@@ -255,54 +255,54 @@ export default function ListaContenidos() {
                                                         setEditandoUrl(msg.id);
                                                         setUrlTemporal(msg.imagen_url || "");
                                                     }}
-                                                    className="group relative w-full h-auto min-h-[48px] flex items-center px-3 bg-gray-50/50 dark:bg-gray-900/40 border border-dashed border-gray-200 dark:border-gray-800 rounded-xl text-left transition-all hover:border-indigo-400/50 hover:bg-indigo-50/30 overflow-hidden py-2"
+                                                    className="group relative w-full h-auto min-h-[36px] flex items-center px-2 py-1 bg-gray-50/50 dark:bg-gray-900/40 border border-dashed border-gray-200 dark:border-gray-800 rounded-lg text-left transition-all hover:border-indigo-400/50 hover:bg-indigo-50/30 overflow-hidden"
                                                 >
-                                                    <div className="w-full pr-6 break-all whitespace-normal">
+                                                    <div className="w-full pr-5 min-w-0">
                                                         {msg.imagen_url ? (
-                                                            <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400">{msg.imagen_url}</span>
+                                                            <span className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 truncate block" title={msg.imagen_url}>{msg.imagen_url}</span>
                                                         ) : (
-                                                            <span className="text-[10px] text-gray-400 flex items-center gap-2">
-                                                                <Plus className="h-3 w-3" /> Configurar Imagen
+                                                            <span className="text-[10px] text-gray-400 flex items-center gap-1">
+                                                                <Plus className="h-3 w-3 flex-shrink-0" /> Configurar URL
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <Edit3 className="absolute right-3 h-3 w-3 text-gray-300 group-hover:text-indigo-400 transition-colors" />
+                                                    <Edit3 className="absolute right-2 h-3 w-3 text-gray-300 group-hover:text-indigo-400 transition-colors flex-shrink-0" />
                                                 </button>
                                             )}
                                         </td>
-                                        <td className="px-4 py-4">
-                                            <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
+                                        <td className="px-3 py-3 min-w-0">
+                                            <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2 break-words" title={msg.cuerpo || ""}>
                                                 {msg.cuerpo || "(Sin contenido)"}
                                             </p>
                                         </td>
-                                        <td className="px-4 py-4 text-center">
+                                        <td className="px-3 py-3 text-center">
                                             <button
                                                 onClick={() => setVistaPrevia(msg.cuerpo_html)}
-                                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded text-xs font-medium hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
                                             >
-                                                <Eye className="h-3 w-3" />
+                                                <Eye className="h-3.5 w-3.5" />
                                                 Ver
                                             </button>
                                         </td>
-                                        <td className="px-4 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
+                                        <td className="px-3 py-3 text-right">
+                                            <div className="flex items-center justify-end gap-1">
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => pruebaEnvio(msg)}
-                                                    className="h-10 w-10 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 border border-transparent hover:border-emerald-200 dark:hover:border-emerald-800 transition-all active:scale-90"
+                                                    className="h-8 w-8 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all"
                                                     title="Enviar correo de prueba"
                                                 >
-                                                    <Send className="h-5 w-5" />
+                                                    <Send className="h-4 w-4" />
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
                                                     onClick={() => eliminarMensaje(msg.id)}
-                                                    className="h-10 w-10 text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 border border-transparent hover:border-red-200 dark:hover:border-red-800 transition-all active:scale-90"
+                                                    className="h-8 w-8 text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
                                                     title="Eliminar de la secuencia"
                                                 >
-                                                    <Trash2 className="h-5 w-5" />
+                                                    <Trash2 className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </td>
