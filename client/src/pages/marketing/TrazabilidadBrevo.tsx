@@ -1061,9 +1061,9 @@ export default function TrazabilidadBrevo() {
         </div>
       </div>
 
-      {/* Fila 2: Filtros (Búsqueda, Todos/Críticos, Etapa, Ejecutivo, Sector, Segmento) */}
+      {/* Fila 2: Filtros (Búsqueda, Todos/Críticos, Ejecutivo, Sector, Segmento) */}
       <div className="flex flex-wrap items-center gap-3 bg-gray-900/40 p-4 rounded-2xl border border-gray-800 backdrop-blur-sm">
-        <div className="w-[280px] relative">
+        <div className="w-[320px] relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
           <input 
             type="text" 
@@ -1083,19 +1083,8 @@ export default function TrazabilidadBrevo() {
           {soloCriticos ? "FILTRANDO CRÍTICOS" : "TODOS"}
         </button>
 
-        <Select onValueChange={(val) => setFiltroEtapa(val)} defaultValue="todos">
-          <SelectTrigger className="w-[140px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
-            <SelectValue placeholder="ETAPA" />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-900 border-gray-800 text-white">
-            <SelectItem value="todos">TODAS LAS ETAPAS</SelectItem>
-            <SelectItem value="marketing">MARKETING</SelectItem>
-            <SelectItem value="prospeccion">PROSPECCIÓN</SelectItem>
-          </SelectContent>
-        </Select>
-
         <Select onValueChange={(val) => setFiltroEjecutivo(val)} defaultValue="todos">
-          <SelectTrigger className="w-[155px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+          <SelectTrigger className="w-[185px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
             <SelectValue placeholder="EJECUTIVO" />
           </SelectTrigger>
           <SelectContent className="bg-gray-900 border-gray-800 text-white">
@@ -1107,7 +1096,7 @@ export default function TrazabilidadBrevo() {
         </Select>
 
         <Select onValueChange={(val) => setFiltroSector(val)} defaultValue="todos">
-          <SelectTrigger className="w-[120px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+          <SelectTrigger className="w-[145px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
             <SelectValue placeholder="SECTOR" />
           </SelectTrigger>
           <SelectContent className="bg-gray-900 border-gray-800 text-white">
@@ -1118,7 +1107,7 @@ export default function TrazabilidadBrevo() {
         </Select>
 
         <Select onValueChange={(val) => setFiltroSegmento(val)} defaultValue="todos">
-          <SelectTrigger className="w-[130px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+          <SelectTrigger className="w-[160px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
             <SelectValue placeholder="SEGMENTO" />
           </SelectTrigger>
           <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-60 overflow-y-auto">
