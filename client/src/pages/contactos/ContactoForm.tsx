@@ -54,10 +54,19 @@ export default function ContactoForm() {
 
   const [busquedaCuentas, setBusquedaCuentas] = useState("");
 
-  const cuentasFiltradas = (cuentas || []).filter((c) =>
-    c.cliente?.toLowerCase().includes(busquedaCuentas.toLowerCase()) ||
-    c.rut?.toLowerCase().includes(busquedaCuentas.toLowerCase())
-  );
+  const normalizarTexto = (texto: string) => {
+    return texto
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  };
+
+  const cuentasFiltradas = (cuentas || []).filter((c) => {
+    const queryNorm = normalizarTexto(busquedaCuentas);
+    const clienteNorm = normalizarTexto(c.cliente || "");
+    const rutNorm = normalizarTexto(c.rut || "");
+    return clienteNorm.includes(queryNorm) || rutNorm.includes(queryNorm);
+  });
 
   useEffect(() => {
     cargarCuentas();
@@ -65,14 +74,33 @@ export default function ContactoForm() {
 
   const cargarCuentas = async () => {
     try {
-      const { data, error } = await supabase
-        .from("cuentas")
-        .select("id, cliente, rut, estado")
-        .neq("estado", "inactivo") // Permitir cuentas con estado activo o prospecto (excluye inactivo)
-        .order("cliente");
+      let allData: Cuenta[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
-      setCuentas(data || []);
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("cuentas")
+          .select("id, cliente, rut, estado")
+          .neq("estado", "inactivo") // Permitir cuentas con estado activo o prospecto (excluye inactivo)
+          .order("cliente")
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < pageSize) {
+            hasMore = false;
+          } else {
+            page++;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      setCuentas(allData);
     } catch (error: any) {
       console.error("Error al cargar cuentas:", error);
       setMensaje("❌ Error al cargar cuentas");
