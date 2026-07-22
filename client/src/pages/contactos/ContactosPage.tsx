@@ -854,11 +854,6 @@ export default function ContactosPage() {
                               IA
                             </span>
                           )}
-                          {contacto.etapa !== "prospeccion" && (contacto.indice_secuencia === -1 || (contacto.indice_secuencia !== null && contacto.indice_secuencia !== undefined && contacto.indice_secuencia > 0)) ? (
-                            <span className="ml-1 px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/20 text-violet-700 dark:text-violet-400 text-[8px] font-black uppercase tracking-wider leading-none flex items-center gap-0.5" title="Este contacto ya recibió la campaña de Prospección">
-                              ✓ Prosp. Ok
-                            </span>
-                          ) : null}
                         </div>
                         <span className="text-[10px] text-gray-400 dark:text-gray-500 font-bold mt-1">
                           👤 {contacto.vendedores?.nombre || "Sin Asignar (IA)"}
