@@ -8,6 +8,7 @@ export interface Cuenta {
   estado?: string;
   ciudad?: string;
   web?: string;
+  telefono?: string;
   origen?: string;
   cuenta_foco?: boolean;
   etapa_prospeccion?: string;

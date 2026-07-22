@@ -22,9 +22,10 @@ export default function CuentaForm() {
     rut: "",
     sector: "",
     segmento: "",
-    estado: "activo",
+    estado: "prospecto",
     ciudad: "",
     web: "",
+    telefono: "",
     cuenta_foco: false,
     etapa_prospeccion: "Sin Verificar",
     vendedor_id: "",
@@ -47,11 +48,21 @@ export default function CuentaForm() {
 
   const cargarOpcionesFiltros = async () => {
     try {
-      // 1. Cargar sectores de las cuentas
+      // 1. Cargar sectores de las cuentas y normalizar mayúsculas/espacios
       const { data: accountsData } = await supabase.from("cuentas").select("sector");
       if (accountsData) {
-        const dbSectors = accountsData.map((c: any) => c.sector).filter(Boolean);
-        setAvailableSectors(prev => Array.from(new Set([...prev, ...dbSectors])).sort());
+        const sectorSet = new Set<string>(["Privado", "Público"]);
+        accountsData.forEach((c: any) => {
+          if (c.sector && typeof c.sector === 'string') {
+            const trimmed = c.sector.trim();
+            if (trimmed) {
+              // Standardize casing: First letter uppercase, rest lowercase
+              const normalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+              sectorSet.add(normalized);
+            }
+          }
+        });
+        setAvailableSectors(Array.from(sectorSet).sort());
       }
 
       // 2. Cargar segmentos oficiales del catálogo
@@ -243,17 +254,15 @@ export default function CuentaForm() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Estado
+                Teléfono de la Cuenta
               </label>
-              <select
-                value={cuenta.estado}
-                onChange={(e) => handleChange("estado", e.target.value)}
+              <input
+                type="text"
+                value={cuenta.telefono || ""}
+                onChange={(e) => handleChange("telefono", e.target.value)}
                 className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-3 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="activo">Activo</option>
-                <option value="inactivo">Inactivo</option>
-                <option value="prospecto">Prospecto</option>
-              </select>
+                placeholder="Ej: +56 9 1234 5678"
+              />
             </div>
 
             <div className="flex items-center gap-3 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-xl p-4 md:col-span-2">
