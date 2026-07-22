@@ -629,7 +629,7 @@ export default function CuentasPage() {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
-              {["Cliente", "Sector", "Segmento", "Etapa", "Ciudad", ""].map((h, i) => (
+              {["Cliente", "Teléfono", "Sector", "Segmento", "Etapa", "Ciudad", ""].map((h, i) => (
                 <th key={i} className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{h}</th>
               ))}
             </tr>
@@ -637,7 +637,7 @@ export default function CuentasPage() {
           <tbody className={`divide-y divide-gray-100 dark:divide-gray-700 transition-opacity duration-200 ${cargando ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
             {cargando && cuentasPaginadas.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-20 text-center">
+                <td colSpan={7} className="px-6 py-20 text-center">
                   <div className="flex flex-col items-center justify-center space-y-4">
                     <Loader2 className="h-10 w-10 text-blue-500 animate-spin mx-auto" />
                     <div className="text-gray-600 dark:text-gray-400 font-medium">⏳ Sincronizando cuentas...</div>
@@ -724,6 +724,14 @@ export default function CuentasPage() {
                     </div>
                   </td>
 
+                  <td className="px-4 py-2 min-w-[150px]">
+                    <input
+                      defaultValue={cuenta.telefono || ""}
+                      onBlur={(e) => actualizarCuentaInline(cuenta.id, "telefono", e.target.value)}
+                      placeholder="Sin teléfono"
+                      className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all font-mono"
+                    />
+                  </td>
                   <td className="px-4 py-2 min-w-[120px]">
                     <input
                       defaultValue={cuenta.sector || ""}
@@ -904,7 +912,7 @@ export default function CuentasPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={6} className="px-6 py-20 text-center">
+                <td colSpan={7} className="px-6 py-20 text-center">
                   <div className="flex flex-col items-center justify-center space-y-4 text-gray-500 dark:text-gray-400">
                     <Search className="h-12 w-12 opacity-20" />
                     <div className="max-w-xs mx-auto">
