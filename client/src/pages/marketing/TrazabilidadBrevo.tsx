@@ -65,6 +65,7 @@ export default function TrazabilidadBrevo() {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState("");
   const [soloCriticos, setSoloCriticos] = useState(false);
+  const [soloFoco, setSoloFoco] = useState(false);
   const [vendedor, setVendedor] = useState("Vendedor 1");
   const [filtroEtapa, setFiltroEtapa] = useState("todos");
   const [filtroSector, setFiltroSector] = useState("todos");
@@ -477,7 +478,7 @@ export default function TrazabilidadBrevo() {
       while (hasMore) {
         const { data, error } = await supabase
           .from("cuentas")
-          .select("id, cliente, sector, segmento")
+          .select("id, cliente, sector, segmento, cuenta_foco")
           .order("cliente")
           .range(from, to);
 
@@ -530,21 +531,23 @@ export default function TrazabilidadBrevo() {
     const validContacts = contactsData || [];
 
     // Build accounts map
-    const accountsMap: Record<string, { cliente: string; sector: string; segmento?: string }> = {};
+    const accountsMap: Record<string, { cliente: string; sector: string; segmento?: string; cuenta_foco?: boolean }> = {};
     currentCuentas.forEach((acc: any) => {
       accountsMap[acc.id] = { 
         cliente: acc.cliente, 
         sector: acc.sector || 'privado',
-        segmento: acc.segmento || ''
+        segmento: acc.segmento || '',
+        cuenta_foco: acc.cuenta_foco || false
       };
     });
 
-    // Embed the account name, sector and segment directly in the contact object mapping:
+    // Embed the account name, sector, segment and focus state directly in the contact object mapping:
     validContacts.forEach((c: any) => {
       if (c.cuenta_id && accountsMap[c.cuenta_id]) {
         c.empresa_rel_name = accountsMap[c.cuenta_id].cliente;
         c.empresa_rel_sector = accountsMap[c.cuenta_id].sector;
         c.empresa_rel_segmento = accountsMap[c.cuenta_id].segmento;
+        c.empresa_rel_cuenta_foco = accountsMap[c.cuenta_id].cuenta_foco;
       }
     });
 
@@ -971,6 +974,7 @@ export default function TrazabilidadBrevo() {
     const accountName = c.empresa_rel_name || c.empresa || "";
     const matchesSearch = normalizeString(accountName).includes(normalizeString(filtro));
     const matchesCriticos = soloCriticos ? c.es_bloqueado : true;
+    const matchesFoco = soloFoco ? (c.empresa_rel_cuenta_foco === true) : true;
     const matchesEtapa = filtroEtapa === "todos" ? true : (c.etapa === filtroEtapa);
     
     const contactSector = c.empresa_rel_sector?.toLowerCase() || "privado";
@@ -992,7 +996,7 @@ export default function TrazabilidadBrevo() {
       (c.empresa_rel_segmento || "").toLowerCase() === filtroSegmento.toLowerCase()
     );
 
-    return matchesSearch && matchesCriticos && matchesEtapa && matchesSector && matchesEjecutivo && matchesSegmento;
+    return matchesSearch && matchesCriticos && matchesFoco && matchesEtapa && matchesSector && matchesEjecutivo && matchesSegmento;
   });
 
   const sortedAndFiltered = [...filtered].sort((a, b) => {
@@ -1076,11 +1080,20 @@ export default function TrazabilidadBrevo() {
 
         <button 
           onClick={() => setSoloCriticos(!soloCriticos)}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+          className={`px-4 py-2 rounded-xl text-xs font-black transition-all h-[36px] ${
             soloCriticos ? "bg-red-500 text-white shadow-lg shadow-red-500/50" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
           }`}
         >
           {soloCriticos ? "FILTRANDO CRÍTICOS" : "TODOS"}
+        </button>
+
+        <button 
+          onClick={() => setSoloFoco(!soloFoco)}
+          className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1 h-[36px] ${
+            soloFoco ? "bg-yellow-500 text-gray-950 shadow-lg shadow-yellow-500/50" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+          }`}
+        >
+          ⭐ {soloFoco ? "SOLO CUENTAS FOCO" : "TODAS LAS CUENTAS"}
         </button>
 
         <Select onValueChange={(val) => setFiltroEjecutivo(val)} defaultValue="todos">
