@@ -574,40 +574,7 @@ export default function ContactosPage() {
     setGraduando(false);
   };
 
-  const iniciarDesactivacion = (contacto: ContactoConCuenta) => {
-    setContactoADesactivar(contacto);
-    setShowDesactivarModal(true);
-  };
-
-  const ejecutarDegradacion = async () => {
-    if (!contactoADesactivar) return;
-    try {
-      const marketingStage = contactoADesactivar.etapa_envio || 1;
-      const { error } = await supabase
-        .from("contactos")
-        .update({
-          etapa: "prospeccion",
-          etapa_envio: 1,
-          proximo_envio: null,
-          estado: "activo",
-          indice_secuencia: marketingStage
-        })
-        .eq("id", contactoADesactivar.id);
-      if (error) throw error;
-      setMensaje("✅ Contacto degradado a Prospección. Iniciando secuencia fría.");
-      cargarContactos(true);
-      setTimeout(() => setMensaje(""), 4000);
-    } catch (err: any) {
-      console.error("Error al degradar contacto:", err);
-      setMensaje("❌ Error al degradar contacto: " + err.message);
-    } finally {
-      setShowDesactivarModal(false);
-      setContactoADesactivar(null);
-    }
-  };
-
-  const ejecutarDesactivacion = async () => {
-    if (!contactoADesactivar) return;
+  const desactivarCampañaDirecto = async (contacto: ContactoConCuenta) => {
     try {
       const { error } = await supabase
         .from("contactos")
@@ -615,17 +582,14 @@ export default function ContactosPage() {
           estado: "inactivo",
           proximo_envio: null
         })
-        .eq("id", contactoADesactivar.id);
+        .eq("id", contacto.id);
       if (error) throw error;
-      setMensaje("✅ Contacto pausado. Estado establecido como Inactivo.");
+      setMensaje(`✅ Campaña de marketing desactivada para ${contacto.nombre || "contacto"}`);
       cargarContactos(true);
       setTimeout(() => setMensaje(""), 4000);
     } catch (err: any) {
-      console.error("Error al desactivar contacto:", err);
-      setMensaje("❌ Error al desactivar contacto: " + err.message);
-    } finally {
-      setShowDesactivarModal(false);
-      setContactoADesactivar(null);
+      console.error("Error al desactivar campaña:", err);
+      setMensaje("❌ Error al desactivar campaña: " + err.message);
     }
   };
   const totalPaginas = Math.ceil(totalRecords / filasPorPagina);
@@ -1008,7 +972,7 @@ export default function ContactosPage() {
                             if (contacto.etapa === "prospeccion" || contacto.estado === "inactivo") {
                               iniciarGraduacion(contacto);
                             } else {
-                              iniciarDesactivacion(contacto);
+                              desactivarCampañaDirecto(contacto);
                             }
                           }}
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${(contacto.etapa === "marketing" && contacto.estado === "activo")
@@ -1223,75 +1187,6 @@ export default function ContactosPage() {
                 ) : (
                   <><GraduationCap className="h-4 w-4 mr-2" />Confirmar Graduación</>
                 )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Desactivación / Degradación */}
-      {showDesactivarModal && contactoADesactivar && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-            {/* Header */}
-            <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-red-50 dark:bg-red-900/20">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="h-5 w-5 text-red-600 dark:text-red-400">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 dark:text-white text-sm">Desactivar Campaña de Marketing</h3>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                    {contactoADesactivar.cuentas?.cliente || "Empresa"} · {contactoADesactivar.correo}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div className="p-6 space-y-4">
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                Selecciona la acción que deseas aplicar al detener los envíos automáticos de marketing:
-              </p>
-              
-              <div className="space-y-3">
-                {/* Opción A */}
-                <button 
-                  onClick={ejecutarDegradacion}
-                  className="w-full text-left p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-blue-500 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all flex flex-col gap-1 outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <span className="text-xs font-bold text-gray-900 dark:text-white">Opción A: Degradar a Prospección</span>
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                    Congela Marketing y transfiere el contacto a la campaña fría (correos uno a uno desde el paso 1). Mantiene el contacto activo.
-                  </span>
-                </button>
-
-                {/* Opción C */}
-                <button 
-                  onClick={ejecutarDesactivacion}
-                  className="w-full text-left p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-red-500 dark:hover:border-red-500 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-all flex flex-col gap-1 outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  <span className="text-xs font-bold text-gray-900 dark:text-white">Opción C: Desactivar / Pausar Contacto</span>
-                  <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                    Marca el contacto como Inactivo. Se congela toda campaña y se retira del Sentinel.
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-end">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setShowDesactivarModal(false);
-                  setContactoADesactivar(null);
-                }}
-                className="text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                Cancelar
               </Button>
             </div>
           </div>
