@@ -273,7 +273,7 @@ export default function ContactosPage() {
           `
           *,
           vendedores(nombre),
-          cuentas:cuentas!contactos_cuenta_id_fkey${(filtroSegmento || filtroSector) ? "!inner" : ""}(cliente, segmento, sector)
+          cuentas:cuentas!contactos_cuenta_id_fkey${(filtroSegmento || filtroSector) ? "!inner" : ""}(cliente, segmento, sector, cuenta_foco, etapa_prospeccion)
         `,
           { count: "exact" }
         );
@@ -786,10 +786,13 @@ export default function ContactosPage() {
                             <PopoverTrigger asChild>
                               <button
                                 type="button"
-                                className="text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-tighter truncate hover:text-blue-600 dark:hover:text-blue-400 hover:underline outline-none text-left max-w-[140px] cursor-pointer"
+                                className="text-[9px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-tighter truncate hover:text-blue-600 dark:hover:text-blue-400 hover:underline outline-none text-left max-w-[140px] cursor-pointer flex items-center gap-0.5"
                                 title={contacto.cuentas?.cliente || "Sin empresa asignada"}
                               >
                                 {contacto.cuentas?.cliente || "Sin empresa asignada"}
+                                {contacto.cuentas?.cuenta_foco && contacto.cuentas?.etapa_prospeccion === 'Verificado' && (
+                                  <span className="text-yellow-500 text-[10px] ml-0.5 font-bold animate-pulse" title="Cuenta Foco Verificada">⭐</span>
+                                )}
                               </button>
                             </PopoverTrigger>
                             <PopoverContent className="w-64 p-0 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl z-50" align="start">
