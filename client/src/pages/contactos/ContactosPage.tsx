@@ -153,8 +153,7 @@ export default function ContactosPage() {
   };
   const [filtroSegmento, setFiltroSegmento] = useState("");
   const [filtroSector, setFiltroSector] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState("");
-  const [filtroEtapa, setFiltroEtapa] = useState("");
+  const [filtroCampana, setFiltroCampana] = useState("");
   const [modalProspeccion, setModalProspeccion] = useState(false);
   // Graduación obsoleta remoción
   // Desactivación/Degradación obsoleta remoción
@@ -240,7 +239,7 @@ export default function ContactosPage() {
       setTotalRecords(0);
       setCargando(false);
     }
-  }, [paginaActual, busqueda, filtroEstado, filtroEtapa, filtroSegmento, filtroSector, hayFiltroActivo]);
+  }, [paginaActual, busqueda, filtroCampana, filtroSegmento, filtroSector, hayFiltroActivo]);
 
   const cargarContactos = async (silent = false) => {
     try {
@@ -286,12 +285,10 @@ export default function ContactosPage() {
         query = query.or(orConditions.join(','));
       }
 
-      if (filtroEstado) {
-        query = query.eq("estado", filtroEstado);
-      }
-
-      if (filtroEtapa) {
-        query = query.eq("etapa", filtroEtapa);
+      if (filtroCampana === "marketing") {
+        query = query.eq("etapa", "marketing").eq("estado", "activo");
+      } else if (filtroCampana === "pausa") {
+        query = query.eq("estado", "inactivo");
       }
 
       if (filtroSegmento) {
@@ -648,27 +645,16 @@ export default function ContactosPage() {
         </div>
 
         {/* Filtros */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          {/* Filtro Etapa */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Filtro Campaña */}
           <select
-            value={filtroEtapa}
-            onChange={(e) => { setFiltroEtapa(e.target.value); setPaginaActual(1); }}
+            value={filtroCampana}
+            onChange={(e) => { setFiltroCampana(e.target.value); setPaginaActual(1); }}
             className="w-full border-none rounded-xl px-3 py-2.5 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 transition-all text-xs font-semibold"
           >
-            <option value="">Etapa: Todas</option>
-            <option value="prospeccion">🔍 Prospeccion</option>
+            <option value="">Campaña: Todas</option>
             <option value="marketing">📬 Marketing</option>
-          </select>
-
-          {/* Filtro Estado */}
-          <select
-            value={filtroEstado}
-            onChange={(e) => { setFiltroEstado(e.target.value); setPaginaActual(1); }}
-            className="w-full border-none rounded-xl px-3 py-2.5 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all text-xs font-semibold"
-          >
-            <option value="">Estado: Todos</option>
-            <option value="activo">Activo</option>
-            <option value="inactivo">Inactivo</option>
+            <option value="pausa">⏸️ Pausa</option>
           </select>
 
           {/* Filtro Segmento */}
@@ -704,8 +690,7 @@ export default function ContactosPage() {
             variant="outline"
             onClick={() => {
               setBusqueda("");
-              setFiltroEstado("");
-              setFiltroEtapa("");
+              setFiltroCampana("");
               setFiltroSegmento("");
               setFiltroSector("");
               setPaginaActual(1);
