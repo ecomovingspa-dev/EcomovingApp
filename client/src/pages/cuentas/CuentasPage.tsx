@@ -6,6 +6,7 @@ import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCc
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { SEGMENTOS_MAESTROS } from "../../utils/constants";
+import { useVendedores } from "../../hooks/useVendedores";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 
 export default function CuentasPage() {
+  const { vendedores } = useVendedores();
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [cuentasFiltradas, setCuentasFiltradas] = useState<Cuenta[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -48,6 +50,7 @@ export default function CuentasPage() {
   const [filtroSector, setFiltroSector] = useState("");
   const [filtroSegmento, setFiltroSegmento] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
+  const [filtroVendedor, setFiltroVendedor] = useState("");
 
   // Estados para paginación
   const [paginaActual, setPaginaActual] = useState(1);
@@ -166,8 +169,6 @@ export default function CuentasPage() {
     }
   };
 
-
-
   useEffect(() => {
     if (hayFiltroActivo) {
       cargarCuentas();
@@ -177,7 +178,7 @@ export default function CuentasPage() {
       setTotalRecords(0);
       setCargando(false);
     }
-  }, [paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, filtroFoco, filtroEtapa, hayFiltroActivo]);
+  }, [paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, filtroVendedor, filtroFoco, filtroEtapa, hayFiltroActivo]);
 
 
   const cargarCuentas = async () => {
@@ -201,6 +202,13 @@ export default function CuentasPage() {
       if (filtroEstado) {
         query = query.eq("estado", filtroEstado);
       }
+      if (filtroVendedor) {
+        if (filtroVendedor === "null") {
+          query = query.is("vendedor_id", null);
+        } else {
+          query = query.eq("vendedor_id", filtroVendedor);
+        }
+      }
       if (filtroFoco === "foco") {
         query = query.eq("cuenta_foco", true);
       }
@@ -219,11 +227,11 @@ export default function CuentasPage() {
       if (error) throw error;
 
       setCuentas(data || []);
-      setCuentasFiltradas(data || []); // Consistency for existing UI
-      if (count !== null) setTotalRecords(count);
-    } catch (error: any) {
-      console.error("Error:", error);
-      setError("Error al cargar las cuentas");
+      setCuentasFiltradas(data || []);
+      setTotalRecords(count || 0);
+    } catch (err: any) {
+      console.error("Error al cargar cuentas:", err);
+      setError("No se pudieron cargar las cuentas.");
     } finally {
       setCargando(false);
     }
@@ -237,6 +245,7 @@ export default function CuentasPage() {
     setFiltroSector("");
     setFiltroSegmento("");
     setFiltroEstado("");
+    setFiltroVendedor("");
     setFiltroFoco("todos");
     setFiltroEtapa("todas");
     setPaginaActual(1);
@@ -536,10 +545,20 @@ export default function CuentasPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
           {[
             { label: "Sector", val: filtroSector, set: setFiltroSector, opts: availableSectors },
             { label: "Segmento", val: filtroSegmento, set: setFiltroSegmento, opts: availableSegments },
+            {
+              label: "Vendedor",
+              val: filtroVendedor,
+              set: setFiltroVendedor,
+              opts: [
+                { value: "", label: "Vendedor: Todos" },
+                ...vendedores.map((v) => ({ value: v.id, label: `👤 ${v.nombre}` })),
+                { value: "null", label: "👤 Sin Asignar (IA)" }
+              ]
+            },
             {
               label: "Prioridad",
               val: filtroFoco,
@@ -564,7 +583,7 @@ export default function CuentasPage() {
               <select
                 value={f.val}
                 onChange={(e) => f.set(e.target.value)}
-                className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all font-medium capitalize"
+                className="w-full border-none rounded-xl px-3 py-2.5 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all text-xs font-semibold capitalize"
               >
                 {Array.isArray(f.opts) && typeof f.opts[0] === 'string' ? (
                   <>
@@ -583,9 +602,9 @@ export default function CuentasPage() {
           ))}
           <button
             onClick={handleReset}
-            className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 dark:bg-gray-700 rounded-xl font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all"
+            className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-gray-100 dark:bg-gray-700 rounded-xl font-bold text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all shrink-0 cursor-pointer"
           >
-            <RotateCcw className="h-4 w-4" /> Resetear
+            <RotateCcw className="h-3.5 w-3.5" /> Resetear
           </button>
         </div>
       </div>
