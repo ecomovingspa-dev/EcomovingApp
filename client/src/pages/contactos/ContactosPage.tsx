@@ -992,11 +992,11 @@ export default function ContactosPage() {
                       <select
                         value={contacto.cuentas?.segmento || ""}
                         onChange={(e) => actualizarSegmentoCuenta(contacto.cuenta_id, e.target.value)}
-                        className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-2 py-1 w-full text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 outline-none uppercase font-bold tracking-tight cursor-pointer text-[10px] h-[28px]"
+                        className="bg-gray-50 dark:bg-[#1e293b] border border-gray-200 dark:border-gray-700/50 rounded-lg px-2 py-1 w-full text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 outline-none uppercase font-bold tracking-tight cursor-pointer text-[10px] h-[28px]"
                       >
-                        <option value="" className="bg-white dark:bg-gray-950 text-gray-400 dark:text-gray-500">-</option>
+                        <option value="" className="bg-white dark:bg-[#1e293b] text-gray-400 dark:text-gray-500">-</option>
                         {availableSegments.map((seg) => (
-                          <option key={seg} value={seg} className="bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-200">{seg}</option>
+                          <option key={seg} value={seg} className="bg-white dark:bg-[#1e293b] text-gray-700 dark:text-gray-200">{seg}</option>
                         ))}
                       </select>
                     </td>
@@ -1006,11 +1006,11 @@ export default function ContactosPage() {
                       <select
                         value={contacto.cuentas?.sector || ""}
                         onChange={(e) => actualizarSectorCuenta(contacto.cuenta_id, e.target.value)}
-                        className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg px-2 py-1 w-full text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 outline-none uppercase font-bold tracking-tight cursor-pointer text-[10px] h-[28px]"
+                        className="bg-gray-50 dark:bg-[#1e293b] border border-gray-200 dark:border-gray-700/50 rounded-lg px-2 py-1 w-full text-gray-700 dark:text-gray-200 focus:ring-1 focus:ring-blue-500 outline-none uppercase font-bold tracking-tight cursor-pointer text-[10px] h-[28px]"
                       >
-                        <option value="" className="bg-white dark:bg-gray-950 text-gray-400 dark:text-gray-500">-</option>
+                        <option value="" className="bg-white dark:bg-[#1e293b] text-gray-400 dark:text-gray-500">-</option>
                         {availableSectors.map((sec) => (
-                          <option key={sec} value={sec} className="bg-white dark:bg-gray-950 text-gray-700 dark:text-gray-200">{sec}</option>
+                          <option key={sec} value={sec} className="bg-white dark:bg-[#1e293b] text-gray-700 dark:text-gray-200">{sec}</option>
                         ))}
                       </select>
                     </td>
