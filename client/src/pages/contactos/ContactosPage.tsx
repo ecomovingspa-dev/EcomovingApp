@@ -703,12 +703,12 @@ export default function ContactosPage() {
         </div>
 
         {/* Filtros */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
           {/* Filtro Etapa */}
           <select
             value={filtroEtapa}
             onChange={(e) => { setFiltroEtapa(e.target.value); setPaginaActual(1); }}
-            className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 transition-all font-medium"
+            className="w-full border-none rounded-xl px-3 py-2.5 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 transition-all text-xs font-semibold"
           >
             <option value="">Etapa: Todas</option>
             <option value="prospeccion">🔍 Prospeccion</option>
@@ -719,7 +719,7 @@ export default function ContactosPage() {
           <select
             value={filtroEstado}
             onChange={(e) => { setFiltroEstado(e.target.value); setPaginaActual(1); }}
-            className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+            className="w-full border-none rounded-xl px-3 py-2.5 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all text-xs font-semibold"
           >
             <option value="">Estado: Todos</option>
             <option value="activo">Activo</option>
@@ -730,7 +730,7 @@ export default function ContactosPage() {
           <select
             value={filtroSegmento}
             onChange={(e) => { setFiltroSegmento(e.target.value); setPaginaActual(1); }}
-            className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+            className="w-full border-none rounded-xl px-3 py-2.5 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all text-xs font-semibold"
           >
             <option value="">Segmento: Todos</option>
             {availableSegments.map((segmento) => (
@@ -744,7 +744,7 @@ export default function ContactosPage() {
           <select
             value={filtroSector}
             onChange={(e) => { setFiltroSector(e.target.value); setPaginaActual(1); }}
-            className="w-full border-none rounded-xl px-4 py-3 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+            className="w-full border-none rounded-xl px-3 py-2.5 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all text-xs font-semibold"
           >
             <option value="">Sector: Todos</option>
             {availableSectors.map((sector) => (
@@ -765,12 +765,10 @@ export default function ContactosPage() {
               setFiltroSector("");
               setPaginaActual(1);
             }}
-            className="w-full border-none rounded-xl px-4 py-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all font-mono text-[10px] uppercase tracking-widest"
+            className="w-full border-none rounded-xl px-3 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-200 dark:hover:bg-gray-600 transition-all text-xs uppercase cursor-pointer"
           >
             Resetear
           </Button>
-
-
         </div>
       </div>
 
