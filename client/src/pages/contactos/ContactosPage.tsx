@@ -73,7 +73,11 @@ export default function ContactosPage() {
   const [contactos, setContactos] = useState<ContactoConCuenta[]>([]);
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState("");
-  const [busqueda, setBusqueda] = useState("");
+  const [busqueda, setBusqueda] = useState(() => sessionStorage.getItem("contactos_busqueda") || "");
+
+  useEffect(() => {
+    sessionStorage.setItem("contactos_busqueda", busqueda);
+  }, [busqueda]);
   const [enriqueciendoId, setEnriqueciendoId] = useState<string | null>(null);
   const [loadingEnriquecimiento, setLoadingEnriquecimiento] = useState(false);
 
@@ -151,9 +155,14 @@ export default function ContactosPage() {
       setLoadingEnriquecimiento(false);
     }
   };
-  const [filtroSegmento, setFiltroSegmento] = useState("");
-  const [filtroSector, setFiltroSector] = useState("");
-  const [filtroCampana, setFiltroCampana] = useState("");
+  const [filtroSegmento, setFiltroSegmento] = useState(() => sessionStorage.getItem("contactos_filtroSegmento") || "");
+  const [filtroSector, setFiltroSector] = useState(() => sessionStorage.getItem("contactos_filtroSector") || "");
+  const [filtroCampana, setFiltroCampana] = useState(() => sessionStorage.getItem("contactos_filtroCampana") || "");
+
+  useEffect(() => { sessionStorage.setItem("contactos_filtroSegmento", filtroSegmento); }, [filtroSegmento]);
+  useEffect(() => { sessionStorage.setItem("contactos_filtroSector", filtroSector); }, [filtroSector]);
+  useEffect(() => { sessionStorage.setItem("contactos_filtroCampana", filtroCampana); }, [filtroCampana]);
+
   const [modalProspeccion, setModalProspeccion] = useState(false);
   // Graduación obsoleta remoción
   // Desactivación/Degradación obsoleta remoción

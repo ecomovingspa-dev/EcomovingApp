@@ -36,8 +36,8 @@ export default function CuentasPage() {
   const [searchSegment, setSearchSegment] = useState("");
 
   // Estados para prospección
-  const [filtroFoco, setFiltroFoco] = useState<string>("todos");
-  const [filtroEtapa, setFiltroEtapa] = useState<string>("todas");
+  const [filtroFoco, setFiltroFoco] = useState<string>(() => sessionStorage.getItem("cuentas_filtroFoco") || "todos");
+  const [filtroEtapa, setFiltroEtapa] = useState<string>(() => sessionStorage.getItem("cuentas_filtroEtapa") || "todas");
   const [stats, setStats] = useState({
     totalFoco: 0,
     sinVerificar: 0,
@@ -45,12 +45,21 @@ export default function CuentasPage() {
   });
 
   // Estados para filtros y búsqueda
-  const [busqueda, setBusqueda] = useState("");
-  const [busquedaAplicada, setBusquedaAplicada] = useState("");
-  const [filtroSector, setFiltroSector] = useState("");
-  const [filtroSegmento, setFiltroSegmento] = useState("");
-  const [filtroEstado, setFiltroEstado] = useState("");
-  const [filtroVendedor, setFiltroVendedor] = useState("");
+  const [busqueda, setBusqueda] = useState(() => sessionStorage.getItem("cuentas_busqueda") || "");
+  const [busquedaAplicada, setBusquedaAplicada] = useState(() => sessionStorage.getItem("cuentas_busqueda") || "");
+  const [filtroSector, setFiltroSector] = useState(() => sessionStorage.getItem("cuentas_filtroSector") || "");
+  const [filtroSegmento, setFiltroSegmento] = useState(() => sessionStorage.getItem("cuentas_filtroSegmento") || "");
+  const [filtroEstado, setFiltroEstado] = useState(() => sessionStorage.getItem("cuentas_filtroEstado") || "");
+  const [filtroVendedor, setFiltroVendedor] = useState(() => sessionStorage.getItem("cuentas_filtroVendedor") || "");
+
+  // Sincronizar filtros a sessionStorage para persistencia en navegación
+  useEffect(() => { sessionStorage.setItem("cuentas_filtroFoco", filtroFoco); }, [filtroFoco]);
+  useEffect(() => { sessionStorage.setItem("cuentas_filtroEtapa", filtroEtapa); }, [filtroEtapa]);
+  useEffect(() => { sessionStorage.setItem("cuentas_busqueda", busqueda); }, [busqueda]);
+  useEffect(() => { sessionStorage.setItem("cuentas_filtroSector", filtroSector); }, [filtroSector]);
+  useEffect(() => { sessionStorage.setItem("cuentas_filtroSegmento", filtroSegmento); }, [filtroSegmento]);
+  useEffect(() => { sessionStorage.setItem("cuentas_filtroEstado", filtroEstado); }, [filtroEstado]);
+  useEffect(() => { sessionStorage.setItem("cuentas_filtroVendedor", filtroVendedor); }, [filtroVendedor]);
 
   // Estados para paginación
   const [paginaActual, setPaginaActual] = useState(1);
