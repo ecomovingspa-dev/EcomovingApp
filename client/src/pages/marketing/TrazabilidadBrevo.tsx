@@ -1164,7 +1164,6 @@ export default function TrazabilidadBrevo() {
                     {d.label}
                   </th>
                 ))}
-                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[80px] text-gray-500">CORTESÍA</th>
                 <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[110px] text-gray-500">ACCIONES</th>
               </tr>
             </thead>
@@ -1273,16 +1272,6 @@ export default function TrazabilidadBrevo() {
                       </div>
                     </td>
                   ))}
-
-                  <td className="px-2 py-5 text-center border-l border-gray-900/10">
-                    <div className="flex justify-center items-center">
-                      {c.correo_cortesia_enviado ? (
-                        <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" title="Correo de cortesía enviado" />
-                      ) : (
-                        <Circle className="h-4.5 w-4.5 text-gray-700" title="Pendiente de envío" />
-                      )}
-                    </div>
-                  </td>
 
                   <td className="px-2 py-5 text-center border-l border-gray-900/10">
                     <div className="flex justify-center items-center gap-2">
