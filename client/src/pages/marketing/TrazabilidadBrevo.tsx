@@ -1528,13 +1528,11 @@ export default function TrazabilidadBrevo() {
                             // 1. Copiar cuerpo limpio al portapapeles
                             await navigator.clipboard.writeText(cleanBody);
 
-                            // 2. Abrir Zoho Mail directamente usando la ruta #compose con query parameters para autocompletar
-                             const encodedSubject = encodeURIComponent(draftData.subject);
-                             const encodedEmail = encodeURIComponent(draftData.email);
-                             const zohoComposeUrl = `https://mail.zoho.com/zm/#compose?to=${encodedEmail}&subject=${encodedSubject}`;
-                             window.open(zohoComposeUrl, "_blank");
+                            // 2. Ejecutar mailto usando location.replace para forzar el protocolo directamente en la ventana sin abrir pestañas vacías
+                             const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}`;
+                             window.location.replace(mailto);
 
-                             toast.success("Cuerpo copiado. Redactando en Zoho Mail...");
+                             toast.success("Cuerpo copiado. Redactando en cliente de correo...");
 
                             if (draftData.contactoId) {
                               const activeTmplId = selectedTemplateId || "builtin-sin-aperturas";
