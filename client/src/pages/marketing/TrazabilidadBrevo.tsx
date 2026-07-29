@@ -1528,8 +1528,9 @@ export default function TrazabilidadBrevo() {
                             // 1. Copiar cuerpo limpio al portapapeles
                             await navigator.clipboard.writeText(cleanBody);
 
-                            // 2. Abrir Zoho Mail directamente en la web con el destinatario y asunto
-                            const zohoUrl = `https://mail.zoho.com/zm/#mail/compose/new/to=${encodeURIComponent(draftData.email)}/subject=${encodeURIComponent(draftData.subject)}`;
+                            // 2. Abrir Zoho Mail directamente usando su manejador web de mailto
+                            const rawMailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}`;
+                            const zohoUrl = `https://mail.zoho.com/mail/compose.do?extsrc=mailto&url=${encodeURIComponent(rawMailto)}`;
                             window.open(zohoUrl, "_blank");
 
                             toast.success("Correo copiado. Presiona Ctrl + V en Zoho Mail.");
