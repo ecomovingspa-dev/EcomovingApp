@@ -1527,7 +1527,7 @@ export default function TrazabilidadBrevo() {
 
                              const vendedorEmails: Record<string, string> = {
                                "Mario Osorio C.": "mario@ecomoving.cl",
-                               "Jimena Lara F.": "jlara@ecomoving.cl" 
+                               "Jimena Lara F.": "jimena@ecomoving.cl" 
                              };
                              const userEmail = vendedorEmails[vendedor] || "mario@ecomoving.cl";
 
@@ -1596,7 +1596,8 @@ export default function TrazabilidadBrevo() {
                             }
                           } catch (err: any) {
                             console.error("Error al registrar envío o copiar:", err);
-                            toast.error("Error al procesar el envío");
+                            const errorMsg = err.response?.data?.error || err.message || "Error desconocido";
+                            toast.error(`Error al procesar el envío: ${errorMsg}`);
                           }
                         }
                         setIsModalOpen(false);
