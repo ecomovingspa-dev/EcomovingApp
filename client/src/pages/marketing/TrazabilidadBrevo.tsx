@@ -1528,19 +1528,13 @@ export default function TrazabilidadBrevo() {
                             // 1. Copiar cuerpo limpio al portapapeles
                             await navigator.clipboard.writeText(cleanBody);
 
-                            // 2. Disparar el protocolo mailto nativo de Chrome simulando un clic directo
-                             const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}`;
-                             const tempLink = document.createElement("a");
-                             tempLink.href = mailto;
-                             tempLink.style.display = "none";
-                             document.body.appendChild(tempLink);
-                             tempLink.click();
-                             
-                             setTimeout(() => {
-                               document.body.removeChild(tempLink);
-                             }, 300);
+                            // 2. Abrir Zoho Mail directamente usando la ruta #compose con query parameters para autocompletar
+                             const encodedSubject = encodeURIComponent(draftData.subject);
+                             const encodedEmail = encodeURIComponent(draftData.email);
+                             const zohoComposeUrl = `https://mail.zoho.com/zm/#compose?to=${encodedEmail}&subject=${encodedSubject}`;
+                             window.open(zohoComposeUrl, "_blank");
 
-                             toast.success("Cuerpo copiado. Redactando en cliente de correo...");
+                             toast.success("Cuerpo copiado. Redactando en Zoho Mail...");
 
                             if (draftData.contactoId) {
                               const activeTmplId = selectedTemplateId || "builtin-sin-aperturas";
