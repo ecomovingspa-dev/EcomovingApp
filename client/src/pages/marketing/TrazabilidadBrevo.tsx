@@ -1525,18 +1525,25 @@ export default function TrazabilidadBrevo() {
                               cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
                             }
 
-                            // 1. Copiar cuerpo limpio al portapapeles
-                            await navigator.clipboard.writeText(cleanBody);
+                             const vendedorEmails: Record<string, string> = {
+                               "Mario Osorio C.": "mario@ecomoving.cl",
+                               "Jimena Lara F.": "jlara@ecomoving.cl" 
+                             };
+                             const userEmail = vendedorEmails[vendedor] || "mario@ecomoving.cl";
 
-                            // 2. Ejecutar mailto usando location.replace para forzar el protocolo directamente en la ventana sin abrir pestañas vacías
-                             const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}`;
-                             window.location.replace(mailto);
+                             // Llamar a nuestra API interna para enviar vía Brevo
+                             const apiResponse = await axios.post("/api/send-cortesia", {
+                               email: draftData.email,
+                               subject: draftData.subject,
+                               body: cleanBody,
+                               vendedorEmail: userEmail
+                             });
 
-                             toast.success("Cuerpo copiado. Redactando en cliente de correo...");
+                             const messageId = apiResponse.data?.messageId || `manual:${Date.now()}`;
+
+                             toast.success("¡Correo de cortesía enviado correctamente y respaldado en tu Zoho!");
 
                             if (draftData.contactoId) {
-                              const activeTmplId = selectedTemplateId || "builtin-sin-aperturas";
-                              const uniqueMsgId = `manual_template:${activeTmplId}:${Date.now()}`;
                               const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
 
                                // 1. Update contact
@@ -1559,7 +1566,7 @@ export default function TrazabilidadBrevo() {
                                   email: draftData.email,
                                   fecha: todayStr,
                                   estado: "delivered",
-                                  mensaje_id: uniqueMsgId
+                                  mensaje_id: messageId
                                 });
 
                               if (traceErr) console.warn("Error inserting history trace:", traceErr);
@@ -1573,7 +1580,7 @@ export default function TrazabilidadBrevo() {
                                     email: draftData.email,
                                     fecha: todayStr,
                                     estado: "delivered",
-                                    mensaje_id: uniqueMsgId,
+                                    mensaje_id: messageId,
                                     created_at: new Date().toISOString()
                                   };
                                   return { 
