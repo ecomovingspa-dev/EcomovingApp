@@ -1528,14 +1528,12 @@ export default function TrazabilidadBrevo() {
                             // 1. Copiar cuerpo limpio al portapapeles
                             await navigator.clipboard.writeText(cleanBody);
 
-                            // 2. Abrir Zoho Mail directamente en su URL de composición estable
-                            const zohoUrl = "https://mail.zoho.com/zm/#mail/compose/new";
-                            window.open(zohoUrl, "_blank");
+                            // 2. Abrir Zoho Mail usando su ruta hash interna correcta (#compose/mailto) para levantar el modal pre-rellenado
+                             const encodedSubject = encodeURIComponent(draftData.subject);
+                             const zohoComposeUrl = `https://mail.zoho.com/zm/#compose/mailto:${draftData.email}?subject=${encodedSubject}`;
+                             window.open(zohoComposeUrl, "_blank");
 
-                            toast.success(
-                              `Cuerpo copiado al portapapeles. Destinatario: ${draftData.email} | Asunto: ${draftData.subject}`,
-                              { duration: 8000 }
-                            );
+                             toast.success("Cuerpo copiado. Redactando en Zoho Mail...");
 
                             if (draftData.contactoId) {
                               const activeTmplId = selectedTemplateId || "builtin-sin-aperturas";
