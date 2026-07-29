@@ -1524,83 +1524,69 @@ export default function TrazabilidadBrevo() {
                             if (cleanBody.includes(signatureToSearchSimple)) {
                               cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
                             }
+                            
+                            // 1. Copiar cuerpo limpio al portapapeles
+                             await navigator.clipboard.writeText(cleanBody);
 
-                             const vendedorEmails: Record<string, string> = {
-                               "Mario Osorio C.": "mario@ecomoving.cl",
-                               "Jimena Lara F.": "jimena@ecomoving.cl" 
-                             };
-                             const userEmail = vendedorEmails[vendedor] || "mario@ecomoving.cl";
+                             toast.success("Cuerpo del correo copiado al portapapeles. Puedes pegarlo en tu gestor de correo.");
 
-                             // Llamar a nuestra API interna para enviar vía Brevo
-                             const apiResponse = await axios.post("/api/send-cortesia", {
-                               email: draftData.email,
-                               subject: draftData.subject,
-                               body: cleanBody,
-                               vendedorEmail: userEmail
-                             });
+                             if (draftData.contactoId) {
+                               const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
 
-                             const messageId = apiResponse.data?.messageId || `manual:${Date.now()}`;
+                                // 1. Update contact
+                               const { error: updateErr } = await supabase
+                                 .from("contactos")
+                                 .update({ 
+                                   correo_cortesia_enviado: true,
+                                   correo_cortesia_vendedor: vendedor,
+                                   ultimo_envio: new Date().toISOString()
+                                 })
+                                 .eq("id", draftData.contactoId);
 
-                             toast.success("¡Correo de cortesía enviado correctamente y respaldado en tu Zoho!");
+                               if (updateErr) throw updateErr;
 
-                            if (draftData.contactoId) {
-                              const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
+                               // 2. Insert trace record
+                               const { error: traceErr } = await supabase
+                                 .from("trazabilidad_correos")
+                                 .insert({
+                                   contacto_id: draftData.contactoId,
+                                   email: draftData.email,
+                                   fecha: todayStr,
+                                   estado: "delivered",
+                                   mensaje_id: `manual:${Date.now()}`
+                                 });
 
-                               // 1. Update contact
-                              const { error: updateErr } = await supabase
-                                .from("contactos")
-                                .update({ 
-                                  correo_cortesia_enviado: true,
-                                  correo_cortesia_vendedor: vendedor,
-                                  ultimo_envio: new Date().toISOString()
-                                })
-                                .eq("id", draftData.contactoId);
+                               if (traceErr) console.warn("Error inserting history trace:", traceErr);
 
-                              if (updateErr) throw updateErr;
-
-                              // 2. Insert trace record
-                              const { error: traceErr } = await supabase
-                                .from("trazabilidad_correos")
-                                .insert({
-                                  contacto_id: draftData.contactoId,
-                                  email: draftData.email,
-                                  fecha: todayStr,
-                                  estado: "delivered",
-                                  mensaje_id: messageId
-                                });
-
-                              if (traceErr) console.warn("Error inserting history trace:", traceErr);
-
-                              // 3. Update local state
-                              setContactos(prev => prev.map(c => {
-                                if (c.id === draftData.contactoId) {
-                                  const newTraceItem = {
-                                    id: `temp-${Date.now()}`,
-                                    contacto_id: draftData.contactoId,
-                                    email: draftData.email,
-                                    fecha: todayStr,
-                                    estado: "delivered",
-                                    mensaje_id: messageId,
-                                    created_at: new Date().toISOString()
-                                  };
-                                  return { 
-                                    ...c, 
-                                    correo_cortesia_enviado: true, 
-                                    correo_cortesia_vendedor: vendedor,
-                                    ultimo_envio: new Date().toISOString(),
-                                    historial: [...(c.historial || []), newTraceItem]
-                                  };
-                                }
-                                return c;
-                              }));
-                            }
-                          } catch (err: any) {
-                            console.error("Error al registrar envío o copiar:", err);
-                            const errorMsg = err.response?.data?.error || err.message || "Error desconocido";
-                            toast.error(`Error al procesar el envío: ${errorMsg}`);
-                          }
-                        }
-                        setIsModalOpen(false);
+                               // 3. Update local state
+                               setContactos(prev => prev.map(c => {
+                                 if (c.id === draftData.contactoId) {
+                                   const newTraceItem = {
+                                     id: `temp-${Date.now()}`,
+                                     contacto_id: draftData.contactoId,
+                                     email: draftData.email,
+                                     fecha: todayStr,
+                                     estado: "delivered",
+                                     mensaje_id: `manual:${Date.now()}`,
+                                     created_at: new Date().toISOString()
+                                   };
+                                   return { 
+                                     ...c, 
+                                     correo_cortesia_enviado: true, 
+                                     correo_cortesia_vendedor: vendedor,
+                                     ultimo_envio: new Date().toISOString(),
+                                     historial: [...(c.historial || []), newTraceItem]
+                                   };
+                                 }
+                                 return c;
+                               }));
+                             }
+                           } catch (err: any) {
+                             console.error("Error al copiar o actualizar estado:", err);
+                             toast.error("Error al procesar la cortesía");
+                           }
+                         }
+                         setIsModalOpen(false);
                       }}
                     >
                       ENVIAR AL GESTOR (Disparar)
