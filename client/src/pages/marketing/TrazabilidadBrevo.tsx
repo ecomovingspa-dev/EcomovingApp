@@ -1528,11 +1528,14 @@ export default function TrazabilidadBrevo() {
                             // 1. Copiar cuerpo limpio al portapapeles
                             await navigator.clipboard.writeText(cleanBody);
 
-                            // 2. Abrir correo usando el protocolo mailto en una nueva pestaña para forzar al navegador
-                            const mailto = `mailto:${draftData.email}?subject=${encodeURIComponent(draftData.subject)}`;
-                            window.open(mailto, "_blank");
+                            // 2. Abrir Zoho Mail directamente en su URL de composición estable
+                            const zohoUrl = "https://mail.zoho.com/zm/#mail/compose/new";
+                            window.open(zohoUrl, "_blank");
 
-                            toast.success("Correo copiado. Presiona Ctrl + V en tu gestor de correo.");
+                            toast.success(
+                              `Cuerpo copiado al portapapeles. Destinatario: ${draftData.email} | Asunto: ${draftData.subject}`,
+                              { duration: 8000 }
+                            );
 
                             if (draftData.contactoId) {
                               const activeTmplId = selectedTemplateId || "builtin-sin-aperturas";
