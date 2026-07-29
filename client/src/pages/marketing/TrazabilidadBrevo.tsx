@@ -1531,68 +1531,15 @@ export default function TrazabilidadBrevo() {
                             // 2. Abrir Zoho Mail en su URL de composición limpia directamente
                             window.open("https://mail.zoho.com/zm/#compose", "_blank");
 
-                            toast.success("Cuerpo copiado. Redactando en Zoho Mail (Ctrl + V)...");
-
-                            if (draftData.contactoId) {
-                              const todayStr = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Santiago' });
-
-                                // 1. Update contact
-                              const { error: updateErr } = await supabase
-                                .from("contactos")
-                                .update({ 
-                                  correo_cortesia_enviado: true,
-                                  correo_cortesia_vendedor: vendedor,
-                                  ultimo_envio: new Date().toISOString()
-                                })
-                                .eq("id", draftData.contactoId);
-
-                              if (updateErr) throw updateErr;
-
-                              // 2. Insert trace record
-                              const { error: traceErr } = await supabase
-                                .from("trazabilidad_correos")
-                                .insert({
-                                  contacto_id: draftData.contactoId,
-                                  email: draftData.email,
-                                  fecha: todayStr,
-                                  estado: "delivered",
-                                  mensaje_id: `manual:${Date.now()}`
-                                });
-
-                              if (traceErr) console.warn("Error inserting history trace:", traceErr);
-
-                              // 3. Update local state
-                              setContactos(prev => prev.map(c => {
-                                if (c.id === draftData.contactoId) {
-                                  const newTraceItem = {
-                                    id: `temp-${Date.now()}`,
-                                    contacto_id: draftData.contactoId,
-                                    email: draftData.email,
-                                    fecha: todayStr,
-                                    estado: "delivered",
-                                    mensaje_id: `manual:${Date.now()}`,
-                                    created_at: new Date().toISOString()
-                                  };
-                                  return { 
-                                    ...c, 
-                                    correo_cortesia_enviado: true, 
-                                    correo_cortesia_vendedor: vendedor,
-                                    ultimo_envio: new Date().toISOString(),
-                                    historial: [...(c.historial || []), newTraceItem]
-                                  };
-                                }
-                                return c;
-                              }));
-                            }
+                            toast.success("Cuerpo copiado. Redactando en Zoho Mail (Ctrl + V). El formulario sigue abierto para que copies destinatario y asunto.");
                           } catch (err: any) {
-                            console.error("Error al copiar o actualizar estado:", err);
-                            toast.error("Error al procesar la cortesía");
+                            console.error("Error al copiar:", err);
+                            toast.error("Error al copiar el cuerpo");
                           }
                         }
-                        setIsModalOpen(false);
                       }}
                     >
-                      ENVIAR AL GESTOR (Disparar)
+                      COPIAR CUERPO Y ABRIR ZOHO
                     </Button>
                   </DialogFooter>
                 </>
