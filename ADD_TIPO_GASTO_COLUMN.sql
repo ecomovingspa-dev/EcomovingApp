@@ -25,6 +25,9 @@ VALUES
     ('Publicidad'),
     ('Honorarios'),
     ('Impuestos'),
+    ('Traspaso de cuenta'),
+    ('Sin respaldo'),
+    ('Crédito'),
     ('Otros')
 ON CONFLICT (nombre) DO NOTHING;
 
