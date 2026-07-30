@@ -320,6 +320,10 @@ export default function ComprasPage() {
                         continue;
                     }
 
+                    if (!tipoDte || tipoDte <= 0) {
+                        throw new Error(`Tipo de documento inválido o no especificado para Folio ${folio}`);
+                    }
+
                     // Verificar si ya existe
                     const { data: existente } = await supabase
                         .from("compras")
