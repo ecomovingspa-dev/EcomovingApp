@@ -52,6 +52,8 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
     iva: 0,
     total: 0,
     ganancias: 0,
+    condicion_pago: "Ninguno",
+    tasa_financiamiento: 0,
     fecha: new Date().toISOString().split("T")[0],
   });
 
@@ -174,6 +176,15 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
         .eq("id", id)
         .single();
       if (error) throw error;
+      
+      // Forzar candado (precio_fijo: true) en todos los ítems de cotizaciones existentes
+      if (data && data.items) {
+        data.items = data.items.map((it: any) => ({
+          ...it,
+          precio_fijo: true
+        }));
+      }
+      
       setCotizacion(data);
       
       // Aseguramos que el cliente de la cotización esté cargado en la lista
@@ -318,23 +329,58 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
     // la conciliación refleje los nuevos costos, ganancias y márgenes en el dashboard.
 
     const items = cotizacion.items || [];
+    const condicionPago = cotizacion.condicion_pago || "Ninguno";
+    const tasaFinanciamiento = Number(cotizacion.tasa_financiamiento || 0);
+
     let costoTotal = 0;
     let totalNeto = 0;
 
     items.forEach(it => {
       const costoItem = it.subcostos.reduce((acc, sc) => acc + (sc.cantidad * sc.precio_unitario * (1 - sc.descuento / 100)), 0);
       costoTotal += costoItem;
-      // El total neto por ítem es costoItem / (1 - margen/100) si es margen sobre venta, o costoItem * (1 + margen/100)
-      // Usaremos margen sobre costo para simplicidad o margen sobre venta según convención
-      const netoItemBruto = costoItem / (1 - (it.margen || 0) / 100);
-      const unitarioItem = it.cantidad > 0 ? Math.round(netoItemBruto / it.cantidad) : 0;
-      const netoItem = unitarioItem * it.cantidad;
+      
+      let netoItem = 0;
+      if (it.precio_fijo) {
+        // Candado activo: Calcular con el margen histórico del ítem sin alterar el precio de venta
+        const netoItemBruto = costoItem / (1 - (it.margen || 0) / 100);
+        const unitarioItem = it.cantidad > 0 ? Math.round(netoItemBruto / it.cantidad) : 0;
+        netoItem = unitarioItem * it.cantidad;
+      } else {
+        // Candado inactivo: recalcular precio dinámicamente según financiamiento
+        let netoItemBruto = costoItem / (1 - (it.margen || 0) / 100);
+        if (condicionPago === "Factoring") {
+          // Traspasar el costo del factoring al precio final neto (considerando IVA 1.19)
+          const efectoNetoFactoring = (tasaFinanciamiento / 100) * 1.19;
+          netoItemBruto = costoItem / (1 - ((it.margen || 0) / 100 + efectoNetoFactoring));
+        } else if (condicionPago === "Contado") {
+          // Aplicar descuento por pago al contado
+          netoItemBruto = netoItemBruto * (1 - (tasaFinanciamiento / 100));
+        }
+        const unitarioItem = it.cantidad > 0 ? Math.round(netoItemBruto / it.cantidad) : 0;
+        netoItem = unitarioItem * it.cantidad;
+      }
       totalNeto += netoItem;
     });
 
+    let costoFactoringNeto = 0;
+    let descuentoContadoNeto = 0;
+
+    if (condicionPago === "Factoring") {
+      // El factoring se descuenta del total bruto facturado:
+      // costoFactoringBruto = (totalNeto * 1.19) * (tasaFinanciamiento / 100)
+      // costoFactoringNeto (impacto en utilidad neta) = costoFactoringBruto / 1.19
+      costoFactoringNeto = totalNeto * (tasaFinanciamiento / 100);
+    } else if (condicionPago === "Contado" && items.some(it => it.precio_fijo)) {
+      // Si el candado está activo en ítems, aplicamos el descuento contado de manera global al total
+      descuentoContadoNeto = totalNeto * (tasaFinanciamiento / 100);
+      totalNeto -= descuentoContadoNeto;
+    }
+
     const iva = totalNeto * 0.19;
     const total = totalNeto + iva;
-    const ganancias = totalNeto - costoTotal;
+    
+    // Utilidad Real Neto = ingreso neto final - costos de compra - costos financieros
+    const ganancias = totalNeto - costoTotal - costoFactoringNeto;
 
     setCotizacion(prev => ({
       ...prev,
@@ -343,9 +389,11 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       iva: Math.round(iva),
       total: Math.round(total),
       ganancias: Math.round(ganancias),
-      mg: costoTotal > 0 ? (ganancias / totalNeto * 100).toFixed(1) + "%" : "0%"
+      costo_factoring: Math.round(costoFactoringNeto),
+      descuento_contado: Math.round(descuentoContadoNeto),
+      mg: totalNeto > 0 ? (ganancias / totalNeto * 100).toFixed(1) + "%" : "0%"
     }));
-  }, [JSON.stringify(cotizacion.items)]);
+  }, [JSON.stringify(cotizacion.items), cotizacion.condicion_pago, cotizacion.tasa_financiamiento]);
 
   // Autoguardado silencioso para fondo
   const autoSaveToSupabase = async () => {
@@ -356,6 +404,10 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       delete payload.contactos;
       delete payload.vendedores; // Limpiar para evitar error de relación
       delete payload.fecha; // ELMINAR FECHA hasta que se agregue a la DB
+      delete payload.condicion_pago;
+      delete payload.tasa_financiamiento;
+      delete payload.costo_factoring;
+      delete payload.descuento_contado;
 
       await supabase.from("cotizaciones").update(payload).eq("id", id);
       console.log("Autoguardado completado...");
@@ -404,6 +456,10 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       delete payload.contactos;
       delete payload.vendedores;
       delete payload.fecha; // REMOVER FECHA: El esquema no la soporta aún
+      delete payload.condicion_pago;
+      delete payload.tasa_financiamiento;
+      delete payload.costo_factoring;
+      delete payload.descuento_contado;
 
       let error;
       if (id) {
@@ -673,7 +729,14 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
             <div className="lg:pl-6 text-center lg:text-left flex flex-col justify-center h-full">
               <span className="text-gray-500 font-black text-[11px] tracking-widest uppercase block mb-1">Utilidad Estimada</span>
               <span className="text-3xl font-black tracking-tight text-emerald-400">+ ${new Intl.NumberFormat("es-CL").format(cotizacion.ganancias || 0)}</span>
-              <p className="text-[9px] font-bold text-gray-600 uppercase tracking-tighter mt-1">Resultado Neto de Operación</p>
+              <div className="text-[9px] font-bold text-gray-600 uppercase tracking-tighter mt-1">
+                <span>Resultado Neto de Operación</span>
+                {cotizacion.condicion_pago === "Factoring" && (
+                  <span className="text-red-400 block font-black mt-0.5">
+                    (Gasto Factoring: -${Math.round(cotizacion.costo_factoring || 0).toLocaleString("es-CL")} Neto)
+                  </span>
+                )}
+              </div>
             </div>
             
             {/* MARGEN COMERCIAL CENTRAL */}
@@ -700,7 +763,19 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                    <div>${Math.round(cotizacion.iva || 0).toLocaleString("es-CL")}</div>
                 </div>
               </div>
-              <p className="text-[10px] font-bold text-gray-600 uppercase tracking-widest text-right">Total Propuesta (Bruto)</p>
+              <div className="flex flex-col text-[10px] font-bold text-gray-600 uppercase tracking-widest text-right leading-snug">
+                <span>Total Propuesta (Bruto)</span>
+                {cotizacion.condicion_pago === "Factoring" && (
+                  <span className="text-blue-400 font-black">
+                    Líquido Día 1: ${new Intl.NumberFormat("es-CL").format(Math.round((cotizacion.total || 0) * (1 - (cotizacion.tasa_financiamiento || 0) / 100)))}
+                  </span>
+                )}
+                {cotizacion.condicion_pago === "Contado" && Number(cotizacion.tasa_financiamiento || 0) > 0 && (
+                  <span className="text-amber-400 font-black">
+                    Descuento Aplicado: -${new Intl.NumberFormat("es-CL").format(Math.round((cotizacion.descuento_contado || 0) * 1.19))}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </section>
@@ -928,6 +1003,43 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                   placeholder="Número de Factura"
                 />
               </div>
+            </div>
+
+            {/* Fila 3: Configuración Financiera (Factoring & Descuentos) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Condición de Pago / Financiamiento</label>
+                <select 
+                  value={cotizacion.condicion_pago || "Ninguno"} 
+                  onChange={(e) => setCotizacion(prev => ({ ...prev, condicion_pago: e.target.value, tasa_financiamiento: 0 }))}
+                  className="w-full h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm cursor-pointer"
+                >
+                  <option value="Ninguno">Ninguno (Estándar)</option>
+                  <option value="Factoring">Factoring (Crédito a Clientes)</option>
+                  <option value="Contado">Pago al Contado (Pronto Pago)</option>
+                </select>
+              </div>
+
+              {(cotizacion.condicion_pago === "Factoring" || cotizacion.condicion_pago === "Contado") && (
+                <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">
+                    {cotizacion.condicion_pago === "Factoring" ? "Tasa Factoring Estimada (%)" : "Porcentaje Descuento Contado (%)"}
+                  </label>
+                  <div className="relative">
+                    <Input 
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={cotizacion.tasa_financiamiento || ""} 
+                      onChange={(e) => setCotizacion(prev => ({ ...prev, tasa_financiamiento: parseFloat(e.target.value) || 0 }))}
+                      className="h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-sm pr-8"
+                      placeholder="Ej: 3.5"
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-xs text-gray-400">%</span>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 
