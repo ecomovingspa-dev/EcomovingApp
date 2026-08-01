@@ -72,6 +72,9 @@ export default function TrazabilidadBrevo() {
   const [filtroEjecutivo, setFiltroEjecutivo] = useState("todos");
   const [filtroSegmento, setFiltroSegmento] = useState("todos");
   const [availableSegments, setAvailableSegments] = useState<string[]>([]);
+  
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
   useEffect(() => {
     if (vendedores && vendedores.length > 0 && (vendedor === "Vendedor 1" || vendedor === "")) {
@@ -558,12 +561,14 @@ export default function TrazabilidadBrevo() {
       let from = 0;
       const limit = 1000;
       const startDate = days[0]?.date || '2026-03-01';
+      const endDate = days[days.length - 1]?.date || '2026-12-31';
       
       while (true) {
         const { data, error: hError } = await supabase
           .from("trazabilidad_correos")
           .select("*")
           .gte("fecha", startDate)
+          .lte("fecha", endDate)
           .range(from, from + limit - 1);
 
         if (hError) {
@@ -592,14 +597,10 @@ export default function TrazabilidadBrevo() {
   };
 
   useEffect(() => {
-    // Generate working days for current month (April 2026 as per user requirement)
+    // Generar días laborables basados en el mes y año seleccionados
     const days: CalendarDay[] = [];
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth(); // Current month (April = 3)
-    
-    const date = new Date(year, month, 1);
-    while (date.getMonth() === month) {
+    const date = new Date(selectedYear, selectedMonth, 1);
+    while (date.getMonth() === selectedMonth) {
       const dayOfWeek = date.getDay();
       if (dayOfWeek !== 0 && dayOfWeek !== 6) {
         days.push({
@@ -612,7 +613,9 @@ export default function TrazabilidadBrevo() {
     }
     setCalendarDays(days);
     fetchContactos(days);
+  }, [selectedMonth, selectedYear]);
 
+  useEffect(() => {
     // Initialize templates from Supabase configuracion_prospeccion and localStorage
     const defaultTemplates: EmailTemplate[] = [
       {
@@ -1150,6 +1153,39 @@ export default function TrazabilidadBrevo() {
             ))}
           </SelectContent>
         </Select>
+
+        <div className="flex items-center gap-1.5 ml-auto">
+          <Select value={selectedMonth.toString()} onValueChange={(val) => setSelectedMonth(parseInt(val))}>
+            <SelectTrigger className="w-[120px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+              <SelectValue placeholder="MES" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-gray-800 text-white">
+              <SelectItem value="0">ENERO</SelectItem>
+              <SelectItem value="1">FEBRERO</SelectItem>
+              <SelectItem value="2">MARZO</SelectItem>
+              <SelectItem value="3">ABRIL</SelectItem>
+              <SelectItem value="4">MAYO</SelectItem>
+              <SelectItem value="5">JUNIO</SelectItem>
+              <SelectItem value="6">JULIO</SelectItem>
+              <SelectItem value="7">AGOSTO</SelectItem>
+              <SelectItem value="8">SEPTIEMBRE</SelectItem>
+              <SelectItem value="9">OCTUBRE</SelectItem>
+              <SelectItem value="10">NOVIEMBRE</SelectItem>
+              <SelectItem value="11">DICIEMBRE</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={selectedYear.toString()} onValueChange={(val) => setSelectedYear(parseInt(val))}>
+            <SelectTrigger className="w-[90px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+              <SelectValue placeholder="AÑO" />
+            </SelectTrigger>
+            <SelectContent className="bg-gray-900 border-gray-800 text-white">
+              <SelectItem value="2025">2025</SelectItem>
+              <SelectItem value="2026">2026</SelectItem>
+              <SelectItem value="2027">2027</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* The Matrix */}
@@ -1158,7 +1194,9 @@ export default function TrazabilidadBrevo() {
           <table className="w-full text-left table-fixed">
             <thead>
               <tr className="bg-gray-900/80 border-b border-gray-800 text-[9px] font-black tracking-widest text-gray-500 uppercase">
-                <th className="px-4 py-4 w-[240px]">CONTACTO ({new Date().toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }).toUpperCase()})</th>
+                <th className="px-4 py-4 w-[240px]">
+                  CONTACTO ({new Date(selectedYear, selectedMonth).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }).toUpperCase()})
+                </th>
                 {calendarDays.map(d => (
                   <th key={d.date} className="px-1 py-4 text-center border-l border-gray-800/50">
                     {d.label}
