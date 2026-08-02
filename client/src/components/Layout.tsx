@@ -16,6 +16,7 @@ import {
   ArrowRightLeft,
   Package,
   CalendarDays,
+  Calculator,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ export default function Layout() {
     { path: "/ventas", label: "Ventas", icon: DollarSign },
     { path: "/compras", label: "Compras", icon: ShoppingBag },
     { path: "/conciliacion", label: "Conciliación", icon: ArrowRightLeft },
+    { path: "/remuneraciones", label: "Sueldo Empresarial", icon: Calculator },
   ];
 
   return (
