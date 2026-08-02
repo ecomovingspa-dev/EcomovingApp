@@ -61,6 +61,32 @@ const CONSTANTES_2026 = {
   REFORMA_PORCENTAJE: 3.5, // Aumento en cotización de cargo del empleador (Reforma 2026)
 };
 
+// Base de datos oficial de valores de cierre de mes de la UF y UTM de Chile
+const VALORES_OFICIALES: Record<string, { uf: number; utm: number; topeImponibleUF: number; reformaPorcentaje: number }> = {
+  "2026-08": { uf: 40844.79, utm: 71649, topeImponibleUF: 90.0, reformaPorcentaje: 3.5 },
+  "2026-07": { uf: 40844.79, utm: 71649, topeImponibleUF: 90.0, reformaPorcentaje: 3.5 },
+  "2026-06": { uf: 40817.59, utm: 71506, topeImponibleUF: 90.0, reformaPorcentaje: 3.5 },
+  "2026-05": { uf: 40610.69, utm: 70588, topeImponibleUF: 90.0, reformaPorcentaje: 3.5 },
+  "2026-04": { uf: 40120.20, utm: 69889, topeImponibleUF: 90.0, reformaPorcentaje: 3.5 },
+  "2026-03": { uf: 39841.72, utm: 69889, topeImponibleUF: 90.0, reformaPorcentaje: 3.5 },
+  "2026-02": { uf: 39790.63, utm: 69611, topeImponibleUF: 90.0, reformaPorcentaje: 3.5 },
+  "2026-01": { uf: 39706.07, utm: 69751, topeImponibleUF: 84.3, reformaPorcentaje: 3.5 },
+
+  // Año 2025
+  "2025-12": { uf: 39727.96, utm: 69542, topeImponibleUF: 84.3, reformaPorcentaje: 2.3 },
+  "2025-11": { uf: 39643.59, utm: 69542, topeImponibleUF: 84.3, reformaPorcentaje: 2.3 },
+  "2025-10": { uf: 39577.00, utm: 69265, topeImponibleUF: 84.3, reformaPorcentaje: 2.3 },
+  "2025-09": { uf: 39485.00, utm: 69265, topeImponibleUF: 84.3, reformaPorcentaje: 2.3 },
+  "2025-08": { uf: 39383.00, utm: 68647, topeImponibleUF: 84.3, reformaPorcentaje: 2.3 },
+  "2025-07": { uf: 39180.00, utm: 68923, topeImponibleUF: 84.3, reformaPorcentaje: 2.3 },
+  "2025-06": { uf: 39020.00, utm: 68785, topeImponibleUF: 84.3, reformaPorcentaje: 2.3 },
+  "2025-05": { uf: 38810.00, utm: 68648, topeImponibleUF: 84.3, reformaPorcentaje: 2.3 },
+  "2025-04": { uf: 38620.00, utm: 68306, topeImponibleUF: 84.3, reformaPorcentaje: 2.3 },
+  "2025-03": { uf: 38480.00, utm: 68034, topeImponibleUF: 84.3, reformaPorcentaje: 2.3 },
+  "2025-02": { uf: 38410.00, utm: 67294, topeImponibleUF: 84.3, reformaPorcentaje: 2.3 },
+  "2025-01": { uf: 38384.41, utm: 67429, topeImponibleUF: 81.6, reformaPorcentaje: 2.3 }
+};
+
 const AFPS = [
   { id: "habitat", nombre: "Habitat (11.27%)", tasa: 11.27 },
   { id: "capital", nombre: "Capital (11.44%)", tasa: 11.44 },
@@ -139,23 +165,26 @@ export default function SueldoEmpresarialPage() {
     return `${cuerpo}-${dv}`;
   };
 
-  // Detector de mes para cargar indicadores sugeridos históricos
+  // Detector de mes para cargar indicadores sugeridos históricos oficiales
   const handleMesChange = (mes: string) => {
     setFormData({ ...formData, mesAnio: mes });
     
-    // Sugerencias de parámetros para meses/años anteriores
-    if (mes < "2026-01") {
+    // Si el mes tiene valores oficiales exactos en nuestra base de datos, los cargamos de forma fija
+    if (VALORES_OFICIALES[mes]) {
+      setParametrosPeriodo({
+        uf: VALORES_OFICIALES[mes].uf,
+        utm: VALORES_OFICIALES[mes].utm,
+        topeImponibleUF: VALORES_OFICIALES[mes].topeImponibleUF,
+        reformaPorcentaje: VALORES_OFICIALES[mes].reformaPorcentaje
+      });
+    } else {
+      // Valores estimados para años anteriores no cubiertos por la base fija
       let ufEstimada = 38000;
       let utmEstimada = 66000;
       let topeUF = 84.3;
-      let reforma = 0; // Sin reforma en años muy anteriores
+      let reforma = 0;
       
-      if (mes.startsWith("2025")) {
-        ufEstimada = 38200;
-        utmEstimada = 66500;
-        topeUF = 84.3;
-        reforma = 1.0; 
-      } else if (mes.startsWith("2024")) {
+      if (mes.startsWith("2024")) {
         ufEstimada = 37300;
         utmEstimada = 64500;
         topeUF = 81.6;
@@ -172,14 +201,6 @@ export default function SueldoEmpresarialPage() {
         utm: utmEstimada,
         topeImponibleUF: topeUF,
         reformaPorcentaje: reforma
-      });
-    } else {
-      // Valores de agosto 2026 / año 2026 por defecto
-      setParametrosPeriodo({
-        uf: CONSTANTES_2026.UF,
-        utm: CONSTANTES_2026.UTM,
-        topeImponibleUF: CONSTANTES_2026.TOPE_IMPONIBLE_UF,
-        reformaPorcentaje: CONSTANTES_2026.REFORMA_PORCENTAJE
       });
     }
   };
