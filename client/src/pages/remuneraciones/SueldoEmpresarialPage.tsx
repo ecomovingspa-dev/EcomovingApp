@@ -11,7 +11,8 @@ import {
   Coins, 
   HelpCircle,
   FileCheck2,
-  Printer
+  Printer,
+  Settings
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,11 @@ interface Liquidacion {
   colacion: number;
   movilizacion: number;
   otrosDescuentos: number;
+  // Valores económicos usados
+  ufUsada: number;
+  utmUsada: number;
+  topeImponibleUFUsado: number;
+  reformaPorcentajeUsado: number;
   // Resultados calculados
   imponible: number;
   descuentoAFP: number;
@@ -85,6 +91,14 @@ export default function SueldoEmpresarialPage() {
     otrosDescuentos: 0
   });
 
+  // Parámetros económicos configurables
+  const [parametrosPeriodo, setParametrosPeriodo] = useState({
+    uf: CONSTANTES_2026.UF,
+    utm: CONSTANTES_2026.UTM,
+    topeImponibleUF: CONSTANTES_2026.TOPE_IMPONIBLE_UF,
+    reformaPorcentaje: CONSTANTES_2026.REFORMA_PORCENTAJE
+  });
+
   const [historial, setHistorial] = useState<Liquidacion[]>([]);
   const [calculoActivo, setCalculoActivo] = useState<Liquidacion | null>(null);
 
@@ -125,11 +139,56 @@ export default function SueldoEmpresarialPage() {
     return `${cuerpo}-${dv}`;
   };
 
-  // Función de cálculo
+  // Detector de mes para cargar indicadores sugeridos históricos
+  const handleMesChange = (mes: string) => {
+    setFormData({ ...formData, mesAnio: mes });
+    
+    // Sugerencias de parámetros para meses/años anteriores
+    if (mes < "2026-01") {
+      let ufEstimada = 38000;
+      let utmEstimada = 66000;
+      let topeUF = 84.3;
+      let reforma = 0; // Sin reforma en años muy anteriores
+      
+      if (mes.startsWith("2025")) {
+        ufEstimada = 38200;
+        utmEstimada = 66500;
+        topeUF = 84.3;
+        reforma = 1.0; 
+      } else if (mes.startsWith("2024")) {
+        ufEstimada = 37300;
+        utmEstimada = 64500;
+        topeUF = 81.6;
+        reforma = 0.0;
+      } else if (mes.startsWith("2023")) {
+        ufEstimada = 36000;
+        utmEstimada = 62000;
+        topeUF = 81.6;
+        reforma = 0.0;
+      }
+      
+      setParametrosPeriodo({
+        uf: ufEstimada,
+        utm: utmEstimada,
+        topeImponibleUF: topeUF,
+        reformaPorcentaje: reforma
+      });
+    } else {
+      // Valores de agosto 2026 / año 2026 por defecto
+      setParametrosPeriodo({
+        uf: CONSTANTES_2026.UF,
+        utm: CONSTANTES_2026.UTM,
+        topeImponibleUF: CONSTANTES_2026.TOPE_IMPONIBLE_UF,
+        reformaPorcentaje: CONSTANTES_2026.REFORMA_PORCENTAJE
+      });
+    }
+  };
+
+  // Función de cálculo usando parámetros de período configurados
   const calcularLiquidacion = (data: typeof formData): Liquidacion => {
-    const uf = CONSTANTES_2026.UF;
-    const utm = CONSTANTES_2026.UTM;
-    const topeImponible = CONSTANTES_2026.TOPE_IMPONIBLE_UF * uf;
+    const uf = parametrosPeriodo.uf;
+    const utm = parametrosPeriodo.utm;
+    const topeImponible = parametrosPeriodo.topeImponibleUF * uf;
 
     // 1. Imponible
     const imponible = Math.min(data.sueldoBruto, topeImponible);
@@ -200,14 +259,17 @@ export default function SueldoEmpresarialPage() {
     const sueldoLiquido = data.sueldoBruto - totalDescuentosPrevisionales - impuestoUnico + data.colacion + data.movilizacion - data.otrosDescuentos;
 
     // 7. Costo Empresa
-    // Sueldo empresarial tiene aporte adicional de reforma previsional (3.5% de cargo empleador) si cotiza.
-    const aporteReforma = data.cotizaAFP ? (imponible * (CONSTANTES_2026.REFORMA_PORCENTAJE / 100)) : 0;
+    const aporteReforma = data.cotizaAFP ? (imponible * (parametrosPeriodo.reformaPorcentaje / 100)) : 0;
     const costoEmpresa = data.sueldoBruto + data.colacion + data.movilizacion + aporteReforma;
 
     return {
       id: Math.random().toString(36).substring(2, 9),
       fechaRegistro: new Date().toLocaleDateString("es-CL"),
       ...data,
+      ufUsada: uf,
+      utmUsada: utm,
+      topeImponibleUFUsado: parametrosPeriodo.topeImponibleUF,
+      reformaPorcentajeUsado: parametrosPeriodo.reformaPorcentaje,
       imponible,
       descuentoAFP,
       descuentoSalud,
@@ -253,6 +315,12 @@ export default function SueldoEmpresarialPage() {
       colacion: liq.colacion,
       movilizacion: liq.movilizacion,
       otrosDescuentos: liq.otrosDescuentos
+    });
+    setParametrosPeriodo({
+      uf: liq.ufUsada || CONSTANTES_2026.UF,
+      utm: liq.utmUsada || CONSTANTES_2026.UTM,
+      topeImponibleUF: liq.topeImponibleUFUsado || CONSTANTES_2026.TOPE_IMPONIBLE_UF,
+      reformaPorcentaje: liq.reformaPorcentajeUsado !== undefined ? liq.reformaPorcentajeUsado : CONSTANTES_2026.REFORMA_PORCENTAJE
     });
   };
 
@@ -312,6 +380,12 @@ export default function SueldoEmpresarialPage() {
               otrosDescuentos: 0
             });
             setCalculoActivo(null);
+            setParametrosPeriodo({
+              uf: CONSTANTES_2026.UF,
+              utm: CONSTANTES_2026.UTM,
+              topeImponibleUF: CONSTANTES_2026.TOPE_IMPONIBLE_UF,
+              reformaPorcentaje: CONSTANTES_2026.REFORMA_PORCENTAJE
+            });
           }}>
             <Plus className="h-4 w-4" />
             Nueva Planilla
@@ -319,32 +393,68 @@ export default function SueldoEmpresarialPage() {
         </div>
       </div>
 
-      {/* Indicadores Clave */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
-          <CardHeader className="p-4 pb-2">
-            <CardDescription className="text-xs font-semibold uppercase text-gray-400">UTM Agosto 2026</CardDescription>
-            <CardTitle className="text-2xl font-bold text-gray-800 dark:text-white">{formatCLP(CONSTANTES_2026.UTM)}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
-          <CardHeader className="p-4 pb-2">
-            <CardDescription className="text-xs font-semibold uppercase text-gray-400">UF Promedio 2026</CardDescription>
-            <CardTitle className="text-2xl font-bold text-gray-800 dark:text-white">{formatCLP(CONSTANTES_2026.UF)}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
-          <CardHeader className="p-4 pb-2">
-            <CardDescription className="text-xs font-semibold uppercase text-gray-400">Tope Imponible (90 UF)</CardDescription>
-            <CardTitle className="text-2xl font-bold text-gray-800 dark:text-white">{formatCLP(CONSTANTES_2026.TOPE_IMPONIBLE_UF * CONSTANTES_2026.UF)}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card className="bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm">
-          <CardHeader className="p-4 pb-2">
-            <CardDescription className="text-xs font-semibold uppercase text-gray-400">Reforma Empleador</CardDescription>
-            <CardTitle className="text-2xl font-bold text-blue-600 dark:text-blue-400">+{CONSTANTES_2026.REFORMA_PORCENTAJE}%</CardTitle>
-          </CardHeader>
-        </Card>
+      {/* Indicadores Clave e Inputs de Simulación Histórica */}
+      <div className="bg-gray-100/50 dark:bg-gray-800/40 p-4 rounded-xl space-y-3 border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+          <Settings className="h-4 w-4 text-blue-600" />
+          <span>Parámetros Económicos del Período (Haz clic en los valores para editarlos y simular meses anteriores)</span>
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="bg-white dark:bg-gray-800 border-blue-100 dark:border-blue-900/40 shadow-sm">
+            <CardContent className="p-4 flex flex-col justify-center">
+              <span className="text-xs font-semibold uppercase text-gray-400">Valor UTM ($)</span>
+              <input 
+                type="number" 
+                className="text-2xl font-bold bg-transparent border-none p-0 focus:outline-none w-full text-gray-800 dark:text-white mt-1"
+                value={Math.round(parametrosPeriodo.utm)}
+                onChange={(e) => setParametrosPeriodo({ ...parametrosPeriodo, utm: Number(e.target.value) })}
+              />
+              <span className="text-[10px] text-gray-400 mt-1">Sugerido para {formData.mesAnio}</span>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white dark:bg-gray-800 border-blue-100 dark:border-blue-900/40 shadow-sm">
+            <CardContent className="p-4 flex flex-col justify-center">
+              <span className="text-xs font-semibold uppercase text-gray-400">Valor UF ($)</span>
+              <input 
+                type="number" 
+                className="text-2xl font-bold bg-transparent border-none p-0 focus:outline-none w-full text-gray-800 dark:text-white mt-1"
+                value={Math.round(parametrosPeriodo.uf)}
+                onChange={(e) => setParametrosPeriodo({ ...parametrosPeriodo, uf: Number(e.target.value) })}
+              />
+              <span className="text-[10px] text-gray-400 mt-1">Sugerido para {formData.mesAnio}</span>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white dark:bg-gray-800 border-blue-100 dark:border-blue-900/40 shadow-sm">
+            <CardContent className="p-4 flex flex-col justify-center">
+              <span className="text-xs font-semibold uppercase text-gray-400">Tope Imponible (UF)</span>
+              <input 
+                type="number" 
+                step="0.1"
+                className="text-2xl font-bold bg-transparent border-none p-0 focus:outline-none w-full text-gray-800 dark:text-white mt-1"
+                value={parametrosPeriodo.topeImponibleUF}
+                onChange={(e) => setParametrosPeriodo({ ...parametrosPeriodo, topeImponibleUF: Number(e.target.value) })}
+              />
+              <span className="text-[10px] text-gray-400 mt-1">Valor Tope: {formatCLP(parametrosPeriodo.topeImponibleUF * parametrosPeriodo.uf)}</span>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white dark:bg-gray-800 border-blue-100 dark:border-blue-900/40 shadow-sm">
+            <CardContent className="p-4 flex flex-col justify-center">
+              <span className="text-xs font-semibold uppercase text-gray-400">Reforma Empleador (%)</span>
+              <input 
+                type="number" 
+                step="0.1"
+                className="text-2xl font-bold bg-transparent border-none p-0 focus:outline-none w-full text-blue-600 dark:text-blue-400 mt-1"
+                value={parametrosPeriodo.reformaPorcentaje}
+                onChange={(e) => setParametrosPeriodo({ ...parametrosPeriodo, reformaPorcentaje: Number(e.target.value) })}
+              />
+              <span className="text-[10px] text-gray-400 mt-1">Aporte extra al imponible</span>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -417,7 +527,7 @@ export default function SueldoEmpresarialPage() {
                       id="mesAnio" 
                       type="month"
                       value={formData.mesAnio} 
-                      onChange={e => setFormData({...formData, mesAnio: e.target.value})}
+                      onChange={e => handleMesChange(e.target.value)}
                     />
                   </div>
                   <div className="md:col-span-2 space-y-2">
@@ -684,13 +794,13 @@ export default function SueldoEmpresarialPage() {
                 <CardContent className="space-y-3">
                   <div className="text-2xl font-bold text-gray-800 dark:text-white">{formatCLP(calculoActivo.costoEmpresa)}</div>
                   <p className="text-xs text-gray-400">
-                    Sueldo Bruto + Asignaciones + 3.5% Aporte Reforma Previsional (cargo empresa).
+                    Sueldo Bruto + Asignaciones + {calculoActivo.reformaPorcentajeUsado}% Aporte Reforma Previsional (cargo empresa).
                   </p>
                   {calculoActivo.cotizaAFP && (
                     <div className="flex justify-between text-xs bg-gray-50 dark:bg-gray-800/40 p-2 rounded">
-                      <span className="text-gray-500">Aporte Reforma (3.5%):</span>
+                      <span className="text-gray-500">Aporte Reforma ({calculoActivo.reformaPorcentajeUsado}%):</span>
                       <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {formatCLP(calculoActivo.imponible * (CONSTANTES_2026.REFORMA_PORCENTAJE / 100))}
+                        {formatCLP(calculoActivo.imponible * ((calculoActivo.reformaPorcentajeUsado || 0) / 100))}
                       </span>
                     </div>
                   )}
@@ -829,7 +939,8 @@ export default function SueldoEmpresarialPage() {
                   </div>
 
                   <div className="text-[10px] text-gray-500 text-center pt-4">
-                    Este documento cumple con el Art. 31 N°6 de la Ley sobre Impuesto a la Renta de Chile (Agosto 2026).
+                    Valores de Referencia del Período - UF: {formatCLP(calculoActivo.ufUsada || CONSTANTES_2026.UF)} | UTM: {formatCLP(calculoActivo.utmUsada || CONSTANTES_2026.UTM)} | Tope: {(calculoActivo.topeImponibleUFUsado || CONSTANTES_2026.TOPE_IMPONIBLE_UF)} UF | Reforma: {(calculoActivo.reformaPorcentajeUsado !== undefined ? calculoActivo.reformaPorcentajeUsado : CONSTANTES_2026.REFORMA_PORCENTAJE)}% <br/>
+                    Este documento cumple con el Art. 31 N°6 de la Ley sobre Impuesto a la Renta de Chile.
                   </div>
                 </div>
               </Card>
