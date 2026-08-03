@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles, Edit2, Save, Check, Users, Compass } from "lucide-react";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles, Edit2, Save, Check, Users, Compass, UserPlus } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { SEGMENTOS_MAESTROS } from "../../utils/constants";
@@ -663,7 +663,15 @@ export default function CuentasPage() {
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
               {["Cliente", "Teléfono", "Sector", "Segmento", "Etapa", "Fecha ingreso", ""].map((h, i) => (
-                <th key={i} className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{h}</th>
+                <th
+                  key={i}
+                  className={cn(
+                    "px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest",
+                    h === "Sector" ? "w-[100px] min-w-[90px] text-center" : ""
+                  )}
+                >
+                  {h}
+                </th>
               ))}
             </tr>
           </thead>
@@ -765,11 +773,11 @@ export default function CuentasPage() {
                       className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all font-mono"
                     />
                   </td>
-                  <td className="px-4 py-2 min-w-[120px]">
+                  <td className="px-4 py-2 w-[100px] min-w-[90px]">
                     <input
                       defaultValue={cuenta.sector || ""}
                       onBlur={(e) => actualizarCuentaInline(cuenta.id, "sector", e.target.value)}
-                      className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
+                      className="w-full bg-transparent border-none rounded-lg px-1 py-1.5 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all text-center"
                     />
                   </td>
                   <td className="px-4 py-2 min-w-[200px]">
@@ -895,6 +903,14 @@ export default function CuentasPage() {
 
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-3">
+                      <Link
+                        to={`/contactos/nuevo?cuentaId=${cuenta.id}`}
+                        className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/40 transition-colors rounded-lg cursor-pointer"
+                        title="Agregar Contacto"
+                      >
+                        <UserPlus className="h-4 w-4" />
+                      </Link>
+
                       {guardandoId === cuenta.id ? (
                         <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
                       ) : (

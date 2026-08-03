@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Contacto, Cuenta } from "../../types";
 import { ArrowLeft, Save, Search, Check, User, Mail, Phone, Building2, Tag } from "lucide-react";
@@ -32,6 +32,8 @@ import { cn } from "@/lib/utils";
 
 export default function ContactoForm() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const preselectedCuentaId = searchParams.get("cuentaId");
   // esEdicion removed as editing is now inline in the table
   const esEdicion = false;
 
@@ -48,7 +50,7 @@ export default function ContactoForm() {
     telefono: "",
     departamento: "",
     estado: "activo",
-    cuenta_id: "",
+    cuenta_id: preselectedCuentaId || "",
     vendedor_id: "",
   });
 
