@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { supabase } from "@/lib/supabase";
 
 interface Liquidacion {
   id: string;
@@ -129,22 +130,64 @@ export default function SueldoEmpresarialPage() {
   const [calculoActivo, setCalculoActivo] = useState<Liquidacion | null>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem("historial_liquidaciones");
-    if (saved) {
-      try {
-        setHistorial(JSON.parse(saved));
-      } catch (e) {
-        console.error("Error al cargar historial", e);
-      }
-    }
+    cargarLiquidaciones();
   }, []);
 
-  const guardarHistorial = (nuevoHistorial: Liquidacion[]) => {
-    setHistorial(nuevoHistorial);
-    localStorage.setItem("historial_liquidaciones", JSON.stringify(nuevoHistorial));
+  const cargarLiquidaciones = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("liquidaciones_sueldo")
+        .select("*")
+        .order("mes_anio", { ascending: false });
+
+      if (error) throw error;
+
+      if (data) {
+        const mapped: Liquidacion[] = data.map((item: any) => ({
+          id: item.id,
+          fechaRegistro: new Date(item.created_at).toLocaleDateString("es-CL"),
+          rutEmpresa: item.rut_empresa,
+          razonSocial: item.razon_social,
+          rutTrabajador: item.rut_trabajador,
+          nombreTrabajador: item.nombre_trabajador,
+          mesAnio: item.mes_anio,
+          sueldoBruto: Number(item.sueldo_bruto),
+          cotizaAFP: item.cotiza_afp,
+          afpSeleccionada: item.afp_seleccionada,
+          afpTasaCustom: Number(item.afp_tasa_custom),
+          cotizaSalud: item.cotiza_salud,
+          tipoSalud: item.tipo_salud,
+          isapreUF: Number(item.isapre_uf),
+          colacion: Number(item.colacion),
+          movilizacion: Number(item.movilizacion),
+          otrosDescuentos: Number(item.otros_descuentos),
+          ufUsada: Number(item.uf_usada),
+          utmUsada: Number(item.utm_usada),
+          topeImponibleUFUsado: Number(item.tope_imponible_uf_usado),
+          reformaPorcentajeUsado: Number(item.reforma_porcentaje_usado),
+          imponible: Number(item.imponible),
+          descuentoAFP: Number(item.descuento_afp),
+          descuentoSalud: Number(item.descuento_salud),
+          baseImpuesto: Number(item.base_impuesto),
+          impuestoUnico: Number(item.impuesto_unico),
+          sueldoLiquido: Number(item.sueldo_liquido),
+          costoEmpresa: Number(item.costo_empresa)
+        }));
+        setHistorial(mapped);
+      }
+    } catch (e) {
+      console.error("Error al cargar desde Supabase, usando localStorage como fallback:", e);
+      const saved = localStorage.getItem("historial_liquidaciones");
+      if (saved) {
+        try {
+          setHistorial(JSON.parse(saved));
+        } catch (err) {
+          console.error("Error al parsear localStorage", err);
+        }
+      }
+    }
   };
 
-  // Función para formatear pesos chilenos
   const formatCLP = (value: number) => {
     return new Intl.NumberFormat("es-CL", {
       style: "currency",
@@ -153,7 +196,6 @@ export default function SueldoEmpresarialPage() {
     }).format(Math.round(value));
   };
 
-  // Función para formatear RUT
   const formatearRut = (rut: string) => {
     let valor = rut.replace(/\./g, "").replace(/-/g, "");
     if (valor.length < 2) return valor;
@@ -165,11 +207,9 @@ export default function SueldoEmpresarialPage() {
     return `${cuerpo}-${dv}`;
   };
 
-  // Detector de mes para cargar indicadores sugeridos históricos oficiales
   const handleMesChange = (mes: string) => {
     setFormData({ ...formData, mesAnio: mes });
     
-    // Si el mes tiene valores oficiales exactos en nuestra base de datos, los cargamos de forma fija
     if (VALORES_OFICIALES[mes]) {
       setParametrosPeriodo({
         uf: VALORES_OFICIALES[mes].uf,
@@ -178,7 +218,6 @@ export default function SueldoEmpresarialPage() {
         reformaPorcentaje: VALORES_OFICIALES[mes].reformaPorcentaje
       });
     } else {
-      // Valores estimados para años anteriores no cubiertos por la base fija
       let ufEstimada = 38000;
       let utmEstimada = 66000;
       let topeUF = 84.3;
@@ -205,16 +244,13 @@ export default function SueldoEmpresarialPage() {
     }
   };
 
-  // Función de cálculo usando parámetros de período configurados
   const calcularLiquidacion = (data: typeof formData): Liquidacion => {
     const uf = parametrosPeriodo.uf;
     const utm = parametrosPeriodo.utm;
     const topeImponible = parametrosPeriodo.topeImponibleUF * uf;
 
-    // 1. Imponible
     const imponible = Math.min(data.sueldoBruto, topeImponible);
 
-    // 2. AFP
     let tasaAFP = 0;
     if (data.cotizaAFP) {
       if (data.afpSeleccionada === "custom") {
@@ -226,7 +262,6 @@ export default function SueldoEmpresarialPage() {
     }
     const descuentoAFP = data.cotizaAFP ? imponible * tasaAFP : 0;
 
-    // 3. Salud (Mínimo 7%, o Isapre en UF)
     let descuentoSalud = 0;
     if (data.cotizaSalud) {
       if (data.tipoSalud === "fonasa") {
@@ -238,11 +273,9 @@ export default function SueldoEmpresarialPage() {
       }
     }
 
-    // 4. Base Impuesto Único (Renta Líquida Imponible)
     const totalDescuentosPrevisionales = descuentoAFP + descuentoSalud;
     const baseImpuesto = Math.max(0, data.sueldoBruto - totalDescuentosPrevisionales);
 
-    // 5. Impuesto Único de Segunda Categoría (Brackets progresivos en UTM)
     const baseUTM = baseImpuesto / utm;
     let factor = 0;
     let rebajaUTM = 0;
@@ -276,10 +309,8 @@ export default function SueldoEmpresarialPage() {
     const impuestoUTM = Math.max(0, (baseUTM * factor) - rebajaUTM);
     const impuestoUnico = impuestoUTM * utm;
 
-    // 6. Sueldo Líquido
     const sueldoLiquido = data.sueldoBruto - totalDescuentosPrevisionales - impuestoUnico + data.colacion + data.movilizacion - data.otrosDescuentos;
 
-    // 7. Costo Empresa
     const aporteReforma = data.cotizaAFP ? (imponible * (parametrosPeriodo.reformaPorcentaje / 100)) : 0;
     const costoEmpresa = data.sueldoBruto + data.colacion + data.movilizacion + aporteReforma;
 
@@ -311,11 +342,50 @@ export default function SueldoEmpresarialPage() {
     setCalculoActivo(res);
   };
 
-  const handleGuardar = () => {
+  const handleGuardar = async () => {
     if (!calculoActivo) return;
-    const nuevo = [...historial, { ...calculoActivo, id: Math.random().toString(36).substring(2, 9) }];
-    guardarHistorial(nuevo);
-    alert("Liquidación guardada en el historial local.");
+    try {
+      const { error } = await supabase.from("liquidaciones_sueldo").insert([{
+        rut_empresa: calculoActivo.rutEmpresa,
+        razon_social: calculoActivo.razonSocial,
+        rut_trabajador: calculoActivo.rutTrabajador,
+        nombre_trabajador: calculoActivo.nombreTrabajador,
+        mes_anio: calculoActivo.mesAnio,
+        sueldo_bruto: calculoActivo.sueldoBruto,
+        cotiza_afp: calculoActivo.cotizaAFP,
+        afp_seleccionada: calculoActivo.afpSeleccionada,
+        afp_tasa_custom: calculoActivo.afpTasaCustom,
+        cotiza_salud: calculoActivo.cotizaSalud,
+        tipo_salud: calculoActivo.tipoSalud,
+        isapre_uf: calculoActivo.isapreUF,
+        colacion: calculoActivo.colacion,
+        movilizacion: calculoActivo.movilizacion,
+        otros_descuentos: calculoActivo.otrosDescuentos,
+        uf_usada: calculoActivo.ufUsada,
+        utm_usada: calculoActivo.utmUsada,
+        tope_imponible_uf_usado: calculoActivo.topeImponibleUFUsado,
+        reforma_porcentaje_usado: calculoActivo.reformaPorcentajeUsado,
+        imponible: calculoActivo.imponible,
+        descuento_afp: calculoActivo.descuentoAFP,
+        descuento_salud: calculoActivo.descuentoSalud,
+        base_impuesto: calculoActivo.baseImpuesto,
+        impuesto_unico: calculoActivo.impuestoUnico,
+        sueldo_liquido: calculoActivo.sueldoLiquido,
+        costo_empresa: calculoActivo.costoEmpresa
+      }]);
+
+      if (error) throw error;
+
+      alert("Liquidación guardada exitosamente en Supabase.");
+      cargarLiquidaciones();
+    } catch (e) {
+      console.error("Error al guardar en Supabase, guardando en local:", e);
+      const nuevoId = Math.random().toString(36).substring(2, 9);
+      const nuevo = [...historial, { ...calculoActivo, id: nuevoId }];
+      setHistorial(nuevo);
+      localStorage.setItem("historial_liquidaciones", JSON.stringify(nuevo));
+      alert("Se guardó en el historial local (Offline / Falló Supabase).");
+    }
   };
 
   const handleCargarHistorial = (liq: Liquidacion) => {
@@ -345,10 +415,21 @@ export default function SueldoEmpresarialPage() {
     });
   };
 
-  const handleEliminarHistorial = (id: string, e: React.MouseEvent) => {
+  const handleEliminarHistorial = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const filtrado = historial.filter(h => h.id !== id);
-    guardarHistorial(filtrado);
+    if (!confirm("¿Está seguro de que desea eliminar esta liquidación?")) return;
+    try {
+      const { error } = await supabase.from("liquidaciones_sueldo").delete().eq("id", id);
+      if (error) throw error;
+
+      alert("Liquidación eliminada exitosamente.");
+      cargarLiquidaciones();
+    } catch (e) {
+      console.error("Error al eliminar de Supabase, eliminando en local:", e);
+      const filtrado = historial.filter(h => h.id !== id);
+      setHistorial(filtrado);
+      localStorage.setItem("historial_liquidaciones", JSON.stringify(filtrado));
+    }
   };
 
   const handlePrint = () => {
@@ -722,7 +803,7 @@ export default function SueldoEmpresarialPage() {
                 Historial de Liquidaciones Generadas
               </CardTitle>
               <CardDescription>
-                Registro de liquidaciones guardadas localmente en este navegador.
+                Registro de liquidaciones guardadas en Supabase (con respaldo local).
               </CardDescription>
             </CardHeader>
             <CardContent>
