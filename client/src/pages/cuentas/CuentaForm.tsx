@@ -164,7 +164,12 @@ export default function CuentaForm() {
         if (error) throw error;
         setMensaje("✅ Cuenta actualizada");
       } else {
-        const { error } = await supabase.from("cuentas").insert([payload]);
+        const { error } = await supabase.from("cuentas").insert([
+          {
+            ...payload,
+            created_at: new Date().toISOString()
+          }
+        ]);
 
         if (error) throw error;
         setMensaje("✅ Cuenta creada");

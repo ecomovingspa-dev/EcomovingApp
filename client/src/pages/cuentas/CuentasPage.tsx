@@ -51,6 +51,7 @@ export default function CuentasPage() {
   const [filtroSegmento, setFiltroSegmento] = useState(() => sessionStorage.getItem("cuentas_filtroSegmento") || "");
   const [filtroEstado, setFiltroEstado] = useState(() => sessionStorage.getItem("cuentas_filtroEstado") || "");
   const [filtroVendedor, setFiltroVendedor] = useState(() => sessionStorage.getItem("cuentas_filtroVendedor") || "");
+  const [filtroFecha, setFiltroFecha] = useState(() => sessionStorage.getItem("cuentas_filtroFecha") || "");
 
   // Sincronizar filtros a sessionStorage para persistencia en navegación
   useEffect(() => { sessionStorage.setItem("cuentas_filtroFoco", filtroFoco); }, [filtroFoco]);
@@ -60,6 +61,7 @@ export default function CuentasPage() {
   useEffect(() => { sessionStorage.setItem("cuentas_filtroSegmento", filtroSegmento); }, [filtroSegmento]);
   useEffect(() => { sessionStorage.setItem("cuentas_filtroEstado", filtroEstado); }, [filtroEstado]);
   useEffect(() => { sessionStorage.setItem("cuentas_filtroVendedor", filtroVendedor); }, [filtroVendedor]);
+  useEffect(() => { sessionStorage.setItem("cuentas_filtroFecha", filtroFecha); }, [filtroFecha]);
 
   // Estados para paginación
   const [paginaActual, setPaginaActual] = useState(1);
@@ -187,7 +189,7 @@ export default function CuentasPage() {
       setTotalRecords(0);
       setCargando(false);
     }
-  }, [paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, filtroVendedor, filtroFoco, filtroEtapa, hayFiltroActivo]);
+  }, [paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, filtroVendedor, filtroFoco, filtroEtapa, filtroFecha, hayFiltroActivo]);
 
 
   const cargarCuentas = async () => {
@@ -228,6 +230,13 @@ export default function CuentasPage() {
           query = query.eq("etapa_prospeccion", filtroEtapa);
         }
       }
+      if (filtroFecha) {
+        const startDate = new Date(`${filtroFecha}T00:00:00`);
+        const endDate = new Date(`${filtroFecha}T23:59:59.999`);
+        query = query
+          .gte("created_at", startDate.toISOString())
+          .lte("created_at", endDate.toISOString());
+      }
 
       const { data, error, count } = await query
         .order("created_at", { ascending: false })
@@ -257,6 +266,7 @@ export default function CuentasPage() {
     setFiltroVendedor("");
     setFiltroFoco("todos");
     setFiltroEtapa("todas");
+    setFiltroFecha("");
     setPaginaActual(1);
   };
 
@@ -423,7 +433,8 @@ export default function CuentasPage() {
             etapa_prospeccion: "Sin Verificar",
             origen: "AI",
             cuenta_foco: true,
-            vendedor_id: null
+            vendedor_id: null,
+            created_at: new Date().toISOString()
           }
         ]);
       }
@@ -525,8 +536,8 @@ export default function CuentasPage() {
 
       {/* Buscador y Filtros */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 p-6 space-y-6">
-        <div className="flex gap-3">
-          <div className="relative flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="relative">
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
@@ -547,6 +558,28 @@ export default function CuentasPage() {
                 onClick={() => { setBusqueda(""); }}
                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
                 title="Limpiar búsqueda"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            ) : null}
+          </div>
+
+          <div className="relative">
+            <input
+              type="date"
+              value={filtroFecha}
+              onChange={(e) => {
+                setFiltroFecha(e.target.value);
+                setPaginaActual(1);
+              }}
+              className="w-full border-none rounded-xl px-6 py-4 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all font-medium cursor-pointer"
+              title="Filtrar por fecha de ingreso"
+            />
+            {filtroFecha ? (
+              <button
+                onClick={() => { setFiltroFecha(""); }}
+                className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                title="Limpiar fecha"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -629,7 +662,7 @@ export default function CuentasPage() {
         <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
-              {["Cliente", "Teléfono", "Sector", "Segmento", "Etapa", "Ciudad", ""].map((h, i) => (
+              {["Cliente", "Teléfono", "Sector", "Segmento", "Etapa", "Fecha ingreso", ""].map((h, i) => (
                 <th key={i} className="px-6 py-4 text-left text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{h}</th>
               ))}
             </tr>
@@ -852,12 +885,12 @@ export default function CuentasPage() {
                       <option value="Verificado">✅ Verificado</option>
                     </select>
                   </td>
-                  <td className="px-4 py-2 min-w-[120px]">
-                    <input
-                      defaultValue={cuenta.ciudad || ""}
-                      onBlur={(e) => actualizarCuentaInline(cuenta.id, "ciudad", e.target.value)}
-                      className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all"
-                    />
+                  <td className="px-4 py-2 min-w-[140px] text-sm text-gray-600 dark:text-gray-300 font-medium">
+                    {cuenta.created_at ? new Date(cuenta.created_at).toLocaleDateString("es-CL", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric"
+                    }) : "Sin fecha"}
                   </td>
 
                   <td className="px-6 py-4 text-right">
