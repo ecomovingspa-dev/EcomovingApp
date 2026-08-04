@@ -893,12 +893,28 @@ export default function CuentasPage() {
                       <option value="Verificado">✅ Verificado</option>
                     </select>
                   </td>
-                  <td className="px-4 py-2 min-w-[140px] text-sm text-gray-600 dark:text-gray-300 font-medium">
-                    {cuenta.created_at ? new Date(cuenta.created_at).toLocaleDateString("es-CL", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric"
-                    }) : "Sin fecha"}
+                  <td className="px-4 py-2 min-w-[150px]">
+                    <input
+                      type="date"
+                      defaultValue={cuenta.created_at ? (() => {
+                        const d = new Date(cuenta.created_at);
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        return `${year}-${month}-${day}`;
+                      })() : ""}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          try {
+                            const localDate = new Date(`${e.target.value}T12:00:00`);
+                            actualizarCuentaInline(cuenta.id, "created_at", localDate.toISOString());
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }
+                      }}
+                      className="w-full bg-transparent border-none rounded-lg px-2 py-2 text-sm text-gray-600 dark:text-gray-300 focus:ring-1 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-900 transition-all cursor-pointer font-medium"
+                    />
                   </td>
 
                   <td className="px-6 py-4 text-right">
