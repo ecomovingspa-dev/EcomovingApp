@@ -904,7 +904,7 @@ export default function CuentasPage() {
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-3">
                       <Link
-                        to={`/contactos/nuevo?cuentaId=${cuenta.id}`}
+                        to={`/contactos/nuevo?cuentaId=${cuenta.id}&returnTo=/cuentas`}
                         className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/40 transition-colors rounded-lg cursor-pointer"
                         title="Agregar Contacto"
                       >

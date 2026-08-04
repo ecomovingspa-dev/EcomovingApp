@@ -34,6 +34,7 @@ export default function ContactoForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const preselectedCuentaId = searchParams.get("cuentaId");
+  const returnTo = searchParams.get("returnTo") || "/contactos";
   // esEdicion removed as editing is now inline in the table
   const esEdicion = false;
 
@@ -144,7 +145,7 @@ export default function ContactoForm() {
         .update({ estado: "activo" })
         .eq("id", (contacto as any).cuenta_id);
 
-      setTimeout(() => navigate("/contactos"), 1500);
+      setTimeout(() => navigate(returnTo), 1500);
     } catch (error: any) {
       console.error("Error al guardar:", error);
       setMensaje("❌ Error al guardar el contacto");
@@ -177,7 +178,7 @@ export default function ContactoForm() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate("/contactos")}
+          onClick={() => navigate(returnTo)}
           className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -480,7 +481,7 @@ export default function ContactoForm() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate("/contactos")}
+                onClick={() => navigate(returnTo)}
                 className="w-full h-11 dark:border-gray-800 dark:hover:bg-gray-800"
               >
                 Cancelar
