@@ -81,6 +81,18 @@ export default function TrazabilidadBrevo() {
       setVendedor(vendedores[0].nombre);
     }
   }, [vendedores]);
+
+  useEffect(() => {
+    const autoOpenContactId = sessionStorage.getItem("auto_open_draft_contact_id");
+    if (autoOpenContactId && contactos && contactos.length > 0 && !loading) {
+      const contactToOpen = contactos.find(c => c.id === autoOpenContactId);
+      if (contactToOpen) {
+        sessionStorage.removeItem("auto_open_draft_contact_id");
+        generateDraft(contactToOpen);
+      }
+    }
+  }, [contactos, loading]);
+
   const [draftData, setDraftData] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [cuentas, setCuentas] = useState<any[]>([]);

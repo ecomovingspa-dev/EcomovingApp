@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles, Edit2, Save, Check, Users, Compass, UserPlus } from "lucide-react";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles, Edit2, Save, Check, Users, Compass, UserPlus, Mail } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { SEGMENTOS_MAESTROS } from "../../utils/constants";
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 
 export default function CuentasPage() {
+  const navigate = useNavigate();
   const { vendedores } = useVendedores();
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [cuentasFiltradas, setCuentasFiltradas] = useState<Cuenta[]>([]);
@@ -733,15 +734,32 @@ export default function CuentasPage() {
                             <div className="space-y-3 max-h-[200px] overflow-y-auto custom-scrollbar">
                               {cuenta.contactos.map((contact: any) => (
                                 <div key={contact.id} className="text-xs border-b border-gray-50 dark:border-gray-700/50 pb-2 last:border-0 last:pb-0">
-                                  <p className="font-bold text-gray-900 dark:text-gray-100 uppercase">{contact.nombre || "Sin nombre"}</p>
-                                  {contact.correo && (
-                                    <p className="text-gray-500 dark:text-gray-400 mt-0.5 truncate">{contact.correo}</p>
-                                  )}
-                                  {(contact.celular || contact.telefono) && (
-                                    <p className="text-gray-400 dark:text-gray-500 mt-0.5 font-mono">
-                                      📞 {contact.celular || contact.telefono}
-                                    </p>
-                                  )}
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-bold text-gray-900 dark:text-gray-100 uppercase truncate">{contact.nombre || "Sin nombre"}</p>
+                                      {contact.correo && (
+                                        <p className="text-gray-500 dark:text-gray-400 mt-0.5 truncate" title={contact.correo}>{contact.correo}</p>
+                                      )}
+                                      {(contact.celular || contact.telefono) && (
+                                        <p className="text-gray-400 dark:text-gray-500 mt-0.5 font-mono">
+                                          📞 {contact.celular || contact.telefono}
+                                        </p>
+                                      )}
+                                    </div>
+                                    {contact.correo && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          sessionStorage.setItem("auto_open_draft_contact_id", contact.id);
+                                          navigate("/marketing");
+                                        }}
+                                        className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 cursor-pointer transition-all hover:scale-105 shrink-0"
+                                        title="Preparar correo de Zoho"
+                                      >
+                                        <Mail className="h-4 w-4" />
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               ))}
                             </div>
