@@ -1541,7 +1541,7 @@ export default function TrazabilidadBrevo() {
                             };
                             const tel = telefonos[vendedor] || "+56 9 7958 7293";
 
-                            // Limpiar firma de texto plano del cuerpo para que Outlook coloque su firma nativa abajo
+                            // Limpiar firma de texto plano del cuerpo para que Outlook/Zoho coloque su firma nativa abajo
                             let cleanBody = draftData.body;
                             const signatureToSearch = `Saludos,\n\n${vendedor}\n${tel}\nwww.ecomoving.cl`;
                             if (cleanBody.includes(signatureToSearch)) {
@@ -1552,13 +1552,63 @@ export default function TrazabilidadBrevo() {
                               cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
                             }
 
-                            // 1. Copiar cuerpo limpio al portapapeles
-                            await navigator.clipboard.writeText(cleanBody);
+                            // 1. Generar versión HTML para el portapapeles
+                            // Reemplazar saltos de línea con <br/>
+                            let htmlBody = cleanBody.replace(/\n/g, "<br/>");
+                            
+                            // Reemplazar {imagen} o {imagen_url} o {render} con la etiqueta de imagen
+                            const imageUrl = `https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/imagenes-marketing/${selectedContactoDraft?.cuenta_id}.jpg`;
+                            const imgTag = `<img src="${imageUrl}" alt="Render Ecomoving" style="max-width:100%; height:auto; margin: 20px 0; border-radius: 12px; border: 1px solid #e2e8f0; display: block;" />`;
+                            
+                            if (htmlBody.includes("{imagen}") || htmlBody.includes("{imagen_url}") || htmlBody.includes("{render}")) {
+                              htmlBody = htmlBody
+                                .replace(/{\s*imagen\s*}/gi, imgTag)
+                                .replace(/{\s*imagen_url\s*}/gi, imgTag)
+                                .replace(/{\s*render\s*}/gi, imgTag);
+                            } else {
+                              // Si no tiene el tag explícito, lo agregamos en una posición lógica (después del primer párrafo o al final)
+                              const paragraphs = htmlBody.split("<br/><br/>");
+                              if (paragraphs.length > 1) {
+                                paragraphs.splice(1, 0, imgTag);
+                                htmlBody = paragraphs.join("<br/><br/>");
+                              } else {
+                                htmlBody = htmlBody + "<br/><br/>" + imgTag;
+                              }
+                            }
 
-                            // 2. Abrir Zoho Mail en su URL de composición limpia directamente
+                            // Agregar píxel invisible de rastreo al final
+                            const pixelUrl = `${window.location.origin}/api/sentinel-pixel?contacto_id=${selectedContactoDraft?.id}`;
+                            const pixelTag = `<img src="${pixelUrl}" width="1" height="1" style="display:none;" />`;
+                            htmlBody = htmlBody + pixelTag;
+
+                            // 2. Copiar cuerpo enriquecido al portapapeles
+                            try {
+                              const typeHtml = "text/html";
+                              const typeText = "text/plain";
+                              const blobHtml = new Blob([htmlBody], { type: typeHtml });
+                              const plainTextForClip = cleanBody
+                                .replace(/{\s*imagen\s*}/gi, "")
+                                .replace(/{\s*imagen_url\s*}/gi, "")
+                                .replace(/{\s*render\s*}/gi, "");
+                              const blobText = new Blob([plainTextForClip], { type: typeText });
+                              
+                              const data = [
+                                new ClipboardItem({
+                                  [typeHtml]: blobHtml,
+                                  [typeText]: blobText
+                                })
+                              ];
+                              await navigator.clipboard.write(data);
+                            } catch (clipErr) {
+                              console.warn("ClipboardItem API failed, falling back to writeText:", clipErr);
+                              // Fallback a texto plano si falla
+                              await navigator.clipboard.writeText(cleanBody);
+                            }
+
+                            // 3. Abrir Zoho Mail en su URL de composición limpia directamente
                             window.open("https://mail.zoho.com/zm/#compose", "_blank");
 
-                            toast.success("Cuerpo copiado. Redactando en Zoho Mail (Ctrl + V). El formulario sigue abierto para que copies destinatario y asunto.");
+                            toast.success("¡Cuerpo e imagen copiados! Pega en Zoho Mail (Ctrl + V).");
                           } catch (err: any) {
                             console.error("Error al copiar:", err);
                             toast.error("Error al copiar el cuerpo");
