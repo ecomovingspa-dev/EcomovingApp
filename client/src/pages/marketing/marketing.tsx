@@ -6,12 +6,7 @@ import TrazabilidadBrevo from "./TrazabilidadBrevo";
 import { Users, Library, BarChart3 } from "lucide-react";
 
 export default function Marketing() {
-  const [tabActiva, setTabActiva] = useState<"monitor" | "biblioteca" | "trazabilidad">(() => {
-    if (sessionStorage.getItem("auto_open_draft_contact_id")) {
-      return "trazabilidad";
-    }
-    return "monitor";
-  });
+  const [tabActiva, setTabActiva] = useState<"monitor" | "biblioteca" | "trazabilidad">("monitor");
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

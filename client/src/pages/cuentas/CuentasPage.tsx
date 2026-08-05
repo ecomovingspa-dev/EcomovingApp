@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
 import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles, Edit2, Save, Check, Users, Compass, UserPlus, Mail } from "lucide-react";
@@ -54,6 +55,21 @@ export default function CuentasPage() {
   const [filtroVendedor, setFiltroVendedor] = useState(() => sessionStorage.getItem("cuentas_filtroVendedor") || "");
   const [filtroFecha, setFiltroFecha] = useState(() => sessionStorage.getItem("cuentas_filtroFecha") || "");
 
+  // --- Estados para Redacción Manual Zoho ---
+  const [isZohoModalOpen, setIsZohoModalOpen] = useState(false);
+  const [selectedContactoDraft, setSelectedContactoDraft] = useState<any>(null);
+  const [selectedCuentaDraft, setSelectedCuentaDraft] = useState<any>(null);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [draftData, setDraftData] = useState<any>(null);
+  const [vendedor, setVendedor] = useState("");
+
+  useEffect(() => {
+    if (vendedores && vendedores.length > 0 && (vendedor === "Vendedor 1" || vendedor === "")) {
+      setVendedor(vendedores[0].nombre);
+    }
+  }, [vendedores]);
+
   // Sincronizar filtros a sessionStorage para persistencia en navegación
   useEffect(() => { sessionStorage.setItem("cuentas_filtroFoco", filtroFoco); }, [filtroFoco]);
   useEffect(() => { sessionStorage.setItem("cuentas_filtroEtapa", filtroEtapa); }, [filtroEtapa]);
@@ -80,7 +96,81 @@ export default function CuentasPage() {
   useEffect(() => {
     cargarOpcionesFiltros();
     cargarEstadisticasProspeccion();
+    loadTemplates();
   }, []);
+
+  const loadTemplates = async () => {
+    try {
+      const { data: dbEtapas, error: dbErr } = await supabase
+        .from("configuracion_prospeccion")
+        .select("*")
+        .eq("activo", true)
+        .order("orden", { ascending: true });
+
+      if (!dbErr && dbEtapas && dbEtapas.length > 0) {
+        const prospectionTemplates = dbEtapas.map(etapa => ({
+          id: `builtin-prospeccion-${etapa.orden}`,
+          name: `${etapa.orden}. ${etapa.nombre}`,
+          subject: etapa.asunto_template || "",
+          body: `${etapa.mensaje_intro || ""}\n\n${etapa.mensaje_cierre || ""}`.trim()
+        }));
+        setTemplates(prospectionTemplates);
+      }
+    } catch (err) {
+      console.error("Error fetching templates:", err);
+    }
+  };
+
+  const abrirModalZoho = (contacto: any, cuenta: any) => {
+    setSelectedContactoDraft(contacto);
+    setSelectedCuentaDraft(cuenta);
+    setIsZohoModalOpen(true);
+    
+    // Select first template by default if available
+    const activeVendedor = vendedor || (vendedores && vendedores.length > 0 ? vendedores[0].nombre : "");
+    if (!vendedor && activeVendedor) {
+      setVendedor(activeVendedor);
+    }
+    
+    // Since state is asynchronous, we find first template and resolve variables directly
+    if (templates.length > 0) {
+      const firstTmpl = templates[0];
+      setSelectedTemplateId(firstTmpl.id);
+      const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
+        firstTmpl.subject,
+        firstTmpl.body,
+        contacto,
+        cuenta,
+        activeVendedor
+      );
+      setDraftData({
+        email: contacto.correo,
+        subject: resolvedSubject,
+        body: resolvedBody,
+        contactoId: contacto.id
+      });
+    }
+  };
+
+  const handleSelectTemplate = (templateId: string, contact = selectedContactoDraft, account = selectedCuentaDraft, activeVendedor = vendedor) => {
+    setSelectedTemplateId(templateId);
+    const tmpl = templates.find(t => t.id === templateId);
+    if (tmpl && contact) {
+      const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
+        tmpl.subject,
+        tmpl.body,
+        contact,
+        account,
+        activeVendedor
+      );
+      setDraftData({
+        email: contact.correo,
+        subject: resolvedSubject,
+        body: resolvedBody,
+        contactoId: contact.id
+      });
+    }
+  };
 
   const cargarEstadisticasProspeccion = async () => {
     try {
@@ -749,10 +839,7 @@ export default function CuentasPage() {
                                     {contact.correo && (
                                       <button
                                         type="button"
-                                        onClick={() => {
-                                          sessionStorage.setItem("auto_open_draft_contact_id", contact.id);
-                                          navigate("/marketing");
-                                        }}
+                                        onClick={() => abrirModalZoho(contact, cuenta)}
                                         className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 cursor-pointer transition-all hover:scale-105 shrink-0"
                                         title="Preparar correo de Zoho"
                                       >
@@ -1175,6 +1262,251 @@ export default function CuentasPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL DE REDACCION ZOHO */}
+      <Dialog open={isZohoModalOpen} onOpenChange={setIsZohoModalOpen}>
+        <DialogContent className="max-w-4xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl rounded-2xl text-gray-900 dark:text-gray-100">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+              <Mail className="h-5 w-5" /> Redacción e Inteligencia de Plantillas Zoho
+            </DialogTitle>
+            <DialogDescription className="text-gray-505">
+              Selecciona una plantilla para enviar a {selectedContactoDraft?.nombre}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-12 gap-6 my-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+            
+            {/* Columna Izquierda: Plantillas */}
+            <div className="col-span-12 md:col-span-4 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
+              <div className="flex flex-col space-y-3 overflow-hidden">
+                <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Plantillas Disponibles
+                </span>
+                
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[350px]">
+                  {templates.map(t => (
+                    <div 
+                      key={t.id}
+                      onClick={() => handleSelectTemplate(t.id)}
+                      className={cn(
+                        "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2",
+                        selectedTemplateId === t.id
+                          ? "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-sm"
+                          : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80 hover:text-gray-900 dark:hover:text-white"
+                      )}
+                    >
+                      <span className="text-xs font-bold truncate flex-1">{t.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Vendedor Perfil */}
+              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-col space-y-1">
+                <span className="text-[9px] font-black uppercase text-gray-500 dark:text-gray-400">Vendedor:</span>
+                <select 
+                  value={vendedor} 
+                  onChange={(e) => {
+                    const nextVendedor = e.target.value;
+                    setVendedor(nextVendedor);
+                    if (selectedTemplateId) {
+                      setTimeout(() => handleSelectTemplate(selectedTemplateId, selectedContactoDraft, selectedCuentaDraft, nextVendedor), 50);
+                    }
+                  }}
+                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                >
+                  {vendedores.map(v => (
+                    <option key={v.id} value={v.nombre}>{v.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Columna Derecha: Contenido del Correo */}
+            <div className="col-span-12 md:col-span-8 flex flex-col h-[450px]">
+              <div className="space-y-4 flex-grow flex flex-col overflow-hidden">
+                <div className="flex flex-col space-y-1">
+                  <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destinatario</label>
+                  <input 
+                    type="text" 
+                    value={draftData?.email || ""} 
+                    disabled
+                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 text-xs text-gray-500 rounded-lg p-2 font-mono"
+                  />
+                </div>
+
+                <div className="flex flex-col space-y-1">
+                  <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asunto del Correo</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={draftData?.subject || ""} 
+                      onChange={(e) => setDraftData(draftData ? { ...draftData, subject: e.target.value } : null)}
+                      className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                    />
+                    <button
+                      onClick={async () => {
+                        if (draftData?.subject) {
+                          await navigator.clipboard.writeText(draftData.subject);
+                          toast.success("Asunto copiado");
+                        }
+                      }}
+                      className="px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-750 text-xs font-bold rounded-lg transition-all"
+                    >
+                      Copiar
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex-1 flex flex-col space-y-1 min-h-0">
+                  <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mensaje (Cuerpo)</label>
+                  <textarea 
+                    value={draftData?.body || ""} 
+                    onChange={(e) => setDraftData(draftData ? { ...draftData, body: e.target.value } : null)}
+                    className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none resize-none min-h-0 font-sans"
+                  />
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
+            <button 
+              onClick={() => setIsZohoModalOpen(false)}
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold cursor-pointer"
+            >
+              DESCARTAR
+            </button>
+            <button 
+              onClick={async () => {
+                if (draftData && selectedContactoDraft && selectedCuentaDraft) {
+                  try {
+                    const telefonos: Record<string, string> = {
+                      "Mario Osorio C.": "+56 9 7958 7293",
+                      "Jimena Lara F.": "+56 9 6528 0052"
+                    };
+                    const tel = telefonos[vendedor] || "+56 9 7958 7293";
+
+                    let cleanBody = draftData.body;
+                    const signatureToSearch = `Saludos,\n\n${vendedor}\n${tel}\nwww.ecomoving.cl`;
+                    if (cleanBody.includes(signatureToSearch)) {
+                      cleanBody = cleanBody.replace(signatureToSearch, "").trim();
+                    }
+                    const signatureToSearchSimple = `Saludos,\n\n${vendedor}`;
+                    if (cleanBody.includes(signatureToSearchSimple)) {
+                      cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
+                    }
+
+                    // 1. Generar versión HTML para el portapapeles
+                    let htmlBody = cleanBody.replace(/\n/g, "<br/>");
+                    
+                    const imageUrl = `https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/imagenes-marketing/${selectedCuentaDraft?.id}.jpg`;
+                    const imgTag = `<img src="${imageUrl}" alt="Render Ecomoving" style="max-width:100%; height:auto; margin: 20px 0; border-radius: 12px; border: 1px solid #e2e8f0; display: block;" />`;
+                    
+                    if (htmlBody.includes("{imagen}") || htmlBody.includes("{imagen_url}") || htmlBody.includes("{render}")) {
+                      htmlBody = htmlBody
+                        .replace(/{\s*imagen\s*}/gi, imgTag)
+                        .replace(/{\s*imagen_url\s*}/gi, imgTag)
+                        .replace(/{\s*render\s*}/gi, imgTag);
+                    } else {
+                      const paragraphs = htmlBody.split("<br/><br/>");
+                      if (paragraphs.length > 1) {
+                        paragraphs.splice(1, 0, imgTag);
+                        htmlBody = paragraphs.join("<br/><br/>");
+                      } else {
+                        htmlBody = htmlBody + "<br/><br/>" + imgTag;
+                      }
+                    }
+
+                    // Agregar píxel invisible de rastreo al final
+                    const pixelUrl = `${window.location.origin}/api/sentinel-pixel?contacto_id=${selectedContactoDraft?.id}`;
+                    const pixelTag = `<img src="${pixelUrl}" width="1" height="1" style="display:none;" />`;
+                    htmlBody = htmlBody + pixelTag;
+
+                    // 2. Copiar cuerpo enriquecido al portapapeles
+                    try {
+                      const typeHtml = "text/html";
+                      const typeText = "text/plain";
+                      const blobHtml = new Blob([htmlBody], { type: typeHtml });
+                      const plainTextForClip = cleanBody
+                        .replace(/{\s*imagen\s*}/gi, "")
+                        .replace(/{\s*imagen_url\s*}/gi, "")
+                        .replace(/{\s*render\s*}/gi, "");
+                      const blobText = new Blob([plainTextForClip], { type: typeText });
+                      
+                      const data = [
+                        new ClipboardItem({
+                          [typeHtml]: blobHtml,
+                          [typeText]: blobText
+                        })
+                      ];
+                      await navigator.clipboard.write(data);
+                    } catch (clipErr) {
+                      console.warn("ClipboardItem API failed, falling back to writeText:", clipErr);
+                      await navigator.clipboard.writeText(cleanBody);
+                    }
+
+                    // 3. Abrir Zoho Mail
+                    window.open("https://mail.zoho.com/zm/#compose", "_blank");
+
+                    // 4. Marcar en base de datos que se envió una cortesía (para trazabilidad opcional)
+                    await supabase.from('contactos').update({
+                      ultimo_envio: new Date().toISOString()
+                    }).eq('id', selectedContactoDraft.id);
+
+                    setIsZohoModalOpen(false);
+                    toast.success("¡Cuerpo e imagen copiados! Pega en Zoho Mail (Ctrl + V).");
+                  } catch (err: any) {
+                    console.error("Error al copiar:", err);
+                    toast.error("Error al copiar el cuerpo");
+                  }
+                }
+              }}
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer"
+            >
+              COPIAR CUERPO Y ABRIR ZOHO
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div >
   );
 }
+
+// --- Soporte de variables e inicialización ---
+const resolveTemplateVariables = (subject: string, body: string, contact: any, account: any, vendedorName: string) => {
+  if (!contact) return { resolvedSubject: subject, resolvedBody: body };
+  
+  const rawName = (contact.nombre || '').replace('Contacto Principal - ', '').trim();
+  const name = rawName.split(' ').map((word: any) => {
+    if (!word) return '';
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).filter(Boolean).join(' ');
+  
+  const firstName = name.split(' ')[0] || '';
+  const finalCompany = account?.cliente || contact.empresa || 'su empresa';
+
+  const telefonos: Record<string, string> = {
+    "Mario Osorio C.": "+56 9 7958 7293",
+    "Jimena Lara F.": "+56 9 6528 0052"
+  };
+  const telefonoVendedor = telefonos[vendedorName] || "+56 9 7958 7293";
+
+  const replaceAll = (text: string) => {
+    if (!text) return "";
+    return text
+      .replace(/{\s*nombre\s*}/gi, name)
+      .replace(/{\s*nombre_corto\s*}/gi, firstName)
+      .replace(/{\s*contacto\s*}/gi, firstName)
+      .replace(/{\s*empresa\s*}/gi, finalCompany)
+      .replace(/{\s*vendedor\s*}/gi, vendedorName)
+      .replace(/{\s*telefono\s*}/gi, telefonoVendedor);
+  };
+
+  return {
+    resolvedSubject: replaceAll(subject),
+    resolvedBody: replaceAll(body)
+  };
+};
