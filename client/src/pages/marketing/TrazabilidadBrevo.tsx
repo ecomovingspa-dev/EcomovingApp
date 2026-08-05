@@ -1504,12 +1504,26 @@ export default function TrazabilidadBrevo() {
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-gray-500 uppercase">Asunto</label>
-                        <input 
-                          type="text" 
-                          value={draftData?.subject || ""} 
-                          onChange={(e) => setDraftData(draftData ? { ...draftData, subject: e.target.value } : null)}
-                          className="w-full bg-gray-900/60 border border-gray-800 text-white text-xs p-2.5 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
-                        />
+                        <div className="flex gap-2">
+                          <input 
+                            type="text" 
+                            value={draftData?.subject || ""} 
+                            onChange={(e) => setDraftData(draftData ? { ...draftData, subject: e.target.value } : null)}
+                            className="flex-1 bg-gray-900/60 border border-gray-800 text-white text-xs p-2.5 rounded-xl focus:ring-1 focus:ring-indigo-500 focus:outline-none" 
+                          />
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (draftData?.subject) {
+                                await navigator.clipboard.writeText(draftData.subject);
+                                toast.success("¡Asunto copiado!");
+                              }
+                            }}
+                            className="px-3 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-indigo-400 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                          >
+                            Copiar
+                          </button>
+                        </div>
                       </div>
                       <div className="space-y-1">
                         <label className="text-[9px] font-black text-gray-500 uppercase">Cuerpo del Correo (Editable)</label>
