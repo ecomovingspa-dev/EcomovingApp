@@ -216,8 +216,8 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       doc.setFont("helvetica", "bold");
       doc.text("DATOS PARA TRANSFERENCIA", margin, yPos);
       doc.setFont("helvetica", "normal");
-      doc.text("Banco Estado - Cuenta Corriente", margin, yPos + 5);
-      doc.text("Nro: 36000130987", margin, yPos + 9);
+      doc.text("BCI - Cuenta Corriente", margin, yPos + 5);
+      doc.text("Nro: 13750780", margin, yPos + 9);
       doc.text("Ecomoving SPA - 77.567.348-6", margin, yPos + 13);
       doc.text("cobranza@ecomoving.cl", margin, yPos + 17);
 
