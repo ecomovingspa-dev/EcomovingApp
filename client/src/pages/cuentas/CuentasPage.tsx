@@ -1466,7 +1466,7 @@ export default function CuentasPage() {
                   <div className="p-2.5 bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 rounded-xl text-[10px] text-gray-500 space-y-1 font-medium">
                     <div className="font-bold text-gray-700 dark:text-gray-400 uppercase text-[8px] tracking-wider">Variables Admitidas:</div>
                     <div><code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{nombre}"}</code>: Nombre completo | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{nombre_corto}"}</code> o <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{contacto}"}</code>: Primer nombre.</div>
-                    <div><code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{empresa}"}</code>: Nombre del cliente | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{vendedor}"}</code>: Vendedor asignado | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{telefono}"}</code>: Teléfono del vendedor.</div>
+                    <div><code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{empresa}"}</code>: Nombre completo | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{empresa_corto}"}</code>: Nombre comercial | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{vendedor}"}</code>: Vendedor | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{telefono}"}</code>: Teléfono.</div>
                   </div>
                 </div>
               ) : (
@@ -1692,6 +1692,19 @@ export default function CuentasPage() {
   );
 }
 
+// --- Helper to get clean fantasy/short name for a company ---
+const cleanCompanyShortName = (companyName: string): string => {
+  if (!companyName) return "";
+  
+  // Remove common Chilean legal suffixes case-insensitively
+  let clean = companyName.replace(/,?\s*(s\.?a\.?|spa|limitada|ltda\.?|s\.?a\.?c\.?|e\.?i\.?r\.?l\.?|chile|group|grupo|s\.a\.s\.?)\b/gi, "");
+  
+  // Clean up extra spaces, trailing commas or periods
+  clean = clean.replace(/[,.\s]+$/, "").trim();
+  
+  return clean || companyName;
+};
+
 // --- Soporte de variables e inicialización ---
 const resolveTemplateVariables = (subject: string, body: string, contact: any, account: any, vendedorName: string) => {
   if (!contact) return { resolvedSubject: subject, resolvedBody: body };
@@ -1704,6 +1717,7 @@ const resolveTemplateVariables = (subject: string, body: string, contact: any, a
   
   const firstName = name.split(' ')[0] || '';
   const finalCompany = account?.cliente || contact.empresa || 'su empresa';
+  const shortCompany = cleanCompanyShortName(finalCompany);
 
   const telefonos: Record<string, string> = {
     "Mario Osorio C.": "+56 9 7958 7293",
@@ -1718,6 +1732,7 @@ const resolveTemplateVariables = (subject: string, body: string, contact: any, a
       .replace(/{\s*nombre_corto\s*}/gi, firstName)
       .replace(/{\s*contacto\s*}/gi, firstName)
       .replace(/{\s*empresa\s*}/gi, finalCompany)
+      .replace(/{\s*empresa_corto\s*}/gi, shortCompany)
       .replace(/{\s*vendedor\s*}/gi, vendedorName)
       .replace(/{\s*telefono\s*}/gi, telefonoVendedor);
   };
