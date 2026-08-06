@@ -1422,151 +1422,251 @@ export default function CuentasPage() {
               </div>
             </div>
 
-            {/* Columna Derecha: Contenido del Correo */}
+            {/* Columna Derecha: Contenido del Correo o Editor de Plantilla */}
             <div className="col-span-12 md:col-span-8 flex flex-col h-[450px]">
-              <div className="space-y-4 flex-grow flex flex-col overflow-hidden">
-                <div className="flex flex-col space-y-1">
-                  <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destinatario</label>
-                  <input 
-                    type="text" 
-                    value={draftData?.email || ""} 
-                    disabled
-                    className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 text-xs text-gray-500 rounded-lg p-2 font-mono"
-                  />
-                </div>
-
-                <div className="flex flex-col space-y-1">
-                  <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asunto del Correo</label>
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      value={draftData?.subject || ""} 
-                      onChange={(e) => setDraftData(draftData ? { ...draftData, subject: e.target.value } : null)}
-                      className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"
-                    />
+              {isEditingTemplateMode ? (
+                <div className="space-y-4 flex-grow flex flex-col overflow-hidden">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                      ✏️ Editando Estructura de Plantilla (Original)
+                    </span>
                     <button
-                      onClick={async () => {
-                        if (draftData?.subject) {
-                          await navigator.clipboard.writeText(draftData.subject);
-                          toast.success("Asunto copiado");
-                        }
-                      }}
-                      className="px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-750 text-xs font-bold rounded-lg transition-all"
+                      type="button"
+                      onClick={() => setIsEditingTemplateMode(false)}
+                      className="text-xs font-bold text-gray-500 hover:text-indigo-600 transition-colors cursor-pointer"
                     >
-                      Copiar
+                      Volver a Vista Previa
                     </button>
                   </div>
-                </div>
 
-                <div className="flex-1 flex flex-col space-y-1 min-h-0">
-                  <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mensaje (Cuerpo)</label>
-                  <textarea 
-                    value={draftData?.body || ""} 
-                    onChange={(e) => setDraftData(draftData ? { ...draftData, body: e.target.value } : null)}
-                    className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none resize-none min-h-0 font-sans"
-                  />
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asunto Base (Con Placeholders)</label>
+                    <input 
+                      type="text" 
+                      value={tempEditSubject} 
+                      onChange={(e) => setTempEditSubject(e.target.value)}
+                      className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      placeholder="Ej: Consulta rápida sobre regalos o merchandising en {empresa}"
+                    />
+                  </div>
+
+                  <div className="flex-grow flex flex-col space-y-1 min-h-0">
+                    <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cuerpo Base (Con Placeholders)</label>
+                    <textarea 
+                      value={tempEditBody} 
+                      onChange={(e) => setTempEditBody(e.target.value)}
+                      className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none resize-none min-h-0 font-sans"
+                      placeholder="Hola {nombre_corto}, te escribo..."
+                    />
+                  </div>
+
+                  <div className="p-2.5 bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 rounded-xl text-[10px] text-gray-500 space-y-1 font-medium">
+                    <div className="font-bold text-gray-700 dark:text-gray-400 uppercase text-[8px] tracking-wider">Variables Admitidas:</div>
+                    <div><code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{nombre}"}</code>: Nombre completo | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{nombre_corto}"}</code> o <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{contacto}"}</code>: Primer nombre.</div>
+                    <div><code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{empresa}"}</code>: Nombre del cliente | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{vendedor}"}</code>: Vendedor asignado | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{telefono}"}</code>: Teléfono del vendedor.</div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-4 flex-grow flex flex-col overflow-hidden">
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destinatario</label>
+                    <input 
+                      type="text" 
+                      value={draftData?.email || ""} 
+                      disabled
+                      className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 text-xs text-gray-500 rounded-lg p-2 font-mono"
+                    />
+                  </div>
+
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asunto del Correo</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={draftData?.subject || ""} 
+                        onChange={(e) => setDraftData(draftData ? { ...draftData, subject: e.target.value } : null)}
+                        className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      />
+                      <button
+                        onClick={async () => {
+                          if (draftData?.subject) {
+                            await navigator.clipboard.writeText(draftData.subject);
+                            toast.success("Asunto copiado");
+                          }
+                        }}
+                        className="px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-750 text-xs font-bold rounded-lg transition-all"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Widget para Subir Render Personalizado desde Computador (Base64) */}
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-150 dark:border-gray-800 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2.5">
+                      {imageUrl ? (
+                        <img src={imageUrl} className="h-10 w-10 object-cover rounded-lg border border-gray-250 dark:border-gray-700 shadow-sm" alt="Preview render" />
+                      ) : (
+                        <div className="h-10 w-10 bg-gray-250 dark:bg-gray-800 rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-dashed border-gray-300 dark:border-gray-700">
+                          S/R
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-xs font-bold text-gray-800 dark:text-gray-200">Render Personalizado</div>
+                        <div className="text-[10px] text-gray-500">Se guardará en la ficha del contacto y se insertará en el correo</div>
+                      </div>
+                    </div>
+                    <input 
+                      type="file" 
+                      id="render-image-upload" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleImageUpload}
+                    />
+                    <label 
+                      htmlFor="render-image-upload" 
+                      className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold cursor-pointer transition-all border border-indigo-200 dark:border-indigo-900/50 flex items-center gap-1 shadow-sm"
+                    >
+                      {guardandoImagen ? "Procesando..." : (imageUrl ? "Reemplazar Render" : "Subir Render")}
+                    </label>
+                  </div>
+
+                  <div className="flex-1 flex flex-col space-y-1 min-h-0">
+                    <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mensaje (Cuerpo)</label>
+                    <textarea 
+                      value={draftData?.body || ""} 
+                      onChange={(e) => setDraftData(draftData ? { ...draftData, body: e.target.value } : null)}
+                      className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none resize-none min-h-0 font-sans"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>
 
           <div className="flex justify-end gap-2 border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
-            <button 
-              onClick={() => setIsZohoModalOpen(false)}
-              className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold cursor-pointer"
-            >
-              DESCARTAR
-            </button>
-            <button 
-              onClick={async () => {
-                if (draftData && selectedContactoDraft && selectedCuentaDraft) {
-                  try {
-                    const telefonos: Record<string, string> = {
-                      "Mario Osorio C.": "+56 9 7958 7293",
-                      "Jimena Lara F.": "+56 9 6528 0052"
-                    };
-                    const tel = telefonos[vendedor] || "+56 9 7958 7293";
+            {isEditingTemplateMode ? (
+              <>
+                <button 
+                  onClick={() => setIsEditingTemplateMode(false)}
+                  disabled={guardandoPlantilla}
+                  className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50"
+                >
+                  CANCELAR
+                </button>
+                <button 
+                  onClick={handleSaveTemplateChanges}
+                  disabled={guardandoPlantilla}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {guardandoPlantilla && <Loader2 className="h-3 w-3 animate-spin" />}
+                  GUARDAR CAMBIOS EN PLANTILLA
+                </button>
+              </>
+            ) : (
+              <>
+                <button 
+                  onClick={() => setIsZohoModalOpen(false)}
+                  className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  DESCARTAR
+                </button>
+                <button 
+                  onClick={async () => {
+                    if (draftData && selectedContactoDraft && selectedCuentaDraft) {
+                      try {
+                        const telefonos: Record<string, string> = {
+                          "Mario Osorio C.": "+56 9 7958 7293",
+                          "Jimena Lara F.": "+56 9 6528 0052"
+                        };
+                        const tel = telefonos[vendedor] || "+56 9 7958 7293";
 
-                    let cleanBody = draftData.body;
-                    const signatureToSearch = `Saludos,\n\n${vendedor}\n${tel}\nwww.ecomoving.cl`;
-                    if (cleanBody.includes(signatureToSearch)) {
-                      cleanBody = cleanBody.replace(signatureToSearch, "").trim();
-                    }
-                    const signatureToSearchSimple = `Saludos,\n\n${vendedor}`;
-                    if (cleanBody.includes(signatureToSearchSimple)) {
-                      cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
-                    }
+                        let cleanBody = draftData.body;
+                        const signatureToSearch = `Saludos,\n\n${vendedor}\n${tel}\nwww.ecomoving.cl`;
+                        if (cleanBody.includes(signatureToSearch)) {
+                          cleanBody = cleanBody.replace(signatureToSearch, "").trim();
+                        }
+                        const signatureToSearchSimple = `Saludos,\n\n${vendedor}`;
+                        if (cleanBody.includes(signatureToSearchSimple)) {
+                          cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
+                        }
 
-                    // 1. Generar versión HTML para el portapapeles
-                    let htmlBody = cleanBody.replace(/\n/g, "<br/>");
-                    
-                    const imageUrl = `https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/imagenes-marketing/${selectedCuentaDraft?.id}.jpg`;
-                    const imgTag = `<img src="${imageUrl}" alt="Render Ecomoving" style="max-width:100%; height:auto; margin: 20px 0; border-radius: 12px; border: 1px solid #e2e8f0; display: block;" />`;
-                    
-                    if (htmlBody.includes("{imagen}") || htmlBody.includes("{imagen_url}") || htmlBody.includes("{render}")) {
-                      htmlBody = htmlBody
-                        .replace(/{\s*imagen\s*}/gi, imgTag)
-                        .replace(/{\s*imagen_url\s*}/gi, imgTag)
-                        .replace(/{\s*render\s*}/gi, imgTag);
-                    } else {
-                      const paragraphs = htmlBody.split("<br/><br/>");
-                      if (paragraphs.length > 1) {
-                        paragraphs.splice(1, 0, imgTag);
-                        htmlBody = paragraphs.join("<br/><br/>");
-                      } else {
-                        htmlBody = htmlBody + "<br/><br/>" + imgTag;
+                        // 1. Generar versión HTML para el portapapeles
+                        let htmlBody = cleanBody.replace(/\n/g, "<br/>");
+                        
+                        // Si hay URL/Base64 de render en el contacto, inyectar esa. Si no, no inyectar nada
+                        if (imageUrl.trim()) {
+                          const imgTag = `<img src="${imageUrl.trim()}" alt="Render Ecomoving" style="max-width:100%; height:auto; margin: 20px 0; border-radius: 12px; border: 1px solid #e2e8f0; display: block;" />`;
+                          if (htmlBody.includes("{imagen}") || htmlBody.includes("{imagen_url}") || htmlBody.includes("{render}")) {
+                            htmlBody = htmlBody
+                              .replace(/{\s*imagen\s*}/gi, imgTag)
+                              .replace(/{\s*imagen_url\s*}/gi, imgTag)
+                              .replace(/{\s*render\s*}/gi, imgTag);
+                          } else {
+                            const paragraphs = htmlBody.split("<br/><br/>");
+                            if (paragraphs.length > 1) {
+                              paragraphs.splice(1, 0, imgTag);
+                              htmlBody = paragraphs.join("<br/><br/>");
+                            } else {
+                              htmlBody = htmlBody + "<br/><br/>" + imgTag;
+                            }
+                          }
+                        } else {
+                          // Limpiar variables de imagen si no hay render configurado
+                          htmlBody = htmlBody
+                            .replace(/{\s*imagen\s*}/gi, "")
+                            .replace(/{\s*imagen_url\s*}/gi, "")
+                            .replace(/{\s*render\s*}/gi, "");
+                        }
+
+                        // Agregar píxel invisible de rastreo al final
+                        const pixelUrl = `${window.location.origin}/api/sentinel-pixel?contacto_id=${selectedContactoDraft?.id}`;
+                        const pixelTag = `<img src="${pixelUrl}" width="1" height="1" style="display:none;" />`;
+                        htmlBody = htmlBody + pixelTag;
+
+                        // 2. Copiar cuerpo enriquecido al portapapeles
+                        try {
+                          const typeHtml = "text/html";
+                          const typeText = "text/plain";
+                          const blobHtml = new Blob([htmlBody], { type: typeHtml });
+                          const plainTextForClip = cleanBody
+                            .replace(/{\s*imagen\s*}/gi, "")
+                            .replace(/{\s*imagen_url\s*}/gi, "")
+                            .replace(/{\s*render\s*}/gi, "");
+                          const blobText = new Blob([plainTextForClip], { type: typeText });
+                          
+                          const data = [
+                            new ClipboardItem({
+                              [typeHtml]: blobHtml,
+                              [typeText]: blobText
+                            })
+                          ];
+                          await navigator.clipboard.write(data);
+                        } catch (clipErr) {
+                          console.warn("ClipboardItem API failed, falling back to writeText:", clipErr);
+                          await navigator.clipboard.writeText(cleanBody);
+                        }
+
+                        // 3. Marcar en base de datos que se envió una cortesía (para trazabilidad opcional)
+                        await supabase.from('contactos').update({
+                          ultimo_envio: new Date().toISOString()
+                        }).eq('id', selectedContactoDraft.id);
+
+                        setIsZohoModalOpen(false);
+                        toast.success("¡Cuerpo e imagen copiados! Puedes pegarlo en tu correo.");
+                      } catch (err: any) {
+                        console.error("Error al copiar:", err);
+                        toast.error("Error al copiar el cuerpo");
                       }
                     }
-
-                    // Agregar píxel invisible de rastreo al final
-                    const pixelUrl = `${window.location.origin}/api/sentinel-pixel?contacto_id=${selectedContactoDraft?.id}`;
-                    const pixelTag = `<img src="${pixelUrl}" width="1" height="1" style="display:none;" />`;
-                    htmlBody = htmlBody + pixelTag;
-
-                    // 2. Copiar cuerpo enriquecido al portapapeles
-                    try {
-                      const typeHtml = "text/html";
-                      const typeText = "text/plain";
-                      const blobHtml = new Blob([htmlBody], { type: typeHtml });
-                      const plainTextForClip = cleanBody
-                        .replace(/{\s*imagen\s*}/gi, "")
-                        .replace(/{\s*imagen_url\s*}/gi, "")
-                        .replace(/{\s*render\s*}/gi, "");
-                      const blobText = new Blob([plainTextForClip], { type: typeText });
-                      
-                      const data = [
-                        new ClipboardItem({
-                          [typeHtml]: blobHtml,
-                          [typeText]: blobText
-                        })
-                      ];
-                      await navigator.clipboard.write(data);
-                    } catch (clipErr) {
-                      console.warn("ClipboardItem API failed, falling back to writeText:", clipErr);
-                      await navigator.clipboard.writeText(cleanBody);
-                    }
-
-                    // 3. Abrir Zoho Mail
-                    window.open("https://mail.zoho.com/zm/#compose", "_blank");
-
-                    // 4. Marcar en base de datos que se envió una cortesía (para trazabilidad opcional)
-                    await supabase.from('contactos').update({
-                      ultimo_envio: new Date().toISOString()
-                    }).eq('id', selectedContactoDraft.id);
-
-                    setIsZohoModalOpen(false);
-                    toast.success("¡Cuerpo e imagen copiados! Pega en Zoho Mail (Ctrl + V).");
-                  } catch (err: any) {
-                    console.error("Error al copiar:", err);
-                    toast.error("Error al copiar el cuerpo");
-                  }
-                }
-              }}
-              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer"
-            >
-              COPIAR CUERPO Y ABRIR ZOHO
-            </button>
+                  }}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer"
+                >
+                  COPIAR CUERPO
+                </button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>

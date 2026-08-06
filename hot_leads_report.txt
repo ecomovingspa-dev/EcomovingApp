@@ -1,12 +1,21 @@
 --- ANALIZANDO HOT LEADS (OPENED/CLICK) ---
-Nombre: Claudio Rojas | Empresa: Ilustre Municipalidad de Valdivia | Estado: opened | Envío: 2026-03-26
-Nombre: Maria Jose Castillo | Empresa: Barrick Chile | Estado: opened | Envío: 2026-03-26
-Nombre: Contacto Principal - Minera Cordillera | Empresa: Minera Cordillera | Estado: opened | Envío: 2026-03-26
-Nombre: Constanza Henriquez | Empresa: Asistencia Post Venta Sociedad Anonima | Estado: opened | Envío: 2026-03-26
-Nombre: Mario Osorio C. | Empresa: Ecomoving | Estado: opened | Envío: 2026-03-26
-Nombre: Contacto Principal - Fluitek Chile S.A | Empresa: Fluitek Chile S.A | Estado: opened | Envío: 2026-03-26
-Nombre: Contacto Principal - Teck Exploraciones Mineras Chile Ltda. | Empresa: Teck Exploraciones Mineras Chile Ltda. | Estado: opened | Envío: 2026-03-26
-Nombre: Contacto Principal - Freeport-Mcmoran South America | Empresa: Freeport-Mcmoran South America | Estado: opened | Envío: 2026-03-26
-Nombre: Contacto Principal - Geocom S.A. | Empresa: Geocom S.A. | Estado: opened | Envío: 2026-03-26
-Nombre: Contacto Principal - Antko | Empresa: Antko | Estado: opened | Envío: 2026-03-26
-Nombre: Contacto Principal - Proveedora Industrial Minera Andina S.A | Empresa: Proveedora Industrial Minera Andina S.A | Estado: opened | Envío: 2026-03-26
+Nombre: Daniela Leal | Empresa: Daniela Leal | Estado: opened | Envío: 2026-08-04
+Nombre: Cyntia Suarez | Empresa: Mariberico | Estado: opened | Envío: 2026-08-04
+Nombre:  | Empresa: Geocom S.A. | Estado: opened | Envío: 2026-08-04
+Nombre: Daisy Ramos | Empresa: Proveedora Industrial Minera Andina S.A | Estado: opened | Envío: 2026-08-04
+Nombre: Carmen Cifuentes | Empresa: Mitta | Estado: opened | Envío: 2026-08-04
+Nombre: Carolina Hormazabal | Empresa: Interexpo | Estado: opened | Envío: 2026-08-04
+Nombre: Camilo Galleguillos | Empresa: Kai Chile | Estado: opened | Envío: 2026-08-04
+Nombre:  | Empresa: Festo Chile S.A. | Estado: opened | Envío: 2026-08-04
+Nombre: Roberto Rasmussen | Empresa: Hoyts Cines | Estado: opened | Envío: 2026-08-04
+Nombre: Biodiversa | Empresa: Biodiversa | Estado: opened | Envío: 2026-08-04
+Nombre: Beatriz Escobar | Empresa: COMERCIAL CHILE | Estado: opened | Envío: 2026-08-04
+Nombre: Carmen Fuentes | Empresa: Fundacion Huilo Huilo | Estado: opened | Envío: 2026-08-04
+Nombre: Prospección | Empresa: Bridon Bekaert Chile | Estado: opened | Envío: 2026-08-04
+Nombre: Prospección | Empresa: Milan Fabjanovic y Cía Ltda | Estado: opened | Envío: 2026-08-04
+Nombre: Franco Ávila | Empresa: Airliquide | Estado: opened | Envío: 2026-08-04
+Nombre: Prospección | Empresa: Anglo American Chile | Estado: opened | Envío: 2026-08-04
+Nombre: Carolina Rodriguez | Empresa: Comision Nacional De Energia | Estado: opened | Envío: 2026-08-04
+Nombre: Prospección | Empresa: BlastPaint | Estado: opened | Envío: 2026-08-04
+Nombre: Macarena Cue | Empresa: Komatsu Chile | Estado: opened | Envío: 2026-08-04
+Nombre: Daniel Boubet | Empresa: Fedex | Estado: opened | Envío: 2026-08-04
