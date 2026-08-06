@@ -650,21 +650,7 @@ export default function TrazabilidadBrevo() {
           </div>
         </div>
 
-        {/* Centro: Simbología */}
-        <div className="flex flex-wrap gap-4 items-center justify-center">
-          <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
-            <Mail className="h-3 w-3 text-blue-400" /> Enviado
-          </div>
-          <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
-            <CheckCircle2 className="h-3 w-3 text-emerald-400" /> Entregado
-          </div>
-          <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
-            <Eye className="h-3 w-3 text-purple-400" /> Abierto
-          </div>
-          <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
-            <Wrench className="h-3 w-3 text-indigo-400" /> Seguimiento
-          </div>
-        </div>
+
 
         {/* Derecha: Botón Sincronizar */}
         <div>
@@ -674,7 +660,7 @@ export default function TrazabilidadBrevo() {
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-black transition-all disabled:opacity-50 h-[36px]"
           >
             <RefreshCcw className="h-3.5 w-3.5" />
-            SINCRONIZAR BREVO
+            SINCRONIZAR
           </button>
         </div>
       </div>
@@ -1343,24 +1329,7 @@ export default function TrazabilidadBrevo() {
         </DialogContent>
       </Dialog>
 
-      {/* Leyenda Sentinel */}
-      <div className="flex flex-wrap gap-6 p-4 bg-gray-900/20 rounded-xl border border-dotted border-gray-800 justify-center">
-        <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold uppercase">
-          <Mail className="h-3 w-3 text-blue-400" /> Enviado
-        </div>
-        <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold uppercase">
-          <CheckCircle2 className="h-3 w-3 text-emerald-400" /> Entregado
-        </div>
-        <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold uppercase">
-          <Eye className="h-3 w-3 text-purple-400" /> Abierto
-        </div>
-        <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold uppercase">
-          <AlertCircle className="h-3 w-3 text-red-500" /> Error / Bloqueo
-        </div>
-        <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold uppercase">
-          <Circle className="h-3 w-3 text-gray-700" /> Pendiente
-        </div>
-      </div>
+
     </div>
   );
 }
