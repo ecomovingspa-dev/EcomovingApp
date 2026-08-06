@@ -6,6 +6,12 @@ const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL ||
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Transparent GIF 1x1 pixels
+const transparentGif = Buffer.from(
+    'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+    'base64'
+);
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Configurar CORS
     res.setHeader('Access-Control-Allow-Credentials', "true");
@@ -16,8 +22,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
     );
 
+    // Configurar cabeceras de respuesta para el GIF (siempre se retorna un GIF)
+    res.setHeader('Content-Type', 'image/gif');
+    res.setHeader('Content-Length', transparentGif.length.toString());
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     if (req.method === 'OPTIONS') {
-        res.status(200).end();
+        res.status(200).send(transparentGif);
         return;
     }
 
@@ -35,11 +48,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             // 1. Obtener los datos del contacto
             const { data: contacto, error: contactError } = await supabase
                 .from('contactos')
-                .select('id, correo, nombre')
+                .select('id, correo, nombre, ultimo_envio')
                 .eq('id', contacto_id)
                 .single();
 
             if (!contactError && contacto && contacto.correo) {
+                // Filtro temporal: si la petición llega en menos de 120 segundos (2 minutos)
+                // desde que se copió/envió el correo en la CRM (ultimo_envio), ignorar para evitar
+                // prefetchings del servidor de correo saliente, antivirus o el composer de Zoho Mail.
+                if (contacto.ultimo_envio) {
+                    const sendTime = new Date(contacto.ultimo_envio).getTime();
+                    const nowTime = new Date().getTime();
+                    const diffSeconds = Math.abs(nowTime - sendTime) / 1000;
+                    
+                    if (diffSeconds < 120) {
+                        console.log(`[SENTINEL-PIXEL] Petición ignorada: Demasiado cercana al envío (${Math.round(diffSeconds)}s). Posible prefetch/composer.`);
+                        return res.status(200).send(transparentGif);
+                    }
+                }
+
                 const now = new Date();
                 const localDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
                 const uniqueMsgId = `manual_open:${contacto_id}:${now.getTime()}`;
@@ -67,20 +94,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             console.error('[SENTINEL-PIXEL] Error en la base de datos:', err);
         }
     } else {
-        console.warn('[SENTINEL-PIXEL] Petición recibida sin contacto_id válido.');
+        console.warn(`[SENTINEL-PIXEL] Petición omitida de registrar. ID: ${contacto_id}, Referer: ${referer}`);
     }
 
-    // 4. Retornar imagen GIF transparente de 1x1 píxeles
-    const transparentGif = Buffer.from(
-        'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
-        'base64'
-    );
-
-    res.setHeader('Content-Type', 'image/gif');
-    res.setHeader('Content-Length', transparentGif.length.toString());
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.setHeader('Pragma', 'no-cache');
-    res.setHeader('Expires', '0');
-    
     return res.status(200).send(transparentGif);
 }
