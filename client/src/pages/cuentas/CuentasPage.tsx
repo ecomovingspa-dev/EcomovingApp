@@ -1696,11 +1696,26 @@ export default function CuentasPage() {
 const cleanCompanyShortName = (companyName: string): string => {
   if (!companyName) return "";
   
-  // Remove common Chilean legal suffixes case-insensitively
-  let clean = companyName.replace(/,?\s*(s\.?a\.?|spa|limitada|ltda\.?|s\.?a\.?c\.?|e\.?i\.?r\.?l\.?|chile|group|grupo|s\.a\.s\.?)\b/gi, "");
+  let clean = companyName;
   
-  // Clean up extra spaces, trailing commas or periods
-  clean = clean.replace(/[,.\s]+$/, "").trim();
+  // 1. Remove long corporate prefixes case-insensitively
+  const prefixesToRemove = [
+    /^(caja de compensación de asignación familiar|caja de compensación|ccaf)\s+/gi,
+    /^(compañía de|compañia de|corp\.?|corporación|corporacion)\s+/gi,
+    /^(sociedad|asociación|asociacion|federación|federacion|fundación|fundacion)\s+/gi,
+    /^(distribuidora|importadora|exportadora|comercializadora)\s+/gi,
+    /^(servicios|consultoría|consultoria|asesorías|asesorias)\s+/gi
+  ];
+  
+  for (const regex of prefixesToRemove) {
+    clean = clean.replace(regex, "");
+  }
+  
+  // 2. Remove common Chilean legal suffixes case-insensitively
+  clean = clean.replace(/,?\s*(s\.?a\.?|spa|limitada|ltda\.?|s\.?a\.?c\.?|e\.?i\.?r\.?l\.?|chile|group|grupo|s\.a\.s\.?)\b/gi, "");
+  
+  // 3. Clean up extra spaces, trailing/leading commas or periods
+  clean = clean.replace(/^[ ,.\t]+/, "").replace(/[,.\s]+$/, "").trim();
   
   return clean || companyName;
 };
