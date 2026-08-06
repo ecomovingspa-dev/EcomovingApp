@@ -1423,25 +1423,6 @@ export default function CuentasPage() {
                 </div>
               </div>
 
-              {/* Vendedor Perfil */}
-              <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-col space-y-1">
-                <span className="text-[9px] font-black uppercase text-gray-500 dark:text-gray-400">Vendedor:</span>
-                <select 
-                  value={vendedor} 
-                  onChange={(e) => {
-                    const nextVendedor = e.target.value;
-                    setVendedor(nextVendedor);
-                    if (selectedTemplateId) {
-                      setTimeout(() => handleSelectTemplate(selectedTemplateId, selectedContactoDraft, selectedCuentaDraft, nextVendedor), 50);
-                    }
-                  }}
-                  className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-300 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"
-                >
-                  {vendedores.map(v => (
-                    <option key={v.id} value={v.nombre}>{v.nombre}</option>
-                  ))}
-                </select>
-              </div>
             </div>
 
             {/* Columna Derecha: Contenido del Correo o Editor de Plantilla */}
