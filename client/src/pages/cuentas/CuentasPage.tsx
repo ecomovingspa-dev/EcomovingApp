@@ -195,25 +195,32 @@ export default function CuentasPage() {
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
-        const base64String = reader.result as string;
-        
-        // Save base64 string directly into the 'imagen' column of 'contactos'
-        const { error } = await supabase
-          .from("contactos")
-          .update({ imagen: base64String })
-          .eq("id", selectedContactoDraft.id);
+        try {
+          const base64String = reader.result as string;
+          
+          // Save base64 string directly into the 'imagen' column of 'contactos'
+          const { error } = await supabase
+            .from("contactos")
+            .update({ imagen: base64String })
+            .eq("id", selectedContactoDraft.id);
 
-        if (error) throw error;
+          if (error) throw error;
 
-        toast.success("¡Render personalizado guardado en el contacto!");
-        setImageUrl(base64String);
-        setSelectedContactoDraft((prev: any) => prev ? { ...prev, imagen: base64String } : null);
+          toast.success("¡Render personalizado guardado en el contacto!");
+          setImageUrl(base64String);
+          setSelectedContactoDraft((prev: any) => prev ? { ...prev, imagen: base64String } : null);
+          await cargarCuentas();
+        } catch (err: any) {
+          console.error("Error saving image:", err);
+          toast.error("Error al procesar la imagen: " + err.message);
+        } finally {
+          setGuardandoImagen(false);
+        }
       };
       reader.readAsDataURL(file);
     } catch (err: any) {
-      console.error("Error saving image:", err);
-      toast.error("Error al procesar la imagen: " + err.message);
-    } finally {
+      console.error("Error reading file:", err);
+      toast.error("Error al leer el archivo");
       setGuardandoImagen(false);
     }
   };
@@ -389,7 +396,7 @@ export default function CuentasPage() {
 
       let query = supabase
         .from("cuentas")
-        .select("*, vendedores(nombre), contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono)", { count: "exact" });
+        .select("*, vendedores(nombre), contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono, imagen)", { count: "exact" });
 
       if (busqueda) {
         query = query.or(`cliente.ilike.%${busqueda}%,rut.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`);
