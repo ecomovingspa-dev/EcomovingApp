@@ -261,7 +261,7 @@ export default function TrazabilidadBrevo() {
       .from("contactos")
       .select("*")
       .in("etapa", ["prospeccion", "marketing"])
-      .eq("estado", "activo")
+      .in("estado", ["activo", "inactivo"])
       .not("correo", "is", null)
       .neq("correo", "")
       .order("nombre", { ascending: true });
@@ -585,6 +585,12 @@ export default function TrazabilidadBrevo() {
   );
 
   const filtered = contactos.filter(c => {
+    // Si el contacto es inactivo, solo mostrar si tiene al menos un envío registrado en su historial o fecha de envío
+    if (c.estado === "inactivo") {
+      const tieneEnvios = (c.historial && c.historial.length > 0) || c.ultimo_envio || c.ultimo_estado_brevo;
+      if (!tieneEnvios) return false;
+    }
+
     const accountName = c.empresa_rel_name || c.empresa || "";
     const matchesSearch = normalizeString(accountName).includes(normalizeString(filtro));
     const matchesCriticos = soloCriticos ? c.es_bloqueado : true;
