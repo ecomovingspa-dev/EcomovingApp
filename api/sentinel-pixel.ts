@@ -45,27 +45,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (contacto_id && typeof contacto_id === 'string' && !isSelfOrSender) {
         try {
-            // 1. Obtener los datos del contacto
+            // 1. Obtener los datos del contacto y su marca temporal de copia/envío manual (ultimo_evento_trazabilidad)
             const { data: contacto, error: contactError } = await supabase
                 .from('contactos')
-                .select('id, correo, nombre')
+                .select('id, correo, nombre, ultimo_evento_trazabilidad, ultimo_estado_brevo')
                 .eq('id', contacto_id)
                 .single();
 
             if (!contactError && contacto && contacto.correo) {
-                // Consultar el último evento 'sent' de este contacto en trazabilidad_correos para
-                // obtener la precisión timestamptz exacta de cuándo se generó el correo en el CRM.
-                const { data: latestSend } = await supabase
-                    .from('trazabilidad_correos')
-                    .select('created_at')
-                    .eq('contacto_id', contacto_id)
-                    .eq('estado', 'sent')
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .maybeSingle();
-
-                if (latestSend && latestSend.created_at) {
-                    const sendTime = new Date(latestSend.created_at).getTime();
+                // Filtro temporal: si la petición llega en menos de 120 segundos (2 minutos)
+                // desde que se copió/envió el correo en la CRM (ultimo_evento_trazabilidad),
+                // la ignoramos para evitar los prefetchings del servidor de Zoho o del antivirus.
+                // NOTA: Solo aplicamos el bloqueo si el contacto NO estaba previamente marcado como "opened",
+                // para evitar bloquear aperturas reales rápidas posteriores, aunque 120s es un margen muy seguro.
+                if (contacto.ultimo_evento_trazabilidad && contacto.ultimo_estado_brevo !== 'opened') {
+                    const sendTime = new Date(contacto.ultimo_evento_trazabilidad).getTime();
                     const nowTime = new Date().getTime();
                     const diffSeconds = Math.abs(nowTime - sendTime) / 1000;
                     

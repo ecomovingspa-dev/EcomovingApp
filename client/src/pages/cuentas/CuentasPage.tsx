@@ -1667,18 +1667,12 @@ export default function CuentasPage() {
                         }
 
                         // 3. Marcar en base de datos que se envió una cortesía (para trazabilidad opcional)
+                        // Guardamos la hora exacta con precisión de milisegundos en ultimo_evento_trazabilidad
+                        // para que el píxel de rastreo pueda calcular los 120 segundos de gracia y evitar el composer de Zoho.
                         await supabase.from('contactos').update({
-                          ultimo_envio: new Date().toISOString()
+                          ultimo_envio: new Date().toISOString(),
+                          ultimo_evento_trazabilidad: new Date().toISOString()
                         }).eq('id', selectedContactoDraft.id);
-
-                        // Registrar un evento 'sent' con precisión timestamptz en la tabla trazabilidad_correos
-                        await supabase.from('trazabilidad_correos').insert({
-                          contacto_id: selectedContactoDraft.id,
-                          email: selectedContactoDraft.correo.toLowerCase(),
-                          fecha: new Date().toISOString().split('T')[0],
-                          estado: 'sent',
-                          mensaje_id: `manual_send:${selectedContactoDraft.id}:${new Date().getTime()}`
-                        });
 
                         setIsZohoModalOpen(false);
                         toast.success("¡Cuerpo e imagen copiados! Puedes pegarlo en tu correo.");
