@@ -22,8 +22,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { contacto_id } = req.query;
+    const referer = (req.headers.referer || req.headers.referrer || '').toLowerCase();
+    
+    // Si la petición proviene de Zoho Mail (remitente redactando/viendo correos) o de la propia app, no registrar evento
+    const isSelfOrSender = referer.includes('zoho.com') || 
+                           referer.includes('zoho.cl') || 
+                           referer.includes('localhost') || 
+                           referer.includes('ecomoving');
 
-    if (contacto_id && typeof contacto_id === 'string') {
+    if (contacto_id && typeof contacto_id === 'string' && !isSelfOrSender) {
         try {
             // 1. Obtener los datos del contacto
             const { data: contacto, error: contactError } = await supabase
