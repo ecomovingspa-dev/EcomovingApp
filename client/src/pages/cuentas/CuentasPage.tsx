@@ -63,6 +63,12 @@ export default function CuentasPage() {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [draftData, setDraftData] = useState<any>(null);
   const [vendedor, setVendedor] = useState("");
+  const [isEditingTemplateMode, setIsEditingTemplateMode] = useState(false);
+  const [tempEditSubject, setTempEditSubject] = useState("");
+  const [tempEditBody, setTempEditBody] = useState("");
+  const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
+  const [imageUrl, setImageUrl] = useState(""); // Stores base64 string
+  const [guardandoImagen, setGuardandoImagen] = useState(false);
 
   useEffect(() => {
     if (vendedores && vendedores.length > 0 && (vendedor === "Vendedor 1" || vendedor === "")) {
@@ -110,6 +116,8 @@ export default function CuentasPage() {
       if (!dbErr && dbEtapas && dbEtapas.length > 0) {
         const prospectionTemplates = dbEtapas.map(etapa => ({
           id: `builtin-prospeccion-${etapa.orden}`,
+          dbId: etapa.id,
+          orden: etapa.orden,
           name: `${etapa.orden}. ${etapa.nombre}`,
           subject: etapa.asunto_template || "",
           body: `${etapa.mensaje_intro || ""}\n\n${etapa.mensaje_cierre || ""}`.trim()
@@ -121,10 +129,86 @@ export default function CuentasPage() {
     }
   };
 
+  const startEditingTemplate = (tmpl: any) => {
+    setIsEditingTemplateMode(true);
+    setTempEditSubject(tmpl.subject);
+    setTempEditBody(tmpl.body);
+  };
+
+  const handleSaveTemplateChanges = async () => {
+    const tmpl = templates.find(t => t.id === selectedTemplateId);
+    if (!tmpl || !tmpl.dbId) {
+      toast.error("No se encontró el ID de base de datos de la plantilla");
+      return;
+    }
+    
+    setGuardandoPlantilla(true);
+    try {
+      const { error } = await supabase
+        .from("configuracion_prospeccion")
+        .update({
+          asunto_template: tempEditSubject,
+          mensaje_intro: tempEditBody,
+          mensaje_cierre: ""
+        })
+        .eq("id", tmpl.dbId);
+
+      if (error) throw error;
+
+      toast.success("¡Plantilla actualizada con éxito en la base de datos!");
+      setIsEditingTemplateMode(false);
+      await loadTemplates();
+    } catch (err: any) {
+      console.error("Error saving template:", err);
+      toast.error("Error al actualizar la plantilla: " + err.message);
+    } finally {
+      setGuardandoPlantilla(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedContactoDraft) return;
+
+    // Check size to avoid massive database payloads (recommend max 800kb)
+    if (file.size > 1024 * 1024) {
+      toast.error("La imagen es demasiado grande. Por favor sube una imagen de menos de 1MB.");
+      return;
+    }
+
+    setGuardandoImagen(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64String = reader.result as string;
+        
+        // Save base64 string directly into the 'imagen' column of 'contactos'
+        const { error } = await supabase
+          .from("contactos")
+          .update({ imagen: base64String })
+          .eq("id", selectedContactoDraft.id);
+
+        if (error) throw error;
+
+        toast.success("¡Render personalizado guardado en el contacto!");
+        setImageUrl(base64String);
+        setSelectedContactoDraft((prev: any) => prev ? { ...prev, imagen: base64String } : null);
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error("Error saving image:", err);
+      toast.error("Error al procesar la imagen: " + err.message);
+    } finally {
+      setGuardandoImagen(false);
+    }
+  };
+
   const abrirModalZoho = (contacto: any, cuenta: any) => {
     setSelectedContactoDraft(contacto);
     setSelectedCuentaDraft(cuenta);
     setIsZohoModalOpen(true);
+    setIsEditingTemplateMode(false);
+    setImageUrl(contacto.imagen || "");
     
     // Select first template by default if available
     const activeVendedor = vendedor || (vendedores && vendedores.length > 0 ? vendedores[0].nombre : "");
@@ -1288,7 +1372,10 @@ export default function CuentasPage() {
                   {templates.map(t => (
                     <div 
                       key={t.id}
-                      onClick={() => handleSelectTemplate(t.id)}
+                      onClick={() => {
+                        setIsEditingTemplateMode(false);
+                        handleSelectTemplate(t.id);
+                      }}
                       className={cn(
                         "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2",
                         selectedTemplateId === t.id
@@ -1297,6 +1384,18 @@ export default function CuentasPage() {
                       )}
                     >
                       <span className="text-xs font-bold truncate flex-1">{t.name}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTemplateId(t.id);
+                          startEditingTemplate(t);
+                        }}
+                        className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-all shrink-0"
+                        title="Editar estructura de plantilla"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   ))}
                 </div>
