@@ -158,6 +158,21 @@ export default function CuentasPage() {
       toast.success("¡Plantilla actualizada con éxito en la base de datos!");
       setIsEditingTemplateMode(false);
       await loadTemplates();
+
+      // Recalcular el texto de inmediato para el borrador activo en la pantalla
+      const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
+        tempEditSubject,
+        tempEditBody,
+        selectedContactoDraft,
+        selectedCuentaDraft,
+        vendedor
+      );
+      setDraftData({
+        email: selectedContactoDraft.correo,
+        subject: resolvedSubject,
+        body: resolvedBody,
+        contactoId: selectedContactoDraft.id
+      });
     } catch (err: any) {
       console.error("Error saving template:", err);
       toast.error("Error al actualizar la plantilla: " + err.message);
