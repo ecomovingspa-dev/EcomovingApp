@@ -1613,12 +1613,25 @@ export default function CuentasPage() {
                         // Si hay URL/Base64 de render en el contacto, inyectar esa. Si no, no inyectar nada
                         if (imageUrl.trim()) {
                           const imgTag = `<img src="${imageUrl.trim()}" alt="Render Ecomoving" style="max-width:100%; height:auto; margin: 20px 0; border-radius: 12px; border: 1px solid #e2e8f0; display: block;" />`;
-                          if (htmlBody.includes("{imagen}") || htmlBody.includes("{imagen_url}") || htmlBody.includes("{render}")) {
-                            htmlBody = htmlBody
-                              .replace(/{\s*imagen\s*}/gi, imgTag)
-                              .replace(/{\s*imagen_url\s*}/gi, imgTag)
-                              .replace(/{\s*render\s*}/gi, imgTag);
-                          } else {
+                          
+                          // Marcadores posibles de imagen
+                          const imagePlaceholders = [
+                            /\{\s*imagen\s*\}/gi,
+                            /\{\s*imagen_url\s*\}/gi,
+                            /\{\s*render\s*\}/gi,
+                            /\(\s*imagen pegada en el cuerpo del correo\s*\)/gi
+                          ];
+
+                          let replaced = false;
+                          for (const regex of imagePlaceholders) {
+                            if (regex.test(htmlBody)) {
+                              htmlBody = htmlBody.replace(regex, imgTag);
+                              replaced = true;
+                            }
+                          }
+
+                          // Si no hay marcador explícito, la inserta entre párrafos por defecto
+                          if (!replaced) {
                             const paragraphs = htmlBody.split("<br/><br/>");
                             if (paragraphs.length > 1) {
                               paragraphs.splice(1, 0, imgTag);
@@ -1632,7 +1645,8 @@ export default function CuentasPage() {
                           htmlBody = htmlBody
                             .replace(/{\s*imagen\s*}/gi, "")
                             .replace(/{\s*imagen_url\s*}/gi, "")
-                            .replace(/{\s*render\s*}/gi, "");
+                            .replace(/{\s*render\s*}/gi, "")
+                            .replace(/\(\s*imagen pegada en el cuerpo del correo\s*\)/gi, "");
                         }
 
                         // Agregar píxel invisible de rastreo al final
@@ -1648,7 +1662,8 @@ export default function CuentasPage() {
                           const plainTextForClip = cleanBody
                             .replace(/{\s*imagen\s*}/gi, "")
                             .replace(/{\s*imagen_url\s*}/gi, "")
-                            .replace(/{\s*render\s*}/gi, "");
+                            .replace(/{\s*render\s*}/gi, "")
+                            .replace(/\(\s*imagen pegada en el cuerpo del correo\s*\)/gi, "");
                           const blobText = new Blob([plainTextForClip], { type: typeText });
                           
                           const data = [
