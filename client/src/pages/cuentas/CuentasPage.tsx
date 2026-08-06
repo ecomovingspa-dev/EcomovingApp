@@ -1671,6 +1671,15 @@ export default function CuentasPage() {
                           ultimo_envio: new Date().toISOString()
                         }).eq('id', selectedContactoDraft.id);
 
+                        // Registrar un evento 'sent' con precisión timestamptz en la tabla trazabilidad_correos
+                        await supabase.from('trazabilidad_correos').insert({
+                          contacto_id: selectedContactoDraft.id,
+                          email: selectedContactoDraft.correo.toLowerCase(),
+                          fecha: new Date().toISOString().split('T')[0],
+                          estado: 'sent',
+                          mensaje_id: `manual_send:${selectedContactoDraft.id}:${new Date().getTime()}`
+                        });
+
                         setIsZohoModalOpen(false);
                         toast.success("¡Cuerpo e imagen copiados! Puedes pegarlo en tu correo.");
                       } catch (err: any) {

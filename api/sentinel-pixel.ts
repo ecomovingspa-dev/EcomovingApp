@@ -48,21 +48,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             // 1. Obtener los datos del contacto
             const { data: contacto, error: contactError } = await supabase
                 .from('contactos')
-                .select('id, correo, nombre, ultimo_envio')
+                .select('id, correo, nombre')
                 .eq('id', contacto_id)
                 .single();
 
             if (!contactError && contacto && contacto.correo) {
-                // Filtro temporal: si la petición llega en menos de 120 segundos (2 minutos)
-                // desde que se copió/envió el correo en la CRM (ultimo_envio), ignorar para evitar
-                // prefetchings del servidor de correo saliente, antivirus o el composer de Zoho Mail.
-                if (contacto.ultimo_envio) {
-                    const sendTime = new Date(contacto.ultimo_envio).getTime();
+                // Consultar el último evento 'sent' de este contacto en trazabilidad_correos para
+                // obtener la precisión timestamptz exacta de cuándo se generó el correo en el CRM.
+                const { data: latestSend } = await supabase
+                    .from('trazabilidad_correos')
+                    .select('created_at')
+                    .eq('contacto_id', contacto_id)
+                    .eq('estado', 'sent')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (latestSend && latestSend.created_at) {
+                    const sendTime = new Date(latestSend.created_at).getTime();
                     const nowTime = new Date().getTime();
                     const diffSeconds = Math.abs(nowTime - sendTime) / 1000;
                     
                     if (diffSeconds < 120) {
-                        console.log(`[SENTINEL-PIXEL] Petición ignorada: Demasiado cercana al envío (${Math.round(diffSeconds)}s). Posible prefetch/composer.`);
+                        console.log(`[SENTINEL-PIXEL] Petición ignorada: Demasiado cercana al envío manual (${Math.round(diffSeconds)}s). Posible prefetch/composer.`);
                         return res.status(200).send(transparentGif);
                     }
                 }
