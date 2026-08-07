@@ -1497,7 +1497,7 @@ export default function CuentasPage() {
 
       {/* MODAL DE REDACCION ZOHO */}
       <Dialog open={isZohoModalOpen} onOpenChange={setIsZohoModalOpen}>
-        <DialogContent className="max-w-4xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl rounded-2xl text-gray-900 dark:text-gray-100">
+        <DialogContent className="max-w-6xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl rounded-2xl text-gray-900 dark:text-gray-100">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
               <Mail className="h-5 w-5" /> Redacción e Inteligencia de Plantillas Zoho
