@@ -183,7 +183,29 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
             if (item && item.imagen) {
               try {
                 const format = item.imagen.includes("image/png") ? "PNG" : "JPEG";
-                doc.addImage(item.imagen, format, data.cell.x + 2, data.cell.y + 2, 16, 14);
+                
+                let w = 16;
+                let h = 14;
+                try {
+                  const props = doc.getImageProperties(item.imagen);
+                  if (props && props.width && props.height) {
+                    const ratio = props.width / props.height;
+                    w = 16;
+                    h = 16 / ratio;
+                    if (h > 14) {
+                      h = 14;
+                      w = 14 * ratio;
+                    }
+                  }
+                } catch (imgErr) {
+                  console.warn("Could not get image properties:", imgErr);
+                }
+
+                // Centrar horizontal y verticalmente en la celda
+                const x = data.cell.x + (data.cell.width - w) / 2;
+                const y = data.cell.y + (data.cell.height - h) / 2;
+
+                doc.addImage(item.imagen, format, x, y, w, h);
               } catch (e) {
                 console.error("Image draw error:", e);
               }

@@ -691,15 +691,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // 5. Calcular cuota restante para Prospección y Marketing
     const cuotaRestante = BREVO_DAILY_LIMIT - cobranzaResult.sent;
 
-    // 6. Ejecutar PROSPECCIÓN
-    const prospeccionLimit = Math.floor(cuotaRestante / 2);
-    const prospeccionResult = await ejecutarProspeccion(prospeccionLimit);
-    console.log(`🔍 Prospección: ${prospeccionResult.sent} enviados`);
+    // 6. Ejecutar PROSPECCIÓN (DESACTIVADO)
+    const prospeccionResult = {
+        processed: 0,
+        sent: 0,
+        ai_enhanced: 0,
+        errors: [] as string[]
+    };
+    console.log(`🔍 Prospección: Desactivado por solicitud`);
 
-    // 7. Ejecutar MARKETING (con la cuota sobrante real)
-    const cuotaRestanteMarketing = cuotaRestante - prospeccionResult.sent;
-    const marketingResult = await ejecutarMarketing(cuotaRestanteMarketing);
-    console.log(`📬 Marketing: ${marketingResult.sent} enviados`);
+    // 7. Ejecutar MARKETING (DESACTIVADO)
+    const marketingResult = {
+        processed: 0,
+        sent: 0,
+        errors: [] as string[]
+    };
+    console.log(`📬 Marketing: Desactivado por solicitud`);
 
     // 8. Reporte final
     return res.status(200).json({
