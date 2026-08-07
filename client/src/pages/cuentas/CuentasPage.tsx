@@ -292,6 +292,98 @@ export default function CuentasPage() {
     }
   };
 
+  const handleUpdateTemplateDate = async (templateId: string, inputDateStr: string) => {
+    if (!selectedContactoDraft || !selectedContactoDraft.id) return;
+    
+    if (!inputDateStr) {
+      setTemplateSendDates(prev => ({
+        ...prev,
+        [templateId]: ""
+      }));
+      try {
+        const { data: existingEvents } = await supabase
+          .from("trazabilidad_correos")
+          .select("id, mensaje_id")
+          .eq("contacto_id", selectedContactoDraft.id);
+
+        const targetEvent = existingEvents?.find(row => 
+          row.mensaje_id && row.mensaje_id.startsWith(`manual_send:${templateId}:`)
+        );
+
+        if (targetEvent) {
+          await supabase.from("trazabilidad_correos").delete().eq("id", targetEvent.id);
+        }
+        cargarCuentas();
+        toast.success("Fecha de envío eliminada");
+      } catch (err) {
+        console.error("Error clearing template date:", err);
+      }
+      return;
+    }
+
+    const [year, month, day] = inputDateStr.split("-");
+    const formatted = `${day}/${month}/${year}`;
+    
+    setTemplateSendDates(prev => ({
+      ...prev,
+      [templateId]: formatted
+    }));
+
+    try {
+      const { data: existingEvents, error: fetchErr } = await supabase
+        .from("trazabilidad_correos")
+        .select("id, mensaje_id")
+        .eq("contacto_id", selectedContactoDraft.id)
+        .order("created_at", { ascending: false });
+
+      if (fetchErr) throw fetchErr;
+
+      const targetEvent = existingEvents?.find(row => 
+        row.mensaje_id && row.mensaje_id.startsWith(`manual_send:${templateId}:`)
+      );
+
+      const targetDate = new Date(`${inputDateStr}T12:00:00`);
+
+      if (targetEvent) {
+        await supabase
+          .from("trazabilidad_correos")
+          .update({
+            fecha: inputDateStr,
+            created_at: targetDate.toISOString()
+          })
+          .eq("id", targetEvent.id);
+      } else {
+        await supabase.from('trazabilidad_correos').insert({
+          contacto_id: selectedContactoDraft.id,
+          email: selectedContactoDraft.correo.toLowerCase(),
+          fecha: inputDateStr,
+          estado: 'sent',
+          mensaje_id: `manual_send:${templateId}:${targetDate.getTime()}`,
+          created_at: targetDate.toISOString()
+        });
+      }
+      
+      await supabase.from('contactos').update({
+        ultimo_envio: targetDate.toISOString()
+      }).eq('id', selectedContactoDraft.id);
+
+      cargarCuentas();
+      toast.success("Fecha de envío actualizada con éxito");
+    } catch (err: any) {
+      console.error("Error updating template date:", err);
+      toast.error("Error al guardar la fecha");
+    }
+  };
+
+  const formatToInputDate = (dateStr: string): string => {
+    if (!dateStr || dateStr === "—") return "";
+    const parts = dateStr.split("/");
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return "";
+  };
+
   const handleSelectTemplate = (templateId: string, contact = selectedContactoDraft, account = selectedCuentaDraft, activeVendedor = vendedor) => {
     setSelectedTemplateId(templateId);
     const tmpl = templates.find(t => t.id === templateId);
@@ -1478,17 +1570,22 @@ export default function CuentasPage() {
                           handleSelectTemplate(t.id);
                         }}
                         className={cn(
-                          "group p-2.5 rounded-xl border text-center transition-all cursor-pointer flex items-center justify-center h-12 text-xs font-bold",
+                          "group p-1.5 rounded-xl border text-center transition-all cursor-pointer flex items-center justify-center h-12 text-xs font-bold",
                           selectedTemplateId === t.id
                             ? "bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-400 text-indigo-600 dark:text-indigo-400 shadow-sm"
                             : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80"
                         )}
                       >
-                        <span className={cn(
-                          dateOnly !== "—" ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400"
-                        )}>
-                          {dateOnly}
-                        </span>
+                        <input 
+                          type="date"
+                          value={dateOnly !== "—" ? formatToInputDate(dateOnly) : ""}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => handleUpdateTemplateDate(t.id, e.target.value)}
+                          className={cn(
+                            "bg-transparent text-center border-none outline-none focus:ring-0 w-full text-xs cursor-pointer font-bold select-none",
+                            dateOnly !== "—" ? "text-emerald-600 dark:text-emerald-400" : "text-gray-450 dark:text-gray-600"
+                          )}
+                        />
                       </div>
                     );
                   })}
