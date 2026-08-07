@@ -1418,59 +1418,86 @@ export default function CuentasPage() {
           <div className="grid grid-cols-12 gap-6 my-4 border-t border-gray-100 dark:border-gray-800 pt-4">
             
             {/* Columna Izquierda: Plantillas */}
-            <div className="col-span-12 md:col-span-4 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
+            <div className="col-span-12 md:col-span-3 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
               <div className="flex flex-col space-y-3 overflow-hidden">
                 <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Plantillas Disponibles
                 </span>
                 
                 <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[350px]">
-                  {templates.map(t => {
-                    const sendDate = templateSendDates[t.id];
-                    return (
-                      <div 
-                        key={t.id}
-                        onClick={() => {
-                          setIsEditingTemplateMode(false);
-                          handleSelectTemplate(t.id);
+                  {templates.map(t => (
+                    <div 
+                      key={t.id}
+                      onClick={() => {
+                        setIsEditingTemplateMode(false);
+                        handleSelectTemplate(t.id);
+                      }}
+                      className={cn(
+                        "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 h-12",
+                        selectedTemplateId === t.id
+                          ? "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-sm"
+                          : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80 hover:text-gray-900 dark:hover:text-white"
+                      )}
+                    >
+                      <span className="text-xs font-bold truncate flex-1">{t.name}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTemplateId(t.id);
+                          startEditingTemplate(t);
                         }}
-                        className={cn(
-                          "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2",
-                          selectedTemplateId === t.id
-                            ? "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-sm"
-                            : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80 hover:text-gray-900 dark:hover:text-white"
-                        )}
+                        className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-all shrink-0"
+                        title="Editar estructura de plantilla"
                       >
-                        <div className="flex flex-col flex-1 min-w-0">
-                          <span className="text-xs font-bold truncate">{t.name}</span>
-                          {sendDate && (
-                            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
-                              Enviado: {sendDate}
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedTemplateId(t.id);
-                            startEditingTemplate(t);
-                          }}
-                          className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-all shrink-0"
-                          title="Editar estructura de plantilla"
-                        >
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    );
-                  })}
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
 
             </div>
 
+            {/* Columna Central: Fecha de Envío */}
+            <div className="col-span-12 md:col-span-2 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
+              <div className="flex flex-col space-y-3 overflow-hidden">
+                <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Fecha de Envío
+                </span>
+                
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[350px]">
+                  {templates.map(t => {
+                    const sendDate = templateSendDates[t.id];
+                    const dateOnly = sendDate ? sendDate.split(" ")[0] : "—";
+                    return (
+                      <div 
+                        key={`date-${t.id}`}
+                        onClick={() => {
+                          setIsEditingTemplateMode(false);
+                          handleSelectTemplate(t.id);
+                        }}
+                        className={cn(
+                          "group p-2.5 rounded-xl border text-center transition-all cursor-pointer flex items-center justify-center h-12 text-xs font-bold",
+                          selectedTemplateId === t.id
+                            ? "bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-400 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                            : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80"
+                        )}
+                      >
+                        <span className={cn(
+                          dateOnly !== "—" ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400"
+                        )}>
+                          {dateOnly}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
             {/* Columna Derecha: Contenido del Correo o Editor de Plantilla */}
-            <div className="col-span-12 md:col-span-8 flex flex-col h-[450px]">
+            <div className="col-span-12 md:col-span-7 flex flex-col h-[450px]">
               {isEditingTemplateMode ? (
                 <div className="space-y-4 flex-grow flex flex-col overflow-hidden">
                   <div className="flex items-center justify-between">
