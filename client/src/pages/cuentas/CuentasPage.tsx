@@ -68,6 +68,7 @@ export default function CuentasPage() {
   const [tempEditSubject, setTempEditSubject] = useState("");
   const [tempEditBody, setTempEditBody] = useState("");
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
+  const [guardandoFechas, setGuardandoFechas] = useState(false);
   const [imageUrl, setImageUrl] = useState(""); // Stores base64 string
   const [guardandoImagen, setGuardandoImagen] = useState(false);
 
@@ -292,86 +293,77 @@ export default function CuentasPage() {
     }
   };
 
-  const handleUpdateTemplateDate = async (templateId: string, inputDateStr: string) => {
+  const handleSaveAllTemplateDates = async () => {
     if (!selectedContactoDraft || !selectedContactoDraft.id) return;
     
-    if (!inputDateStr) {
-      setTemplateSendDates(prev => ({
-        ...prev,
-        [templateId]: ""
-      }));
-      try {
-        const { data: existingEvents } = await supabase
-          .from("trazabilidad_correos")
-          .select("id, mensaje_id")
-          .eq("contacto_id", selectedContactoDraft.id);
-
-        const targetEvent = existingEvents?.find(row => 
-          row.mensaje_id && row.mensaje_id.startsWith(`manual_send:${templateId}:`)
-        );
-
-        if (targetEvent) {
-          await supabase.from("trazabilidad_correos").delete().eq("id", targetEvent.id);
-        }
-        cargarCuentas();
-        toast.success("Fecha de envío eliminada");
-      } catch (err) {
-        console.error("Error clearing template date:", err);
-      }
-      return;
-    }
-
-    const [year, month, day] = inputDateStr.split("-");
-    const formatted = `${day}/${month}/${year}`;
-    
-    setTemplateSendDates(prev => ({
-      ...prev,
-      [templateId]: formatted
-    }));
-
+    setGuardandoFechas(true);
     try {
       const { data: existingEvents, error: fetchErr } = await supabase
         .from("trazabilidad_correos")
         .select("id, mensaje_id")
-        .eq("contacto_id", selectedContactoDraft.id)
-        .order("created_at", { ascending: false });
+        .eq("contacto_id", selectedContactoDraft.id);
 
       if (fetchErr) throw fetchErr;
 
-      const targetEvent = existingEvents?.find(row => 
-        row.mensaje_id && row.mensaje_id.startsWith(`manual_send:${templateId}:`)
-      );
+      let latestDateObj: Date | null = null;
 
-      const targetDate = new Date(`${inputDateStr}T12:00:00`);
+      for (const t of templates) {
+        const sendDate = templateSendDates[t.id];
+        const targetEvent = existingEvents?.find(row => 
+          row.mensaje_id && row.mensaje_id.startsWith(`manual_send:${t.id}:`)
+        );
 
-      if (targetEvent) {
-        await supabase
-          .from("trazabilidad_correos")
-          .update({
-            fecha: inputDateStr,
-            created_at: targetDate.toISOString()
-          })
-          .eq("id", targetEvent.id);
-      } else {
-        await supabase.from('trazabilidad_correos').insert({
-          contacto_id: selectedContactoDraft.id,
-          email: selectedContactoDraft.correo.toLowerCase(),
-          fecha: inputDateStr,
-          estado: 'sent',
-          mensaje_id: `manual_send:${templateId}:${targetDate.getTime()}`,
-          created_at: targetDate.toISOString()
-        });
+        if (!sendDate || sendDate === "—") {
+          if (targetEvent) {
+            await supabase.from("trazabilidad_correos").delete().eq("id", targetEvent.id);
+          }
+          continue;
+        }
+
+        const parts = sendDate.split("/");
+        if (parts.length === 3) {
+          const inputDateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+          const targetDate = new Date(`${inputDateStr}T12:00:00`);
+
+          if (!latestDateObj || targetDate > latestDateObj) {
+            latestDateObj = targetDate;
+          }
+
+          if (targetEvent) {
+            await supabase
+              .from("trazabilidad_correos")
+              .update({
+                fecha: inputDateStr,
+                created_at: targetDate.toISOString()
+              })
+              .eq("id", targetEvent.id);
+          } else {
+            await supabase.from('trazabilidad_correos').insert({
+              contacto_id: selectedContactoDraft.id,
+              email: selectedContactoDraft.correo.toLowerCase(),
+              fecha: inputDateStr,
+              estado: 'sent',
+              mensaje_id: `manual_send:${t.id}:${targetDate.getTime()}`,
+              created_at: targetDate.toISOString()
+            });
+          }
+        }
       }
-      
-      await supabase.from('contactos').update({
-        ultimo_envio: targetDate.toISOString()
-      }).eq('id', selectedContactoDraft.id);
 
-      cargarCuentas();
-      toast.success("Fecha de envío actualizada con éxito");
+      if (latestDateObj) {
+        await supabase.from('contactos').update({
+          ultimo_envio: latestDateObj.toISOString(),
+          ultimo_evento_trazabilidad: latestDateObj.toISOString()
+        }).eq('id', selectedContactoDraft.id);
+      }
+
+      await cargarCuentas();
+      toast.success("¡Fechas de envío guardadas con éxito!");
     } catch (err: any) {
-      console.error("Error updating template date:", err);
-      toast.error("Error al guardar la fecha");
+      console.error("Error saving template dates:", err);
+      toast.error("Error al guardar las fechas de envío");
+    } finally {
+      setGuardandoFechas(false);
     }
   };
 
@@ -1553,12 +1545,12 @@ export default function CuentasPage() {
 
             {/* Columna Central: Fecha de Envío */}
             <div className="col-span-12 md:col-span-2 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
-              <div className="flex flex-col space-y-3 overflow-hidden">
+              <div className="flex flex-col space-y-3 overflow-hidden min-h-0">
                 <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Fecha de Envío
                 </span>
                 
-                <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[350px]">
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[320px]">
                   {templates.map(t => {
                     const sendDate = templateSendDates[t.id];
                     const dateOnly = sendDate ? sendDate.split(" ")[0] : "—";
@@ -1580,7 +1572,21 @@ export default function CuentasPage() {
                           type="date"
                           value={dateOnly !== "—" ? formatToInputDate(dateOnly) : ""}
                           onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => handleUpdateTemplateDate(t.id, e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val) {
+                              const [year, month, day] = val.split("-");
+                              setTemplateSendDates(prev => ({
+                                ...prev,
+                                [t.id]: `${day}/${month}/${year}`
+                              }));
+                            } else {
+                              setTemplateSendDates(prev => ({
+                                ...prev,
+                                [t.id]: ""
+                              }));
+                            }
+                          }}
                           className={cn(
                             "bg-transparent text-center border-none outline-none focus:ring-0 w-full text-xs cursor-pointer font-bold select-none",
                             dateOnly !== "—" ? "text-emerald-600 dark:text-emerald-400" : "text-gray-450 dark:text-gray-600"
@@ -1591,6 +1597,15 @@ export default function CuentasPage() {
                   })}
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={handleSaveAllTemplateDates}
+                disabled={guardandoFechas}
+                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0"
+              >
+                {guardandoFechas && <Loader2 className="h-3 w-3 animate-spin" />}
+                {guardandoFechas ? "GUARDANDO..." : "GUARDAR FECHAS"}
+              </button>
             </div>
 
             {/* Columna Derecha: Contenido del Correo o Editor de Plantilla */}
