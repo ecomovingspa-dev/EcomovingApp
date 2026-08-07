@@ -61,6 +61,7 @@ export default function CuentasPage() {
   const [selectedCuentaDraft, setSelectedCuentaDraft] = useState<any>(null);
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [templateSendDates, setTemplateSendDates] = useState<Record<string, string>>({});
   const [draftData, setDraftData] = useState<any>(null);
   const [vendedor, setVendedor] = useState("");
   const [isEditingTemplateMode, setIsEditingTemplateMode] = useState(false);
@@ -232,6 +233,39 @@ export default function CuentasPage() {
     setIsEditingTemplateMode(false);
     setImageUrl(contacto.imagen || "");
     
+    // Clear and load send dates for this contact from trazabilidad_correos
+    setTemplateSendDates({});
+    if (contacto && contacto.id) {
+      supabase
+        .from("trazabilidad_correos")
+        .select("mensaje_id, created_at")
+        .eq("contacto_id", contacto.id)
+        .order("created_at", { ascending: false })
+        .then(({ data, error }) => {
+          if (!error && data) {
+            const datesMap: Record<string, string> = {};
+            data.forEach((row: any) => {
+              if (row.mensaje_id && row.mensaje_id.startsWith("manual_send:")) {
+                const parts = row.mensaje_id.split(":");
+                if (parts.length >= 2) {
+                  const templateId = parts[1];
+                  if (!datesMap[templateId]) {
+                    const dateObj = new Date(row.created_at);
+                    const day = String(dateObj.getDate()).padStart(2, '0');
+                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const year = dateObj.getFullYear();
+                    const hours = String(dateObj.getHours()).padStart(2, '0');
+                    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+                    datesMap[templateId] = `${day}/${month}/${year} ${hours}:${minutes}`;
+                  }
+                }
+              }
+            });
+            setTemplateSendDates(datesMap);
+          }
+        });
+    }
+    
     // Select first template by default if available
     const activeVendedor = vendedor || (vendedores && vendedores.length > 0 ? vendedores[0].nombre : "");
     if (!vendedor && activeVendedor) {
@@ -396,7 +430,7 @@ export default function CuentasPage() {
 
       let query = supabase
         .from("cuentas")
-        .select("*, vendedores(nombre), contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono, imagen)", { count: "exact" });
+        .select("*, vendedores(nombre), contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono, imagen, ultimo_envio, ultimo_evento_trazabilidad)", { count: "exact" });
 
       if (busqueda) {
         query = query.or(`cliente.ilike.%${busqueda}%,rut.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`);
@@ -1391,35 +1425,45 @@ export default function CuentasPage() {
                 </span>
                 
                 <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[350px]">
-                  {templates.map(t => (
-                    <div 
-                      key={t.id}
-                      onClick={() => {
-                        setIsEditingTemplateMode(false);
-                        handleSelectTemplate(t.id);
-                      }}
-                      className={cn(
-                        "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2",
-                        selectedTemplateId === t.id
-                          ? "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-sm"
-                          : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80 hover:text-gray-900 dark:hover:text-white"
-                      )}
-                    >
-                      <span className="text-xs font-bold truncate flex-1">{t.name}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedTemplateId(t.id);
-                          startEditingTemplate(t);
+                  {templates.map(t => {
+                    const sendDate = templateSendDates[t.id];
+                    return (
+                      <div 
+                        key={t.id}
+                        onClick={() => {
+                          setIsEditingTemplateMode(false);
+                          handleSelectTemplate(t.id);
                         }}
-                        className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-all shrink-0"
-                        title="Editar estructura de plantilla"
+                        className={cn(
+                          "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2",
+                          selectedTemplateId === t.id
+                            ? "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-sm"
+                            : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80 hover:text-gray-900 dark:hover:text-white"
+                        )}
                       >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <span className="text-xs font-bold truncate">{t.name}</span>
+                          {sendDate && (
+                            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                              Enviado: {sendDate}
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTemplateId(t.id);
+                            startEditingTemplate(t);
+                          }}
+                          className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-all shrink-0"
+                          title="Editar estructura de plantilla"
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1669,10 +1713,31 @@ export default function CuentasPage() {
                         // 3. Marcar en base de datos que se envió una cortesía (para trazabilidad opcional)
                         // Guardamos la hora exacta con precisión de milisegundos en ultimo_evento_trazabilidad
                         // para que el píxel de rastreo pueda calcular los 120 segundos de gracia y evitar el composer de Zoho.
+                        const now = new Date();
+                        const timestamp = now.getTime();
+                        const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                        
+                        setTemplateSendDates(prev => ({
+                          ...prev,
+                          [selectedTemplateId]: formattedDate
+                        }));
+
                         await supabase.from('contactos').update({
-                          ultimo_envio: new Date().toISOString(),
-                          ultimo_evento_trazabilidad: new Date().toISOString()
+                          ultimo_envio: now.toISOString(),
+                          ultimo_evento_trazabilidad: now.toISOString()
                         }).eq('id', selectedContactoDraft.id);
+
+                        // Registrar un evento 'sent' con precisión timestamptz en la tabla trazabilidad_correos
+                        await supabase.from('trazabilidad_correos').insert({
+                          contacto_id: selectedContactoDraft.id,
+                          email: selectedContactoDraft.correo.toLowerCase(),
+                          fecha: now.toISOString().split('T')[0],
+                          estado: 'sent',
+                          mensaje_id: `manual_send:${selectedTemplateId}:${timestamp}`
+                        });
+                        
+                        // Recargar cuentas para reflejar el cambio en la vista principal
+                        cargarCuentas();
 
                         setIsZohoModalOpen(false);
                         toast.success("¡Cuerpo e imagen copiados! Puedes pegarlo en tu correo.");
