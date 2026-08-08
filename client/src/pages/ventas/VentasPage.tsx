@@ -1354,6 +1354,9 @@ export default function VentasPage() {
                                       <SelectItem value="factoring">
                                         Factoring
                                       </SelectItem>
+                                      <SelectItem value="retencion_factoring">
+                                        Retención Factoring
+                                      </SelectItem>
                                       <SelectItem value="otro">Otro</SelectItem>
                                     </SelectContent>
                                   </Select>
