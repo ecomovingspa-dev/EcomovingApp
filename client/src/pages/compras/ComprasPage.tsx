@@ -132,7 +132,15 @@ export default function ComprasPage() {
                 query = query.ilike("folio", `%${filtroFolio.trim()}%`);
             }
             if (filtroEstado !== "todos") {
-                query = query.eq("estado_pago", filtroEstado);
+                if (filtroEstado === "Vencida") {
+                    const hoyStr = new Date().toISOString().split('T')[0];
+                    query = query.or(`estado_pago.eq.Vencida,and(saldo.gt.0,fecha_vencimiento.lt.${hoyStr})`);
+                } else if (filtroEstado === "Pendiente") {
+                    const hoyStr = new Date().toISOString().split('T')[0];
+                    query = query.eq("estado_pago", "Pendiente").or(`fecha_vencimiento.gte.${hoyStr},fecha_vencimiento.is.null`);
+                } else {
+                    query = query.eq("estado_pago", filtroEstado);
+                }
             }
 
             if (filtroAnio !== "todos") {
@@ -205,15 +213,16 @@ export default function ComprasPage() {
     // Cálculos del dashboard
     const summary = allComprasForSummary.reduce(
         (acc, compra) => {
-            const estado = compra.estado_pago || "";
             const saldo = compra.saldo !== undefined ? compra.saldo : compra.monto_total;
+            const estado = calcularEstado(saldo, compra.fecha_vencimiento, compra.estado_pago || "");
 
-            if (estado === "Pendiente") {
+            if (saldo > 0) {
                 acc.pendientes.count++;
-                acc.pendientes.total += saldo || 0;
-            } else if (estado === "Vencida") {
+                acc.pendientes.total += saldo;
+            }
+            if (estado === "Vencida") {
                 acc.vencidas.count++;
-                acc.vencidas.total += saldo || 0;
+                acc.vencidas.total += saldo;
             }
             return acc;
         },
