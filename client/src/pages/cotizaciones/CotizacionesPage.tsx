@@ -133,7 +133,10 @@ export default function CotizacionesPage() {
             id_mercado_publico,
             contacto_id,
             cuenta_id,
-            vendedor_id
+            vendedor_id,
+            nro_oc,
+            nro_guia,
+            nro_factura
           `
           )
           .order("numero_cotizacion", { ascending: false })
