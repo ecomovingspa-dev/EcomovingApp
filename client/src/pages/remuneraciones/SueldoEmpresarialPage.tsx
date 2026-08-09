@@ -40,6 +40,8 @@ interface Liquidacion {
   colacion: number;
   movilizacion: number;
   otrosDescuentos: number;
+  diasTrabajados?: number;
+  tasaSISUsada?: number;
   // Valores económicos usados
   ufUsada: number;
   utmUsada: number;
@@ -256,6 +258,7 @@ export default function SueldoEmpresarialPage() {
     rutTrabajador: "11.275.482-2",
     nombreTrabajador: "Mario Alejandro Osorio Cáceres",
     mesAnio: "2026-07",
+    diasTrabajados: 31,
     sueldoBruto: 1500000,
     cotizaAFP: true,
     afpSeleccionada: "modelo",
@@ -272,6 +275,7 @@ export default function SueldoEmpresarialPage() {
   const [parametrosPeriodo, setParametrosPeriodo] = useState({
     uf: VALORES_OFICIALES["2026-07"].uf,
     utm: VALORES_OFICIALES["2026-07"].utm,
+    tasaSIS: 1.62,
     topeImponibleUF: VALORES_OFICIALES["2026-07"].topeImponibleUF,
     reformaPorcentaje: VALORES_OFICIALES["2026-07"].reformaPorcentaje
   });
@@ -316,6 +320,8 @@ export default function SueldoEmpresarialPage() {
           utmUsada: Number(item.utm_usada),
           topeImponibleUFUsado: Number(item.tope_imponible_uf_usado),
           reformaPorcentajeUsado: Number(item.reforma_porcentaje_usado),
+          diasTrabajados: item.dias_trabajados ? Number(item.dias_trabajados) : undefined,
+          tasaSISUsada: item.tasa_sis ? Number(item.tasa_sis) : undefined,
           imponible: Number(item.imponible),
           descuentoAFP: Number(item.descuento_afp),
           descuentoSalud: Number(item.descuento_salud),
@@ -399,13 +405,7 @@ export default function SueldoEmpresarialPage() {
     rowValues[19] = "0";
     rowValues[20] = "S"; // Tramo asignación familiar(1114)
 
-    // Calcular días calendario del mes correspondiente
-    let diasTrabajados = 30;
-    if (calculoActivo.mesAnio) {
-      const [year, month] = calculoActivo.mesAnio.split("-").map(Number);
-      diasTrabajados = new Date(year, month, 0).getDate();
-    }
-    rowValues[31] = String(diasTrabajados); // Nro días trabajados en el mes(1115)
+    rowValues[31] = String(calculoActivo.diasTrabajados || 30); // Nro días trabajados en el mes(1115)
     
     // Sueldo empresarial (2161)
     rowValues[64] = String(Math.round(calculoActivo.sueldoBruto));
@@ -420,7 +420,7 @@ export default function SueldoEmpresarialPage() {
     rowValues[99] = String(Math.round(calculoActivo.impuestoUnico)); // Impuesto retenido por remuneraciones(3161) - Col 100
 
     // SIS
-    const sisMonto = Math.round(calculoActivo.imponible * 0.0162);
+    const sisMonto = Math.round(calculoActivo.imponible * ((calculoActivo.tasaSISUsada || 1.62) / 100));
     rowValues[130] = String(sisMonto); // Aporte empleador seguro invalidez y sobrevivencia(4155) - Col 131
 
     // Totales
@@ -461,13 +461,16 @@ export default function SueldoEmpresarialPage() {
   };
 
   const handleMesChange = (mes: string) => {
-    setFormData({ ...formData, mesAnio: mes });
+    const [year, month] = mes.split("-").map(Number);
+    const dias = new Date(year, month, 0).getDate();
+    setFormData({ ...formData, mesAnio: mes, diasTrabajados: dias });
     setValoresConfirmados(false);
     
     if (VALORES_OFICIALES[mes]) {
       setParametrosPeriodo({
         uf: VALORES_OFICIALES[mes].uf,
         utm: VALORES_OFICIALES[mes].utm,
+        tasaSIS: parametrosPeriodo.tasaSIS,
         topeImponibleUF: VALORES_OFICIALES[mes].topeImponibleUF,
         reformaPorcentaje: VALORES_OFICIALES[mes].reformaPorcentaje
       });
@@ -574,6 +577,7 @@ export default function SueldoEmpresarialPage() {
       ...data,
       ufUsada: uf,
       utmUsada: utm,
+      tasaSISUsada: parametrosPeriodo.tasaSIS,
       topeImponibleUFUsado: parametrosPeriodo.topeImponibleUF,
       reformaPorcentajeUsado: parametrosPeriodo.reformaPorcentaje,
       imponible,
@@ -623,6 +627,8 @@ export default function SueldoEmpresarialPage() {
         utm_usada: calculoActivo.utmUsada,
         tope_imponible_uf_usado: calculoActivo.topeImponibleUFUsado,
         reforma_porcentaje_usado: calculoActivo.reformaPorcentajeUsado,
+        dias_trabajados: calculoActivo.diasTrabajados || 30,
+        tasa_sis: calculoActivo.tasaSISUsada || 1.62,
         imponible: calculoActivo.imponible,
         descuento_afp: calculoActivo.descuentoAFP,
         descuento_salud: calculoActivo.descuentoSalud,
@@ -668,6 +674,7 @@ export default function SueldoEmpresarialPage() {
     setParametrosPeriodo({
       uf: liq.ufUsada || CONSTANTES_2026.UF,
       utm: liq.utmUsada || CONSTANTES_2026.UTM,
+      tasaSIS: liq.tasaSISUsada || 1.62,
       topeImponibleUF: liq.topeImponibleUFUsado || CONSTANTES_2026.TOPE_IMPONIBLE_UF,
       reformaPorcentaje: liq.reformaPorcentajeUsado !== undefined ? liq.reformaPorcentajeUsado : CONSTANTES_2026.REFORMA_PORCENTAJE
     });
@@ -734,6 +741,7 @@ export default function SueldoEmpresarialPage() {
               ...formData,
               rutTrabajador: "11.275.482-2",
               nombreTrabajador: "Mario Alejandro Osorio Cáceres",
+              diasTrabajados: 31,
               sueldoBruto: 1500000,
               colacion: 0,
               movilizacion: 0,
@@ -743,6 +751,7 @@ export default function SueldoEmpresarialPage() {
             setParametrosPeriodo({
               uf: CONSTANTES_2026.UF,
               utm: CONSTANTES_2026.UTM,
+              tasaSIS: 1.62,
               topeImponibleUF: CONSTANTES_2026.TOPE_IMPONIBLE_UF,
               reformaPorcentaje: CONSTANTES_2026.REFORMA_PORCENTAJE
             });
@@ -760,7 +769,7 @@ export default function SueldoEmpresarialPage() {
           <span>Parámetros Económicos del Período (Haz clic en los valores para editarlos y simular meses anteriores)</span>
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card className="bg-white dark:bg-gray-800 border-blue-100 dark:border-blue-900/40 shadow-sm">
             <CardContent className="p-4 flex flex-col justify-center">
               <span className="text-xs font-semibold uppercase text-gray-400">Valor UTM ($)</span>
@@ -784,6 +793,20 @@ export default function SueldoEmpresarialPage() {
                 onChange={(e) => setParametrosPeriodo({ ...parametrosPeriodo, uf: Number(e.target.value) })}
               />
               <span className="text-[10px] text-gray-400 mt-1">Sugerido para {formData.mesAnio}</span>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white dark:bg-gray-800 border-blue-100 dark:border-blue-900/40 shadow-sm">
+            <CardContent className="p-4 flex flex-col justify-center">
+              <span className="text-xs font-semibold uppercase text-gray-400">Tasa SIS (%)</span>
+              <input 
+                type="number" 
+                step="0.01"
+                className="text-2xl font-bold bg-transparent border-none p-0 focus:outline-none w-full text-blue-600 dark:text-blue-400 mt-1"
+                value={parametrosPeriodo.tasaSIS}
+                onChange={(e) => setParametrosPeriodo({ ...parametrosPeriodo, tasaSIS: Number(e.target.value) })}
+              />
+              <span className="text-[10px] text-gray-400 mt-1">Seguro de Invalidez</span>
             </CardContent>
           </Card>
 
@@ -906,7 +929,18 @@ export default function SueldoEmpresarialPage() {
                       onChange={e => handleMesChange(e.target.value)}
                     />
                   </div>
-                  <div className="md:col-span-2 space-y-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="diasTrabajados">Días Trabajados</Label>
+                    <Input 
+                      id="diasTrabajados" 
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={formData.diasTrabajados} 
+                      onChange={e => setFormData({...formData, diasTrabajados: Number(e.target.value)})}
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="sueldoBruto">Sueldo Bruto Acordado (CLP)</Label>
                     <div className="relative">
                       <Coins className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
