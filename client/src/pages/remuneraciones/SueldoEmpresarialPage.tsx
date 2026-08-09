@@ -390,7 +390,7 @@ export default function SueldoEmpresarialPage() {
     rowValues[4] = "13"; // Región prestación de servicios(1105)
     rowValues[5] = "13118"; // Comuna prestación de servicios(1106)
     rowValues[6] = "1"; // Tipo impuesto a la renta(1170)
-    rowValues[7] = ""; // Técnico extranjero exención
+    rowValues[7] = "0"; // Técnico extranjero exención(1146)
     rowValues[8] = "101"; // Código tipo de jornada(1107)
     rowValues[9] = "0"; // Persona con Discapacidad
     rowValues[10] = "0"; // Pensionado por vejez
@@ -445,7 +445,7 @@ export default function SueldoEmpresarialPage() {
       rowValues.join(";")
     ].join("\r\n");
 
-    const rutEmpresaLimpio = calculoActivo.rutEmpresa.split("-")[0].replace(/\./g, "").trim();
+    const rutEmpresaLimpio = calculoActivo.rutEmpresa.replace(/\./g, "").replace(/-/g, "").trim();
     const periodoLimpio = calculoActivo.mesAnio.replace("-", "");
     const fileName = `${rutEmpresaLimpio}_${periodoLimpio}.csv`;
 
