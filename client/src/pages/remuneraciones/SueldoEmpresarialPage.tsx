@@ -251,31 +251,32 @@ const LRE_HEADERS = [
 
 export default function SueldoEmpresarialPage() {
   const [formData, setFormData] = useState({
-    rutEmpresa: "76.543.210-K",
-    razonSocial: "Ecomoving Spa",
-    rutTrabajador: "",
-    nombreTrabajador: "",
-    mesAnio: "2026-08",
+    rutEmpresa: "77.567.348-6",
+    razonSocial: "Ecomoving SpA",
+    rutTrabajador: "11.275.482-2",
+    nombreTrabajador: "Mario Alejandro Osorio Cáceres",
+    mesAnio: "2026-07",
     sueldoBruto: 1500000,
     cotizaAFP: true,
-    afpSeleccionada: "habitat",
-    afpTasaCustom: 11.27,
+    afpSeleccionada: "modelo",
+    afpTasaCustom: 10.58,
     cotizaSalud: true,
     tipoSalud: "fonasa" as "fonasa" | "isapre",
-    isapreUF: 3.5,
-    colacion: 120000,
-    movilizacion: 120000,
+    isapreUF: 0,
+    colacion: 0,
+    movilizacion: 0,
     otrosDescuentos: 0
   });
 
   // Parámetros económicos configurables
   const [parametrosPeriodo, setParametrosPeriodo] = useState({
-    uf: CONSTANTES_2026.UF,
-    utm: CONSTANTES_2026.UTM,
-    topeImponibleUF: CONSTANTES_2026.TOPE_IMPONIBLE_UF,
-    reformaPorcentaje: CONSTANTES_2026.REFORMA_PORCENTAJE
+    uf: VALORES_OFICIALES["2026-07"].uf,
+    utm: VALORES_OFICIALES["2026-07"].utm,
+    topeImponibleUF: VALORES_OFICIALES["2026-07"].topeImponibleUF,
+    reformaPorcentaje: VALORES_OFICIALES["2026-07"].reformaPorcentaje
   });
 
+  const [valoresConfirmados, setValoresConfirmados] = useState(false);
   const [historial, setHistorial] = useState<Liquidacion[]>([]);
   const [calculoActivo, setCalculoActivo] = useState<Liquidacion | null>(null);
 
@@ -450,6 +451,7 @@ export default function SueldoEmpresarialPage() {
 
   const handleMesChange = (mes: string) => {
     setFormData({ ...formData, mesAnio: mes });
+    setValoresConfirmados(false);
     
     if (VALORES_OFICIALES[mes]) {
       setParametrosPeriodo({
@@ -577,6 +579,10 @@ export default function SueldoEmpresarialPage() {
     e.preventDefault();
     if (!formData.nombreTrabajador || !formData.rutTrabajador) {
       alert("Por favor, ingrese el nombre y RUT del socio/trabajador.");
+      return;
+    }
+    if (!valoresConfirmados) {
+      alert("⚠️ Debe revisar los parámetros económicos (UF, UTM, etc.) del período y marcar la casilla de confirmación para poder generar la liquidación.");
       return;
     }
     const res = calcularLiquidacion(formData);
@@ -797,6 +803,22 @@ export default function SueldoEmpresarialPage() {
               <span className="text-[10px] text-gray-400 mt-1">Aporte extra al imponible</span>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Banner de confirmación obligatoria de parámetros */}
+        <div className={`mt-3 flex items-center gap-3 p-3 rounded-lg border transition-all ${
+          valoresConfirmados 
+            ? 'bg-green-50/70 dark:bg-green-950/20 border-green-200 dark:border-green-900/40 text-green-800 dark:text-green-300' 
+            : 'bg-amber-50/70 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-300'
+        }`}>
+          <Checkbox 
+            id="valoresConfirmados" 
+            checked={valoresConfirmados} 
+            onCheckedChange={(checked) => setValoresConfirmados(checked === true)}
+          />
+          <Label htmlFor="valoresConfirmados" className="text-xs font-semibold cursor-pointer select-none">
+            ⚠️ Confirmo que he revisado e ingresado manualmente los valores de UF, UTM y Tope Imponible del período {formData.mesAnio} para esta liquidación. (Obligatorio)
+          </Label>
         </div>
       </div>
 
