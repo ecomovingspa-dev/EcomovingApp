@@ -721,11 +721,11 @@ export default function SueldoEmpresarialPage() {
           <Button variant="outline" className="flex items-center gap-2" onClick={() => {
             setFormData({
               ...formData,
-              rutTrabajador: "",
-              nombreTrabajador: "",
+              rutTrabajador: "11.275.482-2",
+              nombreTrabajador: "Mario Alejandro Osorio Cáceres",
               sueldoBruto: 1500000,
-              colacion: 120000,
-              movilizacion: 120000,
+              colacion: 0,
+              movilizacion: 0,
               otrosDescuentos: 0
             });
             setCalculoActivo(null);
