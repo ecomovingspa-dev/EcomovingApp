@@ -42,6 +42,7 @@ import {
     Save,
     X,
     Settings2,
+    Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -528,6 +529,27 @@ export default function ComprasPage() {
             alert("Registro corregido correctamente");
         } catch (e: any) {
             alert("Error al corregir: " + e.message);
+        }
+    };
+
+    const handleEliminarCompra = async (compraId: number, folio: string | number) => {
+        if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente la Factura de Compra Folio ${folio}?\n\nEsta acción NO se puede deshacer.`)) {
+            return;
+        }
+
+        try {
+            const { error } = await supabase
+                .from("compras")
+                .delete()
+                .eq("id", compraId);
+
+            if (error) throw error;
+
+            alert("Factura de compra eliminada correctamente.");
+            cargarCompras();
+        } catch (e: any) {
+            console.error("Error al eliminar compra:", e);
+            alert("Error al eliminar la compra: " + e.message);
         }
     };
 
@@ -1072,6 +1094,15 @@ export default function ComprasPage() {
                                                         </div>
                                                     </PopoverContent>
                                                 </Popover>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-9 w-9 p-0 hover:bg-red-50 dark:hover:bg-red-900/10 shadow-sm border border-gray-100 dark:border-gray-700 ml-1 text-red-500 hover:text-red-700"
+                                                    title="Eliminar factura de compra"
+                                                    onClick={() => handleEliminarCompra(compra.id, compra.folio)}
+                                                >
+                                                    <Trash2 className="h-5 w-5" />
+                                                </Button>
                                             </td>
                                         </tr>
                                     ))
