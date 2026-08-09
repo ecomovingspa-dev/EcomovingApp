@@ -407,31 +407,30 @@ export default function SueldoEmpresarialPage() {
     rowValues[70] = String(Math.round(calculoActivo.movilizacion || 0)); // Movilización(2302)
 
     // Cotizaciones
-    rowValues[89] = String(Math.round(calculoActivo.descuentoAFP)); // Cotización obligatoria previsional (AFP o IPS)(3141)
-    rowValues[90] = String(Math.round(calculoActivo.descuentoSalud)); // Cotización obligatoria salud 7%(3143)
-    rowValues[99] = String(Math.round(calculoActivo.impuestoUnico)); // Impuesto retenido por remuneraciones(3161)
-    rowValues[122] = "0"; // Aporte empleador seguro accidentes
+    rowValues[89] = String(Math.round(calculoActivo.descuentoAFP)); // Cotización obligatoria previsional (AFP o IPS)(3141) - Col 90
+    rowValues[90] = String(Math.round(calculoActivo.descuentoSalud)); // Cotización obligatoria salud 7%(3143) - Col 91
+    rowValues[99] = String(Math.round(calculoActivo.impuestoUnico)); // Impuesto retenido por remuneraciones(3161) - Col 100
 
     // SIS
     const sisMonto = Math.round(calculoActivo.imponible * 0.0162);
-    rowValues[131] = String(sisMonto); // Aporte empleador seguro invalidez y sobrevivencia(4155)
+    rowValues[130] = String(sisMonto); // Aporte empleador seguro invalidez y sobrevivencia(4155) - Col 131
 
     // Totales
     const totalHaberes = Math.round(calculoActivo.sueldoBruto + (calculoActivo.colacion || 0) + (calculoActivo.movilizacion || 0));
-    rowValues[133] = String(totalHaberes); // Total haberes(5201)
-    rowValues[134] = String(Math.round(calculoActivo.sueldoBruto)); // Total haberes imponibles y tributables(5210)
-    rowValues[135] = "0"; // Total haberes imponibles no tributables(5220)
-    rowValues[136] = String(Math.round((calculoActivo.colacion || 0) + (calculoActivo.movilizacion || 0))); // Total haberes no imponibles y no tributables(5230)
-    rowValues[137] = "0"; // Total haberes no imponibles y tributables(5240)
+    rowValues[132] = String(totalHaberes); // Total haberes(5201) - Col 133
+    rowValues[133] = String(Math.round(calculoActivo.sueldoBruto)); // Total haberes imponibles y tributables(5210) - Col 134
+    rowValues[134] = "0"; // Total haberes imponibles no tributables(5220) - Col 135
+    rowValues[135] = String(Math.round((calculoActivo.colacion || 0) + (calculoActivo.movilizacion || 0))); // Total haberes no imponibles y no tributables(5230) - Col 136
+    rowValues[136] = "0"; // Total haberes no imponibles y tributables(5240) - Col 137
 
     const totalDescuentos = Math.round(calculoActivo.descuentoAFP + calculoActivo.descuentoSalud + calculoActivo.impuestoUnico + (calculoActivo.otrosDescuentos || 0));
-    rowValues[138] = String(totalDescuentos); // Total descuentos(5301)
-    rowValues[139] = String(Math.round(calculoActivo.impuestoUnico)); // Total descuentos impuestos a las remuneraciones(5361)
-    rowValues[140] = "0"; // Total descuentos impuestos por indemnizaciones(5362)
-    rowValues[141] = String(Math.round(calculoActivo.descuentoAFP + calculoActivo.descuentoSalud)); // Total descuentos por cotizaciones del trabajador(5341)
-    rowValues[142] = String(Math.round(calculoActivo.otrosDescuentos || 0)); // Total otros descuentos(5302)
-    rowValues[143] = String(sisMonto); // Total aportes empleador(5410)
-    rowValues[144] = String(Math.round(calculoActivo.sueldoLiquido)); // Total líquido(5501)
+    rowValues[137] = String(totalDescuentos); // Total descuentos(5301) - Col 138
+    rowValues[138] = String(Math.round(calculoActivo.impuestoUnico)); // Total descuentos impuestos a las remuneraciones(5361) - Col 139
+    rowValues[139] = "0"; // Total descuentos impuestos por indemnizaciones(5362) - Col 140
+    rowValues[140] = String(Math.round(calculoActivo.descuentoAFP + calculoActivo.descuentoSalud)); // Total descuentos por cotizaciones del trabajador(5341) - Col 141
+    rowValues[141] = String(Math.round(calculoActivo.otrosDescuentos || 0)); // Total otros descuentos(5302) - Col 142
+    rowValues[142] = String(sisMonto); // Total aportes empleador(5410) - Col 143
+    rowValues[143] = String(Math.round(calculoActivo.sueldoLiquido)); // Total líquido(5501) - Col 144
 
     const csvContent = [
       LRE_HEADERS.join(";"),
