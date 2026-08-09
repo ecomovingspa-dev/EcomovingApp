@@ -951,6 +951,9 @@ export default function ComprasPage() {
                                                                             <SelectItem value="tarjeta">
                                                                                 Tarjeta
                                                                             </SelectItem>
+                                                                            <SelectItem value="nota_credito">
+                                                                                Nota de Crédito
+                                                                            </SelectItem>
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </div>
