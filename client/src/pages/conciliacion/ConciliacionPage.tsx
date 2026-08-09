@@ -262,6 +262,7 @@ export default function ConciliacionPage() {
     const [multipleSelectedDocs, setMultipleSelectedDocs] = useState<Coincidencia[]>([]);
     const [allUnreconciledDocs, setAllUnreconciledDocs] = useState<Coincidencia[]>([]);
     const [loadingAllDocs, setLoadingAllDocs] = useState(false);
+    const [loadingMultiSearch, setLoadingMultiSearch] = useState(false);
     const [multiSearchQuery, setMultiSearchQuery] = useState("");
 
     // --- FACTORING RECONCILIATION STATE ---
@@ -1098,6 +1099,61 @@ export default function ConciliacionPage() {
         }
     };
 
+    const buscarDocumentosMulti = async (queryStr: string) => {
+        if (!selectedMovimiento) return;
+        setLoadingMultiSearch(true);
+        try {
+            const esAbono = Boolean(selectedMovimiento.abonos && selectedMovimiento.abonos > 0);
+            const tabla = esAbono ? 'ventas' : 'compras';
+            const colEntidad = esAbono ? 'rzn_soc_recep' : 'razon_social';
+            const colRut = esAbono ? 'rut_recep' : 'rut_proveedor';
+
+            let q = supabase.from(tabla).select("*").eq("conciliado", false);
+
+            if (queryStr.trim()) {
+                const searchVal = `%${queryStr.trim()}%`;
+                const esNumero = /^\d+$/.test(queryStr.trim());
+                if (esNumero) {
+                    q = q.or(`folio.eq.${queryStr.trim()},${colEntidad}.ilike.${searchVal},${colRut}.ilike.${searchVal}`);
+                } else {
+                    q = q.or(`${colEntidad}.ilike.${searchVal},${colRut}.ilike.${searchVal}`);
+                }
+            } else {
+                const rutBuscado = cleanRut(selectedMovimiento.bci_rut);
+                const rutSinDV = rutBuscado?.split('-')[0];
+                const tokens = getSearchTokens(`${selectedMovimiento.descripcion} ${selectedMovimiento.bci_glosa_detalle || ''}`);
+                
+                const orFilters = [];
+                if (rutSinDV) orFilters.push(`${colRut}.ilike.%${rutSinDV}%`);
+                tokens.slice(0, 3).forEach(t => orFilters.push(`${colEntidad}.ilike.%${t}%`));
+                
+                if (orFilters.length > 0) {
+                    q = q.or(orFilters.join(','));
+                }
+            }
+
+            const { data, error } = await q.limit(100);
+            if (error) throw error;
+
+            let docs = processDocs(data || [], esAbono);
+
+            if (docs.length === 0 && !queryStr.trim()) {
+                const { data: fallbackData } = await supabase.from(tabla)
+                    .select("*")
+                    .eq("conciliado", false)
+                    .order(esAbono ? 'fch_emis' : 'fecha_emision', { ascending: false })
+                    .limit(200);
+                docs = processDocs(fallbackData || [], esAbono);
+            }
+
+            setAllUnreconciledDocs(docs);
+        } catch (error) {
+            console.error("Error in buscarDocumentosMulti:", error);
+        } finally {
+            setLoadingMultiSearch(false);
+        }
+    };
+
 
     // Helper para procesar documentos de ventas/compras a Coincidencia
     const processDocs = (data: any[], esAbono: boolean): Coincidencia[] => {
@@ -1245,7 +1301,7 @@ export default function ConciliacionPage() {
     };
 
     const totalSelectedAmount = useMemo(() => {
-        return multipleSelectedDocs.reduce((sum, doc) => sum + doc.monto, 0);
+        return multipleSelectedDocs.reduce((sum, doc) => sum + (doc.monto === 0 ? doc.monto_total : doc.monto), 0);
     }, [multipleSelectedDocs]);
 
     const getBancoName = useCallback((cartolaId?: number) => {
@@ -2502,8 +2558,8 @@ export default function ConciliacionPage() {
                             {/* Tabs para tipo de conciliación */}
                             <Tabs value={matchTab} onValueChange={(val) => {
                                 setMatchTab(val);
-                                if (val === "multiple" && allUnreconciledDocs.length === 0) {
-                                    cargarTodosLosDocumentosPendientes(selectedMovimiento);
+                                if (val === "multiple") {
+                                    buscarDocumentosMulti("");
                                 } else if (val === "factoring") {
                                     cargarDocumentosFactoring("");
                                 }
@@ -2646,7 +2702,7 @@ export default function ConciliacionPage() {
                                                 <p className="text-xs text-indigo-600 dark:text-indigo-400">Seleccionados: {multipleSelectedDocs.length}</p>
                                                 <Button
                                                     size="sm"
-                                                    disabled={multipleSelectedDocs.length === 0 || loading}
+                        disabled={multipleSelectedDocs.length === 0 || loading}
                                                     onClick={ejecutarConciliacionMultiple}
                                                     className="mt-1"
                                                 >
@@ -2656,19 +2712,29 @@ export default function ConciliacionPage() {
                                             </div>
                                         </div>
 
-                                        <div className="relative">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                            <input
-                                                type="text"
-                                                placeholder="Buscar por folio o entidad..."
-                                                className="w-full pl-9 pr-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
-                                                value={multiSearchQuery}
-                                                onChange={(e) => setMultiSearchQuery(e.target.value)}
-                                            />
+                                        <div className="relative flex gap-2">
+                                            <div className="relative flex-1">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar por folio, RUT o entidad..."
+                                                    className="w-full pl-9 pr-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+                                                    value={multiSearchQuery}
+                                                    onChange={(e) => setMultiSearchQuery(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") {
+                                                            buscarDocumentosMulti(multiSearchQuery);
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                            <Button size="sm" onClick={() => buscarDocumentosMulti(multiSearchQuery)}>
+                                                {loadingMultiSearch ? <Loader2 className="h-4 w-4 animate-spin" /> : "Buscar"}
+                                            </Button>
                                         </div>
 
                                         <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                                            {loadingAllDocs ? (
+                                            {loadingAllDocs || loadingMultiSearch ? (
                                                 <div className="text-center py-10">
                                                     <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500" />
                                                     <p className="text-sm text-gray-500 mt-2">Cargando documentos pendientes...</p>
@@ -2678,7 +2744,7 @@ export default function ConciliacionPage() {
                                                     <AlertCircle className="h-8 w-8 mx-auto text-gray-300 mb-2" />
                                                     <p>No se encontraron otros documentos pendientes.</p>
                                                     <p className="text-xs text-gray-400 mt-1">Busca manualmente arriba o verifica si las facturas ya están conciliadas.</p>
-                                                    <Button variant="link" size="sm" onClick={() => cargarTodosLosDocumentosPendientes(selectedMovimiento)} className="mt-2 text-indigo-500">
+                                                    <Button variant="link" size="sm" onClick={() => buscarDocumentosMulti("")} className="mt-2 text-indigo-500">
                                                         Recargar Lista
                                                     </Button>
                                                 </div>
@@ -2701,7 +2767,6 @@ export default function ConciliacionPage() {
                                                             >
                                                                 <Checkbox
                                                                     checked={isSelected}
-                                                                    // No necesitamos handler aquí porque el padre div ya tiene onClick
                                                                     onCheckedChange={() => { }}
                                                                 />
                                                                 <div className="flex-1">
@@ -2727,8 +2792,15 @@ export default function ConciliacionPage() {
                                                                     <p className="text-xs text-gray-600 dark:text-gray-400 truncate">{doc.entidad}</p>
                                                                     <p className="text-[10px] text-gray-400">{doc.fecha}</p>
                                                                 </div>
-                                                                <div className="font-bold text-sm">
-                                                                    {fmtMoney(doc.monto)}
+                                                                <div className="text-right">
+                                                                    <div className="font-bold text-sm text-gray-900 dark:text-gray-100">
+                                                                        {fmtMoney(doc.monto)}
+                                                                    </div>
+                                                                    {doc.monto === 0 && (
+                                                                        <div className="text-[10px] text-gray-400 dark:text-gray-500">
+                                                                            Total: {fmtMoney(doc.monto_total)}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         );
