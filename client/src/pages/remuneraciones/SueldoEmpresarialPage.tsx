@@ -99,6 +99,156 @@ const AFPS = [
   { id: "custom", nombre: "Personalizada...", tasa: 10.00 }
 ];
 
+const LRE_HEADERS = [
+  "Rut trabajador(1101)",
+  "Fecha inicio contrato(1102)",
+  "Fecha término de contrato(1103)",
+  "Causal término de contrato(1104)",
+  "Región prestación de servicios(1105)",
+  "Comuna prestación de servicios(1106)",
+  "Tipo impuesto a la renta(1170)",
+  "Técnico extranjero exención cot. previsionales(1146)",
+  "Código tipo de jornada(1107)",
+  "Persona con Discapacidad - Pensionado por Invalidez(1108)",
+  "Pensionado por vejez(1109)",
+  "AFP(1141)",
+  "IPS (ExINP)(1142)",
+  "FONASA - ISAPRE(1143)",
+  "AFC(1151)",
+  "CCAF(1110)",
+  "Org. administrador ley 16.744(1152)",
+  "Nro cargas familiares legales autorizadas(1111)",
+  "Nro de cargas familiares maternales(1112)",
+  "Nro de cargas familiares invalidez(1113)",
+  "Tramo asignación familiar(1114)",
+  "Rut org sindical 1(1171)",
+  "Rut org sindical 2(1172)",
+  "Rut org sindical 3(1173)",
+  "Rut org sindical 4(1174)",
+  "Rut org sindical 5(1175)",
+  "Rut org sindical 6(1176)",
+  "Rut org sindical 7(1177)",
+  "Rut org sindical 8(1178)",
+  "Rut org sindical 9(1179)",
+  "Rut org sindical 10(1180)",
+  "Nro días trabajados en el mes(1115)",
+  "Nro días de licencia médica en el mes(1116)",
+  "Nro días de vacaciones en el mes(1117)",
+  "Subsidio trabajador joven(1118)",
+  "Puesto Trabajo Pesado(1154)",
+  "APVI(1155)",
+  "APVC(1157)",
+  "Indemnización a todo evento(1131)",
+  "Tasa indemnización a todo evento(1132)",
+  "Sueldo(2101)",
+  "Sobresueldo(2102)",
+  "Comisiones(2103)",
+  "Semana corrida(2104)",
+  "Participación(2105)",
+  "Gratificación(2106)",
+  "Recargo 30% día domingo(2107)",
+  "Remun. variable pagada en vacaciones(2108)",
+  "Remun. variable pagada en clausura(2109)",
+  "Aguinaldo(2110)",
+  "Bonos u otras remun. fijas mensuales(2111)",
+  "Tratos(2112)",
+  "Bonos u otras remun. variables mensuales o superiores a un mes(2113)",
+  "Ejercicio opción no pactada en contrato(2114)",
+  "Beneficios en especie constitutivos de remun(2115)",
+  "Remuneraciones bimestrales(2116)",
+  "Remuneraciones trimestrales(2117)",
+  "Remuneraciones cuatrimestral(2118)",
+  "Remuneraciones semestrales(2119)",
+  "Remuneraciones anuales(2120)",
+  "Participación anual(2121)",
+  "Gratificación anual(2122)",
+  "Otras remuneraciones superiores a un mes(2123)",
+  "Pago por horas de trabajo sindical(2124)",
+  "Sueldo empresarial (2161)",
+  "Subsidio por incapacidad laboral por licencia médica(2201)",
+  "Beca de estudio(2202)",
+  "Gratificaciones de zona(2203)",
+  "Otros ingresos no constitutivos de renta(2204)",
+  "Colación(2301)",
+  "Movilización(2302)",
+  "Viáticos(2303)",
+  "Asignación de pérdida de caja(2304)",
+  "Asignación de desgaste herramienta(2305)",
+  "Asignación familiar legal(2311)",
+  "Gastos por causa del trabajo(2306)",
+  "Gastos por cambio de residencia(2307)",
+  "Sala cuna(2308)",
+  "Asignación trabajo a distancia o teletrabajo(2309)",
+  "Depósito convenido hasta UF 900(2347)",
+  "Alojamiento por razones de trabajo(2310)",
+  "Asignación de traslación(2312)",
+  "Indemnización por feriado legal(2313)",
+  "Indemnización años de servicio(2314)",
+  "Indemnización sustitutiva del aviso previo(2315)",
+  "Indemnización fuero maternal(2316)",
+  "Pago indemnización a todo evento(2331)",
+  "Indemnizaciones voluntarias tributables(2417)",
+  "Indemnizaciones contractuales tributables(2418)",
+  "Cotización obligatoria previsional (AFP o IPS)(3141)",
+  "Cotización obligatoria salud 7%(3143)",
+  "Cotización voluntaria para salud(3144)",
+  "Cotización AFC - trabajador(3151)",
+  "Cotizaciones técnico extranjero para seguridad social fuera de Chile(3146)",
+  "Descuento depósito convenido hasta UF 900 anual(3147)",
+  "Cotización APVi Mod A(3155)",
+  "Cotización APVi Mod B hasta UF50(3156)",
+  "Cotización APVc Mod A(3157)",
+  "Cotización APVc Mod B hasta UF50(3158)",
+  "Impuesto retenido por remuneraciones(3161)",
+  "Impuesto retenido por indemnizaciones(3162)",
+  "Mayor retención de impuestos solicitada por el trabajador(3163)",
+  "Impuesto retenido por reliquidación remun. devengadas otros períodos(3164)",
+  "Diferencia impuesto reliquidación remun. devengadas en este período(3165)",
+  "Retención préstamo clase media 2020 (Ley 21.252) (3166)",
+  "Rebaja zona extrema DL 889 (3167)",
+  "Cuota sindical 1(3171)",
+  "Cuota sindical 2(3172)",
+  "Cuota sindical 3(3173)",
+  "Cuota sindical 4(3174)",
+  "Cuota sindical 5(3175)",
+  "Cuota sindical 6(3176)",
+  "Cuota sindical 7(3177)",
+  "Cuota sindical 8(3178)",
+  "Cuota sindical 9(3179)",
+  "Cuota sindical 10(3180)",
+  "Crédito social CCAF(3110)",
+  "Cuota vivienda o educación(3181)",
+  "Crédito cooperativas de ahorro(3182)",
+  "Otros descuentos autorizados y solicitados por el trabajador(3183)",
+  "Cotización adicional trabajo pesado - trabajador(3154)",
+  "Donaciones culturales y de reconstrucción(3184)",
+  "Otros descuentos(3185)",
+  "Pensiones de alimentos(3186)",
+  "Descuento mujer casada(3187)",
+  "Descuentos por anticipos y préstamos(3188)",
+  "AFC - Aporte empleador(4151)",
+  "Aporte empleador seguro accidentes del trabajo y Ley SANNA(4152)",
+  "Aporte empleador indemnización a todo evento(4131)",
+  "Aporte adicional trabajo pesado - empleador(4154)",
+  "Aporte empleador seguro invalidez y sobrevivencia(4155)",
+  "APVC - Aporte Empleador(4157)",
+  "Total haberes(5201)",
+  "Total haberes imponibles y tributables(5210)",
+  "Total haberes imponibles no tributables(5220)",
+  "Total haberes no imponibles y no tributables(5230)",
+  "Total haberes no imponibles y tributables(5240)",
+  "Total descuentos(5301)",
+  "Total descuentos impuestos a las remuneraciones(5361)",
+  "Total descuentos impuestos por indemnizaciones(5362)",
+  "Total descuentos por cotizaciones del trabajador(5341)",
+  "Total otros descuentos(5302)",
+  "Total aportes empleador(5410)",
+  "Total líquido(5501)",
+  "Total indemnizaciones(5502)",
+  "Total indemnizaciones tributables(5564)",
+  "Total indemnizaciones no tributables(5565)"
+];
+
 export default function SueldoEmpresarialPage() {
   const [formData, setFormData] = useState({
     rutEmpresa: "76.543.210-K",
@@ -205,6 +355,98 @@ export default function SueldoEmpresarialPage() {
     
     cuerpo = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     return `${cuerpo}-${dv}`;
+  };
+
+  const handleExportarLRE = () => {
+    if (!calculoActivo) return;
+
+    const afpMap: Record<string, string> = {
+      habitat: "103",
+      capital: "102",
+      cuprum: "104",
+      planvital: "105",
+      provida: "106",
+      modelo: "108",
+      uno: "109"
+    };
+
+    const afpCodigo = afpMap[calculoActivo.afpSeleccionada] || "108";
+    const saludCodigo = calculoActivo.tipoSalud === "fonasa" ? "102" : "103";
+    const rutLimpio = calculoActivo.rutTrabajador.replace(/\./g, "").trim();
+
+    const rowValues = Array(147).fill("0");
+
+    rowValues[0] = rutLimpio; // Rut trabajador(1101)
+    rowValues[1] = "01-10-2025"; // Fecha inicio contrato(1102)
+    rowValues[2] = ""; // Fecha término de contrato(1103)
+    rowValues[3] = ""; // Causal término de contrato(1104)
+    rowValues[4] = "13"; // Región prestación de servicios(1105)
+    rowValues[5] = "13118"; // Comuna prestación de servicios(1106)
+    rowValues[6] = "1"; // Tipo impuesto a la renta(1170)
+    rowValues[7] = ""; // Técnico extranjero exención
+    rowValues[8] = "101"; // Código tipo de jornada(1107)
+    rowValues[9] = "0"; // Persona con Discapacidad
+    rowValues[10] = "0"; // Pensionado por vejez
+    rowValues[11] = afpCodigo; // AFP(1141)
+    rowValues[12] = "0"; // IPS (ExINP)(1142)
+    rowValues[13] = saludCodigo; // FONASA - ISAPRE(1143)
+    rowValues[14] = "0"; // AFC(1151)
+    rowValues[15] = "0"; // CCAF(1110)
+    rowValues[16] = "1"; // Org. administrador ley 16.744(1152)
+    rowValues[17] = "0"; // Nro cargas familiares
+    rowValues[18] = "0";
+    rowValues[19] = "0";
+    rowValues[20] = "S"; // Tramo asignación familiar(1114)
+    rowValues[31] = "30"; // Nro días trabajados en el mes(1115)
+    
+    // Sueldo empresarial (2161)
+    rowValues[64] = String(Math.round(calculoActivo.sueldoBruto));
+
+    // Asignaciones
+    rowValues[69] = String(Math.round(calculoActivo.colacion || 0)); // Colación(2301)
+    rowValues[70] = String(Math.round(calculoActivo.movilizacion || 0)); // Movilización(2302)
+
+    // Cotizaciones
+    rowValues[89] = String(Math.round(calculoActivo.descuentoAFP)); // Cotización obligatoria previsional (AFP o IPS)(3141)
+    rowValues[90] = String(Math.round(calculoActivo.descuentoSalud)); // Cotización obligatoria salud 7%(3143)
+    rowValues[99] = String(Math.round(calculoActivo.impuestoUnico)); // Impuesto retenido por remuneraciones(3161)
+    rowValues[122] = "0"; // Aporte empleador seguro accidentes
+
+    // SIS
+    const sisMonto = Math.round(calculoActivo.imponible * 0.0162);
+    rowValues[131] = String(sisMonto); // Aporte empleador seguro invalidez y sobrevivencia(4155)
+
+    // Totales
+    const totalHaberes = Math.round(calculoActivo.sueldoBruto + (calculoActivo.colacion || 0) + (calculoActivo.movilizacion || 0));
+    rowValues[133] = String(totalHaberes); // Total haberes(5201)
+    rowValues[134] = String(Math.round(calculoActivo.sueldoBruto)); // Total haberes imponibles y tributables(5210)
+    rowValues[135] = "0"; // Total haberes imponibles no tributables(5220)
+    rowValues[136] = String(Math.round((calculoActivo.colacion || 0) + (calculoActivo.movilizacion || 0))); // Total haberes no imponibles y no tributables(5230)
+    rowValues[137] = "0"; // Total haberes no imponibles y tributables(5240)
+
+    const totalDescuentos = Math.round(calculoActivo.descuentoAFP + calculoActivo.descuentoSalud + calculoActivo.impuestoUnico + (calculoActivo.otrosDescuentos || 0));
+    rowValues[138] = String(totalDescuentos); // Total descuentos(5301)
+    rowValues[139] = String(Math.round(calculoActivo.impuestoUnico)); // Total descuentos impuestos a las remuneraciones(5361)
+    rowValues[140] = "0"; // Total descuentos impuestos por indemnizaciones(5362)
+    rowValues[141] = String(Math.round(calculoActivo.descuentoAFP + calculoActivo.descuentoSalud)); // Total descuentos por cotizaciones del trabajador(5341)
+    rowValues[142] = String(Math.round(calculoActivo.otrosDescuentos || 0)); // Total otros descuentos(5302)
+    rowValues[143] = String(sisMonto); // Total aportes empleador(5410)
+    rowValues[144] = String(Math.round(calculoActivo.sueldoLiquido)); // Total líquido(5501)
+
+    const csvContent = [
+      LRE_HEADERS.join(";"),
+      rowValues.join(";")
+    ].join("\r\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `LRE_DT_Ecomoving_${calculoActivo.mesAnio}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleMesChange = (mes: string) => {
@@ -925,6 +1167,13 @@ export default function SueldoEmpresarialPage() {
                 >
                   <Printer className="h-4 w-4" />
                   Imprimir / PDF
+                </Button>
+                <Button 
+                  onClick={handleExportarLRE}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Exportar LRE (DT)
                 </Button>
               </div>
 
