@@ -500,6 +500,9 @@ export default function OportunidadesPage() {
       // Filtro de desahogo: Ocultar descartadas por defecto
       if (!verDescartadas && op.estado?.toLowerCase() === "descartada") return false;
 
+      // Filtro de monto mínimo: Ocultar oportunidades con monto inferior a $250.000
+      if (op.monto_disponible != null && op.monto_disponible < 250000) return false;
+
       const searchLower = busqueda.toLowerCase().trim();
       if (!searchLower) return (responsableSeleccionado === "todos" || op.vendedor_id === responsableSeleccionado);
 
