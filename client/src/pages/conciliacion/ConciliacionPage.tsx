@@ -2884,7 +2884,7 @@ export default function ConciliacionPage() {
                                                             <div className="flex items-center gap-3 flex-1">
                                                                 <Checkbox
                                                                     checked={isSelected}
-                                                                    onCheckedChange={() => toggleDocSelection(doc)}
+                                                                    onCheckedChange={() => { }}
                                                                 />
                                                                 <div className="flex-1">
                                                                     <div className="flex items-center gap-2 flex-wrap">
