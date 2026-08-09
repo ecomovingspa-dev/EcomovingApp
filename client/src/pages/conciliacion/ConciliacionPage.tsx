@@ -264,6 +264,11 @@ export default function ConciliacionPage() {
     const [loadingAllDocs, setLoadingAllDocs] = useState(false);
     const [multiSearchQuery, setMultiSearchQuery] = useState("");
 
+    // --- FACTORING RECONCILIATION STATE ---
+    const [factoringDocs, setFactoringDocs] = useState<Coincidencia[]>([]);
+    const [loadingFactoringDocs, setLoadingFactoringDocs] = useState(false);
+    const [factoringSearchQuery, setFactoringSearchQuery] = useState("");
+
 
     useEffect(() => {
         cargarCartolas();
@@ -1122,6 +1127,111 @@ export default function ConciliacionPage() {
     };
 
 
+    const cargarDocumentosFactoring = async (queryStr = "") => {
+        setLoadingFactoringDocs(true);
+        try {
+            let q = supabase.from("ventas").select("*");
+            
+            if (queryStr.trim()) {
+                const term = queryStr.trim();
+                if (!isNaN(Number(term))) {
+                    q = q.eq("folio", parseInt(term));
+                } else {
+                    q = q.or(`rzn_soc_recep.ilike.%${term}%,rut_recep.ilike.%${term}%`);
+                }
+            } else {
+                q = q.order("fch_emis", { ascending: false }).limit(50);
+            }
+
+            const { data, error } = await q;
+            if (error) throw error;
+
+            if (data) {
+                const processed = data.map((d: any) => {
+                    const montoTotal = d.mnt_total || 0;
+                    const balance = d.saldo !== undefined && d.saldo !== null ? d.saldo : montoTotal;
+                    return {
+                        id: d.id,
+                        tipo: 'venta' as const,
+                        entidad: d.rzn_soc_recep || "Desconocido",
+                        fecha: d.fch_emis,
+                        monto: balance,
+                        monto_total: montoTotal,
+                        folio: d.folio,
+                        estado: d.estado_deuda || "Pendiente",
+                        conciliado: d.conciliado || false,
+                        documento_relacionado: d
+                    };
+                });
+                setFactoringDocs(processed);
+            }
+        } catch (err) {
+            console.error("Error loading factoring docs:", err);
+        } finally {
+            setLoadingFactoringDocs(false);
+        }
+    };
+
+
+    const ejecutarConciliacionFactoring = async () => {
+        if (!selectedMovimiento || multipleSelectedDocs.length === 0) return;
+
+        const foliosText = multipleSelectedDocs.map(d => d.folio).join(", ");
+        if (!confirm(`¿Estás seguro de conciliar este movimiento como Factoring con los documentos Folio ${foliosText}?`)) return;
+
+        setLoading(true);
+        try {
+            const commentText = `Factoring Penta - Folios: ${foliosText}`;
+
+            // 1. Update Banco Movimiento
+            const { error: errMov } = await supabase
+                .from("banco_movimientos")
+                .update({
+                    estado: "conciliado",
+                    tipo_conciliacion: "factoring",
+                    conciliado_id: multipleSelectedDocs[0].id,
+                    bci_comentario_transferencia: commentText
+                })
+                .eq("id", selectedMovimiento.id);
+
+            if (errMov) throw errMov;
+
+            // 2. Mark all selected sales as conciliado = true
+            for (const doc of multipleSelectedDocs) {
+                const { error: errVenta } = await supabase
+                    .from("ventas")
+                    .update({ conciliado: true })
+                    .eq("id", doc.id);
+                if (errVenta) throw errVenta;
+            }
+
+            // 3. UI Updates
+            setConciliarOpen(false);
+            setMovimientos(prev => prev.map(m =>
+                m.id === selectedMovimiento.id
+                    ? { 
+                        ...m, 
+                        estado: "conciliado", 
+                        tipo_conciliacion: "factoring", 
+                        conciliado_id: multipleSelectedDocs[0].id,
+                        bci_comentario_transferencia: commentText
+                      }
+                    : m
+            ));
+
+            // Reset selection
+            setMultipleSelectedDocs([]);
+            setSelectedMovimiento(null);
+            alert("¡Conciliación de Factoring exitosa!");
+        } catch (e) {
+            console.error("Error en conciliacion factoring:", e);
+            alert("Ocurrió un error al procesar la conciliación de factoring.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
     const toggleDocSelection = (doc: Coincidencia) => {
         setMultipleSelectedDocs(prev => {
             // Usamos == para permitir comparación de string vs number si fuera necesario
@@ -1352,7 +1462,20 @@ export default function ConciliacionPage() {
             const montoMovimiento = Math.abs(mov.cargos || mov.abonos || 0);
 
             // NUEVO: Manejar múltiples documentos de abono relacionados
-            if (mov.estado === 'conciliado' && mov.tipo_conciliacion !== 'manual') {
+            if (mov.estado === 'conciliado' && mov.tipo_conciliacion === 'factoring') {
+                const match = mov.bci_comentario_transferencia?.match(/Folios:\s*([0-9,\s]+)/);
+                if (match && match[1]) {
+                    const folios = match[1].split(',').map(f => parseInt(f.trim())).filter(f => !isNaN(f));
+                    if (folios.length > 0) {
+                        await supabase
+                            .from("ventas")
+                            .update({ conciliado: false })
+                            .in("folio", folios);
+                    }
+                }
+            }
+
+            if (mov.estado === 'conciliado' && mov.tipo_conciliacion !== 'manual' && mov.tipo_conciliacion !== 'factoring') {
                 const searchPatterns = [
                     `%Movimiento ID: ${mov.id}%`,
                     `%Movimiento: ${mov.descripcion}%`,
@@ -1407,12 +1530,17 @@ export default function ConciliacionPage() {
             }
 
             // Revertir el movimiento bancario
+            const updateFields: any = {
+                estado: "pendiente",
+                tipo_conciliacion: null,
+                conciliado_id: null
+            };
+            if (mov.bci_comentario_transferencia?.startsWith("Factoring")) {
+                updateFields.bci_comentario_transferencia = null;
+            }
+
             const { error } = await supabase.from("banco_movimientos")
-                .update({
-                    estado: "pendiente",
-                    tipo_conciliacion: null,
-                    conciliado_id: null
-                })
+                .update(updateFields)
                 .eq("id", mov.id);
 
             if (error) throw error;
@@ -2250,10 +2378,19 @@ export default function ConciliacionPage() {
                                                                             {mov.tipo_conciliacion === 'venta' ? '📈 Venta' :
                                                                                 mov.tipo_conciliacion === 'compra' ? '📦 Compra' :
                                                                                     mov.tipo_conciliacion === 'manual' ? '✏️ Manual' :
-                                                                                        '🔄 Automático'}
+                                                                                        mov.tipo_conciliacion === 'factoring' ? '💼 Factoring' :
+                                                                                            '🔄 Automático'}
                                                                         </Badge>
                                                                     </div>
-                                                                    {mov.conciliado_id && (
+                                                                    {mov.tipo_conciliacion === 'factoring' && mov.bci_comentario_transferencia && (
+                                                                        <div className="flex flex-col gap-1 text-sm border-t border-gray-100 dark:border-gray-800 pt-2 mt-2">
+                                                                            <span className="text-gray-500 text-xs">Detalle Factoring:</span>
+                                                                            <span className="font-medium text-indigo-600 dark:text-indigo-400 text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded">
+                                                                                {mov.bci_comentario_transferencia}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                    {mov.tipo_conciliacion !== 'factoring' && mov.conciliado_id && (
                                                                         <div className="flex items-center justify-between text-sm">
                                                                             <span className="text-gray-500">Folio:</span>
                                                                             <span className="font-mono bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-indigo-600 dark:text-indigo-400">
@@ -2367,9 +2504,11 @@ export default function ConciliacionPage() {
                                 setMatchTab(val);
                                 if (val === "multiple" && allUnreconciledDocs.length === 0) {
                                     cargarTodosLosDocumentosPendientes(selectedMovimiento);
+                                } else if (val === "factoring") {
+                                    cargarDocumentosFactoring("");
                                 }
                             }} className="w-full">
-                                <TabsList className="grid w-full grid-cols-3 mb-4">
+                                <TabsList className="grid w-full grid-cols-4 mb-4">
                                     <TabsTrigger value="sugerencias" className="text-sm">
                                         📄 Sugerencias
                                     </TabsTrigger>
@@ -2378,6 +2517,9 @@ export default function ConciliacionPage() {
                                     </TabsTrigger>
                                     <TabsTrigger value="manual" className="text-sm">
                                         ✏️ Conciliar Manual
+                                    </TabsTrigger>
+                                    <TabsTrigger value="factoring" className="text-sm">
+                                        💼 Factoring
                                     </TabsTrigger>
                                 </TabsList>
 
@@ -2668,6 +2810,112 @@ export default function ConciliacionPage() {
                                                 </>
                                             )}
                                         </Button>
+                                    </div>
+                                </TabsContent>
+
+                                {/* Tab: Factoring */}
+                                <TabsContent value="factoring" className="space-y-4">
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex items-center justify-between bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                                            <div>
+                                                <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase">Conciliación de Factoring</p>
+                                                <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                                                    Seleccionados: {multipleSelectedDocs.length} documentos
+                                                </p>
+                                            </div>
+                                            <div className="text-right">
+                                                <Button
+                                                    size="sm"
+                                                    disabled={multipleSelectedDocs.length === 0 || loading}
+                                                    onClick={ejecutarConciliacionFactoring}
+                                                    className="mt-1"
+                                                >
+                                                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                                                    Conciliar Factoring
+                                                </Button>
+                                            </div>
+                                        </div>
+
+                                        <div className="relative flex gap-2">
+                                            <div className="relative flex-1">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar venta por folio, RUT o cliente..."
+                                                    className="w-full pl-9 pr-4 py-2 text-sm rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+                                                    value={factoringSearchQuery}
+                                                    onChange={(e) => setFactoringSearchQuery(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === "Enter") {
+                                                            cargarDocumentosFactoring(factoringSearchQuery);
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                            <Button size="sm" onClick={() => cargarDocumentosFactoring(factoringSearchQuery)}>
+                                                Buscar
+                                            </Button>
+                                        </div>
+
+                                        <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                                            {loadingFactoringDocs ? (
+                                                <div className="text-center py-10">
+                                                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-indigo-500" />
+                                                    <p className="text-sm text-gray-500 mt-2">Buscando en libros de ventas...</p>
+                                                </div>
+                                            ) : factoringDocs.length === 0 ? (
+                                                <div className="text-center py-10 text-gray-500 text-sm border border-dashed rounded-lg bg-gray-50/50">
+                                                    <AlertCircle className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                                                    <p>No se encontraron documentos de venta.</p>
+                                                    <p className="text-xs text-gray-400 mt-1">Intenta ingresando otro número de folio o nombre de cliente.</p>
+                                                </div>
+                                            ) : (
+                                                factoringDocs.map(doc => {
+                                                    const isSelected = multipleSelectedDocs.some(d => d.id === doc.id && d.tipo === doc.tipo);
+                                                    return (
+                                                        <div
+                                                            key={`${doc.tipo}-${doc.id}`}
+                                                            className={`flex items-center justify-between p-3 border rounded-md transition-colors cursor-pointer border-l-4 shadow-sm ${isSelected
+                                                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/40'
+                                                                : 'border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 border-l-indigo-400'
+                                                                }`}
+                                                            onClick={() => toggleDocSelection(doc)}
+                                                        >
+                                                            <div className="flex items-center gap-3 flex-1">
+                                                                <Checkbox
+                                                                    checked={isSelected}
+                                                                    onCheckedChange={() => toggleDocSelection(doc)}
+                                                                />
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                        <span className="font-bold text-sm text-gray-900 dark:text-gray-100">Folio {doc.folio}</span>
+                                                                        <Badge
+                                                                            variant="outline"
+                                                                            className={`text-[10px] ${doc.estado === 'Pagada' ? 'text-green-600 border-green-200 bg-green-50' : 'text-yellow-600 border-yellow-200 bg-yellow-50'}`}
+                                                                        >
+                                                                            {doc.estado}
+                                                                        </Badge>
+                                                                        {doc.conciliado && (
+                                                                            <Badge className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 text-[9px] font-medium border-none">
+                                                                                Ya Conciliada
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-sm text-gray-700 dark:text-gray-300">{doc.entidad}</p>
+                                                                    <p className="text-xs text-gray-400 dark:text-gray-500">{doc.fecha}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="font-bold text-gray-900 dark:text-gray-100">{fmtMoney(doc.monto_total)}</div>
+                                                                {doc.monto > 0 && doc.monto !== doc.monto_total && (
+                                                                    <div className="text-[10px] text-yellow-600">Saldo: {fmtMoney(doc.monto)}</div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
                                     </div>
                                 </TabsContent>
                             </Tabs>
