@@ -367,7 +367,7 @@ export default function SueldoEmpresarialPage() {
       cuprum: "104",
       planvital: "105",
       provida: "106",
-      modelo: "108",
+      modelo: "103", // Map Modelo to 103 as used by the accountant previously
       uno: "109"
     };
 
@@ -398,7 +398,14 @@ export default function SueldoEmpresarialPage() {
     rowValues[18] = "0";
     rowValues[19] = "0";
     rowValues[20] = "S"; // Tramo asignación familiar(1114)
-    rowValues[31] = "30"; // Nro días trabajados en el mes(1115)
+
+    // Calcular días calendario del mes correspondiente
+    let diasTrabajados = 30;
+    if (calculoActivo.mesAnio) {
+      const [year, month] = calculoActivo.mesAnio.split("-").map(Number);
+      diasTrabajados = new Date(year, month, 0).getDate();
+    }
+    rowValues[31] = String(diasTrabajados); // Nro días trabajados en el mes(1115)
     
     // Sueldo empresarial (2161)
     rowValues[64] = String(Math.round(calculoActivo.sueldoBruto));
@@ -438,11 +445,15 @@ export default function SueldoEmpresarialPage() {
       rowValues.join(";")
     ].join("\r\n");
 
+    const rutEmpresaLimpio = calculoActivo.rutEmpresa.split("-")[0].replace(/\./g, "").trim();
+    const periodoLimpio = calculoActivo.mesAnio.replace("-", "");
+    const fileName = `${rutEmpresaLimpio}_${periodoLimpio}.csv`;
+
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `LRE_DT_Ecomoving_${calculoActivo.mesAnio}.csv`);
+    link.setAttribute("download", fileName);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
