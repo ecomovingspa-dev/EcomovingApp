@@ -1053,7 +1053,11 @@ export default function VentasPage() {
                         >
                           {venta.estado_deuda}
                         </span>
-                        {venta.conciliado ? (
+                        {venta.estado_deuda === "Anulada" || venta.anulada ? (
+                          <Badge variant="secondary" className="bg-gray-150 text-gray-500 border-none text-[9px] px-1.5 py-0 dark:bg-gray-700 dark:text-gray-400">
+                            N/A
+                          </Badge>
+                        ) : venta.conciliado ? (
                           <Badge variant="default" className="bg-emerald-500 text-white border-none text-[9px] px-1.5 py-0">
                             <Check className="w-2 h-2 mr-1" /> CONCILIADA
                           </Badge>
