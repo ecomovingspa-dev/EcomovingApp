@@ -685,25 +685,7 @@ export default function TrazabilidadBrevo() {
           ⭐ {soloFoco ? "SOLO CUENTAS FOCO" : "TODAS LAS CUENTAS"}
         </button>
 
-        <div className="flex items-center gap-2 bg-gray-800 border border-gray-700 px-3 py-1.5 rounded-xl h-[36px]">
-          <span className="text-[9px] font-black uppercase text-gray-500">Mi Perfil:</span>
-          <Select value={vendedor} onValueChange={(val) => handleVendedorChange(val)}>
-            <SelectTrigger className="w-[140px] bg-transparent border-0 text-[10px] font-black uppercase text-indigo-400 p-0 h-auto focus:ring-0 focus:outline-none">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-gray-900 border-gray-800 text-white">
-              {vendedores && vendedores.length > 0 ? (
-                vendedores.map(v => (
-                  <SelectItem key={v.id} value={v.nombre}>{v.nombre.toUpperCase()}</SelectItem>
-                ))
-              ) : (
-                ['Vendedor 1', 'Vendedor 2'].map(v => (
-                  <SelectItem key={v} value={v}>{v.toUpperCase()}</SelectItem>
-                ))
-              )}
-            </SelectContent>
-          </Select>
-        </div>
+
 
         <Select onValueChange={(val) => setFiltroEjecutivo(val)} defaultValue="todos">
           <SelectTrigger className="w-[185px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
