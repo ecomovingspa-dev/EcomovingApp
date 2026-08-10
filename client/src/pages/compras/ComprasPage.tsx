@@ -441,6 +441,7 @@ export default function ComprasPage() {
         tipo_abono: "",
         detalle_abono: "",
         monto_abono: "",
+        folio_nc: "",
     });
 
     // Historial de Abonos
@@ -475,6 +476,7 @@ export default function ComprasPage() {
             tipo_abono: "transferencia", // default
             detalle_abono: "",
             monto_abono: String(compra.saldo > 0 ? compra.saldo : 0),
+            folio_nc: "",
         });
     };
 
@@ -505,13 +507,18 @@ export default function ComprasPage() {
 
             if (error) throw error;
 
+            let finalDetalle = abonoForm.detalle_abono || "";
+            if (abonoForm.tipo_abono === "nota_credito" && abonoForm.folio_nc) {
+                finalDetalle = `N.C. Folio: ${abonoForm.folio_nc}${finalDetalle ? ` - ${finalDetalle}` : ""}`;
+            }
+
             // 3. Crear Registro de Abono
             await supabase.from("compras_abonos").insert({
                 compra_id: compraId,
                 monto_abono: monto,
                 fecha_abono: abonoForm.fecha_abono || new Date().toISOString().split("T")[0],
                 tipo_abono: abonoForm.tipo_abono || "transferencia",
-                detalle_abono: abonoForm.detalle_abono || ""
+                detalle_abono: finalDetalle
             });
 
             // Si funciona:
@@ -848,7 +855,14 @@ export default function ComprasPage() {
                                                 {compra.fecha_vencimiento || "-"}
                                             </td>
                                             <td className="px-6 py-3 text-gray-600 dark:text-gray-300">
-                                                {compra.folio}
+                                                <div className="flex items-center gap-1.5">
+                                                    <span>{compra.folio}</span>
+                                                    {compra.tipo_dte === 61 && (
+                                                        <span className="bg-rose-500/10 text-rose-500 border border-rose-500/20 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0">
+                                                            N.C.
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-3">
                                                 <div className="font-medium text-gray-900 dark:text-gray-100 line-clamp-1 max-w-[200px]" title={compra.razon_social || ""}>
@@ -991,6 +1005,25 @@ export default function ComprasPage() {
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </div>
+                                                                {abonoForm.tipo_abono === "nota_credito" && (
+                                                                    <div className="space-y-1">
+                                                                        <Label className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-semibold">
+                                                                            Folio N.C. Asociada
+                                                                        </Label>
+                                                                        <Input
+                                                                            type="text"
+                                                                            value={abonoForm.folio_nc || ""}
+                                                                            onChange={(e) =>
+                                                                                setAbonoForm((prev) => ({
+                                                                                    ...prev,
+                                                                                    folio_nc: e.target.value,
+                                                                                }))
+                                                                            }
+                                                                            className="h-8 text-xs"
+                                                                            placeholder="Ej: 12345"
+                                                                        />
+                                                                    </div>
+                                                                )}
                                                                 <div className="space-y-1">
                                                                     <Label className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-semibold">
                                                                         Monto a Pagar
