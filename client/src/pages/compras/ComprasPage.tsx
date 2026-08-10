@@ -490,34 +490,103 @@ export default function ComprasPage() {
             const compra = compras.find(c => c.id === compraId);
             if (!compra) return;
 
-            // 1. Calcular nuevo saldo
-            const nuevoSaldo = Math.max(0, compra.saldo - monto);
-            const nuevoEstado = nuevoSaldo === 0 ? "Pagada" : "Pendiente"; // Simple logic
+            if (abonoForm.tipo_abono === "factura") {
+                if (!abonoForm.folio_nc) {
+                    alert("Debe especificar el Folio de la Factura Asociada");
+                    return;
+                }
 
-            // 2. Actualizar Tabla compras
-            const { error } = await supabase
-                .from("compras")
-                .update({
-                    saldo: nuevoSaldo,
-                    estado_pago: nuevoEstado
-                })
-                .eq("id", compraId);
+                // Buscar factura asociada
+                const { data: facturaAsoc, error: errFact } = await supabase
+                    .from("compras")
+                    .select("id, saldo, estado_pago")
+                    .eq("rut_proveedor", compra.rut_proveedor)
+                    .eq("folio", abonoForm.folio_nc.trim())
+                    .in("tipo_dte", [33, 34])
+                    .maybeSingle();
 
-            if (error) throw error;
+                if (errFact) throw errFact;
+                if (!facturaAsoc) {
+                    alert(`No se encontró una Factura de Compra Folio ${abonoForm.folio_nc} para el proveedor ${compra.razon_social || compra.rut_proveedor}`);
+                    return;
+                }
 
-            let finalDetalle = abonoForm.detalle_abono || "";
-            if (abonoForm.tipo_abono === "nota_credito" && abonoForm.folio_nc) {
-                finalDetalle = `N.C. Folio: ${abonoForm.folio_nc}${finalDetalle ? ` - ${finalDetalle}` : ""}`;
+                // Actualizar saldo de la Factura Asociada
+                const nuevoSaldoFactura = Math.max(0, facturaAsoc.saldo - monto);
+                const nuevoEstadoFactura = nuevoSaldoFactura === 0 ? "Pagada" : "Pendiente";
+
+                const { error: errUpdFact } = await supabase
+                    .from("compras")
+                    .update({
+                        saldo: nuevoSaldoFactura,
+                        estado_pago: nuevoEstadoFactura
+                    })
+                    .eq("id", facturaAsoc.id);
+
+                if (errUpdFact) throw errUpdFact;
+
+                // Crear registro de abono en la Factura Asociada
+                await supabase.from("compras_abonos").insert({
+                    compra_id: facturaAsoc.id,
+                    monto_abono: monto,
+                    fecha_abono: abonoForm.fecha_abono || new Date().toISOString().split("T")[0],
+                    tipo_abono: "nota_credito",
+                    detalle_abono: `Descuento aplicado desde N.C. Folio: ${compra.folio}`
+                });
+
+                // Actualizar saldo de la Nota de Crédito misma
+                const nuevoSaldoNC = Math.max(0, compra.saldo - monto);
+                const nuevoEstadoNC = nuevoSaldoNC === 0 ? "Pagada" : "Pendiente";
+
+                const { error: errUpdNC } = await supabase
+                    .from("compras")
+                    .update({
+                        saldo: nuevoSaldoNC,
+                        estado_pago: nuevoEstadoNC
+                    })
+                    .eq("id", compraId);
+
+                if (errUpdNC) throw errUpdNC;
+
+                // Crear registro de abono en la Nota de Crédito misma
+                await supabase.from("compras_abonos").insert({
+                    compra_id: compraId,
+                    monto_abono: monto,
+                    fecha_abono: abonoForm.fecha_abono || new Date().toISOString().split("T")[0],
+                    tipo_abono: "factura",
+                    detalle_abono: `Centralizada en Factura Folio: ${abonoForm.folio_nc}`
+                });
+
+            } else {
+                // 1. Calcular nuevo saldo
+                const nuevoSaldo = Math.max(0, compra.saldo - monto);
+                const nuevoEstado = nuevoSaldo === 0 ? "Pagada" : "Pendiente"; // Simple logic
+
+                // 2. Actualizar Tabla compras
+                const { error } = await supabase
+                    .from("compras")
+                    .update({
+                        saldo: nuevoSaldo,
+                        estado_pago: nuevoEstado
+                    })
+                    .eq("id", compraId);
+
+                if (error) throw error;
+
+                let finalDetalle = abonoForm.detalle_abono || "";
+                if (abonoForm.tipo_abono === "nota_credito" && abonoForm.folio_nc) {
+                    finalDetalle = `N.C. Folio: ${abonoForm.folio_nc}${finalDetalle ? ` - ${finalDetalle}` : ""}`;
+                }
+
+                // 3. Crear Registro de Abono
+                await supabase.from("compras_abonos").insert({
+                    compra_id: compraId,
+                    monto_abono: monto,
+                    fecha_abono: abonoForm.fecha_abono || new Date().toISOString().split("T")[0],
+                    tipo_abono: abonoForm.tipo_abono || "transferencia",
+                    detalle_abono: finalDetalle
+                });
             }
-
-            // 3. Crear Registro de Abono
-            await supabase.from("compras_abonos").insert({
-                compra_id: compraId,
-                monto_abono: monto,
-                fecha_abono: abonoForm.fecha_abono || new Date().toISOString().split("T")[0],
-                tipo_abono: abonoForm.tipo_abono || "transferencia",
-                detalle_abono: finalDetalle
-            });
 
             // Si funciona:
             setAbonoOpen(null);
@@ -1000,13 +1069,16 @@ export default function ComprasPage() {
                                                                             <SelectItem value="nota_credito">
                                                                                 Nota de Crédito
                                                                             </SelectItem>
+                                                                            <SelectItem value="factura">
+                                                                                Factura
+                                                                            </SelectItem>
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </div>
-                                                                {abonoForm.tipo_abono === "nota_credito" && (
+                                                                {(abonoForm.tipo_abono === "nota_credito" || abonoForm.tipo_abono === "factura") && (
                                                                     <div className="space-y-1">
                                                                         <Label className="text-[10px] uppercase text-gray-500 dark:text-gray-400 font-semibold">
-                                                                            Folio N.C. Asociada
+                                                                            {abonoForm.tipo_abono === "factura" ? "Folio Factura Asociada" : "Folio N.C. Asociada"}
                                                                         </Label>
                                                                         <Input
                                                                             type="text"
