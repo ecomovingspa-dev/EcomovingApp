@@ -118,7 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         // 4. Send via Brevo
         const emailPayload = {
-            sender: { name: "Ecomoving", email: "ventas@ecomoving.cl" },
+            sender: { name: "Ecomoving", email: "cobranza@ecomoving.cl" },
             to: [{ email: targetEmail }],
             subject: `[TEST] ${messageData.asunto}`,
             htmlContent: finalHtml,

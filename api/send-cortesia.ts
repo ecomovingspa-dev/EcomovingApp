@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     try {
         const senderName = "Ecomoving SpA";
-        const senderEmail = "ventas@ecomoving.cl";
+        const senderEmail = "cobranza@ecomoving.cl";
 
         // Preparamos los destinatarios (con copia oculta BCC al vendedor si está disponible)
         const emailPayload: any = {

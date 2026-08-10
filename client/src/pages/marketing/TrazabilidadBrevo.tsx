@@ -102,29 +102,6 @@ export default function TrazabilidadBrevo() {
     setVendedor(newVendedor);
   };
 
-  const toggleCortesiaRespondido = async (contact: any) => {
-    const newValue = !contact.correo_cortesia_respondido;
-    try {
-      const { error } = await supabase
-        .from("contactos")
-        .update({ correo_cortesia_respondido: newValue })
-        .eq("id", contact.id);
-
-      if (error) throw error;
-      toast.success(newValue ? "Marcado como respondido" : "Marcado como no respondido");
-      
-      setContactos(prev => prev.map(c => {
-        if (c.id === contact.id) {
-          return { ...c, correo_cortesia_respondido: newValue };
-        }
-        return c;
-      }));
-    } catch (err) {
-      console.error("Error al actualizar estado de respuesta:", err);
-      toast.error("Error al actualizar el estado de respuesta");
-    }
-  };
-
   const toggleTemplateSentStatus = async (templateId: string, contact: any) => {
     if (!contact) return;
     
@@ -820,83 +797,7 @@ export default function TrazabilidadBrevo() {
                         {c.etapa?.toUpperCase() || 'MARKETING'}
                       </div>
 
-                      {/* Información de Cortesía y Abordaje */}
-                      <div className="mt-2 pt-2 border-t border-gray-900 flex flex-col gap-1.5 text-[9px]">
-                        {/* Fila 1: Badges de Cortesía (C1, C2, C3) y vendedor */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-gray-500 font-bold uppercase tracking-wider text-[8px]">Cortesías:</span>
-                          <div className="flex gap-1">
-                            {(() => {
-                              const hasC1 = c.historial?.some((h: any) => 
-                                h.mensaje_id?.includes("prospeccion-1") || 
-                                h.mensaje_id?.includes("consulta_directa")
-                              );
-                              const hasC2 = c.historial?.some((h: any) => 
-                                h.mensaje_id?.includes("prospeccion-2") || 
-                                h.mensaje_id?.includes("alternativa_valor")
-                              );
-                              const hasC3 = c.historial?.some((h: any) => 
-                                h.mensaje_id?.includes("prospeccion-3") || 
-                                h.mensaje_id?.includes("email_despedida")
-                              );
 
-                              return (
-                                <>
-                                  <span 
-                                    className={`px-1 py-0.5 rounded text-[8px] font-bold ${
-                                      hasC1 
-                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
-                                        : "bg-gray-900 text-gray-600 border border-gray-800"
-                                    }`}
-                                    title="Consulta Directa"
-                                  >
-                                    C1
-                                  </span>
-                                  <span 
-                                    className={`px-1 py-0.5 rounded text-[8px] font-bold ${
-                                      hasC2 
-                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
-                                        : "bg-gray-900 text-gray-600 border border-gray-800"
-                                    }`}
-                                    title="Alternativa de Valor"
-                                  >
-                                    C2
-                                  </span>
-                                  <span 
-                                    className={`px-1 py-0.5 rounded text-[8px] font-bold ${
-                                      hasC3 
-                                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
-                                        : "bg-gray-900 text-gray-600 border border-gray-800"
-                                    }`}
-                                    title="Email Despedida"
-                                  >
-                                    C3
-                                  </span>
-                                </>
-                              );
-                            })()}
-                          </div>
-                          
-                          {c.correo_cortesia_vendedor && (
-                            <span className="text-[8px] bg-indigo-500/10 text-indigo-400 px-1 py-0.5 rounded border border-indigo-500/20 font-bold truncate max-w-[80px]" title={`Abordado por ${c.correo_cortesia_vendedor}`}>
-                              👤 {c.correo_cortesia_vendedor.split(' ')[0]}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Fila 2: Checkbox "Respondió" */}
-                        <div className="flex items-center gap-1.5 cursor-pointer select-none" onClick={() => toggleCortesiaRespondido(c)}>
-                          <input 
-                            type="checkbox" 
-                            checked={!!c.correo_cortesia_respondido} 
-                            onChange={() => {}} 
-                            className="h-3 w-3 rounded border-gray-800 text-indigo-600 focus:ring-indigo-500/50 bg-gray-900 cursor-pointer accent-indigo-600"
-                          />
-                          <span className={`${c.correo_cortesia_respondido ? "text-emerald-400 font-bold" : "text-gray-500"} transition-colors text-[9px]`}>
-                            {c.correo_cortesia_respondido ? "✓ Respondió" : "No ha respondido"}
-                          </span>
-                        </div>
-                      </div>
                     </div>
                   </td>
 
@@ -1103,60 +1004,7 @@ export default function TrazabilidadBrevo() {
               </div>
             </div>
 
-            {/* Nuevos Campos de Abordaje y Cortesía */}
-            <div className="grid grid-cols-2 gap-4 border-t border-gray-900 pt-4 mt-4">
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-gray-500 uppercase">Vendedor Abordando</Label>
-                <Select 
-                  value={selectedContact?.correo_cortesia_vendedor || "ninguno"} 
-                  onValueChange={(val) => setSelectedContact({ 
-                    ...selectedContact, 
-                    correo_cortesia_vendedor: val === "ninguno" ? null : val 
-                  })}
-                >
-                  <SelectTrigger className="bg-gray-900 border-gray-800 text-white focus:ring-1 focus:ring-indigo-500">
-                    <SelectValue placeholder="Seleccionar vendedor..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-900 border-gray-850 text-white">
-                    <SelectItem value="ninguno">Ninguno</SelectItem>
-                    <SelectItem value="Mario Osorio C.">Mario Osorio C.</SelectItem>
-                    <SelectItem value="Jimena Lara F.">Jimena Lara F.</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-2 pt-2">
-                <div className="flex items-center gap-3 select-none">
-                  <input 
-                    type="checkbox" 
-                    id="modal-enviado"
-                    checked={!!selectedContact?.correo_cortesia_enviado} 
-                    onChange={(e) => setSelectedContact({ 
-                      ...selectedContact, 
-                      correo_cortesia_enviado: e.target.checked 
-                    })}
-                    className="h-4 w-4 rounded border-gray-800 text-indigo-600 focus:ring-indigo-500 bg-gray-900 cursor-pointer accent-indigo-600"
-                  />
-                  <Label htmlFor="modal-enviado" className="text-xs text-gray-300 cursor-pointer">
-                    Cortesía Enviada (Marcar Manual)
-                  </Label>
-                </div>
-                <div className="flex items-center gap-3 select-none">
-                  <input 
-                    type="checkbox" 
-                    id="modal-respondido"
-                    checked={!!selectedContact?.correo_cortesia_respondido} 
-                    onChange={(e) => setSelectedContact({ 
-                      ...selectedContact, 
-                      correo_cortesia_respondido: e.target.checked 
-                    })}
-                    className="h-4 w-4 rounded border-gray-800 text-indigo-600 focus:ring-indigo-500 bg-gray-900 cursor-pointer accent-indigo-600"
-                  />
-                  <Label htmlFor="modal-respondido" className="text-xs text-gray-300 cursor-pointer">
-                    ¿El contacto respondió?
-                  </Label>
-                </div>
-              </div>
-            </div>
+
           </div>
           <DialogFooter className="flex justify-between items-center gap-3 border-t border-gray-800 pt-6">
             <Button 

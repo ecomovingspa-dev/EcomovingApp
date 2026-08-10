@@ -69,7 +69,7 @@ export default function ListaContenidos() {
             return;
         }
 
-        const emailDestino = prompt("Ingresa el correo para recibir la prueba:", "ventas@ecomoving.cl");
+        const emailDestino = prompt("Ingresa el correo para recibir la prueba:", "");
         if (!emailDestino) return;
 
         try {

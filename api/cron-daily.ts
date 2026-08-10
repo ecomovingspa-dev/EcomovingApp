@@ -218,102 +218,8 @@ async function ejecutarCobranza(maxEmails: number): Promise<{
 }
 
 // ============================================================================
-// MÓDULO MARKETING
+// MÓDULO MARKETING (ELIMINADO - SÓLO ENVIOS MANUALES DESDE CRM)
 // ============================================================================
-
-async function ejecutarMarketing(maxEmails: number): Promise<{
-    processed: number;
-    sent: number;
-    errors: string[];
-}> {
-    const report = { processed: 0, sent: 0, errors: [] as string[] };
-
-    if (maxEmails <= 0) return report;
-
-    try {
-        const today = getFechaChile(); 
-
-        const { data: contacts, error: contactError } = await supabase
-            .from('contactos')
-            .select('*')
-            .eq('etapa', 'marketing')
-            .ilike('estado', 'activo')
-            .or(`proximo_envio.lte.${today},proximo_envio.is.null`)
-            .order('proximo_envio', { ascending: true, nullsFirst: true })
-            .limit(maxEmails);
-
-        if (contactError) throw contactError;
-        if (!contacts || contacts.length === 0) return report;
-
-        console.log(`📋 Marketing: ${contacts.length} contactos en cola.`);
-
-        // Procesar en chunks de 5 para velocidad
-        const CHUNK_SIZE = 5;
-        for (let i = 0; i < contacts.length; i += CHUNK_SIZE) {
-            const chunk = contacts.slice(i, i + CHUNK_SIZE);
-            
-            await Promise.all(chunk.map(async (contact) => {
-                try {
-                    report.processed++;
-                    let etapaActual = parseInt(contact.etapa_envio) || 1;
-
-                    let { data: messageData } = await supabase
-                        .from('marketing')
-                        .select('*')
-                        .eq('nombre_envio', etapaActual)
-                        .eq('activo', true)
-                        .maybeSingle();
-
-                    if (!messageData) {
-                        console.log(`  ⏸️ Pausado: Sin contenido etapa ${etapaActual} (${contact.correo})`);
-                        return;
-                    }
-
-                    let finalHtml = messageData.cuerpo_html || '';
-                    if (messageData.imagen_url) {
-                        finalHtml = finalHtml.replace('IMAGE_PLACEHOLDER', messageData.imagen_url);
-                    }
-
-                    const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', {
-                        sender: { name: "Ecomoving", email: "ventas@ecomoving.cl" },
-                        to: [{ email: contact.correo }],
-                        subject: messageData.asunto,
-                        htmlContent: finalHtml,
-                        textContent: messageData.cuerpodetalle || "Ver correo en formato HTML"
-                    }, {
-                        headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' }
-                    });
-
-                    const messageId = brevoRes.data?.messageId;
-
-                    // Registro de trazabilidad
-                    await supabase.from('trazabilidad_correos').insert({
-                        contacto_id: contact.id, email: contact.correo,
-                        fecha: getFechaChile(),
-                        estado: 'request', mensaje_id: messageId
-                    });
-
-                    const nextDate = sumarDiasHabiles(new Date(), 3);
-                    await supabase.from('contactos').update({
-                        ultimo_envio: new Date().toISOString(),
-                        proximo_envio: nextDate.toISOString().split('T')[0],
-                        etapa_envio: etapaActual + 1
-                    }).eq('id', contact.id);
-
-                    report.sent++;
-                } catch (err: any) {
-                    report.errors.push(`Marketing ${contact.correo}: ${err.message}`);
-                }
-            }));
-            
-            await sleep(DELAY_BETWEEN_EMAILS_MS);
-        }
-    } catch (err: any) {
-        report.errors.push(`Error global marketing: ${err.message}`);
-    }
-
-    return report;
-}
 
 // ============================================================================
 // TEMPLATE HTML COBRANZA
@@ -475,187 +381,6 @@ async function ejecutarAlertasCompras(): Promise<{ total: number; notificacionCr
 }
 
 // ============================================================================
-// MÓDULO PROSPECCIÓN (AI-POWERED)
-// ============================================================================
-
-async function ejecutarProspeccion(maxEmails: number): Promise<{
-    processed: number;
-    sent: number;
-    ai_enhanced: number;
-    errors: string[];
-}> {
-    const report = { processed: 0, sent: 0, ai_enhanced: 0, errors: [] as string[] };
-    if (maxEmails <= 0) return report;
-
-    try {
-        const today = getFechaChile();
-
-        // 1. Buscar contactos en etapa 'prospeccion' con envío pendiente
-        const { data: contacts, error: contactError } = await supabase
-            .from('contactos')
-            .select('*')
-            .eq('etapa', 'prospeccion')
-            .ilike('estado', 'activo')
-            .not('correo', 'is', null)
-            .neq('correo', '')
-            .or(`proximo_envio.lte.${today},proximo_envio.is.null`)
-            .order('proximo_envio', { ascending: true, nullsFirst: true })
-            .limit(maxEmails);
-
-        if (contactError) throw contactError;
-        if (!contacts || contacts.length === 0) return report;
-
-        console.log(`🔍 Prospección: ${contacts.length} contactos en cola.`);
-
-        const CHUNK_SIZE = 5;
-        for (let i = 0; i < contacts.length; i += CHUNK_SIZE) {
-            const chunk = contacts.slice(i, i + CHUNK_SIZE);
-
-            await Promise.all(chunk.map(async (contact) => {
-                try {
-                    report.processed++;
-                    let etapaSecuencia = parseInt(contact.etapa_envio) || 1;
-
-                    let { data: config } = await supabase
-                        .from('configuracion_prospeccion')
-                        .select('*')
-                        .eq('orden', etapaSecuencia)
-                        .eq('activo', true)
-                        .maybeSingle();
-
-                    if (!config) return;
-
-                    const empresa = contact.empresa || "su organización";
-                    const correo = contact.correo || "";
-                    const dominio = correo.split('@')[1] || "";
-                    
-                    // Extraer primer nombre del contacto y capitalizarlo de manera amigable
-                    const nombreContacto = contact.nombre && contact.nombre.trim() !== "" ? contact.nombre.trim() : "";
-                    const primerNombre = nombreContacto ? nombreContacto.split(/\s+/)[0] : "";
-                    const capitalizar = (str: string) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
-                    const contacto = primerNombre ? capitalizar(primerNombre) : "estimado/a";
-                    
-                    let subject = config.asunto_template
-                        .replace(/{empresa}/g, empresa)
-                        .replace(/{correo}/g, correo)
-                        .replace(/{contacto}/g, contacto);
-                    let intro = config.mensaje_intro
-                        .replace(/{empresa}/g, empresa)
-                        .replace(/{correo}/g, correo)
-                        .replace(/{dominio}/g, dominio)
-                        .replace(/{contacto}/g, contacto);
-                    let cierre = config.mensaje_cierre
-                        .replace(/{empresa}/g, empresa)
-                        .replace(/{correo}/g, correo)
-                        .replace(/{dominio}/g, dominio)
-                        .replace(/{contacto}/g, contacto);
-
-                    if (process.env.OLLAMA_URL || process.env.USE_OLLAMA === 'true') {
-                        try {
-                            const { generateProspeccionIceBreaker } = await import('./utils/ollama');
-                            const aiIntro = await generateProspeccionIceBreaker(empresa, dominio, intro);
-                            if (aiIntro && aiIntro.length > 20) {
-                                intro = aiIntro;
-                                report.ai_enhanced++;
-                            }
-                        } catch (aiErr) {}
-                    }
-
-                    const htmlContent = generarHtmlProspeccion({ intro, cierre, empresa });
-
-                    const brevoRes = await axios.post('https://api.brevo.com/v3/smtp/email', {
-                        sender: { name: "Ecomoving", email: "ventas@ecomoving.cl" },
-                        to: [{ email: contact.correo }],
-                        subject: subject,
-                        htmlContent: htmlContent
-                    }, {
-                        headers: { 'api-key': BREVO_API_KEY, 'Content-Type': 'application/json' }
-                    });
-
-                    const messageId = brevoRes.data?.messageId;
-
-                    // Registro de trazabilidad
-                    await supabase.from('trazabilidad_correos').insert({
-                        contacto_id: contact.id, email: contact.correo,
-                        fecha: getFechaChile(),
-                        estado: 'request', mensaje_id: messageId
-                    });
-
-                    const proximoEnvio = sumarDiasHabiles(new Date(), config.dias_espera || 3);
-                    await supabase.from('contactos').update({
-                        ultimo_envio: new Date().toISOString(),
-                        proximo_envio: proximoEnvio.toISOString().split('T')[0],
-                        etapa_envio: etapaSecuencia + 1
-                    }).eq('id', contact.id);
-
-                    report.sent++;
-                } catch (err: any) {
-                    report.errors.push(`Prospección ${contact.correo}: ${err.message}`);
-                }
-            }));
-
-            await sleep(DELAY_BETWEEN_EMAILS_MS);
-        }
-    } catch (err: any) {
-        report.errors.push(`Error global prospección: ${err.message}`);
-    }
-    return report;
-}
-
-/**
- * Template visual para Prospección
- */
-function generarHtmlProspeccion(params: { intro: string; cierre: string; empresa: string }): string {
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
-    body { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; line-height: 1.6; background-color: #f8fafc; margin: 0; padding: 0; }
-    .wrapper { width: 100%; background-color: #f8fafc; padding: 40px 0; }
-    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02); border: 1px solid #e2e8f0; }
-    .header { padding: 40px 40px 30px; text-align: left; }
-    .logo { height: 32px; display: block; border: 0; }
-    .content { padding: 0 40px 30px; font-size: 16px; color: #334155; }
-    .cta { padding: 0 40px 40px; font-size: 16px; color: #475569; font-weight: 400; }
-    .footer { background-color: #fafafa; border-top: 1px solid #f1f5f9; padding: 35px 40px; }
-    .signature-title { font-weight: 700; color: #0f172a; font-size: 14px; margin-bottom: 4px; }
-    .signature-dept { color: #64748b; font-size: 12px; margin-bottom: 15px; }
-    .logo-footer { height: 20px; opacity: 0.8; display: block; margin-top: 15px; border: 0; }
-    .legal-text { font-size: 11px; color: #94a3b8; line-height: 1.5; margin-top: 15px; border-top: 1px dashed #e2e8f0; padding-top: 15px; text-align: center; }
-  </style>
-</head>
-<body>
-  <div class="wrapper">
-    <div class="container">
-      <div class="header">
-        <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" alt="Ecomoving" class="logo" />
-      </div>
-      <div class="content">
-        ${params.intro.replace(/\n/g, '<br>')}
-      </div>
-      <div class="cta">
-        ${params.cierre.replace(/\n/g, '<br>')}
-      </div>
-      <div class="footer">
-        <div class="signature-title">Equipo de Ventas</div>
-        <div class="signature-dept">Ecomoving SpA</div>
-        <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" alt="Ecomoving Logo" class="logo-footer" />
-        <div class="legal-text">
-          Este es un correo electrónico enviado de forma automática por Ecomoving SpA.<br>
-          Para no recibir más correos de prospección, responda indicando "Darse de baja".
-        </div>
-      </div>
-    </div>
-  </div>
-</body>
-</html>`;
-}
-
-// ============================================================================
 // HANDLER PRINCIPAL
 // ============================================================================
 
@@ -672,9 +397,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(200).json({
             message: diaLaboral.mensaje,
             fecha: diaLaboral.fecha,
-            cobranza: { sent: 0 },
-            prospeccion: { sent: 0 },
-            marketing: { sent: 0 }
+            cobranza: { sent: 0 }
         });
     }
 
@@ -688,30 +411,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const cobranzaResult = await ejecutarCobranza(MAX_COBRANZA_EMAILS);
     console.log(`📧 Cobranza: ${cobranzaResult.sent} enviados`);
 
-    // 5. Calcular cuota restante para Prospección y Marketing
-    const cuotaRestante = BREVO_DAILY_LIMIT - cobranzaResult.sent;
-
-    // 6. Ejecutar PROSPECCIÓN (DESACTIVADO)
-    const prospeccionResult = {
-        processed: 0,
-        sent: 0,
-        ai_enhanced: 0,
-        errors: [] as string[]
-    };
-    console.log(`🔍 Prospección: Desactivado por solicitud`);
-
-    // 7. Ejecutar MARKETING (DESACTIVADO)
-    const marketingResult = {
-        processed: 0,
-        sent: 0,
-        errors: [] as string[]
-    };
-    console.log(`📬 Marketing: Desactivado por solicitud`);
-
-    // 8. Reporte final
+    // 5. Reporte final
     return res.status(200).json({
         fecha: diaLaboral.fecha,
-        totalEnviados: cobranzaResult.sent + prospeccionResult.sent + marketingResult.sent,
+        totalEnviados: cobranzaResult.sent,
         alertasInternas: {
             vencidas: alertasInternas.total,
             notificacionCreada: alertasInternas.notificacionCreada,
@@ -722,17 +425,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             processed: cobranzaResult.processed,
             sent: cobranzaResult.sent,
             errors: cobranzaResult.errors
-        },
-        prospeccion: {
-            processed: prospeccionResult.processed,
-            sent: prospeccionResult.sent,
-            ai_enhanced: prospeccionResult.ai_enhanced,
-            errors: prospeccionResult.errors
-        },
-        marketing: {
-            processed: marketingResult.processed,
-            sent: marketingResult.sent,
-            errors: marketingResult.errors
         }
     });
 }
