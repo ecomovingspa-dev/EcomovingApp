@@ -298,6 +298,26 @@ export default function ComprasPage() {
         return null;
     };
 
+    const cleanRutForDb = (rut: any): string => {
+        if (!rut) return "";
+        const clean = String(rut).replace(/[^0-9kK]/g, "").trim().toLowerCase();
+        if (clean.length > 1) {
+            const body = clean.slice(0, -1);
+            const dv = clean.slice(-1);
+            return `${body}-${dv}`;
+        }
+        return clean;
+    };
+
+    const parseMontoFloat = (val: any): number => {
+        if (val === undefined || val === null) return 0;
+        if (typeof val === "number") return val;
+        const str = String(val).trim();
+        // Remove currency symbols, dots (thousands)
+        const clean = str.replace(/[^0-9,\-]/g, "").replace(",", ".");
+        return parseFloat(clean) || 0;
+    };
+
     const procesarExcel = async (file: File) => {
         setSincronizando(true);
         const resultado = {
@@ -321,9 +341,20 @@ export default function ComprasPage() {
             console.log("Primera fila detectada:", filas[0]);
 
             for (const fila of filas as any[]) {
-                const rutProveedor = fila["RUT Proveedor"] || fila.RUTProveedor;
-                const folio = fila.Folio !== undefined ? String(fila.Folio) : "";
-                const tipoDte = parseInt(fila["Tipo Doc"] || fila.TipoDTE) || 0;
+                const rawRut = fila["RUT Proveedor"] || fila.RUTProveedor || fila["RUT Emisor"] || fila["Rut Emisor"] || fila["RUT"] || fila.RUT;
+                const rutProveedor = cleanRutForDb(rawRut);
+
+                let folio = "";
+                if (fila.Folio !== undefined) {
+                    folio = String(Math.round(parseFloat(fila.Folio) || 0) || fila.Folio);
+                } else if (fila["Nro. Docto."] !== undefined) {
+                    folio = String(Math.round(parseFloat(fila["Nro. Docto."]) || 0) || fila["Nro. Docto."]);
+                } else if (fila["Nro. Docto"] !== undefined) {
+                    folio = String(Math.round(parseFloat(fila["Nro. Docto"]) || 0) || fila["Nro. Docto"]);
+                }
+                folio = folio.trim();
+
+                const tipoDte = parseInt(fila["Tipo Doc"] || fila.TipoDTE || fila["Tipo Doc."] || fila["Tipo Docto"]) || 0;
 
                 try {
                     if (!folio || !rutProveedor) {
@@ -334,7 +365,7 @@ export default function ComprasPage() {
                         throw new Error(`Tipo de documento inválido o no especificado para Folio ${folio}`);
                     }
 
-                    // Verificar si ya existe
+                    // Verificar si ya existe con el RUT normalizado
                     const { data: existente } = await supabase
                         .from("compras")
                         .select("id")
@@ -343,9 +374,12 @@ export default function ComprasPage() {
                         .eq("folio", folio)
                         .maybeSingle();
 
-                    const fechaEmision = parseFecha(fila["Fecha Docto"] || fila.FchEmis);
-                    const fechaRecepcion = parseFecha(fila["Fecha Recepcion"] || fila.FecRecepcion);
-                    const fechaVencimiento = parseFecha(fila["Fecha Vencimiento"] || fila.FchVenc) || fechaEmision;
+                    const fechaEmision = parseFecha(fila["Fecha Docto"] || fila.FchEmis || fila["Fecha Emisión"] || fila["Fecha Emision"] || fila["Fecha Doc."]);
+                    const fechaRecepcion = parseFecha(fila["Fecha Recepcion"] || fila.FecRecepcion || fila["Fecha Recepción"] || fila["Fec. Recepción"]);
+                    const fechaVencimiento = parseFecha(fila["Fecha Vencimiento"] || fila.FchVenc || fila["Fecha Venc."] || fila["Fch. Vencimiento"]) || fechaEmision;
+
+                    const razonSocial = fila["Razon Social"] || fila.RznSoc || fila["Razón Social"] || fila["Razon Social Emisor"] || fila["Razón Social Emisor"] || fila["Nombre o Razón Social"] || "";
+                    const mntTotal = parseMontoFloat(fila["Monto Total"] || fila.MntTotal || fila["Total"] || fila.Total);
 
                     const nuevaCompra = {
                         tipo_dte: tipoDte,
@@ -354,19 +388,19 @@ export default function ComprasPage() {
                         fecha_emision: fechaEmision,
                         fecha_vencimiento: fechaVencimiento,
                         rut_proveedor: rutProveedor,
-                        razon_social: fila["Razon Social"] || fila.RznSoc,
-                        monto_total: parseFloat(fila["Monto Total"]) || parseFloat(fila.MntTotal) || 0,
+                        razon_social: razonSocial,
+                        monto_total: mntTotal,
                         lista_nc: fila.ListaNC || null,
-                        monto_neto: parseFloat(fila["Monto Neto"]) || parseFloat(fila.MntNeto) || 0,
-                        monto_iva: parseFloat(fila["Monto IVA Recuperable"]) || parseFloat(fila.MntIVA) || 0,
-                        monto_exento: parseFloat(fila["Monto Exento"]) || parseFloat(fila.MntExe) || 0,
-                        monto_sin_credito: parseFloat(fila["Monto IVA No Recuperable"]) || parseFloat(fila.MntSinCred) || parseFloat(fila.MntIvaNoRec) || 0,
-                        impuestos_especificos: parseFloat(fila["Valor Otro Impuesto"]) || parseFloat(fila.OtroImp) || parseFloat(fila.Impuestos) || 0,
+                        monto_neto: parseMontoFloat(fila["Monto Neto"] || fila.MntNeto || fila["Neto"] || fila.Neto),
+                        monto_iva: parseMontoFloat(fila["Monto IVA Recuperable"] || fila.MntIVA || fila["Monto IVA"] || fila.MntIva || fila["IVA"] || fila.IVA),
+                        monto_exento: parseMontoFloat(fila["Monto Exento"] || fila.MntExe || fila["Exento"] || fila.Exento),
+                        monto_sin_credito: parseMontoFloat(fila["Monto IVA No Recuperable"] || fila.MntSinCred || fila.MntIvaNoRec),
+                        impuestos_especificos: parseMontoFloat(fila["Valor Otro Impuesto"] || fila.OtroImp || fila.Impuestos),
                         codigo_sucursal: fila["Codigo Sucursal"] || fila.CdgSIISucur || fila.Sucursal || null,
                         lista_referencias: fila.ListaRef || null,
-                        iva_uso_comun: parseFloat(fila["IVA Uso Comun"]) || parseFloat(fila.IVAUsoComun) || parseFloat(fila.MntIVAUsoComun) || 0,
+                        iva_uso_comun: parseMontoFloat(fila["IVA Uso Comun"] || fila.IVAUsoComun || fila.MntIVAUsoComun),
                         estado_contable: fila["Tipo Compra"] || fila.EstadoContab || "Del Giro",
-                        saldo: parseFloat(fila["Monto Total"]) || parseFloat(fila.MntTotal) || 0,
+                        saldo: mntTotal,
                         estado_pago: "Pendiente"
                     };
 
