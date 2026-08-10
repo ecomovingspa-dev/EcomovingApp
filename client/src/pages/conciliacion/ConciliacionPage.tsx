@@ -264,6 +264,7 @@ export default function ConciliacionPage() {
     const [loadingAllDocs, setLoadingAllDocs] = useState(false);
     const [loadingMultiSearch, setLoadingMultiSearch] = useState(false);
     const [multiSearchQuery, setMultiSearchQuery] = useState("");
+    const [sugerenciasSearchQuery, setSugerenciasSearchQuery] = useState("");
 
     // --- FACTORING RECONCILIATION STATE ---
     const [factoringDocs, setFactoringDocs] = useState<Coincidencia[]>([]);
@@ -918,6 +919,7 @@ export default function ConciliacionPage() {
     };
 
     const buscarSugerencias = async (mov: BancoMovimiento) => {
+        setSugerenciasSearchQuery("");
         setSearchingMatch(true);
         setCoincidencias([]);
 
@@ -2614,13 +2616,35 @@ export default function ConciliacionPage() {
                                                     </Button>
                                                 </div>
                                             )}
-                                            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium pb-1 border-b border-gray-100 dark:border-gray-800">
-                                                Ordenado por relevancia • {coincidencias.length} resultado{coincidencias.length !== 1 ? 's' : ''}
-                                            </p>
+                                            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-1.5 gap-4">
+                                                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                                    Ordenado por relevancia • {coincidencias.length} resultado{coincidencias.length !== 1 ? 's' : ''}
+                                                </p>
+                                                <div className="relative w-48">
+                                                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Filtrar sugerencias..."
+                                                        className="w-full pl-7 pr-2 py-1 text-xs rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800"
+                                                        value={sugerenciasSearchQuery}
+                                                        onChange={(e) => setSugerenciasSearchQuery(e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
 
                                             {/* Scrollable Container */}
                                             <div className="max-h-[350px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                                                {coincidencias.map((item) => {
+                                                {coincidencias
+                                                    .filter(item => {
+                                                        if (!sugerenciasSearchQuery.trim()) return true;
+                                                        const q = sugerenciasSearchQuery.toLowerCase().trim();
+                                                        return (
+                                                            item.entidad.toLowerCase().includes(q) ||
+                                                            String(item.folio).includes(q) ||
+                                                            (item.rut && item.rut.toLowerCase().includes(q))
+                                                        );
+                                                    })
+                                                    .map((item) => {
                                                     const isSelected = multipleSelectedDocs.some(d => d.id === item.id && d.tipo === item.tipo);
                                                     return (
                                                         <div
