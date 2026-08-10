@@ -275,7 +275,7 @@ export default function SueldoEmpresarialPage() {
   const [parametrosPeriodo, setParametrosPeriodo] = useState({
     uf: VALORES_OFICIALES["2026-07"].uf,
     utm: VALORES_OFICIALES["2026-07"].utm,
-    tasaSIS: 1.62,
+    tasaSIS: 2.0,
     topeImponibleUF: VALORES_OFICIALES["2026-07"].topeImponibleUF,
     reformaPorcentaje: VALORES_OFICIALES["2026-07"].reformaPorcentaje
   });
@@ -420,7 +420,7 @@ export default function SueldoEmpresarialPage() {
     rowValues[99] = String(Math.round(calculoActivo.impuestoUnico)); // Impuesto retenido por remuneraciones(3161) - Col 100
 
     // SIS
-    const sisMonto = Math.round(calculoActivo.imponible * ((calculoActivo.tasaSISUsada || 1.62) / 100));
+    const sisMonto = Math.round(calculoActivo.imponible * ((calculoActivo.tasaSISUsada || 2.0) / 100));
     rowValues[130] = String(sisMonto); // Aporte empleador seguro invalidez y sobrevivencia(4155) - Col 131
 
     // Totales
@@ -628,7 +628,7 @@ export default function SueldoEmpresarialPage() {
         tope_imponible_uf_usado: calculoActivo.topeImponibleUFUsado,
         reforma_porcentaje_usado: calculoActivo.reformaPorcentajeUsado,
         dias_trabajados: calculoActivo.diasTrabajados || 30,
-        tasa_sis: calculoActivo.tasaSISUsada || 1.62,
+        tasa_sis: calculoActivo.tasaSISUsada || 2.0,
         imponible: calculoActivo.imponible,
         descuento_afp: calculoActivo.descuentoAFP,
         descuento_salud: calculoActivo.descuentoSalud,
@@ -674,7 +674,7 @@ export default function SueldoEmpresarialPage() {
     setParametrosPeriodo({
       uf: liq.ufUsada || CONSTANTES_2026.UF,
       utm: liq.utmUsada || CONSTANTES_2026.UTM,
-      tasaSIS: liq.tasaSISUsada || 1.62,
+      tasaSIS: liq.tasaSISUsada || 2.0,
       topeImponibleUF: liq.topeImponibleUFUsado || CONSTANTES_2026.TOPE_IMPONIBLE_UF,
       reformaPorcentaje: liq.reformaPorcentajeUsado !== undefined ? liq.reformaPorcentajeUsado : CONSTANTES_2026.REFORMA_PORCENTAJE
     });
@@ -751,7 +751,7 @@ export default function SueldoEmpresarialPage() {
             setParametrosPeriodo({
               uf: CONSTANTES_2026.UF,
               utm: CONSTANTES_2026.UTM,
-              tasaSIS: 1.62,
+              tasaSIS: 2.0,
               topeImponibleUF: CONSTANTES_2026.TOPE_IMPONIBLE_UF,
               reformaPorcentaje: CONSTANTES_2026.REFORMA_PORCENTAJE
             });
