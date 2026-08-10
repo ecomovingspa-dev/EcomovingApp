@@ -510,9 +510,11 @@ export default function ConciliacionPage() {
                 if (hasFecha && (hasIngreso || hasEgreso || hasGlosa || hasMonto)) {
                     movementsStartIndex = i + 1;
 
-                    // Determine bank name based on headers
+                    // Determine bank name based on headers (BCI checked first to avoid false positive matches on 'cargo'/'abono')
                     if (rowStr.includes("cargo/abono") || (rowStr.includes("monto") && rowStr.includes("movimiento"))) {
                         detectedBank = "Banco Santander";
+                    } else if (rowStr.includes("cheques y otros cargos") || rowStr.includes("depósitos y abono") || rowStr.includes("depositos y abono") || rowStr.includes("saldo diario")) {
+                        detectedBank = "BCI";
                     } else if (rowStr.includes("cargo") || rowStr.includes("abono") || rowStr.includes("sucursal") || rowStr.includes("operación") || rowStr.includes("operacion")) {
                         detectedBank = "Banco Estado";
                     } else {
@@ -690,6 +692,18 @@ export default function ConciliacionPage() {
                             const regexMatch = finalDesc.match(/(\b\d{1,2}\.?\d{3}\.?\d{3}-[\dkK]\b)/);
                             if (regexMatch) {
                                 extractedRut = regexMatch[1].trim();
+                            }
+                        } else if (detectedBank === "BCI") {
+                            // Extract RUT and Name from BCI description formats like "ABONO TERCEROS 11275482-2 M.OSORIO CACER"
+                            const regexMatch = finalDesc.match(/([\d\.\-]+-[\dkK])\s+(.+)/);
+                            if (regexMatch) {
+                                extractedRut = regexMatch[1].trim();
+                                extractedNombre = regexMatch[2].trim();
+                            } else {
+                                const justRut = finalDesc.match(/([\d\.\-]+-[\dkK])/);
+                                if (justRut) {
+                                    extractedRut = justRut[1].trim();
+                                }
                             }
                         }
                     }
