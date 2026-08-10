@@ -561,6 +561,13 @@ export default function TrazabilidadBrevo() {
     normalizeString(acc.cliente).includes(normalizeString(busquedaCuentas))
   );
 
+  const vendedoresMap: Record<string, string> = {};
+  if (vendedores) {
+    vendedores.forEach(v => {
+      vendedoresMap[v.id] = v.nombre;
+    });
+  }
+
   const filtered = contactos.filter(c => {
     const accountName = c.empresa_rel_name || c.empresa || "";
     const matchesSearch = normalizeString(accountName).includes(normalizeString(filtro));
@@ -575,12 +582,17 @@ export default function TrazabilidadBrevo() {
         : (contactSector === "público" || contactSector === "publico")
     );
 
+    // Resolve assigned executive name (prefer database relation vendedor_id, fallback to legacy text)
+    const contactVendedorName = c.vendedor_id 
+      ? (vendedoresMap[c.vendedor_id] || "") 
+      : (c.correo_cortesia_vendedor || "");
+
     const matchesEjecutivo = filtroEjecutivo === "todos" ? true : (
       filtroEjecutivo === "sin_asignar" 
-        ? (!c.correo_cortesia_vendedor || c.correo_cortesia_vendedor.trim() === "")
+        ? (!contactVendedorName || contactVendedorName.trim() === "")
         : (filtroEjecutivo === "mis_asignados"
-            ? c.correo_cortesia_vendedor === vendedor
-            : c.correo_cortesia_vendedor === filtroEjecutivo)
+            ? contactVendedorName.toLowerCase() === vendedor.toLowerCase()
+            : contactVendedorName.toLowerCase() === filtroEjecutivo.toLowerCase())
     );
 
     const matchesSegmento = filtroSegmento === "todos" ? true : (
@@ -700,8 +712,9 @@ export default function TrazabilidadBrevo() {
           <SelectContent className="bg-gray-900 border-gray-800 text-white">
             <SelectItem value="todos">TODOS LOS EJECUTIVOS</SelectItem>
             <SelectItem value="sin_asignar">SIN ASIGNAR</SelectItem>
-            <SelectItem value="Mario Osorio C.">MARIO OSORIO C.</SelectItem>
-            <SelectItem value="Jimena Lara F.">JIMENA LARA F.</SelectItem>
+            {vendedores && vendedores.map(v => (
+              <SelectItem key={v.id} value={v.nombre}>{v.nombre.toUpperCase()}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
