@@ -112,7 +112,7 @@ export default function DashboardMetrics() {
                 // 2. Fetch Compras (Gastos Operativos — Libro de Compras, filtrando por estado_contable !== 'Anulada')
                 const { data: compras, error: comError } = await supabase
                     .from("compras")
-                    .select("monto_total, fecha_emision, estado_contable")
+                    .select("monto_total, fecha_emision, estado_contable, tipo_dte")
                     .not("fecha_emision", "is", null)
                     .neq("estado_contable", "Anulada")
                     .gte("fecha_emision", startOfYear)
@@ -143,7 +143,7 @@ export default function DashboardMetrics() {
                     }
                 });
 
-                // Gastos Operativos: desde compras (fecha_emision, monto_total)
+                // Gastos Operativos: desde compras (fecha_emision, monto_total, tipo_dte)
                 compras?.forEach((c) => {
                     if (!c.fecha_emision) return;
                     const date = new Date(c.fecha_emision);
@@ -151,8 +151,14 @@ export default function DashboardMetrics() {
                     const month = months.find(m => m.key === key);
                     if (month) {
                         const e = c.monto_total || 0;
-                        month.expenses += e;
-                        totalExpenses += e;
+                        // Si es nota de crédito (61), se resta de los gastos
+                        if (c.tipo_dte === 61) {
+                            month.expenses -= e;
+                            totalExpenses -= e;
+                        } else {
+                            month.expenses += e;
+                            totalExpenses += e;
+                        }
                     }
                 });
 
