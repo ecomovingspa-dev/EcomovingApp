@@ -305,6 +305,26 @@ export default function VentasPage() {
     await procesarExcel(file);
   };
 
+  const cleanRutForDb = (rut: any): string => {
+    if (!rut) return "";
+    const clean = String(rut).replace(/[^0-9kK]/g, "").trim().toLowerCase();
+    if (clean.length > 1) {
+      const body = clean.slice(0, -1);
+      const dv = clean.slice(-1);
+      return `${body}-${dv}`;
+    }
+    return clean;
+  };
+
+  const parseMontoFloat = (val: any): number => {
+    if (val === undefined || val === null) return 0;
+    if (typeof val === "number") return val;
+    const str = String(val).trim();
+    // Remove currency symbols, dots (thousands)
+    const clean = str.replace(/[^0-9,\-]/g, "").replace(",", ".");
+    return parseFloat(clean) || 0;
+  };
+
   const procesarExcel = async (file: File) => {
     setSincronizando(true);
 
@@ -330,7 +350,10 @@ export default function VentasPage() {
 
       for (const fila of filas) {
         try {
-          if (!fila.Folio) {
+          const folio = fila.Folio !== undefined ? String(fila.Folio).trim() : "";
+          const tipoDte = parseInt(fila["Tipo Doc"] || fila.TipoDTE) || 0;
+
+          if (!folio) {
             resultado.errores.push({
               fila: filas.indexOf(fila) + 2,
               error: "Folio vacío",
@@ -341,12 +364,13 @@ export default function VentasPage() {
           const { data: ventaExistente, error: errorBusqueda } = await supabase
             .from("ventas")
             .select("id, folio, total_nc, mnt_total, fch_venc, anulada")
-            .eq("folio", String(fila.Folio))
+            .eq("folio", folio)
+            .eq("tipo_dte", tipoDte)
             .maybeSingle();
 
           if (errorBusqueda) {
             resultado.errores.push({
-              folio: fila.Folio,
+              folio: folio,
               error: errorBusqueda.message,
             });
             continue;
@@ -377,38 +401,41 @@ export default function VentasPage() {
   };
 
   const insertarFacturaNueva = async (fila: any, resultado: any) => {
-    const mntTotal = parseFloat(fila.MntTotal) || 0;
-    const totalNc = parseFloat(fila.TotalNc) || 0;
+    const rawRut = fila["Rut cliente"] || fila.RutRecep || "";
+    const rutRecep = cleanRutForDb(rawRut);
+    const rznSoc = fila["Razon Social"] || fila.RznSocRecep || "";
+    const folio = fila.Folio !== undefined ? String(fila.Folio).trim() : "";
+    const tipoDte = parseInt(fila["Tipo Doc"] || fila.TipoDTE) || 0;
 
-    if (totalNc > mntTotal) {
-      resultado.avisos.push({
-        folio: fila.Folio,
-        mensaje: `TotalNc ($${totalNc.toLocaleString()}) es mayor que MntTotal ($${mntTotal.toLocaleString()}). Revisar.`,
-      });
-    }
+    const mntTotal = parseMontoFloat(fila["Monto total"] || fila.MntTotal);
+    const mntNeto = parseMontoFloat(fila["Monto Neto"] || fila.MntNeto);
+    const mntIva = parseMontoFloat(fila["Monto IVA"] || fila.MntIVA);
+    
+    const isNC = tipoDte === 61;
+    const totalNc = isNC ? 0 : (parseMontoFloat(fila.TotalNc) || 0);
 
-    const saldo = mntTotal - totalNc;
+    const saldo = isNC ? 0 : (mntTotal - totalNc);
 
     const nuevaVenta = {
-      folio: String(fila.Folio),
-      rut_recep: fila.RutRecep || null,
-      rzn_soc_recep: fila.RznSocRecep || null,
-      tipo_dte: fila.TipoDTE || null,
+      folio: folio,
+      rut_recep: rutRecep,
+      rzn_soc_recep: rznSoc,
+      tipo_dte: tipoDte,
       mnt_total: mntTotal,
-      mnt_neto: parseFloat(fila.MntNeto) || 0,
-      mnt_iva: parseFloat(fila.MntIVA) || 0,
+      mnt_neto: mntNeto,
+      mnt_iva: mntIva,
       total_nc: totalNc,
-      total_ncnd: parseFloat(fila.Totalncnd) || 0,
+      total_ncnd: parseMontoFloat(fila.Totalncnd),
       saldo: saldo,
-      fch_emis: parseFecha(fila.FchEmis),
-      fch_venc: parseFecha(fila.FchVenc),
-      fec_recepcion: parseFecha(fila.FecRecepcion),
+      fch_emis: parseFecha(fila["Fecha Docto"] || fila.FchEmis),
+      fch_venc: parseFecha(fila.FchVenc) || parseFecha(fila["Fecha Docto"] || fila.FchEmis),
+      fec_recepcion: parseFecha(fila["Fecha Recepcion"] || fila.FecRecepcion),
       fec_reclamado: parseFecha(fila.FecReclamado),
-      anulada: parseBoolean(fila.Anulada),
+      anulada: isNC ? false : parseBoolean(fila.Anulada),
       dte_cesion: parseBoolean(fila.DteCesion),
-      estado_deuda: calcularEstado(
+      estado_deuda: isNC ? "Pagada" : calcularEstado(
         saldo,
-        parseFecha(fila.FchVenc),
+        parseFecha(fila.FchVenc) || parseFecha(fila["Fecha Docto"] || fila.FchEmis),
         parseBoolean(fila.Anulada),
         mntTotal,
         totalNc,
@@ -416,10 +443,64 @@ export default function VentasPage() {
     };
 
     const { error } = await supabase.from("ventas").insert(nuevaVenta);
-
     if (error) throw error;
-
     resultado.nuevas++;
+
+    // --- Vinculación automática si es Nota de Crédito (DTE 61) ---
+    if (isNC) {
+      const refFolio = fila["Folio Docto. Referencia"] !== undefined ? String(fila["Folio Docto. Referencia"]).trim() : "";
+      const refTipoDoc = parseInt(fila["Tipo Docto. Referencia"]) || 33; // Default Factura Electrónica
+      
+      if (refFolio) {
+        // Buscar la factura asociada
+        const { data: facturaRef } = await supabase
+          .from("ventas")
+          .select("id, mnt_total, total_nc, saldo, fch_venc, anulada")
+          .eq("folio", refFolio)
+          .eq("tipo_dte", refTipoDoc)
+          .maybeSingle();
+
+        if (facturaRef) {
+          const nuevoTotalNc = (facturaRef.total_nc || 0) + mntTotal;
+          
+          // Consultar abonos existentes
+          const { data: abonos } = await supabase
+            .from("abonos")
+            .select("monto_abono, gasto_factoring")
+            .eq("venta_id", facturaRef.id);
+            
+          const sumAbonos = abonos?.reduce((sum, a) => sum + (a.monto_abono || 0) + (a.gasto_factoring || 0), 0) || 0;
+          const nuevoSaldo = Math.max(0, facturaRef.mnt_total - nuevoTotalNc - sumAbonos);
+          const isAnulada = nuevoSaldo === 0 && nuevoTotalNc >= facturaRef.mnt_total;
+
+          const { error: errorRefUpdate } = await supabase
+            .from("ventas")
+            .update({
+              total_nc: nuevoTotalNc,
+              saldo: nuevoSaldo,
+              anulada: isAnulada || facturaRef.anulada,
+              estado_deuda: calcularEstado(
+                nuevoSaldo,
+                facturaRef.fch_venc,
+                isAnulada || facturaRef.anulada,
+                facturaRef.mnt_total,
+                nuevoTotalNc
+              ),
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", facturaRef.id);
+
+          if (errorRefUpdate) {
+            console.error("Error al actualizar saldo de factura de referencia:", errorRefUpdate);
+          }
+        } else {
+          resultado.avisos.push({
+            folio: folio,
+            mensaje: `Nota de Crédito Folio ${folio} hace referencia a Factura Folio ${refFolio} la cual no existe en el sistema.`,
+          });
+        }
+      }
+    }
   };
 
   const actualizarFacturaExistente = async (
@@ -427,63 +508,8 @@ export default function VentasPage() {
     fila: any,
     resultado: any,
   ) => {
-    const updates: any = {};
-    let huboCambios = false;
-
-    const nuevaFecReclamado = parseFecha(fila.FecReclamado);
-    if (nuevaFecReclamado) {
-      updates.fec_reclamado = nuevaFecReclamado;
-      huboCambios = true;
-    }
-
-    const nuevoTotalNc = parseFloat(fila.TotalNc) || 0;
-    const totalNcAnterior = ventaExistente.total_nc || 0;
-
-    if (nuevoTotalNc !== totalNcAnterior) {
-      updates.total_nc = nuevoTotalNc;
-
-      if (nuevoTotalNc > ventaExistente.mnt_total) {
-        resultado.avisos.push({
-          folio: fila.Folio,
-          mensaje: `TotalNc ($${nuevoTotalNc.toLocaleString()}) es mayor que MntTotal ($${ventaExistente.mnt_total.toLocaleString()}). Revisar.`,
-        });
-      }
-
-      const { data: abonos } = await supabase
-        .from("abonos")
-        .select("*")
-        .eq("venta_id", ventaExistente.id);
-
-      const sumAbonos =
-        abonos?.reduce((sum, a) => sum + (a.monto_abono || 0) + (a.gasto_factoring || 0), 0) || 0;
-      const nuevoSaldo = ventaExistente.mnt_total - nuevoTotalNc - sumAbonos;
-
-      updates.saldo = nuevoSaldo;
-      updates.estado_deuda = calcularEstado(
-        nuevoSaldo,
-        ventaExistente.fch_venc,
-        ventaExistente.anulada,
-        ventaExistente.mnt_total,
-        nuevoTotalNc,
-      );
-
-      huboCambios = true;
-    }
-
-    if (huboCambios) {
-      updates.updated_at = new Date().toISOString();
-
-      const { error } = await supabase
-        .from("ventas")
-        .update(updates)
-        .eq("id", ventaExistente.id);
-
-      if (error) throw error;
-
-      resultado.actualizadas++;
-    } else {
-      resultado.sinCambios++;
-    }
+    // Si ya existe, registramos sin cambios para evitar pisar cobros y conciliaciones hechas a mano
+    resultado.sinCambios++;
   };
 
   const parseFecha = (fecha: any): string | null => {

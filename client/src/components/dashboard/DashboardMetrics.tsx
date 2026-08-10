@@ -93,7 +93,7 @@ export default function DashboardMetrics() {
                 // @protocolo: FUENTE=ventas, CAMPO=mnt_neto, FILTRO=anulada=false, FECHA=fch_emis
                 const { data: ventas, error: venError } = await supabase
                     .from("ventas")
-                    .select("mnt_neto, saldo, fch_emis, fch_venc, anulada")
+                    .select("mnt_neto, saldo, fch_emis, fch_venc, anulada, tipo_dte")
                     .eq("anulada", false)
                     .gte("fch_emis", startOfYear)
                     .lte("fch_emis", endOfYear);
@@ -130,7 +130,7 @@ export default function DashboardMetrics() {
                 let totalExpenses = 0;
                 let totalProfit = 0;
 
-                // Ingresos Netos: desde ventas reales (fch_emis, mnt_neto)
+                // Ingresos Netos: desde ventas reales (fch_emis, mnt_neto, tipo_dte)
                 ventas?.forEach((v) => {
                     if (!v.fch_emis) return;
                     const date = new Date(v.fch_emis);
@@ -138,8 +138,14 @@ export default function DashboardMetrics() {
                     const month = months.find(m => m.key === key);
                     if (month) {
                         const s = v.mnt_neto || 0;
-                        month.sales += s;
-                        totalSales += s;
+                        // Si es nota de crédito (61), se resta de los ingresos netos
+                        if (v.tipo_dte === 61) {
+                            month.sales -= s;
+                            totalSales -= s;
+                        } else {
+                            month.sales += s;
+                            totalSales += s;
+                        }
                     }
                 });
 
