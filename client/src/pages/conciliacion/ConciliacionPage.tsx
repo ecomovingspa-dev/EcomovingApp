@@ -582,8 +582,14 @@ export default function ConciliacionPage() {
                         }
 
                         // Número documento
-                        if (val.includes("numero") || val.includes("n°") || val.includes("num ") || val.includes("serie") || val.includes("operacion") || val.includes("operación")) {
+                        if (val.includes("código transferencia") || val.includes("codigo transferencia")) {
                             docIdx = idx;
+                        } else if (val.includes("código de transacción") || val.includes("codigo de transacción")) {
+                            if (docIdx === -1) docIdx = idx;
+                        } else if (val.includes("numero") || val.includes("n°") || val.includes("num ") || val.includes("serie") || val.includes("operacion") || val.includes("operación")) {
+                            if (docIdx === -1 && !val.includes("cuenta") && !val.includes("cliente") && !val.includes("tarjeta")) {
+                                docIdx = idx;
+                            }
                         }
                     });
 
@@ -761,14 +767,13 @@ export default function ConciliacionPage() {
         // Safe string for hashing (handle tildes/unicode)
         const normalize = (val: any) => String(val || "").trim().toLowerCase();
 
+        // Use Date, Cargo, Abono and Saldo for hashing to prevent duplicates across 
+        // BCI historical and detailed statement uploads (since descriptions/docs can differ)
         const dataParts = [
             normalize(mov.fecha),
-            normalize(mov.descripcion),
             normalize(mov.cargos),
             normalize(mov.abonos),
-            normalize(mov.saldo),
-            normalize(mov.bci_rut),
-            normalize(mov.numero_documento)
+            normalize(mov.saldo)
         ];
 
         if (occurrenceIndex > 0) {
