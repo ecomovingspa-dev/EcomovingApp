@@ -37,6 +37,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { contacto_id } = req.query;
     const referer = (req.headers.referer || req.headers.referrer || '').toLowerCase();
+    const userAgent = (req.headers['user-agent'] || '').toLowerCase();
     
     // Si la petición proviene de Zoho Mail (remitente redactando/viendo correos) o de la propia app, no registrar evento
     const isSelfOrSender = referer.includes('zoho.com') || 
@@ -44,7 +45,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                            referer.includes('localhost') || 
                            referer.includes('ecomoving');
 
-    if (contacto_id && typeof contacto_id === 'string' && !isSelfOrSender) {
+    // Detectar bots y proxies de correo comunes (Google, Apple Mail Privacy, Yahoo, Outlook, etc.)
+    const isBotOrProxy = 
+        userAgent.includes('googleimageproxy') || 
+        userAgent.includes('apple-mailprivacy') || 
+        userAgent.includes('yahooimageproxy') ||
+        userAgent.includes('microsoft office') ||
+        userAgent.includes('bingpreview') ||
+        userAgent.includes('http-client') ||
+        userAgent.includes('curl') ||
+        userAgent.includes('wget');
+
+    if (isBotOrProxy) {
+        console.log(`[SENTINEL-PIXEL] Petición omitida (Bot/Proxy detectado): ID=${contacto_id}, User-Agent=${userAgent}`);
+    }
+
+    if (contacto_id && typeof contacto_id === 'string' && !isSelfOrSender && !isBotOrProxy) {
         try {
             // 1. Obtener los datos del contacto y su marca temporal de copia/envío manual (ultimo_evento_trazabilidad)
             const { data: contacto, error: contactError } = await supabase
