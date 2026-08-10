@@ -2151,32 +2151,26 @@ export default function ConciliacionPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <div className="relative w-64">
-                        <select
-                            className="w-full p-2.5 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
-                            value={selectedPeriod}
-                            onChange={(e) => setSelectedPeriod(e.target.value)}
-                        >
-                            <option value="__ALL__">📋 Mostrar todos</option>
-                            {Array.from(new Set(cartolas.map(c => c.periodo_mes)))
-                                .filter(Boolean)
-                                .sort()
-                                .reverse()
-                                .map(periodCode => {
-                                    if (!periodCode) return null;
-                                    const [year, month] = periodCode.split('-');
-                                    const date = new Date(parseInt(year), parseInt(month) - 1);
-                                    let displayText = date.toLocaleString('es-CL', { month: 'long', year: 'numeric' });
-                                    displayText = displayText.charAt(0).toUpperCase() + displayText.slice(1);
-
-                                    return (
-                                        <option key={periodCode} value={periodCode}>
-                                            {displayText}
-                                        </option>
-                                    );
-                                })}
-                            {!cartolas.some(c => c.periodo_mes) && <option value="">Sin períodos</option>}
-                        </select>
+                    <div className="flex items-center gap-2">
+                        <div className="relative w-44">
+                            <input
+                                type="month"
+                                className="w-full p-2 rounded-md border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm h-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-700 dark:text-gray-200"
+                                value={selectedPeriod === "__ALL__" ? "" : selectedPeriod}
+                                onChange={(e) => setSelectedPeriod(e.target.value || "__ALL__")}
+                            />
+                        </div>
+                        {selectedPeriod !== "__ALL__" && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedPeriod("__ALL__")}
+                                className="h-10 px-3 text-xs text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20"
+                                title="Mostrar todos los períodos"
+                            >
+                                📋 Todo
+                            </Button>
+                        )}
                     </div>
 
                     <div className="relative">
