@@ -308,8 +308,8 @@ export default function ContactosPage() {
         query = query.eq("cuentas.sector", filtroSector);
       }
 
-      // Filtrar para mostrar únicamente contactos que tengan correo electrónico
-      query = query.not("correo", "is", null).neq("correo", "");
+      // Mostrar todos los contactos (tengan o no correo electrónico) para poder gestionarlos y eliminarlos
+      // query = query.not("correo", "is", null).neq("correo", "");
 
       const { data, error, count } = await query
         .order("created_at", { ascending: false })
