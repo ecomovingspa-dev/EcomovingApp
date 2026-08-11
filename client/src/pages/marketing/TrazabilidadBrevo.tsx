@@ -970,28 +970,93 @@ export default function TrazabilidadBrevo() {
     }
   };
 
-  const getTemplateStatus = (contacto: any, template: any, nextTemplate: any) => {
-    const sentEvent = contacto.historial?.find((h: any) => h.mensaje_id?.startsWith(`manual_send:${template.id}:`) || h.mensaje_id?.startsWith(`manual_template:${template.id}:`));
-    const openEvent = contacto.historial?.find((h: any) => h.mensaje_id?.startsWith(`manual_open:${contacto.id}:${template.id}:`));
+  const getTemplateStatus = (contacto: any, template: any, nextTemplate: any, idx: number) => {
+    // 1. Group events by message_id
+    const eventsByMsg: Record<string, any[]> = {};
+    (contacto.historial || []).forEach((h: any) => {
+      if (h.mensaje_id) {
+        if (!eventsByMsg[h.mensaje_id]) eventsByMsg[h.mensaje_id] = [];
+        eventsByMsg[h.mensaje_id].push(h);
+      }
+    });
 
-    let finalOpenEvent = openEvent;
-    if (!finalOpenEvent && sentEvent) {
+    // 2. Identify manual sends/opens and automated sends
+    const manualSends: Record<string, { sentEvent?: any; openEvent?: any }> = {};
+    const autoSends: { sentEvent: any; openEvent?: any; date: number }[] = [];
+
+    Object.entries(eventsByMsg).forEach(([msgId, evs]) => {
+      if (msgId.startsWith("manual_send:") || msgId.startsWith("manual_template:")) {
+        const parts = msgId.split(":");
+        const templateId = parts[1];
+        if (templateId) {
+          if (!manualSends[templateId]) manualSends[templateId] = {};
+          const earliest = evs.reduce((prev, curr) => 
+            new Date(prev.created_at || prev.fecha).getTime() < new Date(curr.created_at || curr.fecha).getTime() ? prev : curr
+          );
+          manualSends[templateId].sentEvent = earliest;
+        }
+      } else if (msgId.startsWith("manual_open:")) {
+        const parts = msgId.split(":");
+        if (parts.length >= 4) {
+          const templateId = parts[2];
+          if (!manualSends[templateId]) manualSends[templateId] = {};
+          const earliest = evs.reduce((prev, curr) => 
+            new Date(prev.created_at || prev.fecha).getTime() < new Date(curr.created_at || curr.fecha).getTime() ? prev : curr
+          );
+          manualSends[templateId].openEvent = earliest;
+        }
+      } else {
+        // Automated SMTP email
+        const sentEvent = evs.find((h: any) => 
+          ['delivered', 'request', 'requests', 'deferred'].includes(h.estado?.toLowerCase())
+        ) || evs[0];
+        const openEvent = evs.find((h: any) => 
+          ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(h.estado?.toLowerCase())
+        );
+        const date = new Date(sentEvent.created_at || sentEvent.fecha).getTime();
+        autoSends.push({ sentEvent, openEvent, date });
+      }
+    });
+
+    // Sort automated sends oldest first
+    autoSends.sort((a, b) => a.date - b.date);
+
+    // 3. Resolve status for the current column/template
+    // Check manual send first
+    let sentEvent = manualSends[template.id]?.sentEvent;
+    let openEvent = manualSends[template.id]?.openEvent;
+
+    // If no manual send, map from the chronological automated list
+    if (!sentEvent && autoSends[idx]) {
+      sentEvent = autoSends[idx].sentEvent;
+      openEvent = autoSends[idx].openEvent;
+    }
+
+    // Fallback: If sent but no open event mapped, check for any open event in history within the timeframe
+    if (sentEvent && !openEvent) {
       const sentTime = new Date(sentEvent.created_at || sentEvent.fecha).getTime();
-      const nextSentEvent = nextTemplate ? contacto.historial?.find((h: any) => h.mensaje_id?.startsWith(`manual_send:${nextTemplate.id}:`) || h.mensaje_id?.startsWith(`manual_template:${nextTemplate.id}:`)) : null;
-      const nextSentTime = nextSentEvent ? new Date(nextSentEvent.created_at || nextSentEvent.fecha).getTime() : Infinity;
+      
+      // Determine the next send event (either manual or automated for the next stage)
+      let nextSentTime = Infinity;
+      const nextManualSent = nextTemplate ? manualSends[nextTemplate.id]?.sentEvent : null;
+      if (nextManualSent) {
+        nextSentTime = new Date(nextManualSent.created_at || nextManualSent.fecha).getTime();
+      } else if (autoSends[idx + 1]) {
+        nextSentTime = autoSends[idx + 1].date;
+      }
 
-      finalOpenEvent = contacto.historial?.find((h: any) => 
-        (h.estado === 'opened' || h.estado === 'unique_opened' || h.estado === 'clicks' || h.estado === 'loadedbyproxy') && 
+      openEvent = (contacto.historial || []).find((h: any) => 
+        ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(h.estado?.toLowerCase()) && 
         new Date(h.created_at || h.fecha).getTime() >= sentTime &&
         new Date(h.created_at || h.fecha).getTime() < nextSentTime
       );
     }
 
-    if (finalOpenEvent) {
+    if (openEvent) {
       return { 
         status: 'opened', 
         sendDate: sentEvent ? (sentEvent.created_at || sentEvent.fecha) : null,
-        openDate: finalOpenEvent.created_at || finalOpenEvent.fecha
+        openDate: openEvent.created_at || openEvent.fecha
       };
     } else if (sentEvent) {
       return { 
@@ -1222,7 +1287,7 @@ export default function TrazabilidadBrevo() {
 
                   {templates.slice(0, 3).map((t: any, idx: number, arr: any[]) => (
                     <td key={t.id} className="px-1 py-5 text-center border-l border-gray-900/10">
-                      {renderTemplateCell(getTemplateStatus(c, t, arr[idx + 1]))}
+                      {renderTemplateCell(getTemplateStatus(c, t, arr[idx + 1], idx))}
                     </td>
                   ))}
 
