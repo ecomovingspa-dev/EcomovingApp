@@ -69,7 +69,7 @@ export default function TrazabilidadBrevo() {
   const [filtroTipoCuenta, setFiltroTipoCuenta] = useState("foco"); // "todos", "foco", "no_foco"
   const [vendedor, setVendedor] = useState("Vendedor 1");
   const [filtroEtapa, setFiltroEtapa] = useState("todos");
-  const [filtroSector, setFiltroSector] = useState("todos");
+  const [filtroSector, setFiltroSector] = useState("privado");
   const [filtroEjecutivo, setFiltroEjecutivo] = useState("todos");
   const [filtroSegmento, setFiltroSegmento] = useState("todos");
   const [availableSegments, setAvailableSegments] = useState<string[]>([]);
