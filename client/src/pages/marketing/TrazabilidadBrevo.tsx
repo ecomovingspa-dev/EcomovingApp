@@ -880,6 +880,7 @@ export default function TrazabilidadBrevo() {
         }
       });
 
+      updatePayload.estado = selectedContactoDraft.estado;
       await supabase.from('contactos').update(updatePayload).eq('id', selectedContactoDraft.id);
 
       // También sincronizar con trazabilidad_correos para el Sentinel
@@ -927,7 +928,7 @@ export default function TrazabilidadBrevo() {
       }
 
       await fetchContactos(calendarDays);
-      toast.success("¡Fechas de envío guardadas con éxito!");
+      toast.success("¡Datos del contacto actualizados con éxito!");
     } catch (err: any) {
       console.error("Error saving template dates:", err);
       toast.error("Error al guardar las fechas de envío");
@@ -1286,13 +1287,7 @@ export default function TrazabilidadBrevo() {
                       >
                         <Settings2 className="h-4 w-4 text-indigo-400" />
                       </button>
-                      <button 
-                        onClick={() => toggleCampanaActiva(c)}
-                        className={`p-1 rounded-md transition-all flex items-center justify-center border ${c.estado === 'activo' ? 'bg-green-900/30 hover:bg-green-900/50 text-green-400 border-green-900/50' : 'bg-gray-800 hover:bg-gray-700 text-gray-400 border-gray-750'}`}
-                        title={c.estado === 'activo' ? "Pausar Campaña" : "Reactivar Campaña"}
-                      >
-                        {c.estado === 'activo' ? <Check className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
-                      </button>
+                      {/* The toggle button has been removed from here as requested */}
                     </div>
                   </td>
                 </tr>
@@ -1769,7 +1764,7 @@ export default function TrazabilidadBrevo() {
                 className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0"
               >
                 {guardandoFechas && <Loader2 className="h-3 w-3 animate-spin" />}
-                {guardandoFechas ? "GUARDANDO..." : "GUARDAR FECHAS"}
+                {guardandoFechas ? "ACTUALIZANDO..." : "ACTUALIZAR"}
               </button>
             </div>
 
@@ -1837,22 +1832,10 @@ export default function TrazabilidadBrevo() {
                         </span>
                         <button
                           type="button"
-                          onClick={async () => {
+                          onClick={() => {
                             if (!selectedContactoDraft) return;
                             const newEstado = selectedContactoDraft.estado === 'activo' ? 'inactivo' : 'activo';
-                            try {
-                              const { error } = await supabase
-                                .from('contactos')
-                                .update({ estado: newEstado })
-                                .eq('id', selectedContactoDraft.id);
-                              if (error) throw error;
-                              
-                              setSelectedContactoDraft(prev => ({ ...prev, estado: newEstado }));
-                              toast.success(`Campaña ${newEstado === 'activo' ? 'activada' : 'pausada'} para ${selectedContactoDraft.nombre}`);
-                              fetchContactos(calendarDays);
-                            } catch (err: any) {
-                              toast.error('Error al actualizar estado de campaña');
-                            }
+                            setSelectedContactoDraft(prev => prev ? { ...prev, estado: newEstado } : prev);
                           }}
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${selectedContactoDraft?.estado === 'activo'
                             ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
