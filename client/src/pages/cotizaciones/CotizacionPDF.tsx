@@ -131,6 +131,9 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       yPos += 10;
 
       // TABLA DE PRODUCTOS
+      const condicionPago = cotizacion.condicion_pago || "";
+      const tasaFinanciamiento = Number(cotizacion.tasa_financiamiento || 0);
+
       const tableData = items.map(item => {
         // Cálculo del costo total del item basado en sus subcostos
         const costoBaseItem = (item.subcostos || []).reduce((acc: number, sc: any) => {
@@ -138,20 +141,27 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
           return acc + valorSubCosto;
         }, 0);
 
-        // Cálculo del precio de venta (neto) aplicando el margen
-        // precio_venta = costo / (1 - margen/100)
+        // Cálculo del precio de venta neto aplicando margen + condición de pago
+        // (misma lógica que el formulario y el total_neto global)
         const margen = item.margen || 0;
-        const netoItem = costoBaseItem / (1 - margen / 100);
-        
-        // Precio unitario para el PDF: netoItem / cantidad
+        let netoItemBruto = costoBaseItem / (1 - margen / 100);
+
+        if (condicionPago === "Factoring") {
+          const efectoNetoFactoring = (tasaFinanciamiento / 100) * 1.19;
+          netoItemBruto = costoBaseItem / (1 - (margen / 100 + efectoNetoFactoring));
+        } else if (condicionPago === "Contado") {
+          netoItemBruto = netoItemBruto * (1 - tasaFinanciamiento / 100);
+        }
+
         const cantidad = item.cantidad || 1;
-        const precioUnitario = netoItem / cantidad;
+        const precioUnitario = cantidad > 0 ? Math.round(netoItemBruto / cantidad) : 0;
+        const subtotalItem = precioUnitario * cantidad;
 
         return {
           descripcion: item.descripcion || "Sin descripción",
           cantidad: (item.cantidad || 0).toString(),
-          precio: `$${Math.round(precioUnitario || 0).toLocaleString("es-CL")}`,
-          subtotal: `$${Math.round(netoItem || 0).toLocaleString("es-CL")}`,
+          precio: `$${precioUnitario.toLocaleString("es-CL")}`,
+          subtotal: `$${subtotalItem.toLocaleString("es-CL")}`,
           imagen: item.imagen || null,
         };
       });
