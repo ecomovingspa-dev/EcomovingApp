@@ -1821,7 +1821,7 @@ export default function CuentasPage() {
                         }
 
                         // Agregar píxel invisible de rastreo al final
-                        const pixelUrl = `${window.location.origin}/api/sentinel-pixel?contacto_id=${selectedContactoDraft?.id}`;
+                        const pixelUrl = `${window.location.origin}/api/sentinel-pixel?contacto_id=${selectedContactoDraft?.id}&template_id=${selectedTemplateId || ''}`;
                         const pixelTag = `<img src="${pixelUrl}" width="1" height="1" style="display:none;" />`;
                         htmlBody = htmlBody + pixelTag;
 

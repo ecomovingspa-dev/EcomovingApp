@@ -35,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
     }
 
-    const { contacto_id } = req.query;
+    const { contacto_id, template_id } = req.query;
     const referer = (req.headers.referer || req.headers.referrer || '').toLowerCase();
     const userAgent = (req.headers['user-agent'] || '').toLowerCase();
     
@@ -88,7 +88,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
                 const now = new Date();
                 const localDate = now.toISOString().split('T')[0]; // YYYY-MM-DD
-                const uniqueMsgId = `manual_open:${contacto_id}:${now.getTime()}`;
+                const templateSuffix = (template_id && typeof template_id === 'string') ? `${template_id}:` : '';
+                const uniqueMsgId = `manual_open:${contacto_id}:${templateSuffix}${now.getTime()}`;
 
                 // 2. Registrar en la tabla trazabilidad_correos
                 await supabase.from('trazabilidad_correos').insert({

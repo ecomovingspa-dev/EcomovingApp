@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
 } from "@/components/ui/dialog";
+import { Copy, Edit2, Loader2, Image as ImageIcon, Settings2 } from "lucide-react";
 import { 
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from "@/components/ui/select";
@@ -87,9 +88,96 @@ export default function TrazabilidadBrevo() {
   const [guardandoContacto, setGuardandoContacto] = useState(false);
 
   // --- Estados de Plantillas ---
-  const [templateFormName, setTemplateFormName] = useState("");
-  const [templateFormSubject, setTemplateFormSubject] = useState("");
-  const [templateFormBody, setTemplateFormBody] = useState("");
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [isZohoModalOpen, setIsZohoModalOpen] = useState(false);
+  const [selectedContactoDraft, setSelectedContactoDraft] = useState<any>(null);
+  const [selectedCuentaDraft, setSelectedCuentaDraft] = useState<any>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [templateSendDates, setTemplateSendDates] = useState<Record<string, string>>({});
+  const [draftData, setDraftData] = useState<any>(null);
+  const [isEditingTemplateMode, setIsEditingTemplateMode] = useState(false);
+  const [tempEditSubject, setTempEditSubject] = useState("");
+  const [tempEditBody, setTempEditBody] = useState("");
+  const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
+  const [guardandoFechas, setGuardandoFechas] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [guardandoImagen, setGuardandoImagen] = useState(false);
+
+  const cleanCompanyShortName = (companyName: string): string => {
+    if (!companyName) return "";
+    let clean = companyName;
+    const prefixesToRemove = [
+      /^(caja de compensación de asignación familiar|caja de compensación|ccaf)\s+/gi,
+      /^(compañía de|compañia de|corp\.?|corporación|corporacion)\s+/gi,
+      /^(sociedad|asociación|asociacion|federación|federacion|fundación|fundacion)\s+/gi,
+      /^(distribuidora|importadora|exportadora|comercializadora)\s+/gi,
+      /^(servicios|consultoría|consultoria|asesorías|asesorias)\s+/gi
+    ];
+    for (const regex of prefixesToRemove) {
+      clean = clean.replace(regex, "");
+    }
+    clean = clean.replace(/,?\s*(s\.?a\.?|spa|limitada|ltda\.?|s\.?a\.?c\.?|e\.?i\.?r\.?l\.?|chile|group|grupo|s\.a\.s\.?)\b/gi, "");
+    clean = clean.replace(/^[ ,.\t]+/, "").replace(/[,.\s]+$/, "").trim();
+    return clean || companyName;
+  };
+
+  const resolveTemplateVariables = (subject: string, body: string, contact: any, account: any, vendedorName: string) => {
+    if (!contact) return { resolvedSubject: subject, resolvedBody: body };
+    const rawName = (contact.nombre || '').replace('Contacto Principal - ', '').trim();
+    const name = rawName.split(' ').map((word: any) => {
+      if (!word) return '';
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    }).filter(Boolean).join(' ');
+    const firstName = name.split(' ')[0] || '';
+    const finalCompany = account?.cliente || contact.empresa || 'su empresa';
+    const shortCompany = cleanCompanyShortName(finalCompany);
+    const telefonos: Record<string, string> = {
+      "Mario Osorio C.": "+56 9 7958 7293",
+      "Jimena Lara F.": "+56 9 6528 0052"
+    };
+    const telefonoVendedor = telefonos[vendedorName] || "+56 9 7958 7293";
+    const replaceAll = (text: string) => {
+      if (!text) return "";
+      return text
+        .replace(/{\s*nombre\s*}/gi, name)
+        .replace(/{\s*nombre_corto\s*}/gi, firstName)
+        .replace(/{\s*contacto\s*}/gi, firstName)
+        .replace(/{\s*empresa\s*}/gi, finalCompany)
+        .replace(/{\s*empresa_corto\s*}/gi, shortCompany)
+        .replace(/{\s*vendedor\s*}/gi, vendedorName)
+        .replace(/{\s*telefono\s*}/gi, telefonoVendedor);
+    };
+    return { resolvedSubject: replaceAll(subject), resolvedBody: replaceAll(body) };
+  };
+
+  const loadTemplates = async () => {
+    try {
+      const { data: dbEtapas, error: dbErr } = await supabase
+        .from("configuracion_prospeccion")
+        .select("*")
+        .eq("activo", true)
+        .order("orden", { ascending: true });
+
+      if (!dbErr && dbEtapas && dbEtapas.length > 0) {
+        const prospectionTemplates = dbEtapas.map(etapa => ({
+          id: `builtin-prospeccion-${etapa.orden}`,
+          dbId: etapa.id,
+          orden: etapa.orden,
+          name: `${etapa.orden}. ${etapa.nombre}`,
+          subject: etapa.asunto_template || "",
+          body: `${etapa.mensaje_intro || ""}\n\n${etapa.mensaje_cierre || ""}`.trim()
+        }));
+        setTemplates(prospectionTemplates);
+      }
+    } catch (err) {
+      console.error("Error fetching templates:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
 
   // Account states
   const [selectedCuenta, setSelectedCuenta] = useState<any>(null);
@@ -623,6 +711,343 @@ export default function TrazabilidadBrevo() {
     return a.nombre.localeCompare(b.nombre);
   });
 
+  const startEditingTemplate = (tmpl: any) => {
+    setIsEditingTemplateMode(true);
+    setTempEditSubject(tmpl.subject);
+    setTempEditBody(tmpl.body);
+  };
+
+  const handleSaveTemplateChanges = async () => {
+    const tmpl = templates.find(t => t.id === selectedTemplateId);
+    if (!tmpl || !tmpl.dbId) {
+      toast.error("No se encontró el ID de base de datos de la plantilla");
+      return;
+    }
+    
+    setGuardandoPlantilla(true);
+    try {
+      const { error } = await supabase
+        .from("configuracion_prospeccion")
+        .update({
+          asunto_template: tempEditSubject,
+          mensaje_intro: tempEditBody,
+          mensaje_cierre: ""
+        })
+        .eq("id", tmpl.dbId);
+
+      if (error) throw error;
+
+      toast.success("¡Plantilla actualizada con éxito en la base de datos!");
+      setIsEditingTemplateMode(false);
+      await loadTemplates();
+
+      const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
+        tempEditSubject,
+        tempEditBody,
+        selectedContactoDraft,
+        selectedCuentaDraft,
+        vendedor
+      );
+      setDraftData({
+        email: selectedContactoDraft.correo,
+        subject: resolvedSubject,
+        body: resolvedBody,
+        contactoId: selectedContactoDraft.id
+      });
+    } catch (err: any) {
+      console.error("Error saving template:", err);
+      toast.error("Error al actualizar la plantilla: " + err.message);
+    } finally {
+      setGuardandoPlantilla(false);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedContactoDraft) return;
+
+    if (file.size > 1024 * 1024) {
+      toast.error("La imagen es demasiado grande. Por favor sube una imagen de menos de 1MB.");
+      return;
+    }
+
+    setGuardandoImagen(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64String = reader.result as string;
+          
+          const { error } = await supabase
+            .from("contactos")
+            .update({ imagen: base64String })
+            .eq("id", selectedContactoDraft.id);
+
+          if (error) throw error;
+
+          toast.success("¡Render personalizado guardado en el contacto!");
+          setImageUrl(base64String);
+          setSelectedContactoDraft((prev: any) => prev ? { ...prev, imagen: base64String } : null);
+          await fetchContactos(calendarDays);
+        } catch (err: any) {
+          console.error("Error saving image:", err);
+          toast.error("Error al procesar la imagen: " + err.message);
+        } finally {
+          setGuardandoImagen(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error("Error reading file:", err);
+      toast.error("Error al leer el archivo");
+      setGuardandoImagen(false);
+    }
+  };
+
+  const abrirModalZoho = (contacto: any, cuenta: any) => {
+    setSelectedContactoDraft(contacto);
+    setSelectedCuentaDraft(cuenta);
+    setIsZohoModalOpen(true);
+    setIsEditingTemplateMode(false);
+    setImageUrl(contacto.imagen || "");
+    
+    setTemplateSendDates({});
+    if (contacto && contacto.id) {
+      supabase
+        .from("trazabilidad_correos")
+        .select("mensaje_id, created_at")
+        .eq("contacto_id", contacto.id)
+        .order("created_at", { ascending: false })
+        .then(({ data, error }) => {
+          if (!error && data) {
+            const datesMap: Record<string, string> = {};
+            data.forEach((row: any) => {
+              if (row.mensaje_id && row.mensaje_id.startsWith("manual_send:")) {
+                const parts = row.mensaje_id.split(":");
+                if (parts.length >= 2) {
+                  const templateId = parts[1];
+                  if (!datesMap[templateId]) {
+                    const dateObj = new Date(row.created_at);
+                    const day = String(dateObj.getDate()).padStart(2, '0');
+                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                    const year = dateObj.getFullYear();
+                    const hours = String(dateObj.getHours()).padStart(2, '0');
+                    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+                    datesMap[templateId] = `${day}/${month}/${year} ${hours}:${minutes}`;
+                  }
+                }
+              }
+            });
+            setTemplateSendDates(datesMap);
+          }
+        });
+    }
+    
+    const activeVendedor = vendedor || (vendedores && vendedores.length > 0 ? vendedores[0].nombre : "");
+    if (!vendedor && activeVendedor) {
+      setVendedor(activeVendedor);
+    }
+    
+    if (templates.length > 0) {
+      const firstTmpl = templates[0];
+      setSelectedTemplateId(firstTmpl.id);
+      const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
+        firstTmpl.subject,
+        firstTmpl.body,
+        contacto,
+        cuenta,
+        activeVendedor
+      );
+      setDraftData({
+        email: contacto.correo,
+        subject: resolvedSubject,
+        body: resolvedBody,
+        contactoId: contacto.id
+      });
+    }
+  };
+
+  const handleSaveAllTemplateDates = async () => {
+    if (!selectedContactoDraft || !selectedContactoDraft.id) return;
+    
+    setGuardandoFechas(true);
+    try {
+      const { data: existingEvents, error: fetchErr } = await supabase
+        .from("trazabilidad_correos")
+        .select("id, mensaje_id")
+        .eq("contacto_id", selectedContactoDraft.id);
+
+      if (fetchErr) throw fetchErr;
+
+      let latestDateObj: Date | null = null;
+
+      for (const t of templates) {
+        const sendDate = templateSendDates[t.id];
+        const targetEvent = existingEvents?.find(row => 
+          row.mensaje_id && row.mensaje_id.startsWith(`manual_send:${t.id}:`)
+        );
+
+        if (!sendDate || sendDate === "—") {
+          if (targetEvent) {
+            await supabase.from("trazabilidad_correos").delete().eq("id", targetEvent.id);
+          }
+          continue;
+        }
+
+        const parts = sendDate.split("/");
+        if (parts.length === 3) {
+          const inputDateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+          const targetDate = new Date(`${inputDateStr}T12:00:00`);
+
+          if (!latestDateObj || targetDate > latestDateObj) {
+            latestDateObj = targetDate;
+          }
+
+          if (targetEvent) {
+            await supabase
+              .from("trazabilidad_correos")
+              .update({
+                fecha: inputDateStr,
+                created_at: targetDate.toISOString()
+              })
+              .eq("id", targetEvent.id);
+          } else {
+            await supabase.from('trazabilidad_correos').insert({
+              contacto_id: selectedContactoDraft.id,
+              email: selectedContactoDraft.correo.toLowerCase(),
+              fecha: inputDateStr,
+              estado: 'sent',
+              mensaje_id: `manual_send:${t.id}:${targetDate.getTime()}`,
+              created_at: targetDate.toISOString()
+            });
+          }
+        }
+      }
+
+      if (latestDateObj) {
+        await supabase.from('contactos').update({
+          ultimo_envio: latestDateObj.toISOString(),
+          ultimo_evento_trazabilidad: latestDateObj.toISOString()
+        }).eq('id', selectedContactoDraft.id);
+      }
+
+      await fetchContactos(calendarDays);
+      toast.success("¡Fechas de envío guardadas con éxito!");
+    } catch (err: any) {
+      console.error("Error saving template dates:", err);
+      toast.error("Error al guardar las fechas de envío");
+    } finally {
+      setGuardandoFechas(false);
+    }
+  };
+
+  const formatToInputDate = (dateStr: string): string => {
+    if (!dateStr || dateStr === "—") return "";
+    const parts = dateStr.split("/");
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return "";
+  };
+
+  const handleSelectTemplate = (templateId: string, contact = selectedContactoDraft, account = selectedCuentaDraft, activeVendedor = vendedor) => {
+    setSelectedTemplateId(templateId);
+    const tmpl = templates.find(t => t.id === templateId);
+    if (tmpl && contact) {
+      const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
+        tmpl.subject,
+        tmpl.body,
+        contact,
+        account,
+        activeVendedor
+      );
+      setDraftData({
+        email: contact.correo,
+        subject: resolvedSubject,
+        body: resolvedBody,
+        contactoId: contact.id
+      });
+    }
+  };
+
+  const getTemplateStatus = (contacto: any, template: any, nextTemplate: any) => {
+    const sentEvent = contacto.historial?.find((h: any) => h.mensaje_id?.startsWith(`manual_send:${template.id}:`) || h.mensaje_id?.startsWith(`manual_template:${template.id}:`));
+    const openEvent = contacto.historial?.find((h: any) => h.mensaje_id?.startsWith(`manual_open:${contacto.id}:${template.id}:`));
+
+    let finalOpenEvent = openEvent;
+    if (!finalOpenEvent && sentEvent) {
+      const sentTime = new Date(sentEvent.created_at || sentEvent.fecha).getTime();
+      const nextSentEvent = nextTemplate ? contacto.historial?.find((h: any) => h.mensaje_id?.startsWith(`manual_send:${nextTemplate.id}:`) || h.mensaje_id?.startsWith(`manual_template:${nextTemplate.id}:`)) : null;
+      const nextSentTime = nextSentEvent ? new Date(nextSentEvent.created_at || nextSentEvent.fecha).getTime() : Infinity;
+
+      finalOpenEvent = contacto.historial?.find((h: any) => 
+        (h.estado === 'opened' || h.estado === 'unique_opened' || h.estado === 'clicks' || h.estado === 'loadedbyproxy') && 
+        new Date(h.created_at || h.fecha).getTime() >= sentTime &&
+        new Date(h.created_at || h.fecha).getTime() < nextSentTime
+      );
+    }
+
+    if (finalOpenEvent) {
+      return { 
+        status: 'opened', 
+        sendDate: sentEvent ? (sentEvent.created_at || sentEvent.fecha) : null,
+        openDate: finalOpenEvent.created_at || finalOpenEvent.fecha
+      };
+    } else if (sentEvent) {
+      return { 
+        status: 'sent', 
+        sendDate: sentEvent.created_at || sentEvent.fecha 
+      };
+    }
+    return { status: 'none' };
+  };
+
+  const renderTemplateCell = (statusObj: any) => {
+    const formatDate = (dateStr: string) => {
+      if (!dateStr) return "";
+      const d = new Date(dateStr);
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+    };
+
+    if (statusObj.status === 'opened') {
+      return (
+        <div className="flex flex-col items-center justify-center text-[10px] gap-1">
+          <Eye className="h-4 w-4 text-purple-400" />
+          <span className="text-purple-300">Abierto</span>
+          <span className="text-gray-500 text-[8px]">Env: {formatDate(statusObj.sendDate)}</span>
+          <span className="text-gray-500 text-[8px]">Lec: {formatDate(statusObj.openDate)}</span>
+        </div>
+      );
+    } else if (statusObj.status === 'sent') {
+      return (
+        <div className="flex flex-col items-center justify-center text-[10px] gap-1">
+          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          <span className="text-emerald-300">Enviado</span>
+          <span className="text-gray-500 text-[8px]">Env: {formatDate(statusObj.sendDate)}</span>
+        </div>
+      );
+    } else {
+      return (
+        <div className="flex flex-col items-center justify-center text-[10px] gap-1 opacity-50">
+          <Circle className="h-4 w-4 text-gray-600" />
+          <span className="text-gray-500">Sin enviar</span>
+        </div>
+      );
+    }
+  };
+
+  const toggleCampanaActiva = async (contacto: any) => {
+    const newEstado = contacto.estado === 'activo' ? 'inactivo' : 'activo';
+    try {
+      const { error } = await supabase.from('contactos').update({ estado: newEstado }).eq('id', contacto.id);
+      if (error) throw error;
+      toast.success(`Campaña ${newEstado === 'activo' ? 'activada' : 'pausada'} para ${contacto.nombre}`);
+      await fetchContactos(calendarDays);
+    } catch (err: any) {
+      toast.error('Error al cambiar el estado de la campaña');
+    }
+  };
+
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-1000">
       {/* Header & Controls */}
@@ -764,13 +1189,14 @@ export default function TrazabilidadBrevo() {
             <thead>
               <tr className="bg-gray-900/80 border-b border-gray-800 text-[9px] font-black tracking-widest text-gray-500 uppercase">
                 <th className="px-4 py-4 w-[240px]">
-                  CONTACTO ({new Date(selectedYear, selectedMonth).toLocaleDateString('es-CL', { month: 'long', year: 'numeric' }).toUpperCase()})
+                  CONTACTO
                 </th>
-                {calendarDays.map(d => (
-                  <th key={d.date} className="px-1 py-4 text-center border-l border-gray-800/50">
-                    {d.label}
+                {templates.slice(0, 3).map((t: any, idx: number) => (
+                  <th key={t.id} className="px-1 py-4 text-center border-l border-gray-800/50">
+                    {idx + 1}° Correo<br/><span className="text-[7px] text-gray-400 capitalize">{t.name.split('. ')[1] || t.name}</span>
                   </th>
                 ))}
+                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[110px] text-gray-500">ESTADO SECUENCIA</th>
                 <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[110px] text-gray-500">ACCIONES</th>
               </tr>
             </thead>
@@ -787,31 +1213,47 @@ export default function TrazabilidadBrevo() {
                         {c.empresa_rel_name || c.empresa || 'Empresa No Asignada'}
                       </div>
                       <div className={`text-[8px] font-black px-1.5 py-0.5 rounded-sm inline-block w-fit ${
-                        c.etapa === 'prospeccion' ? 'bg-amber-500/10 text-amber-400 border border-amber-400/20' : 'bg-blue-500/10 text-blue-400 border border-blue-400/20'
+                        c.estado === 'activo' ? 'bg-amber-500/10 text-amber-400 border border-amber-400/20' : 'bg-gray-500/10 text-gray-400 border border-gray-400/20'
                       }`}>
-                        {c.etapa?.toUpperCase() || 'MARKETING'}
+                        {c.estado === 'activo' ? 'CAMPAÑA ACTIVA' : 'CAMPAÑA PAUSADA'}
                       </div>
-
-
                     </div>
                   </td>
 
-                  {calendarDays.map(d => (
-                    <td key={d.date} className="px-1 py-5 text-center border-l border-gray-900/10">
-                      <div className="flex justify-center items-center">
-                        {getStatusIcon(c, d.date)}
-                      </div>
+                  {templates.slice(0, 3).map((t: any, idx: number, arr: any[]) => (
+                    <td key={t.id} className="px-1 py-5 text-center border-l border-gray-900/10">
+                      {renderTemplateCell(getTemplateStatus(c, t, arr[idx + 1]))}
                     </td>
                   ))}
 
                   <td className="px-2 py-5 text-center border-l border-gray-900/10">
+                    <div className="flex justify-center items-center">
+                      <div className={`text-[9px] font-black px-2 py-1 rounded-md ${
+                        c.etapa === 'prospeccion' ? 'bg-amber-500 text-gray-900' : 'bg-blue-500 text-white'
+                      }`}>
+                        {c.etapa?.toUpperCase() || 'MARKETING'}
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className="px-2 py-5 text-center border-l border-gray-900/10">
                     <div className="flex justify-center items-center gap-2">
                       <button 
-                        onClick={() => openEditModal(c)} 
+                        onClick={() => {
+                          const mockCuenta = { cliente: c.empresa_rel_name || c.empresa };
+                          abrirModalZoho(c, mockCuenta);
+                        }} 
                         className="p-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md hover:scale-110 transition-all flex items-center justify-center border border-gray-750"
-                        title="Gestionar contacto"
+                        title="Abrir Zoho / Acciones Sentinel"
                       >
-                        <Settings className="h-3.5 w-3.5" />
+                        <Settings2 className="h-4 w-4 text-indigo-400" />
+                      </button>
+                      <button 
+                        onClick={() => toggleCampanaActiva(c)}
+                        className={`p-1 rounded-md transition-all flex items-center justify-center border ${c.estado === 'activo' ? 'bg-green-900/30 hover:bg-green-900/50 text-green-400 border-green-900/50' : 'bg-gray-800 hover:bg-gray-700 text-gray-400 border-gray-750'}`}
+                        title={c.estado === 'activo' ? "Pausar Campaña" : "Reactivar Campaña"}
+                      >
+                        {c.estado === 'activo' ? <Check className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
                       </button>
                     </div>
                   </td>
@@ -1172,7 +1614,402 @@ export default function TrazabilidadBrevo() {
         </DialogContent>
       </Dialog>
 
+      {/* MODAL DE REDACCION ZOHO */}
+      <Dialog open={isZohoModalOpen} onOpenChange={setIsZohoModalOpen}>
+        <DialogContent className="max-w-6xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl rounded-2xl text-gray-900 dark:text-gray-100">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+              <Mail className="h-5 w-5" /> Redacción e Inteligencia de Plantillas Zoho
+            </DialogTitle>
+            <DialogDescription className="text-gray-505">
+              Selecciona una plantilla para enviar a {selectedContactoDraft?.nombre}.
+            </DialogDescription>
+          </DialogHeader>
 
+          <div className="grid grid-cols-12 gap-6 my-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+            
+            {/* Columna Izquierda: Plantillas */}
+            <div className="col-span-12 md:col-span-3 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
+              <div className="flex flex-col space-y-3 overflow-hidden">
+                <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Plantillas Disponibles
+                </span>
+                
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[350px]">
+                  {templates.map(t => (
+                    <div 
+                      key={t.id}
+                      onClick={() => {
+                        setIsEditingTemplateMode(false);
+                        handleSelectTemplate(t.id);
+                      }}
+                      className={cn(
+                        "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 h-12",
+                        selectedTemplateId === t.id
+                          ? "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-sm"
+                          : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80 hover:text-gray-900 dark:hover:text-white"
+                      )}
+                    >
+                      <span className="text-xs font-bold truncate flex-1">{t.name}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTemplateId(t.id);
+                          startEditingTemplate(t);
+                        }}
+                        className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-all shrink-0"
+                        title="Editar estructura de plantilla"
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Columna Central: Fecha de Envío */}
+            <div className="col-span-12 md:col-span-2 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
+              <div className="flex flex-col space-y-3 overflow-hidden min-h-0">
+                <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Fecha de Envío
+                </span>
+                
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[320px]">
+                  {templates.map(t => {
+                    const sendDate = templateSendDates[t.id];
+                    const dateOnly = sendDate ? sendDate.split(" ")[0] : "—";
+                    return (
+                      <div 
+                        key={`date-${t.id}`}
+                        onClick={() => {
+                          setIsEditingTemplateMode(false);
+                          handleSelectTemplate(t.id);
+                        }}
+                        className={cn(
+                          "group p-1.5 rounded-xl border text-center transition-all cursor-pointer flex items-center justify-center h-12 text-xs font-bold",
+                          selectedTemplateId === t.id
+                            ? "bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-400 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                            : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80"
+                        )}
+                      >
+                        <input 
+                          type="date"
+                          value={dateOnly !== "—" ? formatToInputDate(dateOnly) : ""}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val) {
+                              const [year, month, day] = val.split("-");
+                              setTemplateSendDates(prev => ({
+                                ...prev,
+                                [t.id]: `${day}/${month}/${year}`
+                              }));
+                            } else {
+                              setTemplateSendDates(prev => ({
+                                ...prev,
+                                [t.id]: ""
+                              }));
+                            }
+                          }}
+                          className={cn(
+                            "bg-transparent text-center border-none outline-none focus:ring-0 w-full text-xs cursor-pointer font-bold select-none",
+                            dateOnly !== "—" ? "text-emerald-600 dark:text-emerald-400" : "text-gray-450 dark:text-gray-600"
+                          )}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveAllTemplateDates}
+                disabled={guardandoFechas}
+                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0"
+              >
+                {guardandoFechas && <Loader2 className="h-3 w-3 animate-spin" />}
+                {guardandoFechas ? "GUARDANDO..." : "GUARDAR FECHAS"}
+              </button>
+            </div>
+
+            {/* Columna Derecha: Contenido del Correo o Editor de Plantilla */}
+            <div className="col-span-12 md:col-span-7 flex flex-col h-[450px]">
+              {isEditingTemplateMode ? (
+                <div className="space-y-4 flex-grow flex flex-col overflow-hidden">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                      ✏️ Editando Estructura de Plantilla (Original)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingTemplateMode(false)}
+                      className="text-xs font-bold text-gray-500 hover:text-indigo-600 transition-colors cursor-pointer"
+                    >
+                      Volver a Vista Previa
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asunto Base (Con Placeholders)</label>
+                    <input 
+                      type="text" 
+                      value={tempEditSubject} 
+                      onChange={(e) => setTempEditSubject(e.target.value)}
+                      className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      placeholder="Ej: Consulta rápida sobre regalos o merchandising en {empresa}"
+                    />
+                  </div>
+
+                  <div className="flex-grow flex flex-col space-y-1 min-h-0">
+                    <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cuerpo Base (Con Placeholders)</label>
+                    <textarea 
+                      value={tempEditBody} 
+                      onChange={(e) => setTempEditBody(e.target.value)}
+                      className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none resize-none min-h-0 font-sans"
+                      placeholder="Hola {nombre_corto}, te escribo..."
+                    />
+                  </div>
+
+                  <div className="p-2.5 bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 rounded-xl text-[10px] text-gray-500 space-y-1 font-medium">
+                    <div className="font-bold text-gray-700 dark:text-gray-400 uppercase text-[8px] tracking-wider">Variables Admitidas:</div>
+                    <div><code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{nombre}"}</code>: Nombre completo | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{nombre_corto}"}</code> o <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{contacto}"}</code>: Primer nombre.</div>
+                    <div><code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{empresa}"}</code>: Nombre completo | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{empresa_corto}"}</code>: Nombre comercial | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{vendedor}"}</code>: Vendedor | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{telefono}"}</code>: Teléfono.</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 flex-grow flex flex-col overflow-hidden">
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destinatario</label>
+                    <input 
+                      type="text" 
+                      value={draftData?.email || ""} 
+                      disabled
+                      className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 text-xs text-gray-500 rounded-lg p-2 font-mono"
+                    />
+                  </div>
+
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Asunto del Correo</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        value={draftData?.subject || ""} 
+                        onChange={(e) => setDraftData(draftData ? { ...draftData, subject: e.target.value } : null)}
+                        className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      />
+                      <button
+                        onClick={async () => {
+                          if (draftData?.subject) {
+                            await navigator.clipboard.writeText(draftData.subject);
+                            toast.success("Asunto copiado");
+                          }
+                        }}
+                        className="px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-750 text-xs font-bold rounded-lg transition-all"
+                      >
+                        Copiar
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Widget para Subir Render Personalizado desde Computador (Base64) */}
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-150 dark:border-gray-800 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2.5">
+                      {imageUrl ? (
+                        <img src={imageUrl} className="h-10 w-10 object-cover rounded-lg border border-gray-250 dark:border-gray-700 shadow-sm" alt="Preview render" />
+                      ) : (
+                        <div className="h-10 w-10 bg-gray-250 dark:bg-gray-800 rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-dashed border-gray-300 dark:border-gray-700">
+                          S/R
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-xs font-bold text-gray-800 dark:text-gray-200">Render Personalizado</div>
+                        <div className="text-[10px] text-gray-500">Se guardará en la ficha del contacto y se insertará en el correo</div>
+                      </div>
+                    </div>
+                    <input 
+                      type="file" 
+                      id="render-image-upload" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={handleImageUpload}
+                    />
+                    <label 
+                      htmlFor="render-image-upload" 
+                      className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold cursor-pointer transition-all border border-indigo-200 dark:border-indigo-900/50 flex items-center gap-1 shadow-sm"
+                    >
+                      {guardandoImagen ? "Procesando..." : (imageUrl ? "Reemplazar Render" : "Subir Render")}
+                    </label>
+                  </div>
+
+                  <div className="flex-1 flex flex-col space-y-1 min-h-0">
+                    <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Mensaje (Cuerpo)</label>
+                    <textarea 
+                      value={draftData?.body || ""} 
+                      onChange={(e) => setDraftData(draftData ? { ...draftData, body: e.target.value } : null)}
+                      className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none resize-none min-h-0 font-sans"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-gray-100 dark:border-gray-800 pt-4 mt-4">
+            {isEditingTemplateMode ? (
+              <>
+                <button 
+                  onClick={() => setIsEditingTemplateMode(false)}
+                  disabled={guardandoPlantilla}
+                  className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50"
+                >
+                  CANCELAR
+                </button>
+                <button 
+                  onClick={handleSaveTemplateChanges}
+                  disabled={guardandoPlantilla}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {guardandoPlantilla && <Loader2 className="h-3 w-3 animate-spin" />}
+                  GUARDAR CAMBIOS EN PLANTILLA
+                </button>
+              </>
+            ) : (
+              <>
+                <button 
+                  onClick={() => setIsZohoModalOpen(false)}
+                  className="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  DESCARTAR
+                </button>
+                <button 
+                  onClick={async () => {
+                    if (draftData && selectedContactoDraft && selectedCuentaDraft) {
+                      try {
+                        const telefonos: Record<string, string> = {
+                          "Mario Osorio C.": "+56 9 7958 7293",
+                          "Jimena Lara F.": "+56 9 6528 0052"
+                        };
+                        const tel = telefonos[vendedor] || "+56 9 7958 7293";
+
+                        let cleanBody = draftData.body;
+                        const signatureToSearch = `Saludos,\n\n${vendedor}\n${tel}\nwww.ecomoving.cl`;
+                        if (cleanBody.includes(signatureToSearch)) {
+                          cleanBody = cleanBody.replace(signatureToSearch, "").trim();
+                        }
+                        const signatureToSearchSimple = `Saludos,\n\n${vendedor}`;
+                        if (cleanBody.includes(signatureToSearchSimple)) {
+                          cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
+                        }
+
+                        let htmlBody = cleanBody.replace(/\n/g, "<br/>");
+                        
+                        if (imageUrl.trim()) {
+                          const imgTag = `<img src="${imageUrl.trim()}" alt="Render Ecomoving" style="max-width:100%; height:auto; margin: 20px 0; border-radius: 12px; border: 1px solid #e2e8f0; display: block;" />`;
+                          
+                          const imagePlaceholders = [
+                            /\{\s*imagen\s*\}/gi,
+                            /\{\s*imagen_url\s*\}/gi,
+                            /\{\s*render\s*\}/gi,
+                            /\(\s*imagen pegada en el cuerpo del correo\s*\)/gi
+                          ];
+
+                          let replaced = false;
+                          for (const regex of imagePlaceholders) {
+                            if (regex.test(htmlBody)) {
+                              htmlBody = htmlBody.replace(regex, imgTag);
+                              replaced = true;
+                            }
+                          }
+
+                          if (!replaced) {
+                            const paragraphs = htmlBody.split("<br/><br/>");
+                            if (paragraphs.length > 1) {
+                              paragraphs.splice(1, 0, imgTag);
+                              htmlBody = paragraphs.join("<br/><br/>");
+                            } else {
+                              htmlBody = htmlBody + "<br/><br/>" + imgTag;
+                            }
+                          }
+                        } else {
+                          htmlBody = htmlBody
+                            .replace(/{\s*imagen\s*}/gi, "")
+                            .replace(/{\s*imagen_url\s*}/gi, "")
+                            .replace(/{\s*render\s*}/gi, "")
+                            .replace(/\(\s*imagen pegada en el cuerpo del correo\s*\)/gi, "");
+                        }
+
+                        const pixelUrl = `${window.location.origin}/api/sentinel-pixel?contacto_id=${selectedContactoDraft?.id}&template_id=${selectedTemplateId || ''}`;
+                        const pixelTag = `<img src="${pixelUrl}" width="1" height="1" style="display:none;" />`;
+                        htmlBody = htmlBody + pixelTag;
+
+                        try {
+                          const typeHtml = "text/html";
+                          const typeText = "text/plain";
+                          const blobHtml = new Blob([htmlBody], { type: typeHtml });
+                          const plainTextForClip = cleanBody
+                            .replace(/{\s*imagen\s*}/gi, "")
+                            .replace(/{\s*imagen_url\s*}/gi, "")
+                            .replace(/{\s*render\s*}/gi, "")
+                            .replace(/\(\s*imagen pegada en el cuerpo del correo\s*\)/gi, "");
+                          const blobText = new Blob([plainTextForClip], { type: typeText });
+                          
+                          const data = [
+                            new ClipboardItem({
+                              [typeHtml]: blobHtml,
+                              [typeText]: blobText
+                            })
+                          ];
+                          await navigator.clipboard.write(data);
+                        } catch (clipErr) {
+                          console.warn("ClipboardItem API failed, falling back to writeText:", clipErr);
+                          await navigator.clipboard.writeText(cleanBody);
+                        }
+
+                        const now = new Date();
+                        const timestamp = now.getTime();
+                        const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                        
+                        setTemplateSendDates(prev => ({
+                          ...prev,
+                          [selectedTemplateId]: formattedDate
+                        }));
+
+                        await supabase.from('contactos').update({
+                          ultimo_envio: now.toISOString(),
+                          ultimo_evento_trazabilidad: now.toISOString()
+                        }).eq('id', selectedContactoDraft.id);
+
+                        await supabase.from('trazabilidad_correos').insert({
+                          contacto_id: selectedContactoDraft.id,
+                          email: selectedContactoDraft.correo.toLowerCase(),
+                          fecha: now.toISOString().split('T')[0],
+                          estado: 'sent',
+                          mensaje_id: `manual_send:${selectedTemplateId}:${timestamp}`
+                        });
+                        
+                        fetchContactos(calendarDays);
+
+                        setIsZohoModalOpen(false);
+                        toast.success("¡Cuerpo e imagen copiados! Puedes pegarlo en tu correo.");
+                      } catch (err: any) {
+                        console.error("Error al copiar:", err);
+                        toast.error("Error al copiar el cuerpo");
+                      }
+                    }
+                  }}
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer"
+                >
+                  COPIAR CUERPO
+                </button>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
