@@ -1654,14 +1654,55 @@ export default function CuentasPage() {
                 </div>
               ) : (
                 <div className="space-y-4 flex-grow flex flex-col overflow-hidden">
-                  <div className="flex flex-col space-y-1">
-                    <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destinatario</label>
-                    <input 
-                      type="text" 
-                      value={draftData?.email || ""} 
-                      disabled
-                      className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 text-xs text-gray-500 rounded-lg p-2 font-mono"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col space-y-1">
+                      <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destinatario</label>
+                      <input 
+                        type="text" 
+                        value={draftData?.email || ""} 
+                        disabled
+                        className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 text-xs text-gray-505 rounded-lg p-2.5 font-mono"
+                      />
+                    </div>
+                    <div className="flex flex-col space-y-1">
+                      <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado Campaña</label>
+                      <div className="flex items-center h-[38px] bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-lg px-3 justify-between">
+                        <span className={`text-[10px] font-bold uppercase ${selectedContactoDraft?.estado === 'activo' ? 'text-green-600 dark:text-green-400' : 'text-gray-500'}`}>
+                          {selectedContactoDraft?.estado === 'activo' ? 'Campaña Activa' : 'Campaña Pausada'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!selectedContactoDraft) return;
+                            const newEstado = selectedContactoDraft.estado === 'activo' ? 'inactivo' : 'activo';
+                            try {
+                              const { error } = await supabase
+                                .from('contactos')
+                                .update({ estado: newEstado })
+                                .eq('id', selectedContactoDraft.id);
+                              if (error) throw error;
+                              
+                              setSelectedContactoDraft(prev => ({ ...prev, estado: newEstado }));
+                              toast.success(`Campaña ${newEstado === 'activo' ? 'activada' : 'pausada'} para ${selectedContactoDraft.nombre}`);
+                              cargarCuentas();
+                            } catch (err: any) {
+                              toast.error('Error al actualizar estado de campaña');
+                            }
+                          }}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${selectedContactoDraft?.estado === 'activo'
+                            ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
+                            : "bg-gray-300 dark:bg-gray-700"
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${selectedContactoDraft?.estado === 'activo'
+                              ? "translate-x-5"
+                              : "translate-x-1"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex flex-col space-y-1">

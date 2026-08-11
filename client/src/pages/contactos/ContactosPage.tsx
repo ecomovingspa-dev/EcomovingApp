@@ -737,8 +737,7 @@ export default function ContactosPage() {
                   <th className="px-4 py-4 text-left w-[14%]">Correo</th>
                   <th className="px-4 py-4 text-left w-[11%]">Cel/Tel</th>
                   <th className="px-4 py-4 text-left w-[11%]">Depto</th>
-                  <th className="px-4 py-4 text-left w-[7%]">Campaña</th>
-                  <th className="px-4 py-4 text-left w-[9%]">Etapa</th>
+                  <th className="px-4 py-4 text-left w-[16%]">Etapa</th>
                   <th className="px-4 py-4 text-left w-[11%]">Segmento</th>
                   <th className="px-4 py-4 text-left w-[11%]">Sector</th>
                   <th className="sticky right-0 px-4 py-4 text-right w-[8%] bg-gray-900 border-l border-gray-800 z-10 shadow-[-4px_0_10px_-4px_rgba(0,0,0,0.5)]">Acciones</th>
@@ -939,32 +938,7 @@ export default function ContactosPage() {
                       />
                     </td>
 
-                    {/* Campaña: Activo = Marketing/Nutrición, Desactivado = Prospección */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            if (contacto.etapa === "prospeccion" || contacto.estado === "inactivo") {
-                              iniciarGraduacion(contacto);
-                            } else {
-                              desactivarCampañaDirecto(contacto);
-                            }
-                          }}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${(contacto.etapa === "marketing" && contacto.estado === "activo")
-                            ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
-                            : "bg-gray-300 dark:bg-gray-700"
-                            }`}
-                          title={(contacto.etapa === "marketing" && contacto.estado === "activo") ? "Campaña: Activo (Marketing)" : "Campaña: Desactivado / Pausado"}
-                        >
-                          <span
-                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${(contacto.etapa === "marketing" && contacto.estado === "activo")
-                              ? "translate-x-5"
-                              : "translate-x-1"
-                              }`}
-                          />
-                        </button>
-                      </div>
-                    </td>
+
 
                     {/* Etapa */}
                     <td className="px-4 py-3 whitespace-nowrap">
