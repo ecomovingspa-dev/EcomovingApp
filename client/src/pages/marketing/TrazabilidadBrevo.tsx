@@ -2086,7 +2086,9 @@ export default function TrazabilidadBrevo() {
 
                         await supabase.from('contactos').update({
                           ultimo_envio: now.toISOString(),
-                          ultimo_evento_trazabilidad: now.toISOString()
+                          ultimo_evento_trazabilidad: now.toISOString(),
+                          estado: "activo",
+                          etapa: "marketing"
                         }).eq('id', selectedContactoDraft.id);
 
                         await supabase.from('trazabilidad_correos').insert({
