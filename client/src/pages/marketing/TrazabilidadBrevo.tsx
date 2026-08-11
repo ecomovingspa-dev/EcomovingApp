@@ -2070,7 +2070,6 @@ export default function TrazabilidadBrevo() {
                         
                         fetchContactos(calendarDays);
 
-                        setIsZohoModalOpen(false);
                         toast.success("¡Cuerpo e imagen copiados! Puedes pegarlo en tu correo.");
                       } catch (err: any) {
                         console.error("Error al copiar:", err);
