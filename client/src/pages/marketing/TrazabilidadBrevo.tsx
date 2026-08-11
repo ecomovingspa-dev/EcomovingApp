@@ -1157,26 +1157,6 @@ export default function TrazabilidadBrevo() {
           />
         </div>
 
-        <button 
-          onClick={() => setSoloCriticos(!soloCriticos)}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition-all h-[36px] ${
-            soloCriticos ? "bg-red-500 text-white shadow-lg shadow-red-500/50" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-          }`}
-        >
-          {soloCriticos ? "FILTRANDO CRÍTICOS" : "TODOS"}
-        </button>
-
-        <button 
-          onClick={() => setSoloFoco(!soloFoco)}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1 h-[36px] ${
-            soloFoco ? "bg-yellow-500 text-gray-950 shadow-lg shadow-yellow-500/50" : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-          }`}
-        >
-          ⭐ {soloFoco ? "SOLO CUENTAS FOCO" : "TODAS LAS CUENTAS"}
-        </button>
-
-
-
         <Select onValueChange={(val) => setFiltroEjecutivo(val)} defaultValue="todos">
           <SelectTrigger className="w-[185px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
             <SelectValue placeholder="EJECUTIVO" />
@@ -1186,29 +1166,6 @@ export default function TrazabilidadBrevo() {
             <SelectItem value="sin_asignar">SIN ASIGNAR</SelectItem>
             {vendedores && vendedores.map(v => (
               <SelectItem key={v.id} value={v.nombre}>{v.nombre.toUpperCase()}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select onValueChange={(val) => setFiltroSector(val)} defaultValue="todos">
-          <SelectTrigger className="w-[145px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
-            <SelectValue placeholder="SECTOR" />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-900 border-gray-800 text-white">
-            <SelectItem value="todos">SECTOR: TODOS</SelectItem>
-            <SelectItem value="privado">PRIVADOS</SelectItem>
-            <SelectItem value="publico">PÚBLICOS</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select onValueChange={(val) => setFiltroSegmento(val)} defaultValue="todos">
-          <SelectTrigger className="w-[160px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
-            <SelectValue placeholder="SEGMENTO" />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-900 border-gray-800 text-white max-h-60 overflow-y-auto">
-            <SelectItem value="todos">SEGMENTO: TODOS</SelectItem>
-            {availableSegments.map(seg => (
-              <SelectItem key={seg} value={seg}>{seg}</SelectItem>
             ))}
           </SelectContent>
         </Select>
