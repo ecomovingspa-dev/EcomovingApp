@@ -66,7 +66,7 @@ export default function TrazabilidadBrevo() {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState("");
   const [soloCriticos, setSoloCriticos] = useState(false);
-  const [soloFoco, setSoloFoco] = useState(false);
+  const [filtroTipoCuenta, setFiltroTipoCuenta] = useState("foco"); // "todos", "foco", "no_foco"
   const [vendedor, setVendedor] = useState("Vendedor 1");
   const [filtroEtapa, setFiltroEtapa] = useState("todos");
   const [filtroSector, setFiltroSector] = useState("todos");
@@ -660,7 +660,10 @@ export default function TrazabilidadBrevo() {
     const accountName = c.empresa_rel_name || c.empresa || "";
     const matchesSearch = normalizeString(accountName).includes(normalizeString(filtro));
     const matchesCriticos = soloCriticos ? c.es_bloqueado : true;
-    const matchesFoco = soloFoco ? (c.empresa_rel_cuenta_foco === true) : true;
+    // Cambiamos a filtro de tipo string: "todos", "foco", "no_foco"
+    const matchesFoco = filtroTipoCuenta === "todos" ? true : (
+      filtroTipoCuenta === "foco" ? (c.empresa_rel_cuenta_foco === true) : (c.empresa_rel_cuenta_foco !== true)
+    );
     const matchesEtapa = filtroEtapa === "todos" ? true : (c.etapa === filtroEtapa);
     
     const contactSector = c.empresa_rel_sector?.toLowerCase() || "privado";
@@ -1130,6 +1133,17 @@ export default function TrazabilidadBrevo() {
             onChange={(e) => setFiltro(e.target.value)}
           />
         </div>
+
+        <Select onValueChange={(val) => setFiltroTipoCuenta(val)} defaultValue="foco">
+          <SelectTrigger className="w-[185px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+            <SelectValue placeholder="TIPO CUENTA" />
+          </SelectTrigger>
+          <SelectContent className="bg-gray-900 border-gray-800 text-white">
+            <SelectItem value="foco">CUENTAS FOCO</SelectItem>
+            <SelectItem value="no_foco">CUENTAS NO FOCO</SelectItem>
+            <SelectItem value="todos">TODAS LAS CUENTAS</SelectItem>
+          </SelectContent>
+        </Select>
 
         <Select onValueChange={(val) => setFiltroEjecutivo(val)} defaultValue="todos">
           <SelectTrigger className="w-[185px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
