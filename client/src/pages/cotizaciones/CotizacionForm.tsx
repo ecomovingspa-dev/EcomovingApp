@@ -1157,9 +1157,16 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                                >
                                  {item.precio_fijo ? <Lock className="h-3.5 w-3.5 text-red-400" /> : <Unlock className="h-3.5 w-3.5 text-gray-400 opacity-40 group-hover:opacity-100 transition-opacity" />}
                                  <span>
-                                  {(() => {
+                                 {(() => {
                                      const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
-                                     const netoBruto = costo / (1 - (item.margen || 0)/100);
+                                     let netoBruto = costo / (1 - (item.margen || 0)/100);
+                                     const tasaFinanciamiento = Number(cotizacion.tasa_financiamiento || 0);
+                                     if (cotizacion.condicion_pago === "Factoring") {
+                                       const efectoNetoFactoring = (tasaFinanciamiento / 100) * 1.19;
+                                       netoBruto = costo / (1 - ((item.margen || 0) / 100 + efectoNetoFactoring));
+                                     } else if (cotizacion.condicion_pago === "Contado") {
+                                       netoBruto = netoBruto * (1 - (tasaFinanciamiento / 100));
+                                     }
                                      const unit = (item.cantidad || 0) > 0 ? Math.round(netoBruto / item.cantidad) : 0;
                                      return `$${unit.toLocaleString("es-CL")}`;
                                   })()}
@@ -1172,7 +1179,14 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                                <div className="h-12 flex items-center justify-end px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-[11px] font-black text-emerald-500 shadow-sm leading-none">
                                  {(() => {
                                     const costo = (item.subcostos || []).reduce((acc: number, sc: any) => acc + (sc.cantidad * sc.precio_unitario * (1 - (sc.descuento || 0)/100)), 0);
-                                    const netoBruto = costo / (1 - (item.margen || 0)/100);
+                                    let netoBruto = costo / (1 - (item.margen || 0)/100);
+                                    const tasaFinanciamiento = Number(cotizacion.tasa_financiamiento || 0);
+                                    if (cotizacion.condicion_pago === "Factoring") {
+                                      const efectoNetoFactoring = (tasaFinanciamiento / 100) * 1.19;
+                                      netoBruto = costo / (1 - ((item.margen || 0) / 100 + efectoNetoFactoring));
+                                    } else if (cotizacion.condicion_pago === "Contado") {
+                                      netoBruto = netoBruto * (1 - (tasaFinanciamiento / 100));
+                                    }
                                     const unit = (item.cantidad || 0) > 0 ? Math.round(netoBruto / item.cantidad) : 0;
                                     const subtotalItem = unit * (item.cantidad || 0);
                                     return `$${subtotalItem.toLocaleString("es-CL")}`;
