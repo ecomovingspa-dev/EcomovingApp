@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
 } from "@/components/ui/dialog";
-import { ConfiguracionProspeccion } from "../../components/contactos/ConfiguracionProspeccion";
 import {
   Popover,
   PopoverTrigger,
@@ -39,7 +38,6 @@ import {
   Building2,
   ChevronDown,
   ChevronRight,
-  SearchCheck,
   GraduationCap,
   Play,
   Check,
@@ -163,7 +161,6 @@ export default function ContactosPage() {
   useEffect(() => { sessionStorage.setItem("contactos_filtroSector", filtroSector); }, [filtroSector]);
   useEffect(() => { sessionStorage.setItem("contactos_filtroCampana", filtroCampana); }, [filtroCampana]);
 
-  const [modalProspeccion, setModalProspeccion] = useState(false);
   // Graduación obsoleta remoción
   // Desactivación/Degradación obsoleta remoción
 
@@ -610,12 +607,6 @@ export default function ContactosPage() {
               {loadingEnriquecimiento ? "Buscando..." : "Buscar Correos Faltantes (IA)"}
             </Button>
           )}
-          <Button
-            onClick={() => setModalProspeccion(true)}
-            className="bg-violet-700 hover:bg-violet-800 text-white shadow-md"
-          >
-            <SearchCheck className="mr-2 h-4 w-4" /> Prospección
-          </Button>
           <Button
             onClick={() => navigate("/contactos/nuevo")}
             className="bg-blue-600 hover:bg-blue-700 text-white shadow-md"
@@ -1065,10 +1056,6 @@ export default function ContactosPage() {
           <span>Total: {totalRecords} contacto{totalRecords !== 1 ? 's' : ''} encontrados</span>
         </div>
       )}
-      <ConfiguracionProspeccion
-        open={modalProspeccion}
-        onOpenChange={setModalProspeccion}
-      />
     </div>
   );
 }
