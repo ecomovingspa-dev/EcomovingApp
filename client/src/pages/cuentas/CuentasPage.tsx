@@ -518,7 +518,7 @@ export default function CuentasPage() {
 
       let query = supabase
         .from("cuentas")
-        .select("*, vendedores(nombre), contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono, imagen, ultimo_envio, ultimo_evento_trazabilidad)", { count: "exact" });
+        .select("*, vendedores(nombre), contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono, imagen, ultimo_envio, ultimo_evento_trazabilidad, estado, etapa)", { count: "exact" });
 
       if (busqueda) {
         query = query.or(`cliente.ilike.%${busqueda}%,rut.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`);
