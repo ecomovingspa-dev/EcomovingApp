@@ -811,36 +811,15 @@ export default function TrazabilidadBrevo() {
     setIsEditingTemplateMode(false);
     setImageUrl(contacto.imagen || "");
     
+    // Cargar fecha desde la columna fecha_envio_foco en contactos
     setTemplateSendDates({});
-    if (contacto && contacto.id) {
-      supabase
-        .from("trazabilidad_correos")
-        .select("mensaje_id, created_at")
-        .eq("contacto_id", contacto.id)
-        .order("created_at", { ascending: false })
-        .then(({ data, error }) => {
-          if (!error && data) {
-            const datesMap: Record<string, string> = {};
-            data.forEach((row: any) => {
-              if (row.mensaje_id && row.mensaje_id.startsWith("manual_send:")) {
-                const parts = row.mensaje_id.split(":");
-                if (parts.length >= 2) {
-                  const templateId = parts[1];
-                  if (!datesMap[templateId]) {
-                    const dateObj = new Date(row.created_at);
-                    const day = String(dateObj.getDate()).padStart(2, '0');
-                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                    const year = dateObj.getFullYear();
-                    const hours = String(dateObj.getHours()).padStart(2, '0');
-                    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
-                    datesMap[templateId] = `${day}/${month}/${year} ${hours}:${minutes}`;
-                  }
-                }
-              }
-            });
-            setTemplateSendDates(datesMap);
-          }
-        });
+    if (contacto && contacto.fecha_envio_foco) {
+      const fechaFoco = contacto.fecha_envio_foco;
+      const parts = fechaFoco.split('-');
+      if (parts.length === 3) {
+        const firstTemplateId = templates.length > 0 ? templates[0].id : 'builtin-prospeccion-1';
+        setTemplateSendDates({ [firstTemplateId]: `${parts[2]}/${parts[1]}/${parts[0]}` });
+      }
     }
     
     const activeVendedor = vendedor || (vendedores && vendedores.length > 0 ? vendedores[0].nombre : "");
@@ -872,63 +851,64 @@ export default function TrazabilidadBrevo() {
     
     setGuardandoFechas(true);
     try {
+      // Guardar fecha del primer template en contactos.fecha_envio_foco
+      const firstTemplateId = templates.length > 0 ? templates[0].id : 'builtin-prospeccion-1';
+      const sendDate = templateSendDates[firstTemplateId];
+      
+      let fechaFocoValue: string | null = null;
+      if (sendDate && sendDate !== "—") {
+        const parts = sendDate.split("/");
+        if (parts.length === 3) {
+          fechaFocoValue = `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+      }
+
+      await supabase.from('contactos').update({
+        fecha_envio_foco: fechaFocoValue
+      }).eq('id', selectedContactoDraft.id);
+
+      // También sincronizar con trazabilidad_correos para el Sentinel
       const { data: existingEvents, error: fetchErr } = await supabase
         .from("trazabilidad_correos")
         .select("id, mensaje_id")
         .eq("contacto_id", selectedContactoDraft.id);
 
-      if (fetchErr) throw fetchErr;
+      if (!fetchErr) {
+        for (const t of templates) {
+          const tSendDate = templateSendDates[t.id];
+          const targetEvent = existingEvents?.find(row => 
+            row.mensaje_id && row.mensaje_id.startsWith(`manual_send:${t.id}:`)
+          );
 
-      let latestDateObj: Date | null = null;
-
-      for (const t of templates) {
-        const sendDate = templateSendDates[t.id];
-        const targetEvent = existingEvents?.find(row => 
-          row.mensaje_id && row.mensaje_id.startsWith(`manual_send:${t.id}:`)
-        );
-
-        if (!sendDate || sendDate === "—") {
-          if (targetEvent) {
-            await supabase.from("trazabilidad_correos").delete().eq("id", targetEvent.id);
-          }
-          continue;
-        }
-
-        const parts = sendDate.split("/");
-        if (parts.length === 3) {
-          const inputDateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
-          const targetDate = new Date(`${inputDateStr}T12:00:00`);
-
-          if (!latestDateObj || targetDate > latestDateObj) {
-            latestDateObj = targetDate;
+          if (!tSendDate || tSendDate === "—") {
+            if (targetEvent) {
+              await supabase.from("trazabilidad_correos").delete().eq("id", targetEvent.id);
+            }
+            continue;
           }
 
-          if (targetEvent) {
-            await supabase
-              .from("trazabilidad_correos")
-              .update({
+          const parts = tSendDate.split("/");
+          if (parts.length === 3) {
+            const inputDateStr = `${parts[2]}-${parts[1]}-${parts[0]}`;
+            const targetDate = new Date(`${inputDateStr}T12:00:00`);
+
+            if (targetEvent) {
+              await supabase.from("trazabilidad_correos").update({
                 fecha: inputDateStr,
                 created_at: targetDate.toISOString()
-              })
-              .eq("id", targetEvent.id);
-          } else {
-            await supabase.from('trazabilidad_correos').insert({
-              contacto_id: selectedContactoDraft.id,
-              email: selectedContactoDraft.correo.toLowerCase(),
-              fecha: inputDateStr,
-              estado: 'sent',
-              mensaje_id: `manual_send:${t.id}:${targetDate.getTime()}`,
-              created_at: targetDate.toISOString()
-            });
+              }).eq("id", targetEvent.id);
+            } else {
+              await supabase.from('trazabilidad_correos').insert({
+                contacto_id: selectedContactoDraft.id,
+                email: selectedContactoDraft.correo.toLowerCase(),
+                fecha: inputDateStr,
+                estado: 'sent',
+                mensaje_id: `manual_send:${t.id}:${targetDate.getTime()}`,
+                created_at: targetDate.toISOString()
+              });
+            }
           }
         }
-      }
-
-      if (latestDateObj) {
-        await supabase.from('contactos').update({
-          ultimo_envio: latestDateObj.toISOString(),
-          ultimo_evento_trazabilidad: latestDateObj.toISOString()
-        }).eq('id', selectedContactoDraft.id);
       }
 
       await fetchContactos(calendarDays);
@@ -1690,7 +1670,7 @@ export default function TrazabilidadBrevo() {
             <div className="col-span-12 md:col-span-2 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
               <div className="flex flex-col space-y-3 overflow-hidden min-h-0">
                 <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Fecha de Envío
+                  Fecha Envío Foco
                 </span>
                 
                 <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[320px]">
@@ -2036,6 +2016,7 @@ export default function TrazabilidadBrevo() {
                         }));
 
                         await supabase.from('contactos').update({
+                          fecha_envio_foco: now.toISOString().split('T')[0],
                           ultimo_envio: now.toISOString(),
                           ultimo_evento_trazabilidad: now.toISOString(),
                           estado: "activo",
