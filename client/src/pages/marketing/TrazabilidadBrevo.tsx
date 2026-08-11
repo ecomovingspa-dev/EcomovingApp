@@ -814,15 +814,21 @@ export default function TrazabilidadBrevo() {
     setIsEditingTemplateMode(false);
     setImageUrl(contacto.imagen || "");
     
-    // Cargar fecha desde la columna fecha_envio_foco en contactos
+    // Cargar fechas desde las columnas fecha_envio_foco, fecha_envio_foco_2, fecha_envio_foco_3
     setTemplateSendDates({});
-    if (contacto && contacto.fecha_envio_foco) {
-      const fechaFoco = contacto.fecha_envio_foco;
-      const parts = fechaFoco.split('-');
-      if (parts.length === 3) {
-        const firstTemplateId = templates.length > 0 ? templates[0].id : 'builtin-prospeccion-1';
-        setTemplateSendDates({ [firstTemplateId]: `${parts[2]}/${parts[1]}/${parts[0]}` });
-      }
+    if (contacto) {
+      const focoColumns = [contacto.fecha_envio_foco, contacto.fecha_envio_foco_2, contacto.fecha_envio_foco_3];
+      const datesMap: Record<string, string> = {};
+      focoColumns.forEach((fecha, idx) => {
+        if (fecha) {
+          const parts = fecha.split('-');
+          if (parts.length === 3) {
+            const templateId = templates.length > idx ? templates[idx].id : `builtin-prospeccion-${idx + 1}`;
+            datesMap[templateId] = `${parts[2]}/${parts[1]}/${parts[0]}`;
+          }
+        }
+      });
+      setTemplateSendDates(datesMap);
     }
     
     const activeVendedor = vendedor || (vendedores && vendedores.length > 0 ? vendedores[0].nombre : "");
@@ -854,21 +860,27 @@ export default function TrazabilidadBrevo() {
     
     setGuardandoFechas(true);
     try {
-      // Guardar fecha del primer template en contactos.fecha_envio_foco
-      const firstTemplateId = templates.length > 0 ? templates[0].id : 'builtin-prospeccion-1';
-      const sendDate = templateSendDates[firstTemplateId];
+      // Guardar fechas de las 3 plantillas en las columnas fecha_envio_foco correspondientes
+      const focoColumnMap: Record<number, string> = { 0: 'fecha_envio_foco', 1: 'fecha_envio_foco_2', 2: 'fecha_envio_foco_3' };
+      const updatePayload: Record<string, string | null> = {};
       
-      let fechaFocoValue: string | null = null;
-      if (sendDate && sendDate !== "—") {
-        const parts = sendDate.split("/");
-        if (parts.length === 3) {
-          fechaFocoValue = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      templates.forEach((t, idx) => {
+        const colName = focoColumnMap[idx];
+        if (!colName) return;
+        const tDate = templateSendDates[t.id];
+        if (tDate && tDate !== "—") {
+          const parts = tDate.split("/");
+          if (parts.length === 3) {
+            updatePayload[colName] = `${parts[2]}-${parts[1]}-${parts[0]}`;
+          } else {
+            updatePayload[colName] = null;
+          }
+        } else {
+          updatePayload[colName] = null;
         }
-      }
+      });
 
-      await supabase.from('contactos').update({
-        fecha_envio_foco: fechaFocoValue
-      }).eq('id', selectedContactoDraft.id);
+      await supabase.from('contactos').update(updatePayload).eq('id', selectedContactoDraft.id);
 
       // También sincronizar con trazabilidad_correos para el Sentinel
       const { data: existingEvents, error: fetchErr } = await supabase
@@ -2045,8 +2057,13 @@ export default function TrazabilidadBrevo() {
                           [selectedTemplateId]: formattedDate
                         }));
 
+                        // Determinar la columna fecha_envio_foco correcta según la plantilla seleccionada
+                        const templateIdx = templates.findIndex(t => t.id === selectedTemplateId);
+                        const focoColMap: Record<number, string> = { 0: 'fecha_envio_foco', 1: 'fecha_envio_foco_2', 2: 'fecha_envio_foco_3' };
+                        const focoCol = focoColMap[templateIdx] || 'fecha_envio_foco';
+                        
                         await supabase.from('contactos').update({
-                          fecha_envio_foco: now.toISOString().split('T')[0],
+                          [focoCol]: now.toISOString().split('T')[0],
                           ultimo_envio: now.toISOString(),
                           ultimo_evento_trazabilidad: now.toISOString(),
                           estado: "activo",
