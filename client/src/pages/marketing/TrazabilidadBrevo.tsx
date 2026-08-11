@@ -321,12 +321,11 @@ export default function TrazabilidadBrevo() {
 
     const currentCuentas = allCuentas;
 
-    // 1.2 Obtener base de contactos (Prospección, Nutrición y Marketing)
+    // 1.2 Obtener base de contactos (Prospección, Nutrición y Marketing - activos e inactivos)
     const { data: contactsData, error } = await supabase
       .from("contactos")
       .select("*")
       .in("etapa", ["prospeccion", "marketing"])
-      .eq("estado", "activo")
       .not("correo", "is", null)
       .neq("correo", "")
       .order("nombre", { ascending: true });
