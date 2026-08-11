@@ -350,15 +350,19 @@ export default function CuentasPage() {
         }
       }
 
+      const updatePayload: Record<string, any> = {
+        estado: selectedContactoDraft.estado
+      };
+
       if (latestDateObj) {
-        await supabase.from('contactos').update({
-          ultimo_envio: latestDateObj.toISOString(),
-          ultimo_evento_trazabilidad: latestDateObj.toISOString()
-        }).eq('id', selectedContactoDraft.id);
+        updatePayload.ultimo_envio = latestDateObj.toISOString();
+        updatePayload.ultimo_evento_trazabilidad = latestDateObj.toISOString();
       }
+      
+      await supabase.from('contactos').update(updatePayload).eq('id', selectedContactoDraft.id);
 
       await cargarCuentas();
-      toast.success("¡Fechas de envío guardadas con éxito!");
+      toast.success("¡Datos del contacto actualizados con éxito!");
     } catch (err: any) {
       console.error("Error saving template dates:", err);
       toast.error("Error al guardar las fechas de envío");
@@ -1604,7 +1608,7 @@ export default function CuentasPage() {
                 className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0"
               >
                 {guardandoFechas && <Loader2 className="h-3 w-3 animate-spin" />}
-                {guardandoFechas ? "GUARDANDO..." : "GUARDAR FECHAS"}
+                {guardandoFechas ? "ACTUALIZANDO..." : "ACTUALIZAR"}
               </button>
             </div>
 
@@ -1672,22 +1676,10 @@ export default function CuentasPage() {
                         </span>
                         <button
                           type="button"
-                          onClick={async () => {
+                          onClick={() => {
                             if (!selectedContactoDraft) return;
                             const newEstado = selectedContactoDraft.estado === 'activo' ? 'inactivo' : 'activo';
-                            try {
-                              const { error } = await supabase
-                                .from('contactos')
-                                .update({ estado: newEstado })
-                                .eq('id', selectedContactoDraft.id);
-                              if (error) throw error;
-                              
-                              setSelectedContactoDraft(prev => ({ ...prev, estado: newEstado }));
-                              toast.success(`Campaña ${newEstado === 'activo' ? 'activada' : 'pausada'} para ${selectedContactoDraft.nombre}`);
-                              cargarCuentas();
-                            } catch (err: any) {
-                              toast.error('Error al actualizar estado de campaña');
-                            }
+                            setSelectedContactoDraft(prev => prev ? { ...prev, estado: newEstado } : prev);
                           }}
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${selectedContactoDraft?.estado === 'activo'
                             ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
@@ -1891,17 +1883,15 @@ export default function CuentasPage() {
                         }
 
                         // 3. Marcar en base de datos que se envió una cortesía (para trazabilidad opcional)
-                        // Guardamos la hora exacta con precisión de milisegundos en ultimo_evento_trazabilidad
-                        // para que el píxel de rastreo pueda calcular los 120 segundos de gracia y evitar el composer de Zoho.
                         const now = new Date();
                         const timestamp = now.getTime();
-                        const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
                         
-                        setTemplateSendDates(prev => ({
+                        // Actualizar estado visual del modal inmediatamente
+                        setSelectedContactoDraft(prev => prev ? {
                           ...prev,
-                          [selectedTemplateId]: formattedDate
-                        }));
-
+                          estado: 'activo'
+                        } : prev);
+                        
                         await supabase.from('contactos').update({
                           ultimo_envio: now.toISOString(),
                           ultimo_evento_trazabilidad: now.toISOString(),
