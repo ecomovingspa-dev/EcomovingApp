@@ -1026,12 +1026,6 @@ export default function TrazabilidadBrevo() {
     let sentEvent = manualSends[template.id]?.sentEvent;
     let openEvent = manualSends[template.id]?.openEvent;
 
-    // If no manual send, map from the chronological automated list
-    if (!sentEvent && autoSends[idx]) {
-      sentEvent = autoSends[idx].sentEvent;
-      openEvent = autoSends[idx].openEvent;
-    }
-
     // Fallback: If sent but no open event mapped, check for any open event in history within the timeframe
     if (sentEvent && !openEvent) {
       const sentTime = new Date(sentEvent.created_at || sentEvent.fecha).getTime();
