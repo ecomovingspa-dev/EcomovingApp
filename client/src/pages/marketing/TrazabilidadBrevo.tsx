@@ -964,7 +964,7 @@ export default function TrazabilidadBrevo() {
     });
 
     // 2. Identify manual sends/opens and automated sends
-    const manualSends: Record<string, { sentEvent?: any; openEvent?: any }> = {};
+    const manualSends: Record<string, { sentEvent?: any; openEvents: any[] }> = {};
     const autoSends: { sentEvent: any; openEvent?: any; date: number }[] = [];
 
     Object.entries(eventsByMsg).forEach(([msgId, evs]) => {
@@ -972,7 +972,7 @@ export default function TrazabilidadBrevo() {
         const parts = msgId.split(":");
         const templateId = parts[1];
         if (templateId) {
-          if (!manualSends[templateId]) manualSends[templateId] = {};
+          if (!manualSends[templateId]) manualSends[templateId] = { openEvents: [] };
           const earliest = evs.reduce((prev, curr) => 
             new Date(prev.created_at || prev.fecha).getTime() < new Date(curr.created_at || curr.fecha).getTime() ? prev : curr
           );
@@ -982,11 +982,9 @@ export default function TrazabilidadBrevo() {
         const parts = msgId.split(":");
         if (parts.length >= 4) {
           const templateId = parts[2];
-          if (!manualSends[templateId]) manualSends[templateId] = {};
-          const earliest = evs.reduce((prev, curr) => 
-            new Date(prev.created_at || prev.fecha).getTime() < new Date(curr.created_at || curr.fecha).getTime() ? prev : curr
-          );
-          manualSends[templateId].openEvent = earliest;
+          if (!manualSends[templateId]) manualSends[templateId] = { openEvents: [] };
+          // Acumular TODOS los eventos de apertura para contar y obtener primera/última
+          evs.forEach(ev => manualSends[templateId].openEvents.push(ev));
         }
       } else {
         // Automated SMTP email
@@ -1007,13 +1005,12 @@ export default function TrazabilidadBrevo() {
     // 3. Resolve status for the current column/template
     // Check manual send first
     let sentEvent = manualSends[template.id]?.sentEvent;
-    let openEvent = manualSends[template.id]?.openEvent;
+    const allOpenEvents = manualSends[template.id]?.openEvents || [];
 
-    // Fallback: If sent but no open event mapped, check for any open event in history within the timeframe
-    if (sentEvent && !openEvent) {
+    // Fallback: If sent but no open events mapped, check for any open event in history within the timeframe
+    if (sentEvent && allOpenEvents.length === 0) {
       const sentTime = new Date(sentEvent.created_at || sentEvent.fecha).getTime();
       
-      // Determine the next send event (either manual or automated for the next stage)
       let nextSentTime = Infinity;
       const nextManualSent = nextTemplate ? manualSends[nextTemplate.id]?.sentEvent : null;
       if (nextManualSent) {
@@ -1022,18 +1019,27 @@ export default function TrazabilidadBrevo() {
         nextSentTime = autoSends[idx + 1].date;
       }
 
-      openEvent = (contacto.historial || []).find((h: any) => 
+      const fallbackOpen = (contacto.historial || []).find((h: any) => 
         ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(h.estado?.toLowerCase()) && 
         new Date(h.created_at || h.fecha).getTime() >= sentTime &&
         new Date(h.created_at || h.fecha).getTime() < nextSentTime
       );
+      if (fallbackOpen) allOpenEvents.push(fallbackOpen);
     }
 
-    if (openEvent) {
+    if (allOpenEvents.length > 0) {
+      // Ordenar cronológicamente para obtener primera y última apertura
+      const sorted = [...allOpenEvents].sort((a, b) => 
+        new Date(a.created_at || a.fecha).getTime() - new Date(b.created_at || b.fecha).getTime()
+      );
+      const firstOpen = sorted[0];
+      const lastOpen = sorted[sorted.length - 1];
       return { 
         status: 'opened', 
         sendDate: sentEvent ? (sentEvent.created_at || sentEvent.fecha) : null,
-        openDate: openEvent.created_at || openEvent.fecha
+        firstOpenDate: firstOpen.created_at || firstOpen.fecha,
+        lastOpenDate: lastOpen.created_at || lastOpen.fecha,
+        openCount: sorted.length
       };
     } else if (sentEvent) {
       return { 
@@ -1052,12 +1058,22 @@ export default function TrazabilidadBrevo() {
     };
 
     if (statusObj.status === 'opened') {
+      const count = statusObj.openCount || 1;
+      const isHot = count >= 3;
       return (
-        <div className="flex flex-col items-center justify-center text-[10px] gap-1">
-          <Eye className="h-4 w-4 text-purple-400" />
-          <span className="text-purple-300">Abierto</span>
+        <div className="flex flex-col items-center justify-center text-[10px] gap-0.5">
+          <div className="relative">
+            <Eye className={`h-4 w-4 ${isHot ? 'text-orange-400' : 'text-purple-400'}`} />
+            {count > 1 && (
+              <span className={`absolute -top-1.5 -right-3 text-[8px] font-black px-1 rounded-full ${isHot ? 'bg-orange-500 text-white' : 'bg-purple-500 text-white'}`}>
+                ×{count}
+              </span>
+            )}
+          </div>
+          <span className={isHot ? 'text-orange-300 font-bold' : 'text-purple-300'}>Abierto</span>
           <span className="text-gray-500 text-[8px]">Env: {formatDate(statusObj.sendDate)}</span>
-          <span className="text-gray-500 text-[8px]">Lec: {formatDate(statusObj.openDate)}</span>
+          <span className="text-gray-500 text-[8px]">1ª: {formatDate(statusObj.firstOpenDate)}</span>
+          <span className="text-gray-500 text-[8px]">Últ: {formatDate(statusObj.lastOpenDate)}</span>
         </div>
       );
     } else if (statusObj.status === 'sent') {
