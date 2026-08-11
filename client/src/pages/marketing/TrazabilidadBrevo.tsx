@@ -2078,6 +2078,13 @@ export default function TrazabilidadBrevo() {
                           mensaje_id: `manual_send:${selectedTemplateId}:${timestamp}`
                         });
                         
+                        // Actualizar estado visual del modal inmediatamente
+                        setSelectedContactoDraft(prev => prev ? {
+                          ...prev,
+                          estado: 'activo',
+                          [focoCol]: now.toISOString().split('T')[0]
+                        } : prev);
+                        
                         fetchContactos(calendarDays);
 
                         setIsZohoModalOpen(false);
