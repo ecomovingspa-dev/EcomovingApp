@@ -1308,12 +1308,13 @@ export default function TrazabilidadBrevo() {
                   })}
 
                   <td className="px-2 py-5 text-center border-l border-gray-900/10">
-                    <div className="flex justify-center items-center">
-                      <div className={`text-[9px] font-black px-2 py-1 rounded-md ${
-                        c.etapa === 'prospeccion' ? 'bg-amber-500 text-gray-900' : 'bg-blue-500 text-white'
-                      }`}>
-                        {c.etapa?.toUpperCase() || 'MARKETING'}
+                    <div className="flex flex-col justify-center items-center gap-1.5">
+                      <div className="text-[11px] font-black px-3 py-1.5 rounded-md bg-blue-500 text-white shadow-md uppercase">
+                        PROSPECCIÓN
                       </div>
+                      <span className="text-[11px] font-bold text-gray-300 bg-gray-800/50 px-2 py-0.5 rounded">
+                        {c.fecha_envio_foco_3 ? 'Completado' : c.fecha_envio_foco_2 ? 'Paso 3/3' : c.fecha_envio_foco ? 'Paso 2/3' : 'Paso 1/3'}
+                      </span>
                     </div>
                   </td>
 
