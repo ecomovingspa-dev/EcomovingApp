@@ -21,6 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { SEGMENTOS_MAESTROS } from "../../utils/constants";
 
@@ -1693,16 +1694,24 @@ export default function TrazabilidadBrevo() {
       {/* MODAL DE REDACCION ZOHO */}
       <Dialog open={isZohoModalOpen} onOpenChange={setIsZohoModalOpen}>
         <DialogContent className="max-w-6xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl rounded-2xl text-gray-900 dark:text-gray-100">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
-              <Mail className="h-5 w-5" /> Redacción e Inteligencia de Plantillas Zoho
-            </DialogTitle>
-            <DialogDescription className="text-gray-505">
-              Selecciona una plantilla para enviar a {selectedContactoDraft?.nombre}.
-            </DialogDescription>
-          </DialogHeader>
+          <Tabs defaultValue="prospeccion" className="w-full">
+            <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-800 pb-4">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
+                  <Mail className="h-5 w-5" /> Redacción e Inteligencia de Plantillas Zoho
+                </DialogTitle>
+                <DialogDescription className="text-gray-505">
+                  Selecciona una plantilla para enviar a {selectedContactoDraft?.nombre}.
+                </DialogDescription>
+              </DialogHeader>
+              <TabsList className="bg-gray-100 dark:bg-gray-800">
+                <TabsTrigger value="prospeccion" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Prospección</TabsTrigger>
+                <TabsTrigger value="clientes" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Clientes</TabsTrigger>
+              </TabsList>
+            </div>
 
-          <div className="grid grid-cols-12 gap-6 my-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+            <TabsContent value="prospeccion" className="mt-0">
+              <div className="grid grid-cols-12 gap-6 mt-2">
             
             {/* Columna Izquierda: Plantillas */}
             <div className="col-span-12 md:col-span-3 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
@@ -2126,7 +2135,120 @@ export default function TrazabilidadBrevo() {
                 </button>
               </>
             )}
-          </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="clientes" className="mt-0">
+              <div className="grid grid-cols-12 gap-6 mt-2">
+                
+                {/* Columna Izquierda: Plantillas de Cliente */}
+                <div className="col-span-12 md:col-span-3 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
+                  <div className="flex flex-col space-y-3 overflow-hidden h-full">
+                    <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Plantillas Clientes
+                    </span>
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-800/20">
+                      <Mail className="h-8 w-8 text-gray-400 mb-2 opacity-50" />
+                      <p className="text-xs text-gray-500 mb-4">Plantillas de uso frecuente para clientes.</p>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full bg-white dark:bg-gray-900 border-indigo-200 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                        onClick={() => toast.info("Próximamente: Editor de plantillas para clientes")}
+                      >
+                        <Plus className="h-4 w-4 mr-1" /> Crear Nueva Plantilla
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Columna Central: Fecha de Envío Referencial */}
+                <div className="col-span-12 md:col-span-2 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
+                  <div className="flex flex-col space-y-4">
+                    <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Fecha Envío (Ref)
+                    </span>
+                    <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                      <p className="mb-2"><strong>Nota:</strong> Este envío no actualiza el Sentinel.</p>
+                      <p>Registra la fecha aquí solo como referencia interna antes de enviar.</p>
+                    </div>
+                    <div className="relative mt-2">
+                      <Input 
+                        type="date"
+                        className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-800 h-12 rounded-xl text-sm font-medium w-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Columna Derecha: Redacción Manual */}
+                <div className="col-span-12 md:col-span-7 flex flex-col justify-between h-[450px]">
+                  <div className="flex flex-col space-y-4 h-full">
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1 space-y-1">
+                        <Label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase">Destinatario</Label>
+                        <Input 
+                          value={selectedContactoDraft?.correo || ""} 
+                          readOnly 
+                          className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white font-medium cursor-default"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase">Asunto del correo</Label>
+                      <Input 
+                        placeholder="Redacta el asunto..." 
+                        className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-800"
+                        id="cliente-asunto"
+                      />
+                    </div>
+
+                    <div className="space-y-1 flex-1 flex flex-col">
+                      <Label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase">Mensaje (Cuerpo)</Label>
+                      <Textarea 
+                        placeholder="Escribe el mensaje para el cliente aquí..." 
+                        className="flex-1 resize-none bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-800 font-mono text-sm leading-relaxed p-4 custom-scrollbar"
+                        id="cliente-cuerpo"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <button 
+                      onClick={() => setIsZohoModalOpen(false)}
+                      className="px-5 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-bold transition-all text-xs"
+                    >
+                      DESCARTAR
+                    </button>
+                    <button 
+                      onClick={async () => {
+                        const asunto = (document.getElementById('cliente-asunto') as HTMLInputElement)?.value || "";
+                        const cuerpo = (document.getElementById('cliente-cuerpo') as HTMLTextAreaElement)?.value || "";
+                        
+                        if (!cuerpo) {
+                          toast.error("El cuerpo del mensaje está vacío");
+                          return;
+                        }
+
+                        try {
+                          await navigator.clipboard.writeText(cuerpo);
+                          toast.success("¡Cuerpo copiado al portapapeles!");
+                        } catch (err) {
+                          console.error("Error al copiar:", err);
+                          toast.error("Error al copiar el cuerpo");
+                        }
+                      }}
+                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer"
+                    >
+                      COPIAR CUERPO
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </div>
