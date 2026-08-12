@@ -225,7 +225,8 @@ export default function CuentasPage() {
           nombre: `Plantilla Cliente ${nextOrden}`,
           asunto_template: "Nuevo Asunto",
           mensaje_intro: "Hola {nombre},\n\nTe envío el render para {empresa}:\n\n{render}",
-          mensaje_cierre: "Saludos"
+          mensaje_cierre: "Saludos",
+          activo: true
         })
         .select()
         .single();
@@ -2076,10 +2077,6 @@ export default function CuentasPage() {
                     <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Fecha Envío (Ref)
                     </span>
-                    <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
-                      <p className="mb-2"><strong>Nota:</strong> Este envío no actualiza el Sentinel.</p>
-                      <p>Registra la fecha aquí solo como referencia interna antes de enviar.</p>
-                    </div>
                     <div className="relative mt-2">
                       <Input 
                         type="date"
