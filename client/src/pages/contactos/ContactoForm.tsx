@@ -32,11 +32,11 @@ import { cn } from "@/lib/utils";
 
 export default function ContactoForm() {
   const navigate = useNavigate();
+  const { id: contactoId } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const preselectedCuentaId = searchParams.get("cuentaId");
   const returnTo = searchParams.get("returnTo") || "/contactos";
-  // esEdicion removed as editing is now inline in the table
-  const esEdicion = false;
+  const esEdicion = Boolean(contactoId);
 
   const [guardando, setGuardando] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -73,7 +73,26 @@ export default function ContactoForm() {
 
   useEffect(() => {
     cargarCuentas();
-  }, []);
+    if (contactoId) cargarContacto(contactoId);
+  }, [contactoId]);
+
+  const cargarContacto = async (id: string) => {
+    setCargando(true);
+    try {
+      const { data, error } = await supabase
+        .from("contactos")
+        .select("*")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      if (data) setContacto(data);
+    } catch (err) {
+      console.error("Error al cargar contacto:", err);
+      setMensaje("❌ Error al cargar el contacto");
+    } finally {
+      setCargando(false);
+    }
+  };
 
   const cargarCuentas = async () => {
     try {
@@ -134,16 +153,24 @@ export default function ContactoForm() {
       };
       delete (payload as any).vendedores;
 
-      const { error } = await supabase.from("contactos").insert([payload]);
+      if (esEdicion && contactoId) {
+        const { error } = await supabase
+          .from("contactos")
+          .update(payload)
+          .eq("id", contactoId);
+        if (error) throw error;
+        setMensaje("✅ Contacto actualizado");
+      } else {
+        const { error } = await supabase.from("contactos").insert([payload]);
+        if (error) throw error;
+        setMensaje("✅ Contacto creado");
 
-      if (error) throw error;
-      setMensaje("✅ Contacto creado");
-
-      // Regla: Si tiene contactos -> Activo
-      await supabase
-        .from("cuentas")
-        .update({ estado: "activo" })
-        .eq("id", (contacto as any).cuenta_id);
+        // Regla: Si tiene contactos -> Activo
+        await supabase
+          .from("cuentas")
+          .update({ estado: "activo" })
+          .eq("id", (contacto as any).cuenta_id);
+      }
 
       setTimeout(() => navigate(returnTo), 1500);
     } catch (error: any) {

@@ -32,6 +32,7 @@ const SEGMENTOS_POR_DEFECTO = [
 
 import {
   Trash2,
+  Pencil,
   UserPlus,
   Users,
   Search,
@@ -1006,6 +1007,15 @@ export default function ContactosPage() {
                             <GraduationCap className="h-3 w-3" />
                           </Button>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-blue-500 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                          title="Editar contacto"
+                          onClick={() => navigate(`/contactos/editar/${contacto.id}`)}
+                        >
+                          <Pencil className="h-3 w-3" />
+                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"

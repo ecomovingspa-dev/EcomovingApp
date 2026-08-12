@@ -54,6 +54,7 @@ export default function App() {
             {/* Contactos */}
             <Route path="contactos" element={<ContactosPage />} />
             <Route path="contactos/nuevo" element={<ContactoForm />} />
+            <Route path="contactos/editar/:id" element={<ContactoForm />} />
             {/* Cotizaciones */}
             <Route path="cotizaciones" element={<CotizacionesPage />} />
             <Route path="cotizaciones/nueva" element={<CotizacionForm />} />
