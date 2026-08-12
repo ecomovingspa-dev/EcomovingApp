@@ -90,6 +90,7 @@ export default function TrazabilidadBrevo() {
 
   // --- Estados de Plantillas ---
   const [templates, setTemplates] = useState<any[]>([]);
+  const [templatesClientes, setTemplatesClientes] = useState<any[]>([]);
   const [isZohoModalOpen, setIsZohoModalOpen] = useState(false);
   const [selectedContactoDraft, setSelectedContactoDraft] = useState<any>(null);
   const [selectedCuentaDraft, setSelectedCuentaDraft] = useState<any>(null);
@@ -169,6 +170,25 @@ export default function TrazabilidadBrevo() {
           body: `${etapa.mensaje_intro || ""}\n\n${etapa.mensaje_cierre || ""}`.trim()
         }));
         setTemplates(prospectionTemplates);
+      }
+
+      // Fetch configuracion_clientes
+      const { data: dbClientes, error: dbClientesErr } = await supabase
+        .from("configuracion_clientes")
+        .select("*")
+        .eq("activo", true)
+        .order("orden", { ascending: true });
+
+      if (!dbClientesErr && dbClientes && dbClientes.length > 0) {
+        const clientesTemplates = dbClientes.map(etapa => ({
+          id: `builtin-clientes-${etapa.orden}`,
+          dbId: etapa.id,
+          orden: etapa.orden,
+          name: `${etapa.orden}. ${etapa.nombre}`,
+          subject: etapa.asunto_template || "",
+          body: `${etapa.mensaje_intro || ""}\n\n${etapa.mensaje_cierre || ""}`.trim()
+        }));
+        setTemplatesClientes(clientesTemplates);
       }
     } catch (err) {
       console.error("Error fetching templates:", err);
@@ -722,7 +742,13 @@ export default function TrazabilidadBrevo() {
   };
 
   const handleSaveTemplateChanges = async () => {
-    const tmpl = templates.find(t => t.id === selectedTemplateId);
+    let isCliente = false;
+    let tmpl = templates.find(t => t.id === selectedTemplateId);
+    if (!tmpl) {
+      tmpl = templatesClientes.find(t => t.id === selectedTemplateId);
+      isCliente = true;
+    }
+    
     if (!tmpl || !tmpl.dbId) {
       toast.error("No se encontró el ID de base de datos de la plantilla");
       return;
@@ -730,8 +756,9 @@ export default function TrazabilidadBrevo() {
     
     setGuardandoPlantilla(true);
     try {
+      const tableName = isCliente ? "configuracion_clientes" : "configuracion_prospeccion";
       const { error } = await supabase
-        .from("configuracion_prospeccion")
+        .from(tableName)
         .update({
           asunto_template: tempEditSubject,
           mensaje_intro: tempEditBody,
@@ -763,6 +790,38 @@ export default function TrazabilidadBrevo() {
       toast.error("Error al actualizar la plantilla: " + err.message);
     } finally {
       setGuardandoPlantilla(false);
+    }
+  };
+
+  const handleCreateTemplateCliente = async () => {
+    try {
+      const nextOrden = templatesClientes.length + 1;
+      const { data, error } = await supabase
+        .from("configuracion_clientes")
+        .insert({
+          orden: nextOrden,
+          nombre: `Plantilla Cliente ${nextOrden}`,
+          asunto_template: "Nuevo Asunto",
+          mensaje_intro: "Hola {nombre},\n\nTe envío el render para {empresa}:\n\n{render}",
+          mensaje_cierre: "Saludos"
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      
+      toast.success("Nueva plantilla creada");
+      await loadTemplates();
+      
+      // Auto select the new template
+      const newTemplateId = `builtin-clientes-${nextOrden}`;
+      setSelectedTemplateId(newTemplateId);
+      setIsEditingTemplateMode(true);
+      setTempEditSubject(data.asunto_template);
+      setTempEditBody(`${data.mensaje_intro}\n\n${data.mensaje_cierre}`);
+    } catch (err: any) {
+      console.error("Error creating template:", err);
+      toast.error("Error al crear plantilla: " + err.message);
     }
   };
 
@@ -2147,18 +2206,54 @@ export default function TrazabilidadBrevo() {
                     <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Plantillas Clientes
                     </span>
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-4 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-800/20">
-                      <Mail className="h-8 w-8 text-gray-400 mb-2 opacity-50" />
-                      <p className="text-xs text-gray-500 mb-4">Plantillas de uso frecuente para clientes.</p>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="w-full bg-white dark:bg-gray-900 border-indigo-200 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
-                        onClick={() => toast.info("Próximamente: Editor de plantillas para clientes")}
-                      >
-                        <Plus className="h-4 w-4 mr-1" /> Crear Nueva Plantilla
-                      </Button>
+                    
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[350px]">
+                      {templatesClientes.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center text-center p-4 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-800/20 h-full">
+                          <Mail className="h-8 w-8 text-gray-400 mb-2 opacity-50" />
+                          <p className="text-xs text-gray-500">Sin plantillas.</p>
+                        </div>
+                      ) : (
+                        templatesClientes.map(t => (
+                          <div 
+                            key={t.id}
+                            onClick={() => {
+                              setIsEditingTemplateMode(false);
+                              handleSelectTemplate(t.id);
+                            }}
+                            className={cn(
+                              "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 h-12",
+                              selectedTemplateId === t.id
+                                ? "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-sm"
+                                : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80 hover:text-gray-900 dark:hover:text-white"
+                            )}
+                          >
+                            <span className="text-xs font-bold truncate flex-1">{t.name}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedTemplateId(t.id);
+                                startEditingTemplate(t);
+                              }}
+                              className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-all shrink-0"
+                              title="Editar estructura de plantilla"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))
+                      )}
                     </div>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full bg-white dark:bg-gray-900 border-indigo-200 dark:border-indigo-900/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 shrink-0 mt-2"
+                      onClick={handleCreateTemplateCliente}
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Crear Nueva Plantilla
+                    </Button>
                   </div>
                 </div>
 
@@ -2183,36 +2278,124 @@ export default function TrazabilidadBrevo() {
 
                 {/* Columna Derecha: Redacción Manual */}
                 <div className="col-span-12 md:col-span-7 flex flex-col justify-between h-[450px]">
-                  <div className="flex flex-col space-y-4 h-full">
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase">Destinatario</Label>
-                        <Input 
-                          value={selectedContactoDraft?.correo || ""} 
-                          readOnly 
-                          className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white font-medium cursor-default"
+                  {isEditingTemplateMode ? (
+                    <div className="space-y-4 flex-grow flex flex-col">
+                      <div className="flex flex-col space-y-1">
+                        <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Editar Asunto Base</label>
+                        <input 
+                          type="text" 
+                          value={tempEditSubject} 
+                          onChange={(e) => setTempEditSubject(e.target.value)}
+                          className="w-full bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/50 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+                      <div className="flex-1 flex flex-col space-y-1 min-h-0">
+                        <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Editar Cuerpo Base</label>
+                        <textarea 
+                          value={tempEditBody} 
+                          onChange={(e) => setTempEditBody(e.target.value)}
+                          className="flex-1 bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/50 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none resize-none min-h-0 font-sans"
+                        />
+                      </div>
+                      
+                      <div className="p-2.5 bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800 rounded-xl text-[10px] text-gray-500 space-y-1 font-medium">
+                        <div className="font-bold text-gray-700 dark:text-gray-400 uppercase text-[8px] tracking-wider">Variables Admitidas:</div>
+                        <div><code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{nombre}"}</code>: Nombre completo | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{nombre_corto}"}</code> o <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{contacto}"}</code>: Primer nombre.</div>
+                        <div><code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{empresa}"}</code>: Nombre completo | <code className="text-indigo-600 dark:text-indigo-400 font-mono font-bold">{"{empresa_corto}"}</code>: Nombre comercial.</div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4 flex-grow flex flex-col overflow-hidden">
+                      <div className="flex items-center gap-4">
+                        <div className="flex-1 space-y-1">
+                          <Label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase">Destinatario</Label>
+                          <div className="flex gap-2">
+                            <Input 
+                              value={draftData?.email || ""} 
+                              readOnly 
+                              className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white font-medium cursor-default"
+                            />
+                            <button
+                              onClick={async () => {
+                                if (draftData?.email) {
+                                  await navigator.clipboard.writeText(draftData.email);
+                                  toast.success("Correo copiado");
+                                }
+                              }}
+                              className="px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-750 text-xs font-bold rounded-lg transition-all whitespace-nowrap"
+                            >
+                              Copiar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase">Asunto del correo</Label>
+                        <div className="flex gap-2">
+                          <Input 
+                            value={draftData?.subject || ""} 
+                            onChange={(e) => setDraftData(draftData ? { ...draftData, subject: e.target.value } : null)}
+                            placeholder="Redacta el asunto..." 
+                            className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-800"
+                            id="cliente-asunto"
+                          />
+                          <button
+                            onClick={async () => {
+                              if (draftData?.subject) {
+                                await navigator.clipboard.writeText(draftData.subject);
+                                toast.success("Asunto copiado");
+                              }
+                            }}
+                            className="px-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-750 text-xs font-bold rounded-lg transition-all"
+                          >
+                            Copiar
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Widget para Subir Render Personalizado desde Computador (Base64) */}
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-150 dark:border-gray-800 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-2.5">
+                          {imageUrl ? (
+                            <img src={imageUrl} className="h-10 w-10 object-cover rounded-lg border border-gray-250 dark:border-gray-700 shadow-sm" alt="Preview render" />
+                          ) : (
+                            <div className="h-10 w-10 bg-gray-250 dark:bg-gray-800 rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-dashed border-gray-300 dark:border-gray-700">
+                              S/R
+                            </div>
+                          )}
+                          <div>
+                            <div className="text-xs font-bold text-gray-800 dark:text-gray-200">Render Personalizado</div>
+                            <div className="text-[10px] text-gray-500">Se guardará en la ficha del contacto y se insertará en el correo</div>
+                          </div>
+                        </div>
+                        <input 
+                          type="file" 
+                          id="render-image-upload-cliente" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={handleImageUpload}
+                        />
+                        <label 
+                          htmlFor="render-image-upload-cliente" 
+                          className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold cursor-pointer transition-all border border-indigo-200 dark:border-indigo-900/50 flex items-center gap-1 shadow-sm"
+                        >
+                          {guardandoImagen ? "Procesando..." : (imageUrl ? "Reemplazar Render" : "Subir Render")}
+                        </label>
+                      </div>
+
+                      <div className="space-y-1 flex-1 flex flex-col min-h-0">
+                        <Label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase">Mensaje (Cuerpo)</Label>
+                        <Textarea 
+                          value={draftData?.body || ""}
+                          onChange={(e) => setDraftData(draftData ? { ...draftData, body: e.target.value } : null)}
+                          placeholder="Escribe el mensaje para el cliente aquí..." 
+                          className="flex-1 resize-none bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-800 font-mono text-sm leading-relaxed p-4 custom-scrollbar min-h-0"
+                          id="cliente-cuerpo"
                         />
                       </div>
                     </div>
-                    
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase">Asunto del correo</Label>
-                      <Input 
-                        placeholder="Redacta el asunto..." 
-                        className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-800"
-                        id="cliente-asunto"
-                      />
-                    </div>
-
-                    <div className="space-y-1 flex-1 flex flex-col">
-                      <Label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase">Mensaje (Cuerpo)</Label>
-                      <Textarea 
-                        placeholder="Escribe el mensaje para el cliente aquí..." 
-                        className="flex-1 resize-none bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-800 font-mono text-sm leading-relaxed p-4 custom-scrollbar"
-                        id="cliente-cuerpo"
-                      />
-                    </div>
-                  </div>
+                  )}
 
                   <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
                     <button 
@@ -2221,28 +2404,38 @@ export default function TrazabilidadBrevo() {
                     >
                       DESCARTAR
                     </button>
-                    <button 
-                      onClick={async () => {
-                        const asunto = (document.getElementById('cliente-asunto') as HTMLInputElement)?.value || "";
-                        const cuerpo = (document.getElementById('cliente-cuerpo') as HTMLTextAreaElement)?.value || "";
-                        
-                        if (!cuerpo) {
-                          toast.error("El cuerpo del mensaje está vacío");
-                          return;
-                        }
+                    {isEditingTemplateMode ? (
+                      <button 
+                        onClick={handleSaveTemplateChanges}
+                        disabled={guardandoPlantilla}
+                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer flex items-center gap-2"
+                      >
+                        {guardandoPlantilla ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        GUARDAR PLANTILLA
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={async () => {
+                          const cuerpo = draftData?.body || "";
+                          
+                          if (!cuerpo) {
+                            toast.error("El cuerpo del mensaje está vacío");
+                            return;
+                          }
 
-                        try {
-                          await navigator.clipboard.writeText(cuerpo);
-                          toast.success("¡Cuerpo copiado al portapapeles!");
-                        } catch (err) {
-                          console.error("Error al copiar:", err);
-                          toast.error("Error al copiar el cuerpo");
-                        }
-                      }}
-                      className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer"
-                    >
-                      COPIAR CUERPO
-                    </button>
+                          try {
+                            await navigator.clipboard.writeText(cuerpo);
+                            toast.success("¡Cuerpo copiado al portapapeles!");
+                          } catch (err) {
+                            console.error("Error al copiar:", err);
+                            toast.error("Error al copiar el cuerpo");
+                          }
+                        }}
+                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer"
+                      >
+                        COPIAR CUERPO
+                      </button>
+                    )}
                   </div>
                 </div>
 
