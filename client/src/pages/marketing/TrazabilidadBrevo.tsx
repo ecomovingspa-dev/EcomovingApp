@@ -1063,6 +1063,35 @@ export default function TrazabilidadBrevo() {
     return { status: 'none' };
   };
 
+  // Calcula días hábiles (lunes-viernes) transcurridos desde una fecha hasta hoy
+  const calcularDiasHabiles = (desde: string, hasta: Date): number => {
+    const start = new Date(desde);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(hasta);
+    end.setHours(0, 0, 0, 0);
+    let count = 0;
+    const cur = new Date(start);
+    cur.setDate(cur.getDate() + 1); // Contar desde el día siguiente al envío
+    while (cur <= end) {
+      const dow = cur.getDay();
+      if (dow !== 0 && dow !== 6) count++;
+      cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+  };
+
+  // Determina si el banderín rojo debe mostrarse en la columna idx (0=P1, 1=P2, 2=P3)
+  const getBanderinStatus = (contacto: any, idx: number): { mostrar: boolean; dias: number } => {
+    const fechas = [contacto.fecha_envio_foco, contacto.fecha_envio_foco_2, contacto.fecha_envio_foco_3];
+    const fechaAnterior = idx > 0 ? fechas[idx - 1] : null;
+    const fechaActual = fechas[idx];
+    if (idx === 0) return { mostrar: false, dias: 0 };
+    if (fechaActual) return { mostrar: false, dias: 0 };
+    if (!fechaAnterior) return { mostrar: false, dias: 0 };
+    const dias = calcularDiasHabiles(fechaAnterior, new Date());
+    return { mostrar: dias >= 3, dias };
+  };
+
   const renderTemplateCell = (statusObj: any) => {
     const formatDate = (dateStr: string) => {
       if (!dateStr) return "";
@@ -1259,11 +1288,24 @@ export default function TrazabilidadBrevo() {
                     </div>
                   </td>
 
-                  {templates.slice(0, 3).map((t: any, idx: number, arr: any[]) => (
-                    <td key={t.id} className="px-1 py-5 text-center border-l border-gray-900/10">
-                      {renderTemplateCell(getTemplateStatus(c, t, arr[idx + 1], idx))}
-                    </td>
-                  ))}
+                  {templates.slice(0, 3).map((t: any, idx: number, arr: any[]) => {
+                    const banderin = getBanderinStatus(c, idx);
+                    return (
+                      <td key={t.id} className="px-1 py-5 text-center border-l border-gray-900/10 relative">
+                        {banderin.mostrar && (
+                          <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap">
+                            <div className="flex items-center gap-1 bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-red-500/40 animate-pulse">
+                              <span>🚩</span>
+                              <span>+{banderin.dias}d · ENVIAR P{idx + 1}</span>
+                            </div>
+                          </div>
+                        )}
+                        <div className={banderin.mostrar ? "mt-4" : ""}>
+                          {renderTemplateCell(getTemplateStatus(c, t, arr[idx + 1], idx))}
+                        </div>
+                      </td>
+                    );
+                  })}
 
                   <td className="px-2 py-5 text-center border-l border-gray-900/10">
                     <div className="flex justify-center items-center">
