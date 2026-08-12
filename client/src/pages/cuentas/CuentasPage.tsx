@@ -7,6 +7,10 @@ import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCc
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { SEGMENTOS_MAESTROS } from "../../utils/constants";
 import { useVendedores } from "../../hooks/useVendedores";
 import {
