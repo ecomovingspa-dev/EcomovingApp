@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles, Edit2, Save, Check, Users, Compass, UserPlus, Mail } from "lucide-react";
+import { Trash2, CheckCircle2, AlertCircle, Loader2, Building2, Search, RotateCcw, X, Plus, Sparkles, Edit2, Save, Check, Users, Compass, UserPlus, Mail, Pencil } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { SEGMENTOS_MAESTROS } from "../../utils/constants";
@@ -1064,16 +1064,26 @@ export default function CuentasPage() {
                                         </p>
                                       )}
                                     </div>
-                                    {contact.correo && (
+                                    <div className="flex items-center gap-1 shrink-0">
                                       <button
                                         type="button"
-                                        onClick={() => abrirModalZoho(contact, cuenta)}
-                                        className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 cursor-pointer transition-all hover:scale-105 shrink-0"
-                                        title="Preparar correo de Zoho"
+                                        onClick={() => navigate(`/contactos/editar/${contact.id}`)}
+                                        className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-950/80 text-blue-500 dark:text-blue-400 cursor-pointer transition-all hover:scale-105"
+                                        title="Editar contacto"
                                       >
-                                        <Mail className="h-4 w-4" />
+                                        <Pencil className="h-3.5 w-3.5" />
                                       </button>
-                                    )}
+                                      {contact.correo && (
+                                        <button
+                                          type="button"
+                                          onClick={() => abrirModalZoho(contact, cuenta)}
+                                          className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-950/80 text-indigo-600 dark:text-indigo-400 cursor-pointer transition-all hover:scale-105"
+                                          title="Preparar correo de Zoho"
+                                        >
+                                          <Mail className="h-4 w-4" />
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               ))}
