@@ -325,7 +325,7 @@ export default function CuentasPage() {
     setSelectedCuentaDraft(cuenta);
     setIsZohoModalOpen(true);
     setIsEditingTemplateMode(false);
-    setImageUrl(contactoPpal.imagen || "");
+    setImageUrl(contacto.imagen || "");
     setImageUrlCliente("");
     
     // Clear and load send dates for this contact from trazabilidad_correos
