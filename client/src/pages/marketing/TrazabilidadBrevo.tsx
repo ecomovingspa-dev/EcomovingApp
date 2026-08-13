@@ -103,7 +103,9 @@ export default function TrazabilidadBrevo() {
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
   const [guardandoFechas, setGuardandoFechas] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
+  const [imageUrlCliente, setImageUrlCliente] = useState("");
   const [guardandoImagen, setGuardandoImagen] = useState(false);
+  const [guardandoImagenCliente, setGuardandoImagenCliente] = useState(false);
 
   const cleanCompanyShortName = (companyName: string): string => {
     if (!companyName) return "";
@@ -868,12 +870,35 @@ export default function TrazabilidadBrevo() {
     }
   };
 
+  const handleImageUploadCliente = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setGuardandoImagenCliente(true);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setImageUrlCliente(base64String);
+        toast.success("¡Render cargado en la pestaña Clientes!");
+        setGuardandoImagenCliente(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (err: any) {
+      console.error("Error reading file:", err);
+      toast.error("Error al leer el archivo");
+      setGuardandoImagenCliente(false);
+    }
+  };
+
+
   const abrirModalZoho = (contacto: any, cuenta: any) => {
     setSelectedContactoDraft(contacto);
     setSelectedCuentaDraft(cuenta);
     setIsZohoModalOpen(true);
     setIsEditingTemplateMode(false);
     setImageUrl(contacto.imagen || "");
+    setImageUrlCliente("");
     
     // Cargar fechas desde las columnas fecha_envio_foco, fecha_envio_foco_2, fecha_envio_foco_3
     setTemplateSendDates({});
@@ -2354,8 +2379,8 @@ export default function TrazabilidadBrevo() {
                       {/* Widget para Subir Render Personalizado desde Computador (Base64) */}
                       <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-150 dark:border-gray-800 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-2.5">
-                          {imageUrl ? (
-                            <img src={imageUrl} className="h-10 w-10 object-cover rounded-lg border border-gray-250 dark:border-gray-700 shadow-sm" alt="Preview render" />
+                          {imageUrlCliente ? (
+                            <img src={imageUrlCliente} className="h-10 w-10 object-cover rounded-lg border border-gray-250 dark:border-gray-700 shadow-sm" alt="Preview render cliente" />
                           ) : (
                             <div className="h-10 w-10 bg-gray-250 dark:bg-gray-800 rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-dashed border-gray-300 dark:border-gray-700">
                               S/R
@@ -2363,7 +2388,7 @@ export default function TrazabilidadBrevo() {
                           )}
                           <div>
                             <div className="text-xs font-bold text-gray-800 dark:text-gray-200">Render Personalizado</div>
-                            <div className="text-[10px] text-gray-500">Se guardará en la ficha del contacto y se insertará en el correo</div>
+                            <div className="text-[10px] text-gray-500">Se usará en esta pestaña sin sobreescribir Prospección</div>
                           </div>
                         </div>
                         <input 
@@ -2371,13 +2396,13 @@ export default function TrazabilidadBrevo() {
                           id="render-image-upload-cliente" 
                           accept="image/*" 
                           className="hidden" 
-                          onChange={handleImageUpload}
+                          onChange={handleImageUploadCliente}
                         />
                         <label 
                           htmlFor="render-image-upload-cliente" 
                           className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold cursor-pointer transition-all border border-indigo-200 dark:border-indigo-900/50 flex items-center gap-1 shadow-sm"
                         >
-                          {guardandoImagen ? "Procesando..." : (imageUrl ? "Reemplazar Render" : "Subir Render")}
+                          {guardandoImagenCliente ? "Procesando..." : (imageUrlCliente ? "Reemplazar Render" : "Subir Render")}
                         </label>
                       </div>
 
