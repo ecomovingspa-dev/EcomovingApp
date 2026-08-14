@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Mail, Edit2, Loader2, CheckCircle2, Image as ImageIcon, Send, Pencil, Plus, Save } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { toast } from "react-hot-toast";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface ZohoMailModalProps {
@@ -633,10 +633,16 @@ export function ZohoMailModal({
                         </span>
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={async () => {
                             if (!selectedContactoDraft) return;
                             const newEstado = selectedContactoDraft.estado === 'activo' ? 'inactivo' : 'activo';
-                            setSelectedContactoDraft(prev => prev ? { ...prev, estado: newEstado } : prev);
+                            const { error } = await supabase.from('contactos').update({ estado: newEstado }).eq('id', selectedContactoDraft.id);
+                            if (error) {
+                              toast.error('Error al cambiar el estado');
+                            } else {
+                              toast.success('Estado actualizado');
+                              if (onRefresh) await onRefresh();
+                            }
                           }}
                           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${selectedContactoDraft?.estado === 'activo'
                             ? "bg-green-500 dark:bg-green-600 shadow-sm shadow-green-500/50"
@@ -862,12 +868,7 @@ export function ZohoMailModal({
                           mensaje_id: `manual_send:${selectedTemplateId}:${timestamp}`
                         });
                         
-                        // Actualizar estado visual del modal inmediatamente
-                        setSelectedContactoDraft((prev: any) => prev ? {
-                          ...prev,
-                          estado: 'activo',
-                          [focoCol]: now.toISOString().split('T')[0]
-                        } : prev);
+                        
                         
                         onRefresh();
 

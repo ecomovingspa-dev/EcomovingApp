@@ -792,7 +792,7 @@ export default function OportunidadesPage() {
                         onActualizarVendedor={actualizarVendedor}
                         onToggleEstado={toggleEstadoDescartada}
                         onEliminar={eliminarOportunidad}
-                        onEditar={(id) => navigate(`/oportunidades/${id}`)}
+                        onEditar={(id: string) => navigate(`/oportunidades/${id}`)}
                         formatearFecha={formatearFecha}
                         formatearMonto={formatearMonto}
                         getEstadoColor={getEstadoColor}

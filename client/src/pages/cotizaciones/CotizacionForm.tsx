@@ -15,8 +15,8 @@ interface CotizacionFormProps {
   id?: string;
   cuentaId?: string;
   contactoId?: string;
-  onClose: () => void;
-  onSave: () => void;
+  onClose?: () => void;
+  onSave?: () => void;
 }
 
 const CATEGORIAS = [

@@ -781,7 +781,7 @@ export default function ContactosPage() {
                                 title={contacto.cuentas?.cliente || "Sin empresa asignada"}
                               >
                                 {contacto.cuentas?.cliente || "Sin empresa asignada"}
-                                {contacto.cuentas?.cuenta_foco && contacto.cuentas?.etapa_prospeccion === 'Verificado' && (
+                                {(contacto.cuentas as any)?.cuenta_foco && (contacto.cuentas as any)?.etapa_prospeccion === 'Verificado' && (
                                   <span className="text-yellow-500 text-[10px] ml-0.5 font-bold animate-pulse" title="Cuenta Foco Verificada">⭐</span>
                                 )}
                               </button>
