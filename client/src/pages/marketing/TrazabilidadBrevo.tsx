@@ -1337,94 +1337,146 @@ export default function TrazabilidadBrevo() {
       </div>
 
       {/* The Matrix */}
-      <div className="bg-gray-950 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left table-fixed">
-            <thead>
-              <tr className="bg-gray-900/80 border-b border-gray-800 text-[9px] font-black tracking-widest text-gray-500 uppercase">
-                <th className="px-4 py-4 w-[240px]">
-                  CONTACTO
-                </th>
-                {templates.slice(0, 3).map((t: any, idx: number) => (
-                  <th key={t.id} className="px-1 py-4 text-center border-l border-gray-800/50">
-                    {idx + 1}° Correo<br/><span className="text-[7px] text-gray-400 capitalize">{t.name.split('. ')[1] || t.name}</span>
-                  </th>
-                ))}
-                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[110px] text-gray-500">ESTADO SECUENCIA</th>
-                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[110px] text-gray-500">ACCIONES</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-900">
-              {sortedAndFiltered.map((c) => (
-                <tr key={c.id} className="group hover:bg-white/5 transition-colors">
-                  <td className="px-4 py-5">
-                    <div className="flex flex-col gap-1.5">
-                      <div className="text-sm font-bold text-white uppercase truncate max-w-[200px]">
-                        {c.nombre?.replace('Contacto Principal - ', '') || 'SIN NOMBRE'}
-                      </div>
-                      <div className="text-[10px] text-gray-400 truncate max-w-[180px] font-medium flex items-center gap-1">
-                        <Building2 className="h-3 w-3 text-gray-500" />
-                        {c.empresa_rel_name || c.empresa || 'Empresa No Asignada'}
-                      </div>
-                      <div className={`text-[8px] font-black px-1.5 py-0.5 rounded-sm inline-block w-fit ${
-                        c.estado === 'activo' ? 'bg-amber-500/10 text-amber-400 border border-amber-400/20' : 'bg-gray-500/10 text-gray-400 border border-gray-400/20'
-                      }`}>
-                        {c.estado === 'activo' ? 'CAMPAÑA ACTIVA' : 'CAMPAÑA PAUSADA'}
-                      </div>
-                    </div>
-                  </td>
-
-                  {templates.slice(0, 3).map((t: any, idx: number, arr: any[]) => {
-                    const banderin = getBanderinStatus(c, idx);
-                    return (
-                      <td key={t.id} className="px-1 py-5 text-center border-l border-gray-900/10 relative">
-                        {banderin.mostrar && (
-                          <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap">
-                            <div className="flex items-center gap-1 bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-red-500/40 animate-pulse">
-                              <span>🚩</span>
-                              <span>+{banderin.dias}d · ENVIAR P{idx + 1}</span>
-                            </div>
+      <Tabs defaultValue="prospeccion" className="w-full">
+        <TabsList className="mb-4 bg-gray-900/40 border border-gray-800 rounded-xl p-1 h-auto">
+          <TabsTrigger value="prospeccion" className="text-xs font-black uppercase rounded-lg px-6 py-2 data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-gray-400">Prospección</TabsTrigger>
+          <TabsTrigger value="cuentas" className="text-xs font-black uppercase rounded-lg px-6 py-2 data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-gray-400">Cuentas</TabsTrigger>
+        </TabsList>
+        <TabsContent value="prospeccion" className="mt-0 outline-none">
+          <div className="bg-gray-950 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left table-fixed">
+                <thead>
+                  <tr className="bg-gray-900/80 border-b border-gray-800 text-[9px] font-black tracking-widest text-gray-500 uppercase">
+                    <th className="px-4 py-4 w-[240px]">
+                      CONTACTO
+                    </th>
+                    {templates.slice(0, 3).map((t: any, idx: number) => (
+                      <th key={t.id} className="px-1 py-4 text-center border-l border-gray-800/50">
+                        {idx + 1}° Correo<br/><span className="text-[7px] text-gray-400 capitalize">{t.name.split('. ')[1] || t.name}</span>
+                      </th>
+                    ))}
+                    <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[110px] text-gray-500">ESTADO SECUENCIA</th>
+                    <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[110px] text-gray-500">ACCIONES</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-900">
+                  {sortedAndFiltered.map((c) => (
+                    <tr key={c.id} className="group hover:bg-white/5 transition-colors">
+                      <td className="px-4 py-5">
+                        <div className="flex flex-col gap-1.5">
+                          <div className="text-sm font-bold text-white uppercase truncate max-w-[200px]">
+                            {c.nombre?.replace('Contacto Principal - ', '') || 'SIN NOMBRE'}
                           </div>
-                        )}
-                        <div className={banderin.mostrar ? "mt-4" : ""}>
-                          {renderTemplateCell(getTemplateStatus(c, t, arr[idx + 1], idx))}
+                          <div className="text-[10px] text-gray-400 truncate max-w-[180px] font-medium flex items-center gap-1">
+                            <Building2 className="h-3 w-3 text-gray-500" />
+                            {c.empresa_rel_name || c.empresa || 'Empresa No Asignada'}
+                          </div>
+                          <div className={`text-[8px] font-black px-1.5 py-0.5 rounded-sm inline-block w-fit ${
+                            c.estado === 'activo' ? 'bg-amber-500/10 text-amber-400 border border-amber-400/20' : 'bg-gray-500/10 text-gray-400 border border-gray-400/20'
+                          }`}>
+                            {c.estado === 'activo' ? 'CAMPAÑA ACTIVA' : 'CAMPAÑA PAUSADA'}
+                          </div>
                         </div>
                       </td>
-                    );
-                  })}
 
-                  <td className="px-2 py-5 text-center border-l border-gray-900/10">
-                    <div className="flex flex-col justify-center items-center gap-1.5">
-                      <div className="text-[11px] font-black px-3 py-1.5 rounded-md bg-blue-500 text-white shadow-md uppercase">
-                        PROSPECCIÓN
-                      </div>
-                      <span className="text-[11px] font-bold text-gray-300 bg-gray-800/50 px-2 py-0.5 rounded">
-                        {c.fecha_envio_foco_3 ? 'Completado' : c.fecha_envio_foco_2 ? 'Paso 3/3' : c.fecha_envio_foco ? 'Paso 2/3' : 'Paso 1/3'}
-                      </span>
-                    </div>
-                  </td>
+                      {templates.slice(0, 3).map((t: any, idx: number, arr: any[]) => {
+                        const banderin = getBanderinStatus(c, idx);
+                        return (
+                          <td key={t.id} className="px-1 py-5 text-center border-l border-gray-900/10 relative">
+                            {banderin.mostrar && (
+                              <div className="absolute top-1 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap">
+                                <div className="flex items-center gap-1 bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-red-500/40 animate-pulse">
+                                  <span>🚩</span>
+                                  <span>+{banderin.dias}d · ENVIAR P{idx + 1}</span>
+                                </div>
+                              </div>
+                            )}
+                            <div className={banderin.mostrar ? "mt-4" : ""}>
+                              {renderTemplateCell(getTemplateStatus(c, t, arr[idx + 1], idx))}
+                            </div>
+                          </td>
+                        );
+                      })}
 
-                  <td className="px-2 py-5 text-center border-l border-gray-900/10">
-                    <div className="flex justify-center items-center gap-2">
-                      <button 
-                        onClick={() => {
-                          const mockCuenta = { cliente: c.empresa_rel_name || c.empresa };
-                          abrirModalZoho(c, mockCuenta);
-                        }} 
-                        className="p-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md hover:scale-110 transition-all flex items-center justify-center border border-gray-750"
-                        title="Abrir Zoho / Acciones Sentinel"
-                      >
-                        <Settings2 className="h-4 w-4 text-indigo-400" />
-                      </button>
-                      {/* The toggle button has been removed from here as requested */}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                      <td className="px-2 py-5 text-center border-l border-gray-900/10">
+                        <div className="flex flex-col justify-center items-center gap-1.5">
+                          <div className="text-[11px] font-black px-3 py-1.5 rounded-md bg-blue-500 text-white shadow-md uppercase">
+                            PROSPECCIÓN
+                          </div>
+                          <span className="text-[11px] font-bold text-gray-300 bg-gray-800/50 px-2 py-0.5 rounded">
+                            {c.fecha_envio_foco_3 ? 'Completado' : c.fecha_envio_foco_2 ? 'Paso 3/3' : c.fecha_envio_foco ? 'Paso 2/3' : 'Paso 1/3'}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-2 py-5 text-center border-l border-gray-900/10">
+                        <div className="flex justify-center items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              const mockCuenta = { cliente: c.empresa_rel_name || c.empresa };
+                              abrirModalZoho(c, mockCuenta);
+                            }} 
+                            className="p-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md hover:scale-110 transition-all flex items-center justify-center border border-gray-750"
+                            title="Abrir Zoho / Acciones Sentinel"
+                          >
+                            <Settings2 className="h-4 w-4 text-indigo-400" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="cuentas" className="mt-0 outline-none">
+          <div className="bg-gray-950 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left table-fixed">
+                <thead>
+                  <tr className="bg-gray-900/80 border-b border-gray-800 text-[9px] font-black tracking-widest text-gray-500 uppercase">
+                    <th className="px-4 py-4 w-[240px]">
+                      CONTACTO
+                    </th>
+                    {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((mes) => (
+                      <th key={mes} className="px-1 py-4 text-center border-l border-gray-800/50 w-[80px]">
+                        {mes}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-900">
+                  {sortedAndFiltered.map((c) => (
+                    <tr key={c.id} className="group hover:bg-white/5 transition-colors">
+                      <td className="px-4 py-5 border-r border-gray-900/10">
+                        <div className="flex flex-col gap-1.5">
+                          <div className="text-sm font-bold text-white uppercase truncate max-w-[200px]">
+                            {c.nombre?.replace('Contacto Principal - ', '') || 'SIN NOMBRE'}
+                          </div>
+                          <div className="text-[10px] text-gray-400 truncate max-w-[180px] font-medium flex items-center gap-1">
+                            <Building2 className="h-3 w-3 text-gray-500" />
+                            {c.empresa_rel_name || c.empresa || 'Empresa No Asignada'}
+                          </div>
+                        </div>
+                      </td>
+                      {Array.from({ length: 12 }).map((_, idx) => (
+                        <td key={idx} className="px-1 py-5 text-center border-l border-gray-900/10">
+                          <div className="flex flex-col items-center justify-center text-[10px] gap-1 opacity-50">
+                            <Circle className="h-4 w-4 text-gray-600" />
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* MODAL DE EDICIÓN Y GESTIÓN DE CONTACTO */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
