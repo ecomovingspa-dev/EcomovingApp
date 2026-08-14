@@ -310,7 +310,7 @@ export default function TrazabilidadCuentas() {
       while (hasMore) {
         const { data, error } = await supabase
           .from("cuentas")
-          .select("id, cliente, sector, segmento, cuenta_foco")
+          .select("id, cliente, sector, segmento, cuenta_foco, cuenta_activa")
           .order("cliente")
           .range(from, to);
 
@@ -369,7 +369,8 @@ export default function TrazabilidadCuentas() {
         cliente: acc.cliente, 
         sector: acc.sector || 'privado',
         segmento: acc.segmento || '',
-        cuenta_foco: acc.cuenta_foco || false
+        cuenta_foco: acc.cuenta_foco || false,
+        cuenta_activa: acc.cuenta_activa || false
       };
     });
 
@@ -380,6 +381,7 @@ export default function TrazabilidadCuentas() {
         c.empresa_rel_sector = accountsMap[c.cuenta_id].sector;
         c.empresa_rel_segmento = accountsMap[c.cuenta_id].segmento;
         c.empresa_rel_cuenta_foco = accountsMap[c.cuenta_id].cuenta_foco;
+        c.empresa_rel_cuenta_activa = accountsMap[c.cuenta_id].cuenta_activa;
       }
     });
 
@@ -683,10 +685,7 @@ export default function TrazabilidadCuentas() {
     const accountName = c.empresa_rel_name || c.empresa || "";
     const matchesSearch = normalizeString(accountName).includes(normalizeString(filtro));
     const matchesCriticos = soloCriticos ? c.es_bloqueado : true;
-    // Cambiamos a filtro de tipo string: "todos", "foco", "no_foco"
-    const matchesFoco = filtroTipoCuenta === "todos" ? true : (
-      filtroTipoCuenta === "foco" ? (c.empresa_rel_cuenta_foco === true) : (c.empresa_rel_cuenta_foco !== true)
-    );
+    const matchesActivo = c.empresa_rel_cuenta_activa === true;
     const matchesEtapa = filtroEtapa === "todos" ? true : (c.etapa === filtroEtapa);
     
     const contactSector = c.empresa_rel_sector?.toLowerCase() || "privado";
@@ -713,7 +712,7 @@ export default function TrazabilidadCuentas() {
       (c.empresa_rel_segmento || "").toLowerCase() === filtroSegmento.toLowerCase()
     );
 
-    return matchesSearch && matchesCriticos && matchesFoco && matchesEtapa && matchesSector && matchesEjecutivo && matchesSegmento;
+    return matchesSearch && matchesCriticos && matchesActivo && matchesEtapa && matchesSector && matchesEjecutivo && matchesSegmento;
   });
 
   const sortedAndFiltered = [...filtered].sort((a, b) => {
