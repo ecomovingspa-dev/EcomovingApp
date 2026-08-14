@@ -46,9 +46,8 @@ export default function CuentasPage() {
   const [filtroFoco, setFiltroFoco] = useState<string>(() => sessionStorage.getItem("cuentas_filtroFoco") || "todos");
   const [filtroEtapa, setFiltroEtapa] = useState<string>(() => sessionStorage.getItem("cuentas_filtroEtapa") || "todas");
   const [stats, setStats] = useState({
+    totalCuentas: 0,
     totalFoco: 0,
-    sinVerificar: 0,
-    verificado: 0,
   });
 
   // Estados para filtros y búsqueda
@@ -496,30 +495,22 @@ export default function CuentasPage() {
 
   const cargarEstadisticasProspeccion = async () => {
     try {
-      const { data, error } = await supabase
+      const { count: totalCuentas, error: errorTotal } = await supabase
         .from("cuentas")
-        .select("etapa_prospeccion")
+        .select("*", { count: "exact", head: true });
+
+      const { count: totalFoco, error: errorFoco } = await supabase
+        .from("cuentas")
+        .select("*", { count: "exact", head: true })
         .eq("cuenta_foco", true);
 
-      if (error) throw error;
+      if (errorTotal) throw errorTotal;
+      if (errorFoco) throw errorFoco;
 
-      const counts = {
-        totalFoco: 0,
-        sinVerificar: 0,
-        verificado: 0,
-      };
-
-      if (data) {
-        counts.totalFoco = data.length;
-        data.forEach((c: any) => {
-          if (c.etapa_prospeccion === "Verificado") {
-            counts.verificado++;
-          } else {
-            counts.sinVerificar++;
-          }
-        });
-      }
-      setStats(counts);
+      setStats({
+        totalCuentas: totalCuentas || 0,
+        totalFoco: totalFoco || 0,
+      });
     } catch (err) {
       console.error("Error al cargar estadísticas de prospección:", err);
     }
@@ -882,68 +873,45 @@ export default function CuentasPage() {
       </div>
 
       {/* Panel de Agenda de Prospección Rápida */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <button
           onClick={() => {
-            const act = filtroFoco === "foco" && filtroEtapa === "todas";
-            setFiltroFoco(act ? "todos" : "foco");
+            setFiltroFoco("todos");
             setFiltroEtapa("todas");
             setPaginaActual(1);
           }}
           className={cn(
             "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
-            filtroFoco === "foco" && filtroEtapa === "todas"
+            filtroFoco === "todos"
+              ? "bg-indigo-500/15 border-indigo-500 text-indigo-700 dark:text-indigo-400 ring-2 ring-indigo-500/20"
+              : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500"
+          )}
+        >
+          <div>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">🏢 Cuentas</p>
+            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.totalCuentas}</p>
+          </div>
+          <Building2 className="h-8 w-8 text-indigo-500 opacity-80" />
+        </button>
+
+        <button
+          onClick={() => {
+            setFiltroFoco("foco");
+            setFiltroEtapa("todas");
+            setPaginaActual(1);
+          }}
+          className={cn(
+            "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
+            filtroFoco === "foco"
               ? "bg-yellow-500/15 border-yellow-500 text-yellow-700 dark:text-yellow-400 ring-2 ring-yellow-500/20"
               : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-yellow-400 dark:hover:border-yellow-500"
           )}
         >
           <div>
-            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">⭐ Cuentas Foco Totales</p>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">⭐ Cuentas Foco</p>
             <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.totalFoco}</p>
           </div>
           <span className="text-2xl">⭐</span>
-        </button>
-
-        <button
-          onClick={() => {
-            const act = filtroFoco === "foco" && filtroEtapa === "Sin Verificar";
-            setFiltroFoco(act ? "todos" : "foco");
-            setFiltroEtapa(act ? "todas" : "Sin Verificar");
-            setPaginaActual(1);
-          }}
-          className={cn(
-            "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
-            filtroFoco === "foco" && filtroEtapa === "Sin Verificar"
-              ? "bg-amber-500/15 border-amber-500 text-amber-700 dark:text-amber-400 ring-2 ring-amber-500/20"
-              : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-amber-400 dark:hover:border-amber-500"
-          )}
-        >
-          <div>
-            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">🔍 Sin Verificar (Foco)</p>
-            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.sinVerificar}</p>
-          </div>
-          <span className="text-2xl">🔍</span>
-        </button>
-
-        <button
-          onClick={() => {
-            const act = filtroFoco === "foco" && filtroEtapa === "Verificado";
-            setFiltroFoco(act ? "todos" : "foco");
-            setFiltroEtapa(act ? "todas" : "Verificado");
-            setPaginaActual(1);
-          }}
-          className={cn(
-            "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
-            filtroFoco === "foco" && filtroEtapa === "Verificado"
-              ? "bg-green-500/15 border-green-500 text-green-700 dark:text-green-400 ring-2 ring-green-500/20"
-              : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-green-400 dark:hover:border-green-500"
-          )}
-        >
-          <div>
-            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">✅ Verificado (Foco)</p>
-            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.verificado}</p>
-          </div>
-          <span className="text-2xl">✅</span>
         </button>
       </div>
 
