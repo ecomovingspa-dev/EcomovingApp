@@ -689,18 +689,27 @@ export default function CuentasPage() {
 
     setGuardandoId(id);
     try {
+      const updatePayload: any = { [campo]: valor };
+      
+      // Mutuamente excluyentes: si se marca Foco, se desmarca Activa y viceversa
+      if (campo === "cuenta_foco" && valor === true) {
+        updatePayload.cuenta_activa = false;
+      } else if (campo === "cuenta_activa" && valor === true) {
+        updatePayload.cuenta_foco = false;
+      }
+
       const { error } = await supabase
         .from("cuentas")
-        .update({ [campo]: valor })
+        .update(updatePayload)
         .eq("id", id);
 
       if (error) throw error;
 
       // Actualizar estado local
-      setCuentas(prev => prev.map(c => c.id === id ? { ...c, [campo]: valor } : c));
+      setCuentas(prev => prev.map(c => c.id === id ? { ...c, ...updatePayload } : c));
       
-      // Recargar estadísticas si cambió la etapa o el foco
-      if (campo === "cuenta_foco" || campo === "etapa_prospeccion") {
+      // Recargar estadísticas si cambió la etapa o las marcas de foco/activa
+      if (campo === "cuenta_foco" || campo === "cuenta_activa" || campo === "etapa_prospeccion") {
         cargarEstadisticasProspeccion();
       }
     } catch (err) {
