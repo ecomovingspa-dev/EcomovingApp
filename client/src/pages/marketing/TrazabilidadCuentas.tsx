@@ -1801,102 +1801,87 @@ export default function TrazabilidadCuentas() {
             <TabsContent value="prospeccion" className="mt-0">
               <div className="grid grid-cols-12 gap-6 mt-2">
             
-            {/* Columna Izquierda: Plantillas */}
-            <div className="col-span-12 md:col-span-3 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
-              <div className="flex flex-col space-y-3 overflow-hidden">
-                <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Plantillas Disponibles
-                </span>
-                
-                <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[350px]">
-                  {templates.map(t => (
-                    <div 
-                      key={t.id}
-                      onClick={() => {
-                        setIsEditingTemplateMode(false);
-                        handleSelectTemplate(t.id);
-                      }}
-                      className={cn(
-                        "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 h-12",
-                        selectedTemplateId === t.id
-                          ? "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-sm"
-                          : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80 hover:text-gray-900 dark:hover:text-white"
-                      )}
-                    >
-                      <span className="text-xs font-bold truncate flex-1">{t.name}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedTemplateId(t.id);
-                          startEditingTemplate(t);
-                        }}
-                        className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-all shrink-0"
-                        title="Editar estructura de plantilla"
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
+            {/* Columna Izquierda: Plantillas y Fechas combinadas */}
+            <div className="col-span-12 md:col-span-5 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
+              <div className="flex flex-col space-y-3 overflow-hidden h-full">
+                <div className="flex justify-between items-center pr-2">
+                  <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Plantillas Disponibles
+                  </span>
+                  <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider mr-6">
+                    Fecha Envío
+                  </span>
                 </div>
-              </div>
-
-            </div>
-
-            {/* Columna Central: Fecha de Envío */}
-            <div className="col-span-12 md:col-span-2 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
-              <div className="flex flex-col space-y-3 overflow-hidden min-h-0">
-                <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Fecha Envío Foco
-                </span>
                 
-                <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[320px]">
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 h-full">
                   {templates.map(t => {
                     const sendDate = templateSendDates[t.id];
                     const dateOnly = sendDate ? sendDate.split(" ")[0] : "—";
                     return (
                       <div 
-                        key={`date-${t.id}`}
+                        key={t.id}
                         onClick={() => {
                           setIsEditingTemplateMode(false);
                           handleSelectTemplate(t.id);
                         }}
                         className={cn(
-                          "group p-1.5 rounded-xl border text-center transition-all cursor-pointer flex items-center justify-center h-12 text-xs font-bold",
+                          "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2",
                           selectedTemplateId === t.id
-                            ? "bg-indigo-50/50 dark:bg-indigo-950/20 border-indigo-400 text-indigo-600 dark:text-indigo-400 shadow-sm"
-                            : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80"
+                            ? "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-500 shadow-sm"
+                            : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/80"
                         )}
                       >
-                        <input 
-                          type="date"
-                          value={dateOnly !== "—" ? formatToInputDate(dateOnly) : ""}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val) {
-                              const [year, month, day] = val.split("-");
-                              setTemplateSendDates(prev => ({
-                                ...prev,
-                                [t.id]: `${day}/${month}/${year}`
-                              }));
-                            } else {
-                              setTemplateSendDates(prev => ({
-                                ...prev,
-                                [t.id]: ""
-                              }));
-                            }
-                          }}
-                          className={cn(
-                            "bg-transparent text-center border-none outline-none focus:ring-0 w-full text-xs cursor-pointer font-bold select-none",
-                            dateOnly !== "—" ? "text-emerald-600 dark:text-emerald-400" : "text-gray-450 dark:text-gray-600"
-                          )}
-                        />
+                        <div className="flex-1 flex flex-col gap-1 min-w-0">
+                          <span className={cn("text-xs font-bold truncate", selectedTemplateId === t.id ? "text-indigo-700 dark:text-indigo-300" : "text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white")}>
+                            {t.name}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <input 
+                            type="date"
+                            value={dateOnly !== "—" ? formatToInputDate(dateOnly) : ""}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val) {
+                                const [year, month, day] = val.split("-");
+                                setTemplateSendDates(prev => ({
+                                  ...prev,
+                                  [t.id]: `${day}/${month}/${year}`
+                                }));
+                              } else {
+                                setTemplateSendDates(prev => ({
+                                  ...prev,
+                                  [t.id]: ""
+                                }));
+                              }
+                            }}
+                            className={cn(
+                              "bg-transparent text-center border-none outline-none focus:ring-0 w-[105px] text-xs cursor-pointer font-bold select-none p-0",
+                              dateOnly !== "—" ? "text-emerald-600 dark:text-emerald-400" : "text-gray-450 dark:text-gray-600"
+                            )}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTemplateId(t.id);
+                              startEditingTemplate(t);
+                            }}
+                            className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-all"
+                            title="Editar estructura de plantilla"
+                          >
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
                 </div>
               </div>
+
               <button
                 type="button"
                 onClick={handleSaveAllTemplateDates}
@@ -1904,7 +1889,7 @@ export default function TrazabilidadCuentas() {
                 className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0"
               >
                 {guardandoFechas && <Loader2 className="h-3 w-3 animate-spin" />}
-                {guardandoFechas ? "ACTUALIZANDO..." : "ACTUALIZAR"}
+                {guardandoFechas ? "ACTUALIZANDO..." : "ACTUALIZAR FECHAS"}
               </button>
             </div>
 
@@ -1931,7 +1916,7 @@ export default function TrazabilidadCuentas() {
                       type="text" 
                       value={tempEditName} 
                       onChange={(e) => setTempEditName(e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-md py-1 px-2 focus:ring-1 focus:ring-indigo-500 outline-none"
                     />
                   </div>
 
