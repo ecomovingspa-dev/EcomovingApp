@@ -863,7 +863,7 @@ export function ZohoMailModal({
                         });
                         
                         // Actualizar estado visual del modal inmediatamente
-                        setSelectedContactoDraft(prev => prev ? {
+                        setSelectedContactoDraft((prev: any) => prev ? {
                           ...prev,
                           estado: 'activo',
                           [focoCol]: now.toISOString().split('T')[0]

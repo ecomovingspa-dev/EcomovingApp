@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { SEGMENTOS_MAESTROS } from "../../utils/constants";
 import { useVendedores } from "../../hooks/useVendedores";
 import { ZohoMailModal } from "@/components/modals/ZohoMailModal";
+import { PautaProspeccionModal } from "@/components/modals/PautaProspeccionModal";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ export default function CuentasPage() {
   const [modalBasicAbierto, setModalBasicAbierto] = useState(false);
   const [datosBasicosPropuestos, setDatosBasicosPropuestos] = useState<{ web: string; telefono: string; ciudad: string; segmento: string }>({ web: "", telefono: "", ciudad: "", segmento: "" });
   const [modalSimilaresAbierto, setModalSimilaresAbierto] = useState(false);
+  const [modalPautaAbierto, setModalPautaAbierto] = useState(false);
   const [listaSimilaresEncontradas, setListaSimilaresEncontradas] = useState<{ cliente: string; web?: string; ciudad?: string }[]>([]);
   const [empresaOriginalNombre, setEmpresaOriginalNombre] = useState("");
 
@@ -528,7 +530,7 @@ export default function CuentasPage() {
       </div>
 
       {/* Panel de Agenda de Prospección Rápida */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <button
           onClick={() => {
             setFiltroFoco("todos");
@@ -569,6 +571,17 @@ export default function CuentasPage() {
             <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.totalFoco}</p>
           </div>
           <span className="text-2xl">⭐</span>
+        </button>
+
+        <button
+          onClick={() => setModalPautaAbierto(true)}
+          className="p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-900/20"
+        >
+          <div>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">📘 Pauta de Prospección</p>
+            <p className="text-sm font-medium mt-1 text-gray-600 dark:text-gray-400">Ver reglas y matriz</p>
+          </div>
+          <span className="text-2xl">📖</span>
         </button>
       </div>
 
@@ -1253,6 +1266,11 @@ export default function CuentasPage() {
         onRefresh={async () => {
           await cargarCuentas();
         }}
+      />
+      {/* Modal Pauta de Prospección */}
+      <PautaProspeccionModal 
+        isOpen={modalPautaAbierto} 
+        onClose={() => setModalPautaAbierto(false)} 
       />
     </div >
   );
