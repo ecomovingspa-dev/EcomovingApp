@@ -11,6 +11,7 @@ export interface Cuenta {
   telefono?: string;
   origen?: string;
   cuenta_foco?: boolean;
+  cuenta_activa?: boolean;
   etapa_prospeccion?: string;
   vendedor_id?: string | null;
   vendedores?: { nombre: string } | null;
