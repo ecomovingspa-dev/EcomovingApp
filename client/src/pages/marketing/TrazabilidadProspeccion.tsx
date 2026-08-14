@@ -1175,7 +1175,7 @@ export default function TrazabilidadProspeccion() {
     if (fechaActual) return { mostrar: false, dias: 0 };
     if (!fechaAnterior) return { mostrar: false, dias: 0 };
     const dias = calcularDiasHabiles(fechaAnterior, new Date());
-    return { mostrar: dias >= 3, dias };
+    return { mostrar: dias >= 6, dias };
   };
 
   const renderTemplateCell = (statusObj: any) => {
