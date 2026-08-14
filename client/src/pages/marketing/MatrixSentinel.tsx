@@ -9,15 +9,15 @@ export default function MatrixSentinel() {
         <TabsList className="mb-4 bg-gray-900/40 border border-gray-800 rounded-xl p-1 h-auto flex w-fit">
           <TabsTrigger 
             value="prospeccion" 
-            className="text-sm font-black uppercase rounded-lg px-8 py-3 data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-gray-400"
+            className="text-sm font-black uppercase rounded-lg px-8 py-3 data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-gray-400 flex items-center gap-2"
           >
-            Prospección
+            ⭐ Prospección
           </TabsTrigger>
           <TabsTrigger 
             value="cuentas" 
-            className="text-sm font-black uppercase rounded-lg px-8 py-3 data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-gray-400"
+            className="text-sm font-black uppercase rounded-lg px-8 py-3 data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-gray-400 flex items-center gap-2"
           >
-            Cuentas
+            🟢 Cuentas Activas
           </TabsTrigger>
         </TabsList>
         <TabsContent value="prospeccion" className="mt-0 outline-none">

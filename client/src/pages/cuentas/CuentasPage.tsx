@@ -48,6 +48,7 @@ export default function CuentasPage() {
   const [stats, setStats] = useState({
     totalCuentas: 0,
     totalFoco: 0,
+    totalActivas: 0,
   });
 
   // Estados para filtros y búsqueda
@@ -504,12 +505,19 @@ export default function CuentasPage() {
         .select("*", { count: "exact", head: true })
         .eq("cuenta_foco", true);
 
+      const { count: totalActivas, error: errorActivas } = await supabase
+        .from("cuentas")
+        .select("*", { count: "exact", head: true })
+        .eq("estado", "activo");
+
       if (errorTotal) throw errorTotal;
       if (errorFoco) throw errorFoco;
+      if (errorActivas) throw errorActivas;
 
       setStats({
         totalCuentas: totalCuentas || 0,
         totalFoco: totalFoco || 0,
+        totalActivas: totalActivas || 0,
       });
     } catch (err) {
       console.error("Error al cargar estadísticas de prospección:", err);
@@ -873,16 +881,17 @@ export default function CuentasPage() {
       </div>
 
       {/* Panel de Agenda de Prospección Rápida */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <button
           onClick={() => {
             setFiltroFoco("todos");
+            setFiltroEstado("");
             setFiltroEtapa("todas");
             setPaginaActual(1);
           }}
           className={cn(
             "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
-            filtroFoco === "todos"
+            filtroFoco === "todos" && filtroEstado !== "activo"
               ? "bg-indigo-500/15 border-indigo-500 text-indigo-700 dark:text-indigo-400 ring-2 ring-indigo-500/20"
               : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500"
           )}
@@ -896,7 +905,29 @@ export default function CuentasPage() {
 
         <button
           onClick={() => {
+            setFiltroFoco("todos");
+            setFiltroEstado("activo");
+            setFiltroEtapa("todas");
+            setPaginaActual(1);
+          }}
+          className={cn(
+            "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
+            filtroEstado === "activo"
+              ? "bg-emerald-500/15 border-emerald-500 text-emerald-700 dark:text-emerald-400 ring-2 ring-emerald-500/20"
+              : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-emerald-400 dark:hover:border-emerald-500"
+          )}
+        >
+          <div>
+            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">🟢 Cuentas Activas</p>
+            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.totalActivas}</p>
+          </div>
+          <span className="text-2xl">🟢</span>
+        </button>
+
+        <button
+          onClick={() => {
             setFiltroFoco("foco");
+            setFiltroEstado("");
             setFiltroEtapa("todas");
             setPaginaActual(1);
           }}
@@ -1088,8 +1119,11 @@ export default function CuentasPage() {
                         >
                           <span className={`text-lg leading-none ${cuenta.cuenta_foco ? "text-yellow-500 fill-current font-bold" : "opacity-30"}`}>★</span>
                         </button>
+                        {cuenta.estado === "activo" && (
+                          <span title="Cuenta Activa" className="text-[10px] mt-0.5" style={{ filter: "drop-shadow(0 0 2px rgba(34, 197, 94, 0.5))" }}>🟢</span>
+                        )}
                         {cuenta.origen === 'AI' && (
-                          <span className="px-1 py-0.5 rounded bg-cyan-200 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300 text-[8px] font-black uppercase tracking-widest leading-none">
+                          <span className="px-1 py-0.5 rounded bg-cyan-200 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300 text-[8px] font-black uppercase tracking-widest leading-none mt-1">
                             IA
                           </span>
                         )}
@@ -1324,6 +1358,16 @@ export default function CuentasPage() {
 
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-3">
+                      {(cuenta.cuenta_foco || cuenta.estado === "activo") && (
+                        <Link
+                          to={`/marketing`}
+                          className="p-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors rounded-lg cursor-pointer"
+                          title="Ir a Matrix Sentinel"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="9" x2="9" y1="21" y2="9"/></svg>
+                        </Link>
+                      )}
+
                       <Link
                         to={`/contactos/nuevo?cuentaId=${cuenta.id}&returnTo=/cuentas`}
                         className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/40 transition-colors rounded-lg cursor-pointer"

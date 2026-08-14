@@ -1245,7 +1245,7 @@ export default function TrazabilidadCuentas() {
             <RefreshCcw className={`h-5 w-5 text-amber-500 ${loading ? "animate-spin" : ""}`} />
           </div>
           <div>
-            <h2 className="text-xl font-black text-white tracking-tighter uppercase">Matrix Sentinel Cuentas</h2>
+            <h2 className="text-xl font-black text-white tracking-tighter uppercase">🟢 Matrix Sentinel Cuentas Activas</h2>
             <p className="text-xs text-gray-500">Trazabilidad histórica por etapa de envío</p>
           </div>
         </div>
