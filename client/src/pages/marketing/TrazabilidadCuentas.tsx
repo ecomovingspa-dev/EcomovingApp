@@ -1305,11 +1305,13 @@ export default function TrazabilidadCuentas() {
                 <th className="px-4 py-4 w-[240px]">
                   CONTACTO
                 </th>
-                {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((mes, idx) => (
+                {["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"].map((mes, idx) => (
                   <th key={mes} className="px-1 py-4 text-center border-l border-gray-800/50">
                     <span className="text-[10px] font-black uppercase text-gray-400">{mes}</span>
                   </th>
                 ))}
+                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[90px]">ESTADO SECUENCIA</th>
+                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[90px]">ACCIONES</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-900">
@@ -1326,7 +1328,7 @@ export default function TrazabilidadCuentas() {
                       </div>
                     </div>
                   </td>
-                  {["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"].map((mes, idx) => {
+                  {["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"].map((mes, idx) => {
                     const mesIndexStr = String(idx + 1).padStart(2, '0');
                     const historyForMonth = (c.historial || []).filter((h: any) => {
                       if (!h.fecha) return false;
@@ -1372,7 +1374,7 @@ export default function TrazabilidadCuentas() {
                             <div className="w-1 h-1 border-l-[4px] border-l-transparent border-t-[4px] border-t-red-600 border-r-[4px] border-r-transparent opacity-90" />
                           </div>
                         )}
-                        <div className={`flex flex-col items-center gap-1 cursor-pointer ${mostrarBanderin ? 'mt-4' : ''}`} onClick={() => handleTemplateClick(c, { id: `mes-${idx}`, name: mes, subject: "Correo " + mes, body: "" }, idx)}>
+                        <div className={`flex flex-col items-center gap-1 cursor-pointer ${mostrarBanderin ? 'mt-4' : ''}`} onClick={() => abrirModalZoho(c, { cliente: c.empresa_rel_name || c.empresa })}>
                           {isSent ? renderTemplateCell(statusObj) : <Circle className="h-4 w-4 text-gray-600" />}
                           <span className="text-[8px] font-medium text-gray-600 mt-1 uppercase tracking-wider">
                             {isSent ? translateStatus(latest.estado) : "Sin enviar"}
@@ -1400,8 +1402,7 @@ export default function TrazabilidadCuentas() {
                       <button 
                         onClick={() => {
                           const mockCuenta = { cliente: c.empresa_rel_name || c.empresa };
-                          // abrirModalZoho(c, mockCuenta) we will call handleTemplateClick since that opens the modal
-                          handleTemplateClick(c, { id: `general`, name: "General", subject: "", body: "" }, 0);
+                          abrirModalZoho(c, mockCuenta);
                         }} 
                         className="p-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md hover:scale-110 transition-all flex items-center justify-center border border-gray-750"
                         title="Abrir Centro de Envío"
