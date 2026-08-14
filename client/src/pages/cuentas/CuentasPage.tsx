@@ -233,6 +233,11 @@ export default function CuentasPage() {
   };
 
   useEffect(() => {
+    cargarEstadisticasProspeccion();
+    cargarOpcionesFiltros();
+  }, []);
+
+  useEffect(() => {
     if (hayFiltroActivo) {
       cargarCuentas();
     } else {
