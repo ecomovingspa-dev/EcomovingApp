@@ -1779,7 +1779,7 @@ export default function TrazabilidadProspeccion() {
       <Dialog open={isZohoModalOpen} onOpenChange={setIsZohoModalOpen}>
         <DialogContent className="max-w-6xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl rounded-2xl text-gray-900 dark:text-gray-100">
           <Tabs defaultValue="prospeccion" className="w-full">
-            <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-800 pb-4">
+            <div className="flex flex-col gap-4 mb-4 border-b border-gray-100 dark:border-gray-800 pb-4">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
                   <Mail className="h-5 w-5" /> Redacción e Inteligencia de Plantillas Zoho
@@ -1788,10 +1788,22 @@ export default function TrazabilidadProspeccion() {
                   Selecciona una plantilla para enviar a {selectedContactoDraft?.nombre}.
                 </DialogDescription>
               </DialogHeader>
-              <TabsList className="bg-gray-100 dark:bg-gray-800">
-                <TabsTrigger value="prospeccion" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Prospección</TabsTrigger>
-                <TabsTrigger value="clientes" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Clientes</TabsTrigger>
-              </TabsList>
+              <div className="flex w-full">
+                <TabsList className="bg-transparent border-b border-gray-800 w-full justify-start rounded-none h-auto p-0 gap-6">
+                  <TabsTrigger 
+                    value="prospeccion" 
+                    className="text-sm font-black uppercase rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-400 text-gray-400 pb-3 px-0 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                  >
+                    Prospección
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="clientes" 
+                    className="text-sm font-black uppercase rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-400 text-gray-400 pb-3 px-0 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                  >
+                    Clientes
+                  </TabsTrigger>
+                </TabsList>
+              </div>
             </div>
 
             <TabsContent value="prospeccion" className="mt-0">

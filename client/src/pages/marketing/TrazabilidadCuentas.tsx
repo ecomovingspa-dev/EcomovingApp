@@ -1337,8 +1337,6 @@ export default function TrazabilidadCuentas() {
                       openCount: latest.open_count
                     } : { status: 'none' };
 
-                    // Determine red flag (>= 30 days since last email across all history)
-                    // We only show the red flag in the current real-world month column if they are behind.
                     const currentRealMonth = new Date().getMonth();
                     const allHistory = (c.historial || []).sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
                     const lastEmailEver = allHistory[0];
@@ -1383,6 +1381,30 @@ export default function TrazabilidadCuentas() {
                       </td>
                     );
                   })}
+                  
+                  <td className="px-2 py-5 text-center border-l border-gray-900/10">
+                    <div className="flex flex-col justify-center items-center gap-1.5">
+                      <div className="text-[11px] font-black px-3 py-1.5 rounded-md bg-green-500 text-white shadow-md uppercase">
+                        ACTIVA
+                      </div>
+                    </div>
+                  </td>
+
+                  <td className="px-2 py-5 text-center border-l border-gray-900/10">
+                    <div className="flex justify-center items-center gap-2">
+                      <button 
+                        onClick={() => {
+                          const mockCuenta = { cliente: c.empresa_rel_name || c.empresa };
+                          // abrirModalZoho(c, mockCuenta) we will call handleTemplateClick since that opens the modal
+                          handleTemplateClick(c, { id: `general`, name: "General", subject: "", body: "" }, 0);
+                        }} 
+                        className="p-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md hover:scale-110 transition-all flex items-center justify-center border border-gray-750"
+                        title="Abrir Centro de Envío"
+                      >
+                        <Settings2 className="h-4 w-4 text-indigo-400" />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -1744,7 +1766,7 @@ export default function TrazabilidadCuentas() {
       <Dialog open={isZohoModalOpen} onOpenChange={setIsZohoModalOpen}>
         <DialogContent className="max-w-6xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl rounded-2xl text-gray-900 dark:text-gray-100">
           <Tabs defaultValue="prospeccion" className="w-full">
-            <div className="flex items-center justify-between mb-4 border-b border-gray-100 dark:border-gray-800 pb-4">
+            <div className="flex flex-col gap-4 mb-4 border-b border-gray-100 dark:border-gray-800 pb-4">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
                   <Mail className="h-5 w-5" /> Redacción e Inteligencia de Plantillas Zoho
@@ -1753,10 +1775,22 @@ export default function TrazabilidadCuentas() {
                   Selecciona una plantilla para enviar a {selectedContactoDraft?.nombre}.
                 </DialogDescription>
               </DialogHeader>
-              <TabsList className="bg-gray-100 dark:bg-gray-800">
-                <TabsTrigger value="prospeccion" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Prospección</TabsTrigger>
-                <TabsTrigger value="clientes" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">Clientes</TabsTrigger>
-              </TabsList>
+              <div className="flex w-full">
+                <TabsList className="bg-transparent border-b border-gray-800 w-full justify-start rounded-none h-auto p-0 gap-6">
+                  <TabsTrigger 
+                    value="prospeccion" 
+                    className="text-sm font-black uppercase rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-400 text-gray-400 pb-3 px-0 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                  >
+                    Prospección
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="clientes" 
+                    className="text-sm font-black uppercase rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-400 text-gray-400 pb-3 px-0 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                  >
+                    Clientes
+                  </TabsTrigger>
+                </TabsList>
+              </div>
             </div>
 
             <TabsContent value="prospeccion" className="mt-0">
