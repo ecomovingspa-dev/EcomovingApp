@@ -1787,7 +1787,7 @@ export default function TrazabilidadCuentas() {
                     value="clientes" 
                     className="text-sm font-black uppercase rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-400 text-gray-400 pb-3 px-0 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                   >
-                    Clientes
+                    Cuentas Activas
                   </TabsTrigger>
                 </TabsList>
               </div>
