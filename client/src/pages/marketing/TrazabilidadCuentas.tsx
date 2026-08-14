@@ -310,7 +310,7 @@ export default function TrazabilidadCuentas() {
       while (hasMore) {
         const { data, error } = await supabase
           .from("cuentas")
-          .select("id, cliente, sector, segmento, cuenta_foco, estado")
+          .select("id, cliente, sector, segmento, cuenta_foco, cuenta_activa")
           .order("cliente")
           .range(from, to);
 
@@ -370,7 +370,7 @@ export default function TrazabilidadCuentas() {
         sector: acc.sector || 'privado',
         segmento: acc.segmento || '',
         cuenta_foco: acc.cuenta_foco || false,
-        estado: acc.estado || 'inactivo'
+        cuenta_activa: acc.cuenta_activa || false
       };
     });
 
@@ -381,7 +381,7 @@ export default function TrazabilidadCuentas() {
         c.empresa_rel_sector = accountsMap[c.cuenta_id].sector;
         c.empresa_rel_segmento = accountsMap[c.cuenta_id].segmento;
         c.empresa_rel_cuenta_foco = accountsMap[c.cuenta_id].cuenta_foco;
-        c.empresa_rel_estado = accountsMap[c.cuenta_id].estado;
+        c.empresa_rel_cuenta_activa = accountsMap[c.cuenta_id].cuenta_activa;
       }
     });
 
@@ -685,13 +685,8 @@ export default function TrazabilidadCuentas() {
     const accountName = c.empresa_rel_name || c.empresa || "";
     const matchesSearch = normalizeString(accountName).includes(normalizeString(filtro));
     const matchesCriticos = soloCriticos ? c.es_bloqueado : true;
-    // Solo mostrar Cuentas Activas en esta vista, e ignorar el toggle de "Foco/No Foco" si el usuario solo quiere ver las activas.
-    // Opcional: mantener el toggle "Foco" dentro de las Cuentas Activas si quisieran filtrar aún más.
-    // De momento, filtramos firmemente por estado = 'activo'
-    const matchesActivo = c.empresa_rel_estado === 'activo';
-    const matchesFoco = filtroTipoCuenta === "todos" ? true : (
-      filtroTipoCuenta === "foco" ? (c.empresa_rel_cuenta_foco === true) : (c.empresa_rel_cuenta_foco !== true)
-    );
+    // Filtramos firmemente por cuenta_activa = true
+    const matchesActivo = c.empresa_rel_cuenta_activa === true;
     const matchesEtapa = filtroEtapa === "todos" ? true : (c.etapa === filtroEtapa);
     
     const contactSector = c.empresa_rel_sector?.toLowerCase() || "privado";
@@ -718,7 +713,7 @@ export default function TrazabilidadCuentas() {
       (c.empresa_rel_segmento || "").toLowerCase() === filtroSegmento.toLowerCase()
     );
 
-    return matchesSearch && matchesCriticos && matchesActivo && matchesFoco && matchesEtapa && matchesSector && matchesEjecutivo && matchesSegmento;
+    return matchesSearch && matchesCriticos && matchesActivo && matchesEtapa && matchesSector && matchesEjecutivo && matchesSegmento;
   });
 
   const sortedAndFiltered = [...filtered].sort((a, b) => {
@@ -1282,17 +1277,6 @@ export default function TrazabilidadCuentas() {
             onChange={(e) => setFiltro(e.target.value)}
           />
         </div>
-
-        <Select onValueChange={(val) => setFiltroTipoCuenta(val)} defaultValue="foco">
-          <SelectTrigger className="w-[185px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
-            <SelectValue placeholder="TIPO CUENTA" />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-900 border-gray-800 text-white">
-            <SelectItem value="foco">CUENTAS FOCO</SelectItem>
-            <SelectItem value="no_foco">CUENTAS NO FOCO</SelectItem>
-            <SelectItem value="todos">TODAS LAS CUENTAS</SelectItem>
-          </SelectContent>
-        </Select>
 
         <Select onValueChange={(val) => setFiltroEjecutivo(val)} defaultValue="todos">
           <SelectTrigger className="w-[185px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">

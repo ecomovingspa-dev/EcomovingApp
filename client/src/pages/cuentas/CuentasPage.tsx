@@ -508,7 +508,7 @@ export default function CuentasPage() {
       const { count: totalActivas, error: errorActivas } = await supabase
         .from("cuentas")
         .select("*", { count: "exact", head: true })
-        .eq("estado", "activo");
+        .eq("cuenta_activa", true);
 
       if (errorTotal) throw errorTotal;
       if (errorFoco) throw errorFoco;
@@ -881,28 +881,7 @@ export default function CuentasPage() {
       </div>
 
       {/* Panel de Agenda de Prospección Rápida */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <button
-          onClick={() => {
-            setFiltroFoco("todos");
-            setFiltroEstado("");
-            setFiltroEtapa("todas");
-            setPaginaActual(1);
-          }}
-          className={cn(
-            "p-5 rounded-2xl border text-left transition-all shadow-md flex items-center justify-between cursor-pointer",
-            filtroFoco === "todos" && filtroEstado !== "activo"
-              ? "bg-indigo-500/15 border-indigo-500 text-indigo-700 dark:text-indigo-400 ring-2 ring-indigo-500/20"
-              : "bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700 hover:border-indigo-400 dark:hover:border-indigo-500"
-          )}
-        >
-          <div>
-            <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">🏢 Cuentas</p>
-            <p className="text-2xl font-black mt-1 text-gray-900 dark:text-white">{stats.totalCuentas}</p>
-          </div>
-          <Building2 className="h-8 w-8 text-indigo-500 opacity-80" />
-        </button>
-
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <button
           onClick={() => {
             setFiltroFoco("todos");
@@ -1119,9 +1098,14 @@ export default function CuentasPage() {
                         >
                           <span className={`text-lg leading-none ${cuenta.cuenta_foco ? "text-yellow-500 fill-current font-bold" : "opacity-30"}`}>★</span>
                         </button>
-                        {cuenta.estado === "activo" && (
-                          <span title="Cuenta Activa" className="text-[10px] mt-0.5" style={{ filter: "drop-shadow(0 0 2px rgba(34, 197, 94, 0.5))" }}>🟢</span>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => actualizarCuentaInline(cuenta.id, "cuenta_activa", !cuenta.cuenta_activa)}
+                          className="p-0.5 text-gray-300 dark:text-gray-600 hover:text-green-500 transition-all transform hover:scale-110 cursor-pointer ml-1"
+                          title={cuenta.cuenta_activa ? "Quitar estado activo" : "Marcar como Cuenta Activa (Verde)"}
+                        >
+                          <span className={`text-[12px] leading-none ${cuenta.cuenta_activa ? "" : "opacity-30 filter grayscale"}`} style={cuenta.cuenta_activa ? { filter: "drop-shadow(0 0 2px rgba(34, 197, 94, 0.5))" } : {}}>🟢</span>
+                        </button>
                         {cuenta.origen === 'AI' && (
                           <span className="px-1 py-0.5 rounded bg-cyan-200 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300 text-[8px] font-black uppercase tracking-widest leading-none mt-1">
                             IA
@@ -1358,7 +1342,7 @@ export default function CuentasPage() {
 
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-3">
-                      {(cuenta.cuenta_foco || cuenta.estado === "activo") && (
+                      {(cuenta.cuenta_foco || cuenta.cuenta_activa) && (
                         <Link
                           to={`/marketing`}
                           className="p-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors rounded-lg cursor-pointer"
