@@ -98,6 +98,7 @@ export default function TrazabilidadProspeccion() {
   const [templateSendDates, setTemplateSendDates] = useState<Record<string, string>>({});
   const [draftData, setDraftData] = useState<any>(null);
   const [isEditingTemplateMode, setIsEditingTemplateMode] = useState(false);
+  const [tempEditName, setTempEditName] = useState("");
   const [tempEditSubject, setTempEditSubject] = useState("");
   const [tempEditBody, setTempEditBody] = useState("");
   const [guardandoPlantilla, setGuardandoPlantilla] = useState(false);
@@ -168,6 +169,7 @@ export default function TrazabilidadProspeccion() {
           dbId: etapa.id,
           orden: etapa.orden,
           name: `${etapa.orden}. ${etapa.nombre}`,
+          rawName: etapa.nombre || "",
           subject: etapa.asunto_template || "",
           body: `${etapa.mensaje_intro || ""}\n\n${etapa.mensaje_cierre || ""}`.trim()
         }));
@@ -187,6 +189,7 @@ export default function TrazabilidadProspeccion() {
           dbId: etapa.id,
           orden: etapa.orden,
           name: `${etapa.orden}. ${etapa.nombre}`,
+          rawName: etapa.nombre || "",
           subject: etapa.asunto_template || "",
           body: `${etapa.mensaje_intro || ""}\n\n${etapa.mensaje_cierre || ""}`.trim()
         }));
@@ -739,6 +742,7 @@ export default function TrazabilidadProspeccion() {
 
   const startEditingTemplate = (tmpl: any) => {
     setIsEditingTemplateMode(true);
+    setTempEditName(tmpl.rawName);
     setTempEditSubject(tmpl.subject);
     setTempEditBody(tmpl.body);
   };
@@ -762,6 +766,7 @@ export default function TrazabilidadProspeccion() {
       const { error } = await supabase
         .from(tableName)
         .update({
+          nombre: tempEditName,
           asunto_template: tempEditSubject,
           mensaje_intro: tempEditBody,
           mensaje_cierre: ""
@@ -1931,6 +1936,16 @@ export default function TrazabilidadProspeccion() {
                     >
                       Volver a Vista Previa
                     </button>
+                  </div>
+
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nombre de Plantilla</label>
+                    <input 
+                      type="text" 
+                      value={tempEditName} 
+                      onChange={(e) => setTempEditName(e.target.value)}
+                      className="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-xs text-gray-900 dark:text-gray-100 rounded-lg p-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                    />
                   </div>
 
                   <div className="flex flex-col space-y-1">
