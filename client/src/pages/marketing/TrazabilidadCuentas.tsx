@@ -2225,49 +2225,90 @@ export default function TrazabilidadCuentas() {
             <TabsContent value="clientes" className="mt-0">
               <div className="grid grid-cols-12 gap-6 mt-2">
                 
-                {/* Columna Izquierda: Plantillas de Cliente */}
-                <div className="col-span-12 md:col-span-3 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
+                {/* Columna Izquierda: Plantillas de Cliente y Fechas combinadas */}
+                <div className="col-span-12 md:col-span-5 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
                   <div className="flex flex-col space-y-3 overflow-hidden h-full">
-                    <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Plantillas Clientes
-                    </span>
+                    <div className="flex justify-between items-center pr-2">
+                      <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Plantillas Clientes
+                      </span>
+                      <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider mr-6">
+                        Fecha Envío
+                      </span>
+                    </div>
                     
-                    <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[350px]">
+                    <div className="flex-1 overflow-y-auto space-y-2 pr-1 h-full">
                       {templatesClientes.length === 0 ? (
                         <div className="flex flex-col items-center justify-center text-center p-4 border border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-gray-50/50 dark:bg-gray-800/20 h-full">
                           <Mail className="h-8 w-8 text-gray-400 mb-2 opacity-50" />
                           <p className="text-xs text-gray-500">Sin plantillas.</p>
                         </div>
                       ) : (
-                        templatesClientes.map(t => (
-                          <div 
-                            key={t.id}
-                            onClick={() => {
-                              setIsEditingTemplateMode(false);
-                              handleSelectTemplate(t.id);
-                            }}
-                            className={cn(
-                              "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2 h-12",
-                              selectedTemplateId === t.id
-                                ? "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-sm"
-                                : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/80 hover:text-gray-900 dark:hover:text-white"
-                            )}
-                          >
-                            <span className="text-xs font-bold truncate flex-1">{t.name}</span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedTemplateId(t.id);
-                                startEditingTemplate(t);
+                        templatesClientes.map(t => {
+                          const sendDate = templateSendDates[t.id];
+                          const dateOnly = sendDate ? sendDate.split(" ")[0] : "—";
+                          return (
+                            <div 
+                              key={t.id}
+                              onClick={() => {
+                                setIsEditingTemplateMode(false);
+                                handleSelectTemplate(t.id);
                               }}
-                              className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-all shrink-0"
-                              title="Editar estructura de plantilla"
+                              className={cn(
+                                "group p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between gap-2",
+                                selectedTemplateId === t.id
+                                  ? "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-500 shadow-sm"
+                                  : "bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800/80"
+                              )}
                             >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        ))
+                              <div className="flex-1 flex flex-col gap-1 min-w-0">
+                                <span className={cn("text-xs font-bold truncate", selectedTemplateId === t.id ? "text-indigo-700 dark:text-indigo-300" : "text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white")}>
+                                  {t.name}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center gap-1 shrink-0">
+                                <input 
+                                  type="date"
+                                  value={dateOnly !== "—" ? formatToInputDate(dateOnly) : ""}
+                                  onClick={(e) => e.stopPropagation()}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val) {
+                                      const [year, month, day] = val.split("-");
+                                      setTemplateSendDates(prev => ({
+                                        ...prev,
+                                        [t.id]: `${day}/${month}/${year}`
+                                      }));
+                                    } else {
+                                      setTemplateSendDates(prev => ({
+                                        ...prev,
+                                        [t.id]: ""
+                                      }));
+                                    }
+                                  }}
+                                  className={cn(
+                                    "bg-transparent text-center border-none outline-none focus:ring-0 w-[105px] text-xs cursor-pointer font-bold select-none p-0",
+                                    dateOnly !== "—" ? "text-emerald-600 dark:text-emerald-400" : "text-gray-450 dark:text-gray-600"
+                                  )}
+                                />
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedTemplateId(t.id);
+                                    startEditingTemplate(t);
+                                  }}
+                                  className="p-1 rounded text-gray-400 hover:text-indigo-600 hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer transition-all"
+                                  title="Editar estructura de plantilla"
+                                >
+                                  <Edit2 className="h-3.5 w-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })
                       )}
                     </div>
                     
@@ -2280,27 +2321,45 @@ export default function TrazabilidadCuentas() {
                       <Plus className="h-4 w-4 mr-1" /> Crear Nueva Plantilla
                     </Button>
                   </div>
-                </div>
 
-                {/* Columna Central: Fecha de Envío Referencial */}
-                <div className="col-span-12 md:col-span-2 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
-                  <div className="flex flex-col space-y-4">
-                    <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Fecha Envío (Ref)
-                    </span>
-                    <div className="relative mt-2">
-                      <Input 
-                        type="date"
-                        className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-800 h-12 rounded-xl text-sm font-medium w-full"
-                      />
-                    </div>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={handleSaveAllTemplateDates}
+                    disabled={guardandoFechas}
+                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all shadow-md text-xs cursor-pointer mt-2 disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    {guardandoFechas && <Loader2 className="h-3 w-3 animate-spin" />}
+                    {guardandoFechas ? "ACTUALIZANDO..." : "ACTUALIZAR FECHAS"}
+                  </button>
                 </div>
 
                 {/* Columna Derecha: Redacción Manual */}
                 <div className="col-span-12 md:col-span-7 flex flex-col justify-between h-[450px]">
                   {isEditingTemplateMode ? (
                     <div className="space-y-4 flex-grow flex flex-col">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                          ✏️ Editando Estructura de Plantilla (Original)
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditingTemplateMode(false)}
+                          className="text-xs font-bold text-gray-500 hover:text-indigo-600 transition-colors cursor-pointer"
+                        >
+                          Volver a Vista Previa
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col space-y-1">
+                        <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nombre de Plantilla</label>
+                        <input 
+                          type="text" 
+                          value={tempEditName} 
+                          onChange={(e) => setTempEditName(e.target.value)}
+                          className="w-full bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-900/50 text-xs text-gray-900 dark:text-gray-100 rounded-md py-1 px-2 focus:ring-1 focus:ring-indigo-500 outline-none"
+                        />
+                      </div>
+
                       <div className="flex flex-col space-y-1">
                         <label className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">Editar Asunto Base</label>
                         <input 
