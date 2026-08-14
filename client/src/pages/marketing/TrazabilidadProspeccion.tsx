@@ -219,9 +219,23 @@ export default function TrazabilidadProspeccion() {
   useEffect(() => {
     const loadTemplates = async () => {
       try {
-        const { data, error } = await supabase.from('templates').select('*').order('created_at', { ascending: true });
-        if (!error && data) {
-          setTemplates(data.filter((t: any) => t.category === "prospeccion"));
+        const { data: dbEtapas, error } = await supabase
+          .from("configuracion_prospeccion")
+          .select("*")
+          .eq("activo", true)
+          .order("orden", { ascending: true });
+          
+        if (!error && dbEtapas && dbEtapas.length > 0) {
+          const prospectionTemplates = dbEtapas.map(etapa => ({
+            id: `builtin-prospeccion-${etapa.orden}`,
+            dbId: etapa.id,
+            orden: etapa.orden,
+            name: `${etapa.orden}. ${etapa.nombre}`,
+            rawName: etapa.nombre || "",
+            subject: etapa.asunto_template || "",
+            body: `${etapa.mensaje_intro || ""}\n\n${etapa.mensaje_cierre || ""}`.trim()
+          }));
+          setTemplates(prospectionTemplates);
         }
       } catch (err) {}
     };
