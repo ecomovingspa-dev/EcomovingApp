@@ -856,31 +856,72 @@ export default function SueldoEmpresarialPage() {
   };
 
   const handlePrint = () => {
-    window.print();
+    const printContent = document.getElementById("print-area")?.outerHTML;
+    if (!printContent) return;
+
+    // Crear un iframe oculto temporal
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "none";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+
+    doc.open();
+    doc.write(`
+      <html>
+        <head>
+          <title>Liquidacion de Sueldo</title>
+          <style>
+            body {
+              font-family: monospace;
+              margin: 0;
+              padding: 0;
+              background-color: white;
+              color: black;
+            }
+            #print-area {
+              width: 100%;
+              max-width: 100%;
+              padding: 15mm !important;
+              box-sizing: border-box;
+            }
+            /* Configurar tamaño carta y ocultar cabeceras/pies de página predeterminados */
+            @page {
+              size: letter;
+              margin: 0;
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent}
+        </body>
+      </html>
+    `);
+
+    // Clonar las hojas de estilo del documento principal al iframe para conservar el diseño
+    const styles = document.querySelectorAll("style, link[rel='stylesheet']");
+    styles.forEach(style => {
+      doc.head.appendChild(style.cloneNode(true));
+    });
+
+    doc.close();
+
+    iframe.contentWindow?.focus();
+    setTimeout(() => {
+      iframe.contentWindow?.print();
+      // Eliminar el iframe temporal después de imprimir
+      document.body.removeChild(iframe);
+    }, 500);
   };
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Imprimir Solo Contenedor de Liquidación */}
-      <style>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #print-area, #print-area * {
-            visibility: visible;
-          }
-          #print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            padding: 20px;
-            background: white;
-            color: black;
-          }
-        }
-      `}</style>
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 dark:border-gray-700 pb-5">
@@ -1403,35 +1444,6 @@ export default function SueldoEmpresarialPage() {
 
               {/* Vista Previa de la Liquidación Oficial */}
               <Card id="print-area" className="bg-white text-black p-8 font-mono text-[11px] max-w-[800px] mx-auto shadow-none border-none rounded-none">
-                <style dangerouslySetInnerHTML={{ __html: `
-                  @media print {
-                    /* Ocultar todo lo demás en la página */
-                    body * {
-                      visibility: hidden;
-                    }
-                    /* Mostrar únicamente la sección de la liquidación */
-                    #print-area, #print-area * {
-                      visibility: visible;
-                    }
-                    #print-area {
-                      visibility: visible;
-                      position: absolute;
-                      left: 0;
-                      top: 0;
-                      width: 100% !important;
-                      max-width: 100% !important;
-                      box-shadow: none !important;
-                      border: none !important;
-                      padding: 0 !important;
-                      margin: 0 !important;
-                    }
-                    /* Forzar tamaño carta (letter) y ajustar márgenes */
-                    @page {
-                      size: letter;
-                      margin: 15mm;
-                    }
-                  }
-                `}} />
                 <div className="space-y-3">
                   {/* Encabezado */}
                   <div className="text-center space-y-1 pb-1">
