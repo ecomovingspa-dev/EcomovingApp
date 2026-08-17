@@ -1422,13 +1422,13 @@ export default function SueldoEmpresarialPage() {
                       max-width: 100% !important;
                       box-shadow: none !important;
                       border: none !important;
-                      padding: 1.5cm !important;
+                      padding: 0 !important;
                       margin: 0 !important;
                     }
-                    /* Quitar los encabezados y pies de página predeterminados del navegador */
+                    /* Forzar tamaño carta (letter) y ajustar márgenes */
                     @page {
-                      size: auto;
-                      margin: 0mm;
+                      size: letter;
+                      margin: 15mm;
                     }
                   }
                 `}} />
@@ -1587,7 +1587,7 @@ export default function SueldoEmpresarialPage() {
                   {/* Cuerpo Principal de Haberes y Descuentos */}
                   <div className="grid grid-cols-2 gap-0 border-t border-b border-black text-xs font-normal">
                     {/* Haberes */}
-                    <div className="border-r border-black pr-4 py-2 flex flex-col justify-between min-h-[380px]">
+                    <div className="pr-4 py-2 flex flex-col justify-between min-h-[270px]">
                       <div className="space-y-1">
                         <div className="text-center font-bold pb-1 border-b border-gray-200">HABERES</div>
                         <div className="flex justify-between">
@@ -1620,7 +1620,7 @@ export default function SueldoEmpresarialPage() {
                     </div>
 
                     {/* Descuentos */}
-                    <div className="pl-4 py-2 flex flex-col justify-between min-h-[380px]">
+                    <div className="pl-4 py-2 flex flex-col justify-between min-h-[270px]">
                       <div className="space-y-1">
                         <div className="text-center font-bold pb-1 border-b border-gray-200">DESCUENTOS</div>
                         <div className="flex justify-between">
