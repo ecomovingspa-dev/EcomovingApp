@@ -101,6 +101,152 @@ const AFPS = [
   { id: "custom", nombre: "Personalizada...", tasa: 10.00 }
 ];
 
+const formatCLPNoSign = (val: number): string => {
+  return Math.round(val).toLocaleString("es-CL");
+};
+
+const formatMesAnioTexto = (mesAnioStr: string): string => {
+  if (!mesAnioStr) return "";
+  const parts = mesAnioStr.split("-");
+  if (parts.length === 2) {
+    const meses = [
+      "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+      "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"
+    ];
+    const mesIdx = parseInt(parts[1], 10) - 1;
+    const anio = parts[0];
+    if (mesIdx >= 0 && mesIdx < 12) {
+      return `${meses[mesIdx]} del ${anio}`;
+    }
+  }
+  return mesAnioStr.toUpperCase();
+};
+
+const obtenerUltimoDiaMes = (mesAnioStr: string): string => {
+  if (!mesAnioStr) return "";
+  const parts = mesAnioStr.split("-");
+  if (parts.length === 2) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const date = new Date(year, month, 0);
+    const day = date.getDate().toString().padStart(2, '0');
+    const monthStr = month.toString().padStart(2, '0');
+    return `${day}/${monthStr}/${year}`;
+  }
+  return "";
+};
+
+function numeroALetras(num: number): string {
+  const Unidades = (n: number) => {
+    switch (n) {
+      case 1: return "UN";
+      case 2: return "DOS";
+      case 3: return "TRES";
+      case 4: return "CUATRO";
+      case 5: return "CINCO";
+      case 6: return "SEIS";
+      case 7: return "SIETE";
+      case 8: return "OCHO";
+      case 9: return "NUEVE";
+      default: return "";
+    }
+  };
+
+  const Decenas = (n: number) => {
+    const decena = Math.floor(n / 10);
+    const unidad = n - (decena * 10);
+    switch (decena) {
+      case 1:
+        switch (unidad) {
+          case 0: return "DIEZ";
+          case 1: return "ONCE";
+          case 2: return "DOCE";
+          case 3: return "TRECE";
+          case 4: return "CATORCE";
+          case 5: return "QUINCE";
+          default: return "DIECI" + Unidades(unidad);
+        }
+      case 2:
+        if (unidad === 0) return "VEINTE";
+        return "VEINTI" + Unidades(unidad);
+      case 3: return DecenasY("TREINTA", unidad);
+      case 4: return DecenasY("CUARENTA", unidad);
+      case 5: return DecenasY("CINCUENTA", unidad);
+      case 6: return DecenasY("SESENTA", unidad);
+      case 7: return DecenasY("SETENTA", unidad);
+      case 8: return DecenasY("OCHENTA", unidad);
+      case 9: return DecenasY("NOVENTA", unidad);
+      case 0: return Unidades(unidad);
+      default: return "";
+    }
+  };
+
+  const DecenasY = (strSin: string, numUnidad: number) => {
+    if (numUnidad > 0) return strSin + " Y " + Unidades(numUnidad);
+    return strSin;
+  };
+
+  const Centenas = (n: number) => {
+    const centena = Math.floor(n / 100);
+    const decenas = n - (centena * 100);
+    switch (centena) {
+      case 1:
+        if (decenas > 0) return "CIENTO " + Decenas(decenas);
+        return "CIEN";
+      case 2: return "DOSCIENTOS " + Decenas(decenas);
+      case 3: return "TRESCIENTOS " + Decenas(decenas);
+      case 4: return "CUATROCIENTOS " + Decenas(decenas);
+      case 5: return "QUINIENTOS " + Decenas(decenas);
+      case 6: return "SEISCIENTOS " + Decenas(decenas);
+      case 7: return "SETECIENTOS " + Decenas(decenas);
+      case 8: return "OCHOCIENTOS " + Decenas(decenas);
+      case 9: return "NOVECIENTOS " + Decenas(decenas);
+      case 0: return Decenas(decenas);
+      default: return "";
+    }
+  };
+
+  const Miles = (n: number) => {
+    const divisor = 1000;
+    const cociente = Math.floor(n / divisor);
+    const resto = n - (cociente * divisor);
+    let letras = "";
+    if (cociente > 0) {
+      if (cociente === 1) {
+        letras = "MIL";
+      } else {
+        letras = Centenas(cociente) + " MIL";
+      }
+    }
+    if (resto > 0) {
+      letras += (letras ? " " : "") + Centenas(resto);
+    }
+    return letras;
+  };
+
+  const Millones = (n: number) => {
+    const divisor = 1000000;
+    const cociente = Math.floor(n / divisor);
+    const resto = n - (cociente * divisor);
+    let letras = "";
+    if (cociente > 0) {
+      if (cociente === 1) {
+        letras = "UN MILLON";
+      } else {
+        letras = Centenas(cociente) + " MILLONES";
+      }
+    }
+    if (resto > 0) {
+      letras += (letras ? " " : "") + Miles(resto);
+    }
+    return letras;
+  };
+
+  if (num === 0) return "CERO PESOS";
+  const letras = Millones(num);
+  return `${letras} PESOS`;
+}
+
 const LRE_HEADERS = [
   "Rut trabajador(1101)",
   "Fecha inicio contrato(1102)",
@@ -1244,120 +1390,275 @@ export default function SueldoEmpresarialPage() {
               </div>
 
               {/* Vista Previa de la Liquidación Oficial */}
-              <Card id="print-area" className="border border-gray-300 dark:border-gray-700 shadow-lg bg-white text-black p-6 font-mono text-xs">
-                <div className="space-y-4">
+              <Card id="print-area" className="border border-black bg-white text-black p-8 font-mono text-[11px] max-w-[800px] mx-auto shadow-none rounded-none">
+                <div className="space-y-3">
                   {/* Encabezado */}
-                  <div className="flex justify-between items-start border-b border-gray-400 pb-4">
+                  <div className="text-center space-y-1 pb-1">
+                    <h2 className="text-base font-bold tracking-widest">LIQUIDACION DE SUELDO</h2>
+                    <p className="text-xs font-bold">REMUNERACIONES MES DE: {formatMesAnioTexto(calculoActivo.mesAnio)}</p>
+                  </div>
+
+                  <hr className="border-black border-t" />
+
+                  {/* Razón Social */}
+                  <div className="grid grid-cols-2 gap-4 py-1">
                     <div>
-                      <h4 className="font-bold text-sm uppercase">{calculoActivo.razonSocial}</h4>
-                      <p>RUT: {calculoActivo.rutEmpresa}</p>
-                      <p>Santiago, Chile</p>
+                      <span className="font-bold block text-[9px] text-gray-700">RAZON SOCIAL:</span>
+                      <span className="uppercase text-xs">{calculoActivo.razonSocial}</span>
                     </div>
-                    <div className="text-right">
-                      <h4 className="font-bold text-sm">LIQUIDACIÓN DE SUELDO</h4>
-                      <p className="font-bold">PERÍODO: {calculoActivo.mesAnio}</p>
+                    <div>
+                      <span className="font-bold block text-[9px] text-gray-700">RUT EMPRESA</span>
+                      <span className="text-xs">{calculoActivo.rutEmpresa}</span>
                     </div>
                   </div>
 
-                  {/* Datos del Socio/Trabajador */}
-                  <div className="grid grid-cols-2 gap-2 border-b border-gray-400 pb-3">
-                    <div>
-                      <p><span className="font-bold">Nombre:</span> {calculoActivo.nombreTrabajador}</p>
-                      <p><span className="font-bold">RUT:</span> {calculoActivo.rutTrabajador}</p>
+                  <hr className="border-black border-t" />
+
+                  {/* Trabajador */}
+                  <div className="grid grid-cols-12 gap-2 py-1">
+                    <div className="col-span-3">
+                      <span className="font-bold block text-[9px] text-gray-700">R.U.T.</span>
+                      <span className="text-xs">{calculoActivo.rutTrabajador}</span>
                     </div>
-                    <div className="text-right">
-                      <p><span className="font-bold">Tipo Contrato:</span> Sueldo Empresarial</p>
-                      <p><span className="font-bold">Fecha Proceso:</span> {calculoActivo.fechaRegistro}</p>
+                    <div className="col-span-7">
+                      <span className="font-bold block text-[9px] text-gray-700">TRABAJADOR</span>
+                      <span className="uppercase text-xs">{calculoActivo.nombreTrabajador}</span>
+                    </div>
+                    <div className="col-span-2 text-right">
+                      <span className="font-bold block text-[9px] text-gray-700">C.C.</span>
+                      <span className="text-xs">01</span>
                     </div>
                   </div>
 
-                  {/* Detalle Haberes y Descuentos */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <hr className="border-black border-t" />
+
+                  {/* Fechas e Ingresos */}
+                  <div className="grid grid-cols-2 gap-4 py-1">
+                    <div>
+                      <span className="font-bold block text-[9px] text-gray-700">FECHA INGRESO</span>
+                      <span className="text-xs">01/10/2025</span>
+                    </div>
+                    <div>
+                      <span className="font-bold block text-[9px] text-gray-700">TIPO DE CONTRATO</span>
+                      <span className="text-xs">INDEFINIDO</span>
+                    </div>
+                  </div>
+
+                  <hr className="border-black border-t" />
+
+                  {/* Cargos */}
+                  <div className="grid grid-cols-2 gap-4 py-1">
+                    <div>
+                      <span className="font-bold block text-[9px] text-gray-700">CODIGO FUNCIONARIO</span>
+                      <span className="text-xs">01</span>
+                    </div>
+                    <div>
+                      <span className="font-bold block text-[9px] text-gray-700">CARGO FUNCIONARIO</span>
+                      <span className="text-xs uppercase">GERENTE GENERAL</span>
+                    </div>
+                  </div>
+
+                  <hr className="border-black border-t" />
+
+                  {/* Término y Establecimiento */}
+                  <div className="grid grid-cols-2 gap-4 py-1">
+                    <div>
+                      <span className="font-bold block text-[9px] text-gray-700">FECHA TERMINO CONTRATO</span>
+                      <span className="text-xs">&nbsp;</span>
+                    </div>
+                    <div>
+                      <span className="font-bold block text-[9px] text-gray-700">ESTABLECIMIENTO</span>
+                      <span className="text-xs">&nbsp;</span>
+                    </div>
+                  </div>
+
+                  <hr className="border-black border-t" />
+
+                  {/* AFP e ISAPRE */}
+                  <div className="grid grid-cols-12 gap-2 py-1">
+                    <div className="col-span-4">
+                      <span className="font-bold block text-[9px] text-gray-700">A.F.P.</span>
+                      <span className="uppercase text-xs block">
+                        {calculoActivo.afpSeleccionada === "custom" 
+                          ? "PERSONALIZADA" 
+                          : (AFPS.find(a => a.id === calculoActivo.afpSeleccionada)?.nombre.split(" ")[0] || "MODELO").toUpperCase()}
+                      </span>
+                      <span className="text-xs block">
+                        {(calculoActivo.afpSeleccionada === "custom" 
+                          ? calculoActivo.afpTasaCustom 
+                          : (AFPS.find(a => a.id === calculoActivo.afpSeleccionada)?.tasa || 10.58)).toFixed(2).replace(".", ",")}%
+                      </span>
+                    </div>
+                    <div className="col-span-4">
+                      <span className="font-bold block text-[9px] text-gray-700">ISAPRE</span>
+                      <span className="uppercase text-xs block">
+                        {calculoActivo.tipoSalud === "fonasa" ? "FONASA" : "ISAPRE " + (calculoActivo.tipoSalud || "").toUpperCase()}
+                      </span>
+                      <span className="text-xs block">
+                        {calculoActivo.tipoSalud === "fonasa" ? "7%" : calculoActivo.isapreUF ? `${calculoActivo.isapreUF} UF` : "7%"}
+                      </span>
+                    </div>
+                    <div className="col-span-4 text-right flex flex-col justify-end font-normal">
+                      <span className="text-xs block">{formatCLPNoSign(calculoActivo.descuentoSalud)}</span>
+                      <span className="text-xs block">
+                        {calculoActivo.tipoSalud === "fonasa" ? "7%" : calculoActivo.isapreUF ? `${calculoActivo.isapreUF} UF` : "7%"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <hr className="border-black border-t" />
+
+                  {/* Resumen Días, Extras, etc. */}
+                  <div className="grid grid-cols-12 gap-1 text-center py-1.5 text-[9px] font-bold">
+                    <div className="col-span-2 border-r border-gray-300">
+                      <div className="pb-0.5 text-gray-700">DIAS</div>
+                      <div className="font-normal text-xs">{calculoActivo.diasTrabajados || 30}</div>
+                    </div>
+                    <div className="col-span-3 border-r border-gray-300">
+                      <div className="pb-0.5 text-gray-700">HH EXTRAS</div>
+                      <div className="font-normal text-xs flex justify-around px-2">
+                        <span>0</span>
+                        <span>0</span>
+                        <span>0</span>
+                      </div>
+                    </div>
+                    <div className="col-span-2 border-r border-gray-300">
+                      <div className="pb-0.5 text-gray-700">HH FALTADAS</div>
+                      <div className="font-normal text-xs">0</div>
+                    </div>
+                    <div className="col-span-1 border-r border-gray-300">
+                      <div className="pb-0.5 text-gray-700">CARGAS</div>
+                      <div className="font-normal text-xs flex justify-around">
+                        <span>0</span>
+                        <span>0</span>
+                      </div>
+                    </div>
+                    <div className="col-span-2 border-r border-gray-300">
+                      <div className="pb-0.5 text-gray-700">IMPONIBLE</div>
+                      <div className="font-normal text-xs">{formatCLPNoSign(calculoActivo.imponible)}</div>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="pb-0.5 text-gray-700">TRIBUTABLE</div>
+                      <div className="font-normal text-xs">{formatCLPNoSign(calculoActivo.baseImpuesto)}</div>
+                    </div>
+                  </div>
+
+                  {/* Cuerpo Principal de Haberes y Descuentos */}
+                  <div className="grid grid-cols-2 gap-0 border-t border-b border-black text-xs font-normal">
                     {/* Haberes */}
-                    <div className="space-y-2 border-r border-gray-300 pr-4">
-                      <h5 className="font-bold border-b border-gray-300 pb-1">HABERES</h5>
-                      <div className="flex justify-between">
-                        <span>Sueldo Bruto:</span>
-                        <span>{formatCLP(calculoActivo.sueldoBruto)}</span>
+                    <div className="border-r border-black pr-4 py-2 flex flex-col justify-between min-h-[160px]">
+                      <div className="space-y-1">
+                        <div className="text-center font-bold pb-1 border-b border-gray-200">HABERES</div>
+                        <div className="flex justify-between">
+                          <span>SUELDO BASE</span>
+                          <span>{formatCLPNoSign(calculoActivo.sueldoBruto)}</span>
+                        </div>
+                        {calculoActivo.colacion > 0 && (
+                          <div className="flex justify-between">
+                            <span>ASIG. COLACION</span>
+                            <span>{formatCLPNoSign(calculoActivo.colacion)}</span>
+                          </div>
+                        )}
+                        {calculoActivo.movilizacion > 0 && (
+                          <div className="flex justify-between">
+                            <span>ASIG. MOVILIZACION</span>
+                            <span>{formatCLPNoSign(calculoActivo.movilizacion)}</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex justify-between">
-                        <span>Asig. Colación:</span>
-                        <span>{formatCLP(calculoActivo.colacion)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Asig. Movilización:</span>
-                        <span>{formatCLP(calculoActivo.movilizacion)}</span>
-                      </div>
-                      <div className="border-t border-gray-300 pt-1 flex justify-between font-bold">
-                        <span>Total Haberes:</span>
-                        <span>{formatCLP(calculoActivo.sueldoBruto + calculoActivo.colacion + calculoActivo.movilizacion)}</span>
+                      <div className="space-y-1 pt-4">
+                        <div className="flex justify-between font-bold">
+                          <span>TOTAL IMPONIBLE</span>
+                          <span>{formatCLPNoSign(calculoActivo.imponible)}</span>
+                        </div>
+                        <div className="flex justify-between font-bold">
+                          <span>TOTAL NO IMPONIBLE</span>
+                          <span>{formatCLPNoSign((calculoActivo.colacion || 0) + (calculoActivo.movilizacion || 0))}</span>
+                        </div>
                       </div>
                     </div>
 
                     {/* Descuentos */}
-                    <div className="space-y-2">
-                      <h5 className="font-bold border-b border-gray-300 pb-1">DESCUENTOS</h5>
-                      {calculoActivo.cotizaAFP ? (
+                    <div className="pl-4 py-2 flex flex-col justify-between min-h-[160px]">
+                      <div className="space-y-1">
+                        <div className="text-center font-bold pb-1 border-b border-gray-200">DESCUENTOS</div>
                         <div className="flex justify-between">
-                          <span className="truncate">AFP ({calculoActivo.afpSeleccionada.toUpperCase()}):</span>
-                          <span>{formatCLP(calculoActivo.descuentoAFP)}</span>
+                          <span>PREVISION</span>
+                          <span>{formatCLPNoSign(calculoActivo.descuentoAFP)}</span>
                         </div>
-                      ) : (
-                        <div className="flex justify-between text-gray-500">
-                          <span>AFP:</span>
-                          <span>No Cotiza</span>
-                        </div>
-                      )}
-                      {calculoActivo.cotizaSalud ? (
                         <div className="flex justify-between">
-                          <span>Salud ({calculoActivo.tipoSalud.toUpperCase()}):</span>
-                          <span>{formatCLP(calculoActivo.descuentoSalud)}</span>
+                          <span>SALUD</span>
+                          <span>{formatCLPNoSign(calculoActivo.descuentoSalud)}</span>
                         </div>
-                      ) : (
-                        <div className="flex justify-between text-gray-500">
-                          <span>Salud:</span>
-                          <span>No Cotiza</span>
+                        {calculoActivo.impuestoUnico > 0 && (
+                          <div className="flex justify-between">
+                            <span>IMPUESTO UNICO</span>
+                            <span>{formatCLPNoSign(calculoActivo.impuestoUnico)}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-1 pt-4">
+                        <div className="flex justify-between font-bold">
+                          <span>TOTAL DESC. LEGALES</span>
+                          <span>{formatCLPNoSign(calculoActivo.descuentoAFP + calculoActivo.descuentoSalud + calculoActivo.impuestoUnico)}</span>
                         </div>
-                      )}
-                      {calculoActivo.impuestoUnico > 0 && (
-                        <div className="flex justify-between">
-                          <span>Impuesto Único:</span>
-                          <span>{formatCLP(calculoActivo.impuestoUnico)}</span>
+                        <div className="flex justify-between font-bold">
+                          <span>TOTAL OTROS DESC.</span>
+                          <span>{formatCLPNoSign(calculoActivo.otrosDescuentos || 0)}</span>
                         </div>
-                      )}
-                      {calculoActivo.otrosDescuentos > 0 && (
-                        <div className="flex justify-between">
-                          <span>Otros Descuentos:</span>
-                          <span>{formatCLP(calculoActivo.otrosDescuentos)}</span>
-                        </div>
-                      )}
-                      <div className="border-t border-gray-300 pt-1 flex justify-between font-bold">
-                        <span>Total Descuentos:</span>
-                        <span>{formatCLP(calculoActivo.descuentoAFP + calculoActivo.descuentoSalud + calculoActivo.impuestoUnico + calculoActivo.otrosDescuentos)}</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Resumen Final */}
-                  <div className="border-t border-gray-400 pt-3 flex justify-between items-center text-sm font-bold">
-                    <span>LÍQUIDO A PAGAR:</span>
-                    <span className="border border-gray-500 px-3 py-1 bg-gray-50">{formatCLP(calculoActivo.sueldoLiquido)}</span>
+                  {/* Resumen Final de Totales */}
+                  <div className="py-1 space-y-1.5 text-xs font-normal">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex justify-between font-bold">
+                        <span>TOTAL HABERES:</span>
+                        <span>{formatCLPNoSign(calculoActivo.sueldoBruto + (calculoActivo.colacion || 0) + (calculoActivo.movilizacion || 0))}</span>
+                      </div>
+                      <div className="flex justify-between font-bold">
+                        <span>TOTAL DESCUENTOS:</span>
+                        <span>{formatCLPNoSign(calculoActivo.descuentoAFP + calculoActivo.descuentoSalud + calculoActivo.impuestoUnico + (calculoActivo.otrosDescuentos || 0))}</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex justify-between">
+                        <span className="font-bold">FECHA:</span>
+                        <span>{obtenerUltimoDiaMes(calculoActivo.mesAnio)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-xs">
+                        <span>ALCANCE LIQUIDO:</span>
+                        <span>{formatCLPNoSign(calculoActivo.sueldoLiquido)}</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-1.5 font-bold border-t border-gray-200 text-[10px] flex gap-1">
+                      <span>SON:</span>
+                      <span className="font-normal uppercase">{numeroALetras(calculoActivo.sueldoLiquido)}</span>
+                    </div>
                   </div>
 
-                  <div className="pt-8 grid grid-cols-2 gap-8 text-center">
-                    <div className="border-t border-gray-400 pt-2">
-                      <p className="uppercase">{calculoActivo.nombreTrabajador}</p>
-                      <p>Firma Receptor</p>
-                    </div>
-                    <div className="border-t border-gray-400 pt-2">
-                      <p className="uppercase">{calculoActivo.razonSocial}</p>
-                      <p>Firma Empleador</p>
-                    </div>
-                  </div>
+                  <hr className="border-black border-t" />
 
-                  <div className="text-[10px] text-gray-500 text-center pt-4">
-                    Valores de Referencia del Período - UF: {formatCLP(calculoActivo.ufUsada || CONSTANTES_2026.UF)} | UTM: {formatCLP(calculoActivo.utmUsada || CONSTANTES_2026.UTM)} | Tope: {(calculoActivo.topeImponibleUFUsado || CONSTANTES_2026.TOPE_IMPONIBLE_UF)} UF | Reforma: {(calculoActivo.reformaPorcentajeUsado !== undefined ? calculoActivo.reformaPorcentajeUsado : CONSTANTES_2026.REFORMA_PORCENTAJE)}% <br/>
-                    Este documento cumple con el Art. 31 N°6 de la Ley sobre Impuesto a la Renta de Chile.
+                  {/* Recibido Conforme */}
+                  <p className="text-[9px] text-gray-700 leading-relaxed font-normal">
+                    Recibí conforme el alcance líquido de la presente liquidación, no teniendo cargo o cobro alguno que hacer por otro concepto.
+                  </p>
+
+                  {/* Firmas */}
+                  <div className="pt-12 grid grid-cols-2 gap-12 text-center text-[10px]">
+                    <div>
+                      <div className="border-t border-black w-4/5 mx-auto pt-1">
+                        <p className="font-bold">FIRMA DEL EMPLEADOR</p>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="border-t border-black w-4/5 mx-auto pt-1">
+                        <p className="font-bold">FIRMA DEL TRABAJADOR</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </Card>
