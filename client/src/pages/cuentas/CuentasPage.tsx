@@ -29,6 +29,7 @@ export default function CuentasPage() {
   const { vendedores } = useVendedores();
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
   const [cuentasFiltradas, setCuentasFiltradas] = useState<Cuenta[]>([]);
+  const [allCuentas, setAllCuentas] = useState<Cuenta[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
@@ -232,88 +233,140 @@ export default function CuentasPage() {
     }
   };
 
+  // Carga inicial del listado maestro (ligero) y opciones de filtros
   useEffect(() => {
     cargarEstadisticasProspeccion();
     cargarOpcionesFiltros();
+    cargarCuentas();
   }, []);
-
-  useEffect(() => {
-    if (hayFiltroActivo) {
-      cargarCuentas();
-    } else {
-      setCuentas([]);
-      setCuentasFiltradas([]);
-      setTotalRecords(0);
-      setCargando(false);
-    }
-  }, [paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, filtroVendedor, filtroFoco, filtroEtapa, filtroFecha, hayFiltroActivo]);
-
 
   const cargarCuentas = async () => {
     try {
       setCargando(true);
       setError("");
 
-      let query = supabase
+      const { data, error } = await supabase
         .from("cuentas")
-        .select("*, vendedores(nombre), contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono, imagen, ultimo_envio, ultimo_evento_trazabilidad, estado, etapa)", { count: "exact" });
-
-      if (busqueda) {
-        query = query.or(`cliente.ilike.%${busqueda}%,rut.ilike.%${busqueda}%,ciudad.ilike.%${busqueda}%`);
-      }
-      if (filtroSector) {
-        query = query.ilike("sector", filtroSector);
-      }
-      if (filtroSegmento) {
-        query = query.eq("segmento", filtroSegmento);
-      }
-      if (filtroEstado) {
-        query = query.eq("estado", filtroEstado);
-      }
-      if (filtroVendedor) {
-        if (filtroVendedor === "null") {
-          query = query.is("vendedor_id", null);
-        } else {
-          query = query.eq("vendedor_id", filtroVendedor);
-        }
-      }
-      if (filtroFoco === "foco") {
-        query = query.eq("cuenta_foco", true);
-      }
-      if (filtroEtapa !== "todas") {
-        if (filtroEtapa === "Sin Verificar") {
-          query = query.or("etapa_prospeccion.eq.Sin Verificar,etapa_prospeccion.is.null");
-        } else {
-          query = query.eq("etapa_prospeccion", filtroEtapa);
-        }
-      }
-      if (filtroFecha) {
-        const startDate = new Date(`${filtroFecha}T00:00:00`);
-        const endDate = new Date(`${filtroFecha}T23:59:59.999`);
-        query = query
-          .gte("created_at", startDate.toISOString())
-          .lte("created_at", endDate.toISOString());
-      }
-
-      const { data, error, count } = await query
-        .order("created_at", { ascending: false })
-        .range((paginaActual - 1) * filasPorPagina, paginaActual * filasPorPagina - 1);
+        .select("id, cliente, rut, ciudad, sector, segmento, estado, cuenta_foco, etapa_prospeccion, vendedor_id, created_at, cuenta_activa")
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      setCuentas(data || []);
-      setCuentasFiltradas(data || []);
-      setTotalRecords(count || 0);
+      setAllCuentas(data || []);
     } catch (err: any) {
       console.error("Error al cargar cuentas:", err);
-      setError("No se pudieron cargar las cuentas.");
+      setError("No se pudieron cargar las cuentas: " + (err.message || err.details || JSON.stringify(err)));
     } finally {
       setCargando(false);
     }
   };
 
+  // Helper para normalizar texto (obviando tildes y mayúsculas)
+  const normalizarTexto = (texto: string): string => {
+    if (!texto) return "";
+    return texto
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  };
+
+  // Búsqueda y filtrado client-side, con carga perezosa de detalles de la página actual
+  useEffect(() => {
+    const filtradas = allCuentas.filter((cuenta) => {
+      // 1. Sector
+      if (filtroSector && cuenta.sector?.toLowerCase() !== filtroSector.toLowerCase()) {
+        return false;
+      }
+      // 2. Segmento
+      if (filtroSegmento && cuenta.segmento !== filtroSegmento) {
+        return false;
+      }
+      // 3. Estado
+      if (filtroEstado && cuenta.estado !== filtroEstado) {
+        return false;
+      }
+      // 4. Vendedor
+      if (filtroVendedor) {
+        if (filtroVendedor === "null") {
+          if (cuenta.vendedor_id !== null && cuenta.vendedor_id !== undefined) return false;
+        } else {
+          if (cuenta.vendedor_id !== filtroVendedor) return false;
+        }
+      }
+      // 5. Foco / Prioridad
+      if (filtroFoco === "foco" && !cuenta.cuenta_foco) {
+        return false;
+      }
+      // 6. Etapa Prospección
+      if (filtroEtapa !== "todas") {
+        if (filtroEtapa === "Sin Verificar") {
+          if (cuenta.etapa_prospeccion && cuenta.etapa_prospeccion !== "Sin Verificar") return false;
+        } else {
+          if (cuenta.etapa_prospeccion !== filtroEtapa) return false;
+        }
+      }
+      // 7. Fecha de ingreso
+      if (filtroFecha) {
+        const fechaCuenta = cuenta.created_at ? cuenta.created_at.split("T")[0] : "";
+        if (fechaCuenta !== filtroFecha) return false;
+      }
+      // 8. Buscador amigable (obvia tildes, mayúsculas y busca todas las palabras del término en cualquier orden)
+      if (busqueda.trim()) {
+        const queryNorm = normalizarTexto(busqueda);
+        const palabrasBuscadas = queryNorm.split(/\s+/).filter(Boolean);
+
+        const clienteNorm = normalizarTexto(cuenta.cliente || "");
+        const rutNorm = normalizarTexto(cuenta.rut || "");
+        const ciudadNorm = normalizarTexto(cuenta.ciudad || "");
+
+        return palabrasBuscadas.every((palabra) =>
+          clienteNorm.includes(palabra) ||
+          rutNorm.includes(palabra) ||
+          ciudadNorm.includes(palabra)
+        );
+      }
+      return true;
+    });
+
+    setTotalRecords(filtradas.length);
+
+    // Paginación
+    const paginadasLight = filtradas.slice((paginaActual - 1) * filasPorPagina, paginaActual * filasPorPagina);
+
+    // Cargar detalles perezosamente (vendedores y contactos) para la página actual
+    const cargarDetallesPagina = async () => {
+      if (paginadasLight.length === 0) {
+        setCuentas([]);
+        return;
+      }
+      try {
+        setCargando(true);
+        setError("");
+
+        const ids = paginadasLight.map(c => c.id);
+        const { data, error: err } = await supabase
+          .from("cuentas")
+          .select("*, vendedores(nombre), contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono, imagen, ultimo_envio, ultimo_evento_trazabilidad, estado, etapa)")
+          .in("id", ids);
+
+        if (err) throw err;
+
+        // Ordenar según el orden de paginadasLight
+        const sorted = paginadasLight.map(pl => data.find(d => d.id === pl.id)).filter(Boolean) as Cuenta[];
+        setCuentas(sorted);
+      } catch (err: any) {
+        console.error("Error al cargar detalles de la página:", err);
+        setError("No se pudieron cargar los detalles de las cuentas.");
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarDetallesPagina();
+  }, [allCuentas, paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, filtroVendedor, filtroFoco, filtroEtapa, filtroFecha]);
+
   const totalPaginas = Math.ceil(totalRecords / filasPorPagina);
-  const cuentasPaginadas = cuentas; // Already paginated from server
+  const cuentasPaginadas = cuentas;
 
   const handleReset = () => {
     setBusqueda("");
@@ -351,6 +404,7 @@ export default function CuentasPage() {
       if (error) throw error;
 
       // Actualizar estado local
+      setAllCuentas(prev => prev.map(c => c.id === id ? { ...c, ...updatePayload } : c));
       setCuentas(prev => prev.map(c => c.id === id ? { ...c, ...updatePayload } : c));
       
       // Recargar estadísticas si cambió la etapa o las marcas de foco/activa
@@ -371,7 +425,8 @@ export default function CuentasPage() {
     try {
       const { error } = await supabase.from("cuentas").delete().eq("id", id);
       if (error) throw error;
-      setCuentas(cuentas.filter((c) => c.id !== id));
+      setAllCuentas(prev => prev.filter(c => c.id !== id));
+      setCuentas(prev => prev.filter((c) => c.id !== id));
     } catch (error: any) {
       console.error("Error:", error);
       alert("Error al eliminar la cuenta");
