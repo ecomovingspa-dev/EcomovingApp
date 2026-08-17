@@ -105,6 +105,18 @@ const formatCLPNoSign = (val: number): string => {
   return Math.round(val).toLocaleString("es-CL");
 };
 
+const formatearNombreRutero = (nombre: string): string => {
+  if (!nombre) return "";
+  const normalized = nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  const parts = normalized.split(/\s+/).filter(Boolean);
+  if (parts.length >= 3) {
+    const apellidos = parts.slice(parts.length - 2).join(" ");
+    const nombres = parts.slice(0, parts.length - 2).join(" ");
+    return `${apellidos} ${nombres}`;
+  }
+  return normalized;
+};
+
 const formatMesAnioTexto = (mesAnioStr: string): string => {
   if (!mesAnioStr) return "";
   const parts = mesAnioStr.split("-");
@@ -1390,7 +1402,7 @@ export default function SueldoEmpresarialPage() {
               </div>
 
               {/* Vista Previa de la Liquidación Oficial */}
-              <Card id="print-area" className="border border-black bg-white text-black p-8 font-mono text-[11px] max-w-[800px] mx-auto shadow-none rounded-none">
+              <Card id="print-area" className="bg-white text-black p-8 font-mono text-[11px] max-w-[800px] mx-auto shadow-none border-none rounded-none">
                 <div className="space-y-3">
                   {/* Encabezado */}
                   <div className="text-center space-y-1 pb-1">
@@ -1422,7 +1434,7 @@ export default function SueldoEmpresarialPage() {
                     </div>
                     <div className="col-span-7">
                       <span className="font-bold block text-[9px] text-gray-700">TRABAJADOR</span>
-                      <span className="uppercase text-xs">{calculoActivo.nombreTrabajador}</span>
+                      <span className="uppercase text-xs">{formatearNombreRutero(calculoActivo.nombreTrabajador)}</span>
                     </div>
                     <div className="col-span-2 text-right">
                       <span className="font-bold block text-[9px] text-gray-700">C.C.</span>
