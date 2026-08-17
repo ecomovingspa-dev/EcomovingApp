@@ -1403,6 +1403,35 @@ export default function SueldoEmpresarialPage() {
 
               {/* Vista Previa de la Liquidación Oficial */}
               <Card id="print-area" className="bg-white text-black p-8 font-mono text-[11px] max-w-[800px] mx-auto shadow-none border-none rounded-none">
+                <style dangerouslySetInnerHTML={{ __html: `
+                  @media print {
+                    /* Ocultar todo lo demás en la página */
+                    body * {
+                      visibility: hidden;
+                    }
+                    /* Mostrar únicamente la sección de la liquidación */
+                    #print-area, #print-area * {
+                      visibility: visible;
+                    }
+                    #print-area {
+                      visibility: visible;
+                      position: absolute;
+                      left: 0;
+                      top: 0;
+                      width: 100% !important;
+                      max-width: 100% !important;
+                      box-shadow: none !important;
+                      border: none !important;
+                      padding: 1.5cm !important;
+                      margin: 0 !important;
+                    }
+                    /* Quitar los encabezados y pies de página predeterminados del navegador */
+                    @page {
+                      size: auto;
+                      margin: 0mm;
+                    }
+                  }
+                `}} />
                 <div className="space-y-3">
                   {/* Encabezado */}
                   <div className="text-center space-y-1 pb-1">
@@ -1558,7 +1587,7 @@ export default function SueldoEmpresarialPage() {
                   {/* Cuerpo Principal de Haberes y Descuentos */}
                   <div className="grid grid-cols-2 gap-0 border-t border-b border-black text-xs font-normal">
                     {/* Haberes */}
-                    <div className="border-r border-black pr-4 py-2 flex flex-col justify-between min-h-[160px]">
+                    <div className="border-r border-black pr-4 py-2 flex flex-col justify-between min-h-[380px]">
                       <div className="space-y-1">
                         <div className="text-center font-bold pb-1 border-b border-gray-200">HABERES</div>
                         <div className="flex justify-between">
@@ -1591,7 +1620,7 @@ export default function SueldoEmpresarialPage() {
                     </div>
 
                     {/* Descuentos */}
-                    <div className="pl-4 py-2 flex flex-col justify-between min-h-[160px]">
+                    <div className="pl-4 py-2 flex flex-col justify-between min-h-[380px]">
                       <div className="space-y-1">
                         <div className="text-center font-bold pb-1 border-b border-gray-200">DESCUENTOS</div>
                         <div className="flex justify-between">
