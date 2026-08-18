@@ -1417,28 +1417,28 @@ export default function SueldoEmpresarialPage() {
               </Card>
 
               {/* Botones de Acción Documental */}
-              <div className="flex gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                 <Button 
                   onClick={handleGuardar}
                   variant="outline" 
-                  className="flex-1 flex items-center justify-center gap-2"
+                  className="w-full flex items-center justify-center gap-1.5 text-xs px-2"
                 >
-                  <History className="h-4 w-4" />
-                  Guardar en Historial
+                  <History className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Guardar Historial</span>
                 </Button>
                 <Button 
                   onClick={handlePrint}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-1.5 text-xs px-2"
                 >
-                  <Printer className="h-4 w-4" />
-                  Imprimir / PDF
+                  <Printer className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Imprimir / PDF</span>
                 </Button>
                 <Button 
                   onClick={handleExportarLRE}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-1.5 text-xs px-2"
                 >
-                  <Download className="h-4 w-4" />
-                  Exportar LRE (DT)
+                  <Download className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Exportar LRE</span>
                 </Button>
               </div>
 
