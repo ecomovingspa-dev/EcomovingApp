@@ -64,7 +64,7 @@ export function ZohoMailModal({
   ) => {
     const contactName = contacto?.nombre || "";
     const shortName = contactName.split(" ")[0];
-    const finalCompany = (contacto?.empresa_rel_name || cuenta?.nombre || "").trim();
+    const finalCompany = (contacto?.empresa_rel_name || contacto?.empresa || cuenta?.nombre || cuenta?.cliente || "").trim();
     const shortCompany = finalCompany.replace(/\b(SpA|EIRL|S\.A\.|LTDA|Limitada|S\.A)\b/gi, "").trim();
     
     // Configuración del equipo comercial (harcodeado temporalmente igual que antes)
@@ -137,6 +137,7 @@ export function ZohoMailModal({
       setIsEditingTemplateMode(false);
       setImageUrl(selectedContactoDraft?.imagen || "");
       setImageUrlCliente("");
+      setDraftData(null);
       
       setTemplateSendDates({});
       if (selectedContactoDraft) {
