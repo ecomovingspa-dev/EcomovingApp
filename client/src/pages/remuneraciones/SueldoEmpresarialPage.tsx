@@ -1599,7 +1599,7 @@ export default function SueldoEmpresarialPage() {
                   {/* Cuerpo Principal de Haberes y Descuentos */}
                   <div className="grid grid-cols-2 gap-0 border-t border-b border-black text-[11px] font-normal">
                     {/* Haberes */}
-                    <div className="pr-4 py-1.5 flex flex-col justify-between min-h-[190px]">
+                    <div className="pr-4 py-1.5 flex flex-col justify-between min-h-[235px]">
                       <div className="space-y-0.5">
                         <div className="text-center font-bold pb-0.5 border-b border-gray-200">HABERES</div>
                         <div className="flex justify-between">
@@ -1632,7 +1632,7 @@ export default function SueldoEmpresarialPage() {
                     </div>
 
                     {/* Descuentos */}
-                    <div className="pl-4 py-1.5 flex flex-col justify-between min-h-[190px]">
+                    <div className="pl-4 py-1.5 flex flex-col justify-between min-h-[235px]">
                       <div className="space-y-0.5">
                         <div className="text-center font-bold pb-0.5 border-b border-gray-200">DESCUENTOS</div>
                         <div className="flex justify-between">
