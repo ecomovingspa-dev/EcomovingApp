@@ -1443,117 +1443,117 @@ export default function SueldoEmpresarialPage() {
               </div>
 
               {/* Vista Previa de la Liquidación Oficial */}
-              <Card id="print-area" className="bg-white text-black p-8 font-mono text-[11px] max-w-[800px] mx-auto shadow-none border-none rounded-none">
-                <div className="space-y-3">
+              <Card id="print-area" className="bg-white text-black p-5 font-mono text-[10px] max-w-[800px] mx-auto shadow-none border-none rounded-none">
+                <div className="space-y-1">
                   {/* Encabezado */}
-                  <div className="text-center space-y-1 pb-1">
-                    <h2 className="text-base font-bold tracking-widest">LIQUIDACION DE SUELDO</h2>
-                    <p className="text-xs font-bold">REMUNERACIONES MES DE: {formatMesAnioTexto(calculoActivo.mesAnio)}</p>
+                  <div className="text-center space-y-0.5 pb-0.5">
+                    <h2 className="text-sm font-bold tracking-widest">LIQUIDACION DE SUELDO</h2>
+                    <p className="text-[11px] font-bold">REMUNERACIONES MES DE: {formatMesAnioTexto(calculoActivo.mesAnio)}</p>
                   </div>
 
                   <hr className="border-black border-t" />
 
                   {/* Razón Social */}
-                  <div className="grid grid-cols-2 gap-4 py-1">
+                  <div className="grid grid-cols-2 gap-4 py-0.5">
                     <div>
-                      <span className="font-bold block text-[9px] text-gray-700">RAZON SOCIAL:</span>
-                      <span className="uppercase text-xs">{calculoActivo.razonSocial}</span>
+                      <span className="font-bold block text-[8px] text-gray-700">RAZON SOCIAL:</span>
+                      <span className="uppercase text-[11px]">{calculoActivo.razonSocial}</span>
                     </div>
                     <div>
-                      <span className="font-bold block text-[9px] text-gray-700">RUT EMPRESA</span>
-                      <span className="text-xs">{calculoActivo.rutEmpresa}</span>
+                      <span className="font-bold block text-[8px] text-gray-700">RUT EMPRESA</span>
+                      <span className="text-[11px]">{calculoActivo.rutEmpresa}</span>
                     </div>
                   </div>
 
                   <hr className="border-black border-t" />
 
                   {/* Trabajador */}
-                  <div className="grid grid-cols-12 gap-2 py-1">
+                  <div className="grid grid-cols-12 gap-2 py-0.5">
                     <div className="col-span-3">
-                      <span className="font-bold block text-[9px] text-gray-700">R.U.T.</span>
-                      <span className="text-xs">{calculoActivo.rutTrabajador}</span>
+                      <span className="font-bold block text-[8px] text-gray-700">R.U.T.</span>
+                      <span className="text-[11px]">{calculoActivo.rutTrabajador}</span>
                     </div>
                     <div className="col-span-7">
-                      <span className="font-bold block text-[9px] text-gray-700">TRABAJADOR</span>
-                      <span className="uppercase text-xs">{formatearNombreRutero(calculoActivo.nombreTrabajador)}</span>
+                      <span className="font-bold block text-[8px] text-gray-700">TRABAJADOR</span>
+                      <span className="uppercase text-[11px]">{formatearNombreRutero(calculoActivo.nombreTrabajador)}</span>
                     </div>
                     <div className="col-span-2 text-right">
-                      <span className="font-bold block text-[9px] text-gray-700">C.C.</span>
-                      <span className="text-xs">01</span>
+                      <span className="font-bold block text-[8px] text-gray-700">C.C.</span>
+                      <span className="text-[11px]">01</span>
                     </div>
                   </div>
 
                   <hr className="border-black border-t" />
 
                   {/* Fechas e Ingresos */}
-                  <div className="grid grid-cols-2 gap-4 py-1">
+                  <div className="grid grid-cols-2 gap-4 py-0.5">
                     <div>
-                      <span className="font-bold block text-[9px] text-gray-700">FECHA INGRESO</span>
-                      <span className="text-xs">01/10/2025</span>
+                      <span className="font-bold block text-[8px] text-gray-700">FECHA INGRESO</span>
+                      <span className="text-[11px]">01/10/2025</span>
                     </div>
                     <div>
-                      <span className="font-bold block text-[9px] text-gray-700">TIPO DE CONTRATO</span>
-                      <span className="text-xs">INDEFINIDO</span>
+                      <span className="font-bold block text-[8px] text-gray-700">TIPO DE CONTRATO</span>
+                      <span className="text-[11px]">INDEFINIDO</span>
                     </div>
                   </div>
 
                   <hr className="border-black border-t" />
 
                   {/* Cargos */}
-                  <div className="grid grid-cols-2 gap-4 py-1">
+                  <div className="grid grid-cols-2 gap-4 py-0.5">
                     <div>
-                      <span className="font-bold block text-[9px] text-gray-700">CODIGO FUNCIONARIO</span>
-                      <span className="text-xs">01</span>
+                      <span className="font-bold block text-[8px] text-gray-700">CODIGO FUNCIONARIO</span>
+                      <span className="text-[11px]">01</span>
                     </div>
                     <div>
-                      <span className="font-bold block text-[9px] text-gray-700">CARGO FUNCIONARIO</span>
-                      <span className="text-xs uppercase">GERENTE GENERAL</span>
+                      <span className="font-bold block text-[8px] text-gray-700">CARGO FUNCIONARIO</span>
+                      <span className="text-[11px] uppercase">GERENTE GENERAL</span>
                     </div>
                   </div>
 
                   <hr className="border-black border-t" />
 
                   {/* Término y Establecimiento */}
-                  <div className="grid grid-cols-2 gap-4 py-1">
+                  <div className="grid grid-cols-2 gap-4 py-0.5">
                     <div>
-                      <span className="font-bold block text-[9px] text-gray-700">FECHA TERMINO CONTRATO</span>
-                      <span className="text-xs">&nbsp;</span>
+                      <span className="font-bold block text-[8px] text-gray-700">FECHA TERMINO CONTRATO</span>
+                      <span className="text-[11px]">&nbsp;</span>
                     </div>
                     <div>
-                      <span className="font-bold block text-[9px] text-gray-700">ESTABLECIMIENTO</span>
-                      <span className="text-xs">&nbsp;</span>
+                      <span className="font-bold block text-[8px] text-gray-700">ESTABLECIMIENTO</span>
+                      <span className="text-[11px]">&nbsp;</span>
                     </div>
                   </div>
 
                   <hr className="border-black border-t" />
 
                   {/* AFP e ISAPRE */}
-                  <div className="grid grid-cols-12 gap-2 py-1">
+                  <div className="grid grid-cols-12 gap-2 py-0.5">
                     <div className="col-span-4">
-                      <span className="font-bold block text-[9px] text-gray-700">A.F.P.</span>
-                      <span className="uppercase text-xs block">
+                      <span className="font-bold block text-[8px] text-gray-700">A.F.P.</span>
+                      <span className="uppercase text-[11px] block">
                         {calculoActivo.afpSeleccionada === "custom" 
                           ? "PERSONALIZADA" 
                           : (AFPS.find(a => a.id === calculoActivo.afpSeleccionada)?.nombre.split(" ")[0] || "MODELO").toUpperCase()}
                       </span>
-                      <span className="text-xs block">
+                      <span className="text-[11px] block">
                         {(calculoActivo.afpSeleccionada === "custom" 
                           ? calculoActivo.afpTasaCustom 
                           : (AFPS.find(a => a.id === calculoActivo.afpSeleccionada)?.tasa || 10.58)).toFixed(2).replace(".", ",")}%
                       </span>
                     </div>
                     <div className="col-span-4">
-                      <span className="font-bold block text-[9px] text-gray-700">ISAPRE</span>
-                      <span className="uppercase text-xs block">
+                      <span className="font-bold block text-[8px] text-gray-700">ISAPRE</span>
+                      <span className="uppercase text-[11px] block">
                         {calculoActivo.tipoSalud === "fonasa" ? "FONASA" : "ISAPRE " + (calculoActivo.tipoSalud || "").toUpperCase()}
                       </span>
-                      <span className="text-xs block">
+                      <span className="text-[11px] block">
                         {calculoActivo.tipoSalud === "fonasa" ? "7%" : calculoActivo.isapreUF ? `${calculoActivo.isapreUF} UF` : "7%"}
                       </span>
                     </div>
                     <div className="col-span-4 text-right flex flex-col justify-end font-normal">
-                      <span className="text-xs block">{formatCLPNoSign(calculoActivo.descuentoSalud)}</span>
-                      <span className="text-xs block">
+                      <span className="text-[11px] block">{formatCLPNoSign(calculoActivo.descuentoSalud)}</span>
+                      <span className="text-[11px] block">
                         {calculoActivo.tipoSalud === "fonasa" ? "7%" : calculoActivo.isapreUF ? `${calculoActivo.isapreUF} UF` : "7%"}
                       </span>
                     </div>
@@ -1562,14 +1562,14 @@ export default function SueldoEmpresarialPage() {
                   <hr className="border-black border-t" />
 
                   {/* Resumen Días, Extras, etc. */}
-                  <div className="grid grid-cols-12 gap-1 text-center py-1.5 text-[9px] font-bold">
+                  <div className="grid grid-cols-12 gap-1 text-center py-1 text-[8px] font-bold">
                     <div className="col-span-2 border-r border-gray-300">
                       <div className="pb-0.5 text-gray-700">DIAS</div>
-                      <div className="font-normal text-xs">{calculoActivo.diasTrabajados || 30}</div>
+                      <div className="font-normal text-[11px]">{calculoActivo.diasTrabajados || 30}</div>
                     </div>
                     <div className="col-span-3 border-r border-gray-300">
                       <div className="pb-0.5 text-gray-700">HH EXTRAS</div>
-                      <div className="font-normal text-xs flex justify-around px-2">
+                      <div className="font-normal text-[11px] flex justify-around px-2">
                         <span>0</span>
                         <span>0</span>
                         <span>0</span>
@@ -1577,31 +1577,31 @@ export default function SueldoEmpresarialPage() {
                     </div>
                     <div className="col-span-2 border-r border-gray-300">
                       <div className="pb-0.5 text-gray-700">HH FALTADAS</div>
-                      <div className="font-normal text-xs">0</div>
+                      <div className="font-normal text-[11px]">0</div>
                     </div>
                     <div className="col-span-1 border-r border-gray-300">
                       <div className="pb-0.5 text-gray-700">CARGAS</div>
-                      <div className="font-normal text-xs flex justify-around">
+                      <div className="font-normal text-[11px] flex justify-around">
                         <span>0</span>
                         <span>0</span>
                       </div>
                     </div>
                     <div className="col-span-2 border-r border-gray-300">
                       <div className="pb-0.5 text-gray-700">IMPONIBLE</div>
-                      <div className="font-normal text-xs">{formatCLPNoSign(calculoActivo.imponible)}</div>
+                      <div className="font-normal text-[11px]">{formatCLPNoSign(calculoActivo.imponible)}</div>
                     </div>
                     <div className="col-span-2">
                       <div className="pb-0.5 text-gray-700">TRIBUTABLE</div>
-                      <div className="font-normal text-xs">{formatCLPNoSign(calculoActivo.baseImpuesto)}</div>
+                      <div className="font-normal text-[11px]">{formatCLPNoSign(calculoActivo.baseImpuesto)}</div>
                     </div>
                   </div>
 
                   {/* Cuerpo Principal de Haberes y Descuentos */}
-                  <div className="grid grid-cols-2 gap-0 border-t border-b border-black text-xs font-normal">
+                  <div className="grid grid-cols-2 gap-0 border-t border-b border-black text-[11px] font-normal">
                     {/* Haberes */}
-                    <div className="pr-4 py-2 flex flex-col justify-between min-h-[270px]">
-                      <div className="space-y-1">
-                        <div className="text-center font-bold pb-1 border-b border-gray-200">HABERES</div>
+                    <div className="pr-4 py-1.5 flex flex-col justify-between min-h-[190px]">
+                      <div className="space-y-0.5">
+                        <div className="text-center font-bold pb-0.5 border-b border-gray-200">HABERES</div>
                         <div className="flex justify-between">
                           <span>SUELDO BASE</span>
                           <span>{formatCLPNoSign(calculoActivo.sueldoBruto)}</span>
@@ -1619,7 +1619,7 @@ export default function SueldoEmpresarialPage() {
                           </div>
                         )}
                       </div>
-                      <div className="space-y-1 pt-4">
+                      <div className="space-y-0.5 pt-2">
                         <div className="flex justify-between font-bold">
                           <span>TOTAL IMPONIBLE</span>
                           <span>{formatCLPNoSign(calculoActivo.imponible)}</span>
@@ -1632,9 +1632,9 @@ export default function SueldoEmpresarialPage() {
                     </div>
 
                     {/* Descuentos */}
-                    <div className="pl-4 py-2 flex flex-col justify-between min-h-[270px]">
-                      <div className="space-y-1">
-                        <div className="text-center font-bold pb-1 border-b border-gray-200">DESCUENTOS</div>
+                    <div className="pl-4 py-1.5 flex flex-col justify-between min-h-[190px]">
+                      <div className="space-y-0.5">
+                        <div className="text-center font-bold pb-0.5 border-b border-gray-200">DESCUENTOS</div>
                         <div className="flex justify-between">
                           <span>PREVISION</span>
                           <span>{formatCLPNoSign(calculoActivo.descuentoAFP)}</span>
@@ -1650,7 +1650,7 @@ export default function SueldoEmpresarialPage() {
                           </div>
                         )}
                       </div>
-                      <div className="space-y-1 pt-4">
+                      <div className="space-y-0.5 pt-2">
                         <div className="flex justify-between font-bold">
                           <span>TOTAL DESC. LEGALES</span>
                           <span>{formatCLPNoSign(calculoActivo.descuentoAFP + calculoActivo.descuentoSalud + calculoActivo.impuestoUnico)}</span>
@@ -1664,7 +1664,7 @@ export default function SueldoEmpresarialPage() {
                   </div>
 
                   {/* Resumen Final de Totales */}
-                  <div className="py-1 space-y-1.5 text-xs font-normal">
+                  <div className="py-0.5 space-y-1 text-[11px] font-normal">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex justify-between font-bold">
                         <span>TOTAL HABERES:</span>
@@ -1681,13 +1681,13 @@ export default function SueldoEmpresarialPage() {
                         <span className="font-bold">FECHA:</span>
                         <span>{obtenerUltimoDiaMes(calculoActivo.mesAnio)}</span>
                       </div>
-                      <div className="flex justify-between font-bold text-xs">
+                      <div className="flex justify-between font-bold">
                         <span>ALCANCE LIQUIDO:</span>
                         <span>{formatCLPNoSign(calculoActivo.sueldoLiquido)}</span>
                       </div>
                     </div>
 
-                    <div className="pt-1.5 font-bold border-t border-gray-200 text-[10px] flex gap-1">
+                    <div className="pt-1 font-bold border-t border-gray-200 text-[9px] flex gap-1">
                       <span>SON:</span>
                       <span className="font-normal uppercase">{numeroALetras(calculoActivo.sueldoLiquido)}</span>
                     </div>
@@ -1696,19 +1696,19 @@ export default function SueldoEmpresarialPage() {
                   <hr className="border-black border-t" />
 
                   {/* Recibido Conforme */}
-                  <p className="text-[9px] text-gray-700 leading-relaxed font-normal">
+                  <p className="text-[8px] text-gray-700 leading-relaxed font-normal">
                     Recibí conforme el alcance líquido de la presente liquidación, no teniendo cargo o cobro alguno que hacer por otro concepto.
                   </p>
 
                   {/* Firmas */}
-                  <div className="pt-12 grid grid-cols-2 gap-12 text-center text-[10px]">
+                  <div className="pt-6 grid grid-cols-2 gap-12 text-center text-[9px]">
                     <div>
-                      <div className="border-t border-black w-4/5 mx-auto pt-1">
+                      <div className="border-t border-black w-4/5 mx-auto pt-0.5">
                         <p className="font-bold">FIRMA DEL EMPLEADOR</p>
                       </div>
                     </div>
                     <div>
-                      <div className="border-t border-black w-4/5 mx-auto pt-1">
+                      <div className="border-t border-black w-4/5 mx-auto pt-0.5">
                         <p className="font-bold">FIRMA DEL TRABAJADOR</p>
                       </div>
                     </div>
