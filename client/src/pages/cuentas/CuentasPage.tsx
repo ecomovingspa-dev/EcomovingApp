@@ -333,15 +333,17 @@ export default function CuentasPage() {
     // Paginación
     const paginadasLight = filtradas.slice((paginaActual - 1) * filasPorPagina, paginaActual * filasPorPagina);
 
+    let isCancelled = false;
+
     // Cargar detalles perezosamente (vendedores y contactos) para la página actual
     const cargarDetallesPagina = async () => {
       if (paginadasLight.length === 0) {
-        setCuentas([]);
+        if (!isCancelled) setCuentas([]);
         return;
       }
       try {
-        setCargando(true);
-        setError("");
+        if (!isCancelled) setCargando(true);
+        if (!isCancelled) setError("");
 
         const ids = paginadasLight.map(c => c.id);
         const { data, error: err } = await supabase
@@ -351,18 +353,24 @@ export default function CuentasPage() {
 
         if (err) throw err;
 
-        // Ordenar según el orden de paginadasLight
-        const sorted = paginadasLight.map(pl => data.find(d => d.id === pl.id)).filter(Boolean) as Cuenta[];
-        setCuentas(sorted);
+        if (!isCancelled) {
+          // Ordenar según el orden de paginadasLight
+          const sorted = paginadasLight.map(pl => data.find(d => d.id === pl.id)).filter(Boolean) as Cuenta[];
+          setCuentas(sorted);
+        }
       } catch (err: any) {
         console.error("Error al cargar detalles de la página:", err);
-        setError("No se pudieron cargar los detalles de las cuentas.");
+        if (!isCancelled) setError("No se pudieron cargar los detalles de las cuentas.");
       } finally {
-        setCargando(false);
+        if (!isCancelled) setCargando(false);
       }
     };
 
     cargarDetallesPagina();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [allCuentas, paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, filtroVendedor, filtroFoco, filtroEtapa, filtroFecha]);
 
   const totalPaginas = Math.ceil(totalRecords / filasPorPagina);
