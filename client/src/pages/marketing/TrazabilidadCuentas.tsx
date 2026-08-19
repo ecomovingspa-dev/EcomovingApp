@@ -587,8 +587,16 @@ export default function TrazabilidadCuentas() {
     }
   };
 
+  const matchFlexible = (text: string, search: string) => {
+    if (!search || !search.trim()) return true;
+    const normSearch = normalizeString(search);
+    const words = normSearch.split(/\s+/).filter(Boolean);
+    const normText = normalizeString(text || "");
+    return words.every(w => normText.includes(w));
+  };
+
   const cuentasFiltradas = cuentas.filter(acc => 
-    normalizeString(acc.cliente).includes(normalizeString(busquedaCuentas))
+    matchFlexible(acc.cliente, busquedaCuentas)
   );
 
   const vendedoresMap: Record<string, string> = {};
@@ -600,7 +608,7 @@ export default function TrazabilidadCuentas() {
 
   const filtered = contactos.filter(c => {
     const accountName = c.empresa_rel_name || c.empresa || "";
-    const matchesSearch = normalizeString(accountName).includes(normalizeString(filtro));
+    const matchesSearch = matchFlexible(accountName, filtro) || matchFlexible(c.nombre, filtro) || matchFlexible(c.correo, filtro);
     const matchesCriticos = soloCriticos ? c.es_bloqueado : true;
     const matchesActivo = c.empresa_rel_cuenta_activa === true;
     const matchesEtapa = filtroEtapa === "todos" ? true : (c.etapa === filtroEtapa);

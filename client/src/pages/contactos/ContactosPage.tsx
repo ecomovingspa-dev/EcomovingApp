@@ -182,10 +182,14 @@ export default function ContactosPage() {
 
   const cuentasFiltradas = useMemo(() => {
     if (!busquedaCuentas.trim()) return cuentas;
-    return cuentas.filter((c) =>
-      c.cliente?.toLowerCase().includes(busquedaCuentas.toLowerCase()) ||
-      c.rut?.toLowerCase().includes(busquedaCuentas.toLowerCase())
-    );
+    const queryNorm = busquedaCuentas.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const palabras = queryNorm.split(/\s+/).filter(Boolean);
+
+    return cuentas.filter((c) => {
+      const clienteNorm = (c.cliente || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const rutNorm = (c.rut || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      return palabras.every(p => clienteNorm.includes(p) || rutNorm.includes(p));
+    });
   }, [cuentas, busquedaCuentas]);
 
   // Determinar si hay algún filtro activo
@@ -252,16 +256,31 @@ export default function ContactosPage() {
     try {
       if (!silent) setCargando(true);
       
-      // Intentamos buscar IDs de empresas si hay un término de búsqueda para ampliar resultados
       let idsDeCuentas: string[] = [];
-      if (busqueda && busqueda.length >= 2) {
-        const { data: cuentasCoincidentes } = await supabase
-          .from("cuentas")
-          .select("id")
-          .ilike("cliente", `%${busqueda}%`);
+      let orConditions: string[] = [];
+
+      if (busqueda && busqueda.trim().length >= 2) {
+        const queryNorm = busqueda.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const palabras = queryNorm.split(/\s+/).filter(Boolean);
+
+        const { data: todasCuentas } = await supabase.from("cuentas").select("id, cliente");
+        if (todasCuentas) {
+          const coincidencias = todasCuentas.filter(c => {
+            const clienteNorm = (c.cliente || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            return palabras.every(p => clienteNorm.includes(p));
+          });
+          idsDeCuentas = coincidencias.map(c => c.id);
+        }
+
+        const nombreAnds = palabras.map(p => `nombre.ilike.%${p}%`).join(',');
+        const correoAnds = palabras.map(p => `correo.ilike.%${p}%`).join(',');
         
-        if (cuentasCoincidentes) {
-          idsDeCuentas = cuentasCoincidentes.map(c => c.id);
+        orConditions.push(`and(${nombreAnds})`);
+        orConditions.push(`and(${correoAnds})`);
+        
+        if (idsDeCuentas.length > 0) {
+          const limitedIds = idsDeCuentas.slice(0, 200);
+          orConditions.push(`cuenta_id.in.(${limitedIds.join(',')})`);
         }
       }
 
@@ -276,19 +295,7 @@ export default function ContactosPage() {
           { count: "exact" }
         );
 
-      if (busqueda) {
-        // Combinamos búsqueda de nombre, correo y los IDs de empresas encontradas
-        const orConditions = [
-          `nombre.ilike.%${busqueda}%`,
-          `correo.ilike.%${busqueda}%`
-        ];
-        
-        if (idsDeCuentas.length > 0) {
-          // Limitamos a 50 IDs para evitar errores en el parseo del filtro OR
-          const limitedIds = idsDeCuentas.slice(0, 50);
-          orConditions.push(`cuenta_id.in.(${limitedIds.join(',')})`);
-        }
-        
+      if (orConditions.length > 0) {
         query = query.or(orConditions.join(','));
       }
 
