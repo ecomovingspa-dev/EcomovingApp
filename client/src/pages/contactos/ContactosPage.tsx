@@ -263,8 +263,27 @@ export default function ContactosPage() {
         const queryNorm = busqueda.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const palabras = queryNorm.split(/\s+/).filter(Boolean);
 
-        const { data: todasCuentas } = await supabase.from("cuentas").select("id, cliente");
-        if (todasCuentas) {
+        let todasCuentas: any[] = [];
+        let from = 0;
+        let to = 999;
+        let hasMore = true;
+
+        while (hasMore) {
+          const { data } = await supabase.from("cuentas").select("id, cliente").range(from, to);
+          if (data && data.length > 0) {
+            todasCuentas = [...todasCuentas, ...data];
+            if (data.length < 1000) {
+              hasMore = false;
+            } else {
+              from += 1000;
+              to += 1000;
+            }
+          } else {
+            hasMore = false;
+          }
+        }
+
+        if (todasCuentas.length > 0) {
           const coincidencias = todasCuentas.filter(c => {
             const clienteNorm = (c.cliente || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             return palabras.every(p => clienteNorm.includes(p));

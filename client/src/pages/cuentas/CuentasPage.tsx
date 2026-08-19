@@ -245,14 +245,34 @@ export default function CuentasPage() {
       setCargando(true);
       setError("");
 
-      const { data, error } = await supabase
-        .from("cuentas")
-        .select("id, cliente, rut, ciudad, sector, segmento, estado, cuenta_foco, etapa_prospeccion, vendedor_id, created_at, cuenta_activa")
-        .order("created_at", { ascending: false });
+      let allData: any[] = [];
+      let from = 0;
+      let to = 999;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("cuentas")
+          .select("id, cliente, rut, ciudad, sector, segmento, estado, cuenta_foco, etapa_prospeccion, vendedor_id, created_at, cuenta_activa")
+          .order("created_at", { ascending: false })
+          .range(from, to);
 
-      setAllCuentas(data || []);
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          if (data.length < 1000) {
+            hasMore = false;
+          } else {
+            from += 1000;
+            to += 1000;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+
+      setAllCuentas(allData);
     } catch (err: any) {
       console.error("Error al cargar cuentas:", err);
       setError("No se pudieron cargar las cuentas: " + (err.message || err.details || JSON.stringify(err)));
