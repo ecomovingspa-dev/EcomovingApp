@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
-import { SEGMENTOS_MAESTROS } from "../../utils/constants";
+
 import { useVendedores } from "../../hooks/useVendedores";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -69,9 +69,9 @@ export default function CuentaForm() {
       const { data: catalogData } = await supabase.from("catalogo_segmentos").select("nombre");
       if (catalogData && catalogData.length > 0) {
         const dbSegments = catalogData.map((s: any) => s.nombre).filter(Boolean);
-        setAvailableSegments(Array.from(new Set([...SEGMENTOS_MAESTROS, ...dbSegments])).sort());
+        setAvailableSegments(Array.from(new Set(dbSegments)).sort());
       } else {
-        setAvailableSegments([...SEGMENTOS_MAESTROS].sort());
+        setAvailableSegments([]);
       }
     } catch (error) {
       console.error("Error loading filter options:", error);
@@ -386,21 +386,19 @@ export default function CuentaForm() {
                             </button>
                             <div className="flex items-center gap-1.5 shrink-0">
                               {cuenta.segmento === seg && <Check className="h-4 w-4 text-blue-600 dark:text-blue-400" />}
-                              {!SEGMENTOS_MAESTROS.includes(seg) && (
-                                <button
-                                  type="button"
-                                  onClick={async (e) => {
-                                    e.stopPropagation();
-                                    if (confirm(`¿Estás seguro de que deseas eliminar el segmento "${seg}" del catálogo?`)) {
-                                      await eliminarSegmentoDelCatálogo(seg);
-                                    }
-                                  }}
-                                  className="opacity-0 group-hover/item:opacity-100 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition-all cursor-pointer"
-                                  title="Eliminar de la lista"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              )}
+                              <button
+                                type="button"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`¿Estás seguro de que deseas eliminar el segmento "${seg}" del catálogo?`)) {
+                                    await eliminarSegmentoDelCatálogo(seg);
+                                  }
+                                }}
+                                className="opacity-0 group-hover/item:opacity-100 p-0.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition-all cursor-pointer"
+                                title="Eliminar de la lista"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
                             </div>
                           </div>
                         ))

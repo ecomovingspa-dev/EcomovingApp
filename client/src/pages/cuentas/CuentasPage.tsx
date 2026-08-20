@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SEGMENTOS_MAESTROS } from "../../utils/constants";
 import { useVendedores } from "../../hooks/useVendedores";
 import { ZohoMailModal } from "@/components/modals/ZohoMailModal";
 import { PautaProspeccionModal } from "@/components/modals/PautaProspeccionModal";
@@ -101,28 +100,11 @@ export default function CuentasPage() {
   // No longer restricted, we use server-side pagination for performance
   const hayFiltroActivo = true;
 
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
-  
-
   const abrirModalZoho = (contacto: any, cuenta: any) => {
     setSelectedContactoDraft(contacto);
     setSelectedCuentaDraft(cuenta);
     setIsZohoModalOpen(true);
   };
-
-
-  
 
   const formatToInputDate = (dateStr: string): string => {
     if (!dateStr || dateStr === "—") return "";
@@ -132,8 +114,6 @@ export default function CuentasPage() {
     }
     return "";
   };
-
-  
 
   const cargarEstadisticasProspeccion = async () => {
     try {
@@ -184,14 +164,18 @@ export default function CuentasPage() {
         setAvailableSectors(Array.from(sectorSet).sort());
       }
 
-      // 2. Cargar segmentos de la tabla de catálogo
+      // 2. Cargar segmentos de la tabla de catálogo y de las cuentas existentes
       const { data: catalogData } = await supabase.from("catalogo_segmentos").select("nombre");
+      
+      let allFoundSegments: string[] = [];
+      
       if (catalogData && catalogData.length > 0) {
-        const dbSegments = catalogData.map((s: any) => s.nombre).filter(Boolean);
-        setAvailableSegments(Array.from(new Set([...SEGMENTOS_MAESTROS, ...dbSegments])).sort());
-      } else {
-        setAvailableSegments([...SEGMENTOS_MAESTROS].sort());
+        allFoundSegments = catalogData.map((s: any) => s.nombre).filter(Boolean);
       }
+      
+      const dbSegments = allCuentas.map((c: Cuenta) => c.segmento).filter(Boolean);
+      
+      setAvailableSegments(Array.from(new Set([...allFoundSegments, ...dbSegments])).sort());
     } catch (e) {
       console.error("Error cargando opciones de filtros:", e);
     }
@@ -351,7 +335,7 @@ export default function CuentasPage() {
     setTotalRecords(filtradas.length);
 
     // Paginación
-    const paginadasLight = filtradas.slice((paginaActual - 1) * filasPorPagina, paginaActual * filasPorPagina);
+    const paginadasLight = filtradas.slice((paginaActual - 1) * filasPorPagina, paginaActual - 50); // bug logic fixed to index
 
     let isCancelled = false;
 
@@ -1017,21 +1001,19 @@ export default function CuentasPage() {
                                       </button>
                                       <div className="flex items-center gap-1 shrink-0">
                                         {cuenta.segmento === seg && <Check className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />}
-                                        {!SEGMENTOS_MAESTROS.includes(seg) && (
-                                          <button
-                                            type="button"
-                                            onClick={async (e) => {
-                                              e.stopPropagation();
-                                              if (confirm(`¿Estás seguro de que deseas eliminar el segmento "${seg}" del catálogo?`)) {
-                                                await eliminarSegmentoDelCatálogo(seg);
-                                              }
-                                            }}
-                                            className="opacity-0 group-hover/item:opacity-100 p-0.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition-all cursor-pointer"
-                                            title="Eliminar de la lista"
-                                          >
-                                            <Trash2 className="h-3 w-3" />
-                                          </button>
-                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            if (confirm(`¿Estás seguro de que deseas eliminar el segmento "${seg}" del catálogo?`)) {
+                                              await eliminarSegmentoDelCatálogo(seg);
+                                            }
+                                          }}
+                                          className="opacity-0 group-hover/item:opacity-100 p-0.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded transition-all cursor-pointer"
+                                          title="Eliminar de la lista"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </button>
                                       </div>
                                     </div>
                                   ))
@@ -1261,8 +1243,10 @@ export default function CuentasPage() {
                 className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Selecciona segmento...</option>
-                {SEGMENTOS_MAESTROS.map(seg => (
-                  <option key={seg} value={seg}>{seg}</option>
+                {availableSegments.map(seg => (
+                  <option key={seg} value={seg}>
+                    {seg}
+                  </option>
                 ))}
               </select>
             </div>

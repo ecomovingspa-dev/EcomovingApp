@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { SEGMENTOS_MAESTROS } from "../../utils/constants";
+import { ESTADOS_CUENTA } from "../../utils/constants";
 import { ZohoMailModal } from "@/components/modals/ZohoMailModal";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -248,7 +248,7 @@ export default function TrazabilidadCuentas() {
       setCuentas(allCuentas);
       // 1.1.2 Cargar segmentos oficiales del catálogo
       const { data: catalogData } = await supabase.from("catalogo_segmentos").select("nombre");
-      let currentCatalog: string[] = [...SEGMENTOS_MAESTROS];
+      let currentCatalog: string[] = [];
       if (catalogData && catalogData.length > 0) {
         currentCatalog = Array.from(new Set([...currentCatalog, ...catalogData.map((s: any) => s.nombre).filter(Boolean)]));
       }
