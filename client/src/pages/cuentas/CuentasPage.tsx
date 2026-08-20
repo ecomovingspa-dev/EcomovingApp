@@ -335,7 +335,7 @@ export default function CuentasPage() {
     setTotalRecords(filtradas.length);
 
     // Paginación
-    const paginadasLight = filtradas.slice((paginaActual - 1) * filasPorPagina, paginaActual - 50); // bug logic fixed to index
+    const paginadasLight = filtradas.slice((paginaActual - 1) * filasPorPagina, paginaActual * filasPorPagina);
 
     let isCancelled = false;
 
