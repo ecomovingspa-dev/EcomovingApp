@@ -184,6 +184,13 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
           precio_fijo: true
         }));
       }
+
+      // Asegurar defaults para campos de financiamiento si la DB los retorna nulos
+      // (cotizaciones creadas antes de la migración ADD_FINANCIAMIENTO_COLUMNS.sql)
+      if (!data.condicion_pago) data.condicion_pago = "Ninguno";
+      if (data.tasa_financiamiento === null || data.tasa_financiamiento === undefined) {
+        data.tasa_financiamiento = 0;
+      }
       
       setCotizacion(data);
       
@@ -334,31 +341,29 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
 
     let costoTotal = 0;
     let totalNeto = 0;
+    let totalNetoOriginal = 0;
 
     items.forEach(it => {
       const costoItem = it.subcostos.reduce((acc, sc) => acc + (sc.cantidad * sc.precio_unitario * (1 - sc.descuento / 100)), 0);
       costoTotal += costoItem;
       
-      let netoItem = 0;
-      if (it.precio_fijo) {
-        // Candado activo: Calcular con el margen histórico del ítem sin alterar el precio de venta
-        const netoItemBruto = costoItem / (1 - (it.margen || 0) / 100);
-        const unitarioItem = it.cantidad > 0 ? Math.round(netoItemBruto / it.cantidad) : 0;
-        netoItem = unitarioItem * it.cantidad;
-      } else {
-        // Candado inactivo: recalcular precio dinámicamente según financiamiento
-        let netoItemBruto = costoItem / (1 - (it.margen || 0) / 100);
-        if (condicionPago === "Factoring") {
-          // Traspasar el costo del factoring al precio final neto (considerando IVA 1.19)
-          const efectoNetoFactoring = (tasaFinanciamiento / 100) * 1.19;
-          netoItemBruto = costoItem / (1 - ((it.margen || 0) / 100 + efectoNetoFactoring));
-        } else if (condicionPago === "Contado") {
-          // Aplicar descuento por pago al contado
-          netoItemBruto = netoItemBruto * (1 - (tasaFinanciamiento / 100));
-        }
-        const unitarioItem = it.cantidad > 0 ? Math.round(netoItemBruto / it.cantidad) : 0;
-        netoItem = unitarioItem * it.cantidad;
+      let netoItemBruto = costoItem / (1 - (it.margen || 0) / 100);
+      let netoOriginalItem = (it.cantidad > 0 ? Math.round(netoItemBruto / it.cantidad) : 0) * it.cantidad;
+      totalNetoOriginal += netoOriginalItem;
+
+      // Aplicar recargos o descuentos financieros de forma global a todos los ítems (coherente con PDF)
+      if (condicionPago === "Factoring") {
+        // Traspasar el costo del factoring al precio final neto (considerando IVA 1.19)
+        const efectoNetoFactoring = (tasaFinanciamiento / 100) * 1.19;
+        netoItemBruto = costoItem / (1 - ((it.margen || 0) / 100 + efectoNetoFactoring));
+      } else if (condicionPago === "Contado") {
+        // Aplicar descuento por pago al contado
+        netoItemBruto = netoItemBruto * (1 - (tasaFinanciamiento / 100));
       }
+      
+      const unitarioItem = it.cantidad > 0 ? Math.round(netoItemBruto / it.cantidad) : 0;
+      const netoItem = unitarioItem * it.cantidad;
+      
       totalNeto += netoItem;
     });
 
@@ -370,10 +375,9 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       // costoFactoringBruto = (totalNeto * 1.19) * (tasaFinanciamiento / 100)
       // costoFactoringNeto (impacto en utilidad neta) = costoFactoringBruto / 1.19
       costoFactoringNeto = totalNeto * (tasaFinanciamiento / 100);
-    } else if (condicionPago === "Contado" && items.some(it => it.precio_fijo)) {
-      // Si el candado está activo en ítems, aplicamos el descuento contado de manera global al total
-      descuentoContadoNeto = totalNeto * (tasaFinanciamiento / 100);
-      totalNeto -= descuentoContadoNeto;
+    } else if (condicionPago === "Contado") {
+      // El descuento contado es la diferencia entre el neto original y el neto final
+      descuentoContadoNeto = totalNetoOriginal - totalNeto;
     }
 
     const iva = totalNeto * 0.19;
@@ -404,10 +408,9 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       delete payload.contactos;
       delete payload.vendedores; // Limpiar para evitar error de relación
       delete payload.fecha; // ELMINAR FECHA hasta que se agregue a la DB
-      delete payload.condicion_pago;
-      delete payload.tasa_financiamiento;
-      delete payload.costo_factoring;
-      delete payload.descuento_contado;
+      // condicion_pago y tasa_financiamiento SÍ se persisten (columnas en DB)
+      delete payload.costo_factoring;   // campo calculado, no en DB
+      delete payload.descuento_contado; // campo calculado, no en DB
 
       await supabase.from("cotizaciones").update(payload).eq("id", id);
       console.log("Autoguardado completado...");
@@ -456,10 +459,9 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       delete payload.contactos;
       delete payload.vendedores;
       delete payload.fecha; // REMOVER FECHA: El esquema no la soporta aún
-      delete payload.condicion_pago;
-      delete payload.tasa_financiamiento;
-      delete payload.costo_factoring;
-      delete payload.descuento_contado;
+      // condicion_pago y tasa_financiamiento SÍ se persisten (columnas en DB)
+      delete payload.costo_factoring;   // campo calculado, no en DB
+      delete payload.descuento_contado; // campo calculado, no en DB
 
       let error;
       if (id) {
