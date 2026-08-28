@@ -594,6 +594,10 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
       delete (payload as any).vendedores;
       delete (payload as any).cuentas;
       delete (payload as any).contactos;
+      // Limpiar campos calculados que no existen en la DB
+      delete (payload as any).costo_factoring;
+      delete (payload as any).descuento_contado;
+      delete (payload as any).fecha;
 
       const { count } = await supabase.from("cotizaciones").select("*", { count: 'exact', head: true });
       const num = ((count as any) || 0) + 5126;
