@@ -1,8 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''; // Usamos service role para saltar RLS en integraciones seguras
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { getSupabase } from '../utils/supabase';
 
 const AUTH_TOKEN = "Ecomoving_AI_2026"; // Simple pero efectivo para tu uso personal
 
@@ -17,6 +13,7 @@ export default async function handler(req: any, res: any) {
     }
 
     try {
+        const supabase = getSupabase();
         const { asunto, contenido, imagen_url } = req.body;
 
         if (!asunto || !contenido) {

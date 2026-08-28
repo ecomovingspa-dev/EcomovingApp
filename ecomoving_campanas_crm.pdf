@@ -1,5 +1,5 @@
 %PDF-1.3
-%ºß¬à
+%ï¿½ß¬ï¿½
 3 0 obj
 <</Type /Page
 /Parent 1 0 R
@@ -23,21 +23,21 @@ BT
 17.25 TL
 1. g
 42.5196850393700814 564.0988976377952895 Td
-(ECOMOVING SpA - ENRUTADOR DE CAMPAÑAS CRM) Tj
+(ECOMOVING SpA - ENRUTADOR DE CAMPAï¿½AS CRM) Tj
 ET
 BT
 /F1 9.5 Tf
 10.9249999999999989 TL
 0.58 0.639 0.722 rg
 42.5196850393700814 547.0910236220472598 Td
-(Control Simplificado por Interruptor: Campaña de Prospección \(Desactivado\) vs. Campaña de Marketing \(Activo\)) Tj
+(Control Simplificado por Interruptor: Campaï¿½a de Prospecciï¿½n \(Desactivado\) vs. Campaï¿½a de Marketing \(Activo\)) Tj
 ET
 BT
 /F1 9.5 Tf
 10.9249999999999989 TL
 0.58 0.639 0.722 rg
 42.5196850393700814 532.9177952755904926 Td
-(Guía Visual de Estados del Switch, Transiciones Inmediatas y Flujo del Cron diario) Tj
+(Guï¿½a Visual de Estados del Switch, Transiciones Inmediatas y Flujo del Cron diario) Tj
 ET
 BT
 /F1 8.5 Tf
@@ -75,7 +75,7 @@ BT
 10.3499999999999996 TL
 0.059 0.09 0.165 rg
 355.4925590551181358 467.7209448818897499 Td
-(INTERRUPTOR DE CAMPAÑA) Tj
+(INTERRUPTOR DE CAMPAï¿½A) Tj
 ET
 BT
 /F1 7 Tf
@@ -183,7 +183,7 @@ BT
 8.625 TL
 1. g
 379.8525590551182063 282.9020472440944332 Td
-(REGLAS DE GESTIÓN) Tj
+(REGLAS DE GESTIï¿½N) Tj
 ET
 BT
 /F1 6.5 Tf
@@ -221,14 +221,14 @@ BT
 12.0749999999999993 TL
 0.486 0.227 0.929 rg
 42.5196850393700814 467.7209448818897499 Td
-(CAMPAÑA DE PROSPECCIÓN) Tj
+(CAMPAï¿½A DE PROSPECCIï¿½N) Tj
 ET
 BT
 /F1 7 Tf
 8.0499999999999989 TL
 0.494 0.133 0.808 rg
 42.5196850393700814 456.3823622047243589 Td
-(Secuencia Fría \(Búsqueda de Contacto\)) Tj
+(Secuencia Frï¿½a \(Bï¿½squeda de Contacto\)) Tj
 ET
 0.8 0.84 0.88 RG
 0.8503937007874016 w
@@ -407,14 +407,14 @@ BT
 12.0749999999999993 TL
 0.145 0.388 0.922 rg
 544.2519685039370643 467.7209448818897499 Td
-(CAMPAÑA DE MARKETING) Tj
+(CAMPAï¿½A DE MARKETING) Tj
 ET
 BT
 /F1 7 Tf
 8.0499999999999989 TL
 0.114 0.306 0.847 rg
 544.2519685039370643 456.3823622047243589 Td
-(Secuencia de Nutrición \(Contacto Verificado\)) Tj
+(Secuencia de Nutriciï¿½n \(Contacto Verificado\)) Tj
 ET
 0.8 0.84 0.88 RG
 0.8503937007874016 w
@@ -449,7 +449,7 @@ BT
 8.625 TL
 1. g
 581.3235236220473325 424.6343307086613663 Td
-(SECUENCIA DE NUTRICIÓN PREMIUM \(13 PASOS\)) Tj
+(SECUENCIA DE NUTRICIï¿½N PREMIUM \(13 PASOS\)) Tj
 ET
 BT
 /F1 6.5 Tf
@@ -496,7 +496,7 @@ BT
 6.8999999999999995 TL
 0.063 0.725 0.506 rg
 332.8348818897637784 260.7918110236219604 Td
-(Confirmar Graduación \(Pide Nombre y cambia etapa a 'marketing'\)) Tj
+(Confirmar Graduaciï¿½n \(Pide Nombre y cambia etapa a 'marketing'\)) Tj
 ET
 0.39 0.45 0.55 RG
 1.1338582677165356 w
@@ -568,7 +568,7 @@ BT
 6.8999999999999995 TL
 0.392 0.455 0.545 rg
 318.1348818897638466 204.0988976377952326 Td
-(Degradación / Reset \(Confirma, congela marketing y reinicia etapa_envio = 1\)) Tj
+(Degradaciï¿½n / Reset \(Confirma, congela marketing y reinicia etapa_envio = 1\)) Tj
 ET
 0.95 0.96 0.98 rg
 28.3464566929133888 153.0752755905510867 785.1968503937008563 -124.7244094488189035 re
@@ -581,63 +581,63 @@ BT
 9.7749999999999986 TL
 0.059 0.09 0.165 rg
 42.5196850393700814 138.9020472440944332 Td
-(NOTAS TÉCNICAS Y OPERACIONALES DEL FLUJO DE TRABAJO SIMPLIFICADO) Tj
+(NOTAS Tï¿½CNICAS Y OPERACIONALES DEL FLUJO DE TRABAJO SIMPLIFICADO) Tj
 ET
 BT
 /F1 7.5 Tf
 8.625 TL
 0.2 0.255 0.333 rg
 42.5196850393700814 121.8941732283464034 Td
-(• Interruptor de Campaña: Elimina el estado de pausa independiente. El interruptor define la campaña: Desactivado = Prospección, Activo = Marketing.) Tj
+(ï¿½ Interruptor de Campaï¿½a: Elimina el estado de pausa independiente. El interruptor define la campaï¿½a: Desactivado = Prospecciï¿½n, Activo = Marketing.) Tj
 ET
 BT
 /F1 7.5 Tf
 8.625 TL
 0.2 0.255 0.333 rg
 42.5196850393700814 110.5555905511810124 Td
-(  Cuando está Desactivado \(Gris\), corre la secuencia fría. Cuando está Activo \(Verde\), corre la secuencia de nutrición.) Tj
+(  Cuando estï¿½ Desactivado \(Gris\), corre la secuencia frï¿½a. Cuando estï¿½ Activo \(Verde\), corre la secuencia de nutriciï¿½n.) Tj
 ET
 BT
 /F1 7.5 Tf
 8.625 TL
 0.2 0.255 0.333 rg
 42.5196850393700814 96.3823622047243589 Td
-(• Comportamiento de Degradación: Al degradar un contacto, su etapa se cambia a 'prospeccion', su 'etapa_envio' se reinicia a 1 y su 'proximo_envio') Tj
+(ï¿½ Comportamiento de Degradaciï¿½n: Al degradar un contacto, su etapa se cambia a 'prospeccion', su 'etapa_envio' se reinicia a 1 y su 'proximo_envio') Tj
 ET
 BT
 /F1 7.5 Tf
 8.625 TL
 0.2 0.255 0.333 rg
 42.5196850393700814 85.0437795275589679 Td
-(  se limpia para que el cron le envíe de inmediato el Ice-Breaker. El progreso de su campaña de marketing queda congelado sin alterarse.) Tj
+(  se limpia para que el cron le envï¿½e de inmediato el Ice-Breaker. El progreso de su campaï¿½a de marketing queda congelado sin alterarse.) Tj
 ET
 BT
 /F1 7.5 Tf
 8.625 TL
 0.2 0.255 0.333 rg
 42.5196850393700814 70.8705511811023143 Td
-(• Reanudación de Marketing: Si el contacto responde positivamente en prospección y es el encargado correcto, al encender el interruptor,) Tj
+(ï¿½ Reanudaciï¿½n de Marketing: Si el contacto responde positivamente en prospecciï¿½n y es el encargado correcto, al encender el interruptor,) Tj
 ET
 BT
 /F1 7.5 Tf
 8.625 TL
 0.2 0.255 0.333 rg
 42.5196850393700814 59.5319685039369233 Td
-(  este se gradúa a Marketing y retoma la campaña de nutrición exactamente en la etapa que estaba previamente congelada.) Tj
+(  este se gradï¿½a a Marketing y retoma la campaï¿½a de nutriciï¿½n exactamente en la etapa que estaba previamente congelada.) Tj
 ET
 BT
 /F1 7.5 Tf
 8.625 TL
 0.2 0.255 0.333 rg
 42.5196850393700814 45.3587401574802698 Td
-(• Contactos de la IA: Todo nuevo prospecto extraído por la IA comienza por defecto en Prospección y con el interruptor Desactivado.) Tj
+(ï¿½ Contactos de la IA: Todo nuevo prospecto extraï¿½do por la IA comienza por defecto en Prospecciï¿½n y con el interruptor Desactivado.) Tj
 ET
 BT
 /F1 7.5 Tf
 8.625 TL
 0.2 0.255 0.333 rg
 42.5196850393700814 34.0201574803148787 Td
-(  El cron diario comenzará su prospección de manera autónoma. Si el contacto no sirve o no desea recibir correos, se elimina del CRM.) Tj
+(  El cron diario comenzarï¿½ su prospecciï¿½n de manera autï¿½noma. Si el contacto no sirve o no desea recibir correos, se elimina del CRM.) Tj
 ET
 endstream
 endobj

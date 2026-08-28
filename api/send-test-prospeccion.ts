@@ -1,11 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from './utils/supabase';
 import axios from 'axios';
-
-// Initialize Supabase Client
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 function generarHtmlProspeccion(params: { intro: string; cierre: string; empresa: string }): string {
     return `
@@ -91,6 +86,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
+        const supabase = getSupabase();
         // 1. Fetch Stage Template
         const { data: stage, error: err } = await supabase
             .from('configuracion_prospeccion')

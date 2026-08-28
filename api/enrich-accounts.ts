@@ -1,17 +1,13 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from './utils/supabase';
 import axios from 'axios';
 
 // Sanitización de la API Key de Gemini
 const rawApiKey = process.env.VITE_GEMINI_API_KEY || "AIzaSyC7bM_4Fr_Z2DDFMhZPqCTnA7oQLrKBV2I";
 const GEMINI_API_KEY = rawApiKey.replace(/['"]/g, "").trim();
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "";
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "";
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    const supabase = getSupabase();
     // CORS headers
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Origin', '*');

@@ -1,13 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from './utils/supabase';
 import axios from 'axios';
 
-// Initialize Supabase Client
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    const supabase = getSupabase();
     const rawKey = process.env.BREVO_API_KEY || "";
     const BREVO_KEY_CLEAN = rawKey.trim().replace(/^['"]|['"]$/g, '');
 

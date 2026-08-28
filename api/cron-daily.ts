@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from './utils/supabase';
 import axios from 'axios';
 
 // ============================================================================
@@ -12,11 +12,6 @@ import axios from 'axios';
 export const config = {
     maxDuration: 60,
 };
-
-// Initialize Supabase Client
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Env vars
 const BREVO_API_KEY = process.env.BREVO_API_KEY!;
@@ -100,7 +95,7 @@ function sumarDiasHabiles(fecha: Date, diasASumar: number): Date {
 // MÓDULO COBRANZA
 // ============================================================================
 
-async function ejecutarCobranza(maxEmails: number): Promise<{
+async function ejecutarCobranza(supabase: any, maxEmails: number): Promise<{
     total: number;
     processed: number;
     sent: number;
@@ -315,7 +310,7 @@ function generarHtmlCobranza(params: {
 // MÓDULO ALERTA COMPRAS INTERNAS (Notificación In-App + WhatsApp futuro)
 // ============================================================================
 
-async function ejecutarAlertasCompras(): Promise<{ total: number; notificacionCreada: boolean; errors: string[] }> {
+async function ejecutarAlertasCompras(supabase: any): Promise<{ total: number; notificacionCreada: boolean; errors: string[] }> {
     const report = { total: 0, notificacionCreada: false, errors: [] as string[] };
     try {
         const hoy = new Date();
@@ -403,12 +398,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(`✅ Día laboral (${diaLaboral.fecha}). Iniciando envíos...`);
 
+    const supabase = getSupabase();
+
     // 3. Ejecutar ALERTAS INTERNAS (Compras)
-    const alertasInternas = await ejecutarAlertasCompras();
+    const alertasInternas = await ejecutarAlertasCompras(supabase);
     console.log(`🔔 Alertas Internas Compras: ${alertasInternas.notificacionCreada ? 'Creada' : 'Sin cambios'} (${alertasInternas.total} vencidas)`);
 
     // 4. Ejecutar COBRANZA (prio clientes)
-    const cobranzaResult = await ejecutarCobranza(MAX_COBRANZA_EMAILS);
+    const cobranzaResult = await ejecutarCobranza(supabase, MAX_COBRANZA_EMAILS);
     console.log(`📧 Cobranza: ${cobranzaResult.sent} enviados`);
 
     // 5. Reporte final

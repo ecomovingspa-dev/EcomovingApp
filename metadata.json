@@ -1,0 +1,6 @@
+{
+  "name": "EcomovingApp",
+  "description": "Sistema de gestión comercial, CRM, marketing y operaciones de Ecomoving SpA",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

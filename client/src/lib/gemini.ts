@@ -2,7 +2,8 @@
  * Servicio para interactuar con la API de Google Gemini (v1beta REST)
  */
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const DEFAULT_GEMINI_KEY = "AIzaSyANy1lc4pJU0YhaS_fL1N2JNfHJHK2F15E";
+const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || DEFAULT_GEMINI_KEY;
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 const MODEL_NAME = "gemini-2.0-flash";
 

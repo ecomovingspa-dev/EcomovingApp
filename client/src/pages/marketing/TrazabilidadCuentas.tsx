@@ -1,6 +1,6 @@
 // v2.0.0 - Excel-style Sentinel Matrix
 import { useState, useEffect } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import { useVendedores } from "../../hooks/useVendedores";
 import { 
   Mail, CheckCircle2, Eye, AlertCircle, Circle, 
@@ -25,10 +25,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ESTADOS_CUENTA } from "../../utils/constants";
 import { ZohoMailModal } from "@/components/modals/ZohoMailModal";
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // March 2026 Working Days (Calculated dynamically below)
 interface CalendarDay {

@@ -1,11 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from './utils/supabase';
 
 // Trigger: rebuild after Vercel repository reconnection
-// Initialize Supabase Client with Service Role Key to bypass RLS
-const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Transparent GIF 1x1 pixels
 const transparentGif = Buffer.from(
@@ -14,6 +10,7 @@ const transparentGif = Buffer.from(
 );
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+    const supabase = getSupabase();
     // Configurar CORS
     res.setHeader('Access-Control-Allow-Credentials', "true");
     res.setHeader('Access-Control-Allow-Origin', '*');
