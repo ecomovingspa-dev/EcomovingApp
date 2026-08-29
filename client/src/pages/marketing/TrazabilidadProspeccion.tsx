@@ -1447,6 +1447,7 @@ export default function TrazabilidadProspeccion() {
         contacto={selectedContactoDraft}
         cuenta={selectedCuentaDraft}
         vendedor={vendedor || ""}
+        defaultTab="prospeccion"
         onRefresh={async () => {
           await fetchContactos(calendarDays);
         }}

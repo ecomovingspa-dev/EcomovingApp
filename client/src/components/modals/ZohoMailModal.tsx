@@ -12,6 +12,24 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+const DEFAULT_SEGMENTO_A_TEMPLATES = [
+  { id: "builtin-segA-1", orden: 1, name: "A1. Novedad de producto", subject: "Algo nuevo que le puede interesar a {empresa_corto}", body: "Hola {nombre_corto},\n\nEspero que todo esté marchando bien por {empresa_corto}.\n\nQuisimos compartirte una novedad de este mes: [Producto nuevo], una opción que suma bien al tipo de merchandising que suelen manejar equipos como el de ustedes.\n\n{render}\n\nSi te hace sentido, podemos preparar una propuesta rápida con branding de {empresa_corto}. Cualquier duda, quedo atento.\n\nSaludos cordiales," },
+  { id: "builtin-segA-2", orden: 2, name: "A2. Recordatorio / reactivación de propuesta", subject: "¿Seguimos con [Producto cotizado]?", body: "Hola {nombre_corto},\n\nTe escribo porque quedó pendiente la propuesta que revisamos hace un tiempo.\n\n{render}\n\nNo sé si sigue vigente el interés o si las prioridades cambiaron por ahora — de cualquier forma, quedamos disponibles para retomarlo cuando les acomode.\n\nSaludos cordiales," },
+  { id: "builtin-segA-3", orden: 3, name: "A3. Cercanía / relación", subject: "Un saludo para el equipo de {empresa_corto}", body: "Hola {nombre_corto},\n\nQuería escribirte simplemente para saludar y ver cómo va todo por {empresa_corto}.\n\nSeguimos aquí disponibles para cuando surja alguna necesidad de merchandising, sin ningún apuro de por medio.\n\n{render}\n\nCualquier cosa, aquí estamos.\n\nSaludos cordiales," },
+  { id: "builtin-segA-4", orden: 4, name: "A4. Fecha o contexto especial", subject: "Ideas de merchandising para [Mes/fecha]", body: "Hola {nombre_corto},\n\nCon [Mes/fecha] acercándose, pensamos que podría ser un buen momento para conversar sobre merchandising para {empresa_corto}.\n\n{render}\n\nSi les interesa explorarlo, podemos preparar opciones a tiempo para que no los tome con lo justo.\n\nSaludos cordiales," },
+  { id: "builtin-segA-5", orden: 5, name: "A5. Prueba social aplicada", subject: "Un caso que le puede servir a {empresa_corto}", body: "Hola {nombre_corto},\n\nQuería compartirte un caso reciente de una empresa del rubro que implementó algo similar a lo que revisamos contigo.\n\n{render}\n\nEl resultado fue bien recibido, y creemos que algo similar podría funcionar igual de bien para {empresa_corto}. Si quieres, retomamos la conversación.\n\nSaludos cordiales," },
+  { id: "builtin-segA-6", orden: 6, name: "A6. Cierre de ciclo", subject: "¿Seguimos en contacto o lo dejamos por ahora?", body: "Hola {nombre_corto},\n\nHemos estado enviándote novedades sobre merchandising para {empresa_corto}, pero no quiero saturar tu bandeja si en este momento no es prioridad.\n\nSi prefieres, puedo espaciar los envíos o retomar solo cuando tengan una necesidad puntual. Quedo atento.\n\nSaludos cordiales," }
+];
+
+const DEFAULT_SEGMENTO_B_TEMPLATES = [
+  { id: "builtin-segB-1", orden: 1, name: "B1. Contenido de valor / tendencia", subject: "Tendencia que está marcando el merchandising este año", body: "Hola {nombre_corto},\n\nTe escribo no para ofrecerte algo puntual, sino para compartirte algo que hemos visto tomar fuerza en empresas del rubro: [Tendencia/Insight].\n\n{render}\n\nSi en algún momento quieres conversar cómo se vería aplicado a {empresa_corto}, con gusto lo vemos.\n\nSaludos cordiales," },
+  { id: "builtin-segB-2", orden: 2, name: "B2. Prueba social / caso de éxito", subject: "Cómo ayudamos a [Caso de éxito] con su merchandising", body: "Hola {nombre_corto},\n\nQuería compartirte un caso que puede ser relevante para {empresa_corto}: trabajamos con un cliente en una necesidad de merchandising similar a la de su rubro.\n\n{render}\n\nNo es un impulso para que cotices ahora, solo pensé que te podía interesar ver cómo se resolvió.\n\nSaludos cordiales," },
+  { id: "builtin-segB-3", orden: 3, name: "B3. Diferenciación", subject: "Lo que nos diferencia al momento de personalizar merchandising", body: "Hola {nombre_corto},\n\nSé que en algún momento pueden evaluar distintas opciones de merchandising, así que quería contarte brevemente qué es lo que nos diferencia: personalización real, tiempos claros y acompañamiento directo.\n\n{render}\n\nSi surge una necesidad más adelante, con gusto conversamos.\n\nSaludos cordiales," },
+  { id: "builtin-segB-4", orden: 4, name: "B4. Invitación blanda a catálogo", subject: "Catálogo de opciones para {empresa_corto}", body: "Hola {nombre_corto},\n\nTe comparto algunas opciones de merchandising que trabajamos, por si en algún momento surge la necesidad en {empresa_corto} y quieren tenerlo a mano.\n\n{render}\n\nNo hay ningún apuro — cuando quieran cotizar algo puntual, aquí estamos.\n\nSaludos cordiales," },
+  { id: "builtin-segB-5", orden: 5, name: "B5. Pregunta de descubrimiento", subject: "Una pregunta rápida para {empresa_corto}", body: "Hola {nombre_corto},\n\nTe escribo con una pregunta simple: ¿cómo están resolviendo hoy el tema de merchandising en {empresa_corto} — eventos, regalos corporativos, onboarding?\n\nDependiendo de tu respuesta, te puedo compartir algo que les podría hacer sentido, sin compromiso.\n\nSaludos cordiales," },
+  { id: "builtin-segB-6", orden: 6, name: "B6. Fecha estacional (sin presión)", subject: "Ideas para [Mes/fecha] en empresas como {empresa_corto}", body: "Hola {nombre_corto},\n\nCon [Mes/fecha] acercándose, quería compartirte algunas ideas de merchandising que suelen funcionar bien en esta fecha para empresas de su rubro.\n\n{render}\n\nSi te sirve conversarlo más en detalle, con gusto agendamos algo breve.\n\nSaludos cordiales," }
+];
+
 interface ZohoMailModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -19,6 +37,7 @@ interface ZohoMailModalProps {
   cuenta: any | null;
   vendedor: string;
   onRefresh: () => Promise<void>;
+  defaultTab?: "prospeccion" | "clientes";
 }
 
 export function ZohoMailModal({
@@ -27,12 +46,51 @@ export function ZohoMailModal({
   contacto: selectedContactoDraft,
   cuenta: selectedCuentaDraft,
   vendedor,
-  onRefresh
+  onRefresh,
+  defaultTab = "prospeccion"
 }: ZohoMailModalProps) {
   
   const [templates, setTemplates] = useState<any[]>([]);
-  const [templatesClientes, setTemplatesClientes] = useState<any[]>([]);
+  const contactSegment = (() => {
+    if (selectedContactoDraft?.id) {
+      const saved = localStorage.getItem(`contacto_seg_${selectedContactoDraft.id}`);
+      if (saved) return saved;
+    }
+    return selectedContactoDraft?.segmento || "A";
+  })();
+
+  const [activeSegmento, setActiveSegmento] = useState<string>(contactSegment);
+  const [templatesSegmentoA, setTemplatesSegmentoA] = useState<any[]>(DEFAULT_SEGMENTO_A_TEMPLATES);
+  const [templatesSegmentoB, setTemplatesSegmentoB] = useState<any[]>(DEFAULT_SEGMENTO_B_TEMPLATES);
+
+  useEffect(() => {
+    if (selectedContactoDraft) {
+      const saved = selectedContactoDraft.id ? localStorage.getItem(`contacto_seg_${selectedContactoDraft.id}`) : null;
+      const seg = saved || selectedContactoDraft.segmento || "A";
+      setActiveSegmento(seg);
+    }
+  }, [selectedContactoDraft]);
+
+  const handleToggleSegmentoModal = async (nuevoSeg: string) => {
+    // Si el contacto pertenece a un segmento distinto, bloqueamos el cambio por pestaña para evitar confusión
+    if (contactSegment !== nuevoSeg) {
+      toast.error(`Este contacto es del Segmento ${contactSegment}. La pestaña del Segmento ${nuevoSeg} está bloqueada.`);
+      return;
+    }
+    setActiveSegmento(nuevoSeg);
+  };
+
+  const templatesClientes = activeSegmento === "B" ? templatesSegmentoB : templatesSegmentoA;
+  const setTemplatesClientes = activeSegmento === "B" ? setTemplatesSegmentoB : setTemplatesSegmentoA;
+
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
+
+  useEffect(() => {
+    if (defaultTab) {
+      setActiveTab(defaultTab);
+    }
+  }, [defaultTab, isOpen]);
   const [templateSendDates, setTemplateSendDates] = useState<Record<string, string>>({});
   const [isEditingTemplateMode, setIsEditingTemplateMode] = useState(false);
   const [tempEditName, setTempEditName] = useState("");
@@ -108,23 +166,47 @@ export function ZohoMailModal({
         setTemplates(prospectionTemplates);
       }
 
-      const { data: dbClientes, error: dbClientesErr } = await supabase
+      // Load Segmento A & B templates with hardcoded built-ins as foolproof fallback
+      const { data: dbClientesA, error: dbClientesAErr } = await supabase
         .from("configuracion_clientes")
         .select("*")
         .eq("activo", true)
         .order("orden", { ascending: true });
 
-      if (!dbClientesErr && dbClientes && dbClientes.length > 0) {
-        const clientesTemplates = dbClientes.map(etapa => ({
-          id: `builtin-clientes-${etapa.orden}`,
-          dbId: etapa.id,
-          orden: etapa.orden,
-          name: `${etapa.orden}. ${etapa.nombre}`,
-          rawName: etapa.nombre || "",
-          subject: etapa.asunto_template || "",
-          body: `${etapa.mensaje_intro || ""}\n\n${etapa.mensaje_cierre || ""}`.trim()
-        }));
-        setTemplatesClientes(clientesTemplates);
+      if (!dbClientesAErr && dbClientesA && dbClientesA.length > 0) {
+        const segA = dbClientesA.filter((t: any) => t.segmento === 'A');
+        const segB = dbClientesA.filter((t: any) => t.segmento === 'B');
+        
+        if (segA.length > 0) {
+          setTemplatesSegmentoA(segA.map((etapa: any) => ({
+            id: `builtin-clientes-a-${etapa.orden}`,
+            dbId: etapa.id,
+            orden: etapa.orden,
+            name: `${etapa.orden}. ${etapa.nombre}`,
+            rawName: etapa.nombre || "",
+            subject: etapa.asunto_template || "",
+            body: `${etapa.mensaje_intro || ""}\n\n${etapa.mensaje_cierre || ""}`.trim()
+          })));
+        } else {
+          setTemplatesSegmentoA(DEFAULT_SEGMENTO_A_TEMPLATES);
+        }
+
+        if (segB.length > 0) {
+          setTemplatesSegmentoB(segB.map((etapa: any) => ({
+            id: `builtin-clientes-b-${etapa.orden}`,
+            dbId: etapa.id,
+            orden: etapa.orden,
+            name: `${etapa.orden}. ${etapa.nombre}`,
+            rawName: etapa.nombre || "",
+            subject: etapa.asunto_template || "",
+            body: `${etapa.mensaje_intro || ""}\n\n${etapa.mensaje_cierre || ""}`.trim()
+          })));
+        } else {
+          setTemplatesSegmentoB(DEFAULT_SEGMENTO_B_TEMPLATES);
+        }
+      } else {
+        setTemplatesSegmentoA(DEFAULT_SEGMENTO_A_TEMPLATES);
+        setTemplatesSegmentoB(DEFAULT_SEGMENTO_B_TEMPLATES);
       }
     } catch (err) {
       console.error("Error fetching templates:", err);
@@ -437,7 +519,7 @@ export function ZohoMailModal({
   return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-6xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl rounded-2xl text-gray-900 dark:text-gray-100">
-          <Tabs defaultValue="prospeccion" className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <div className="flex flex-col gap-4 mb-4 border-b border-gray-100 dark:border-gray-800 pb-4">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
@@ -451,13 +533,21 @@ export function ZohoMailModal({
                 <TabsList className="bg-gray-100 dark:bg-gray-800 w-[90%] mx-auto justify-center rounded-lg h-12 p-1 gap-2 mb-4">
                   <TabsTrigger 
                     value="prospeccion" 
-                    className="text-sm font-black uppercase rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-400 text-gray-400 pb-3 px-0 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                    disabled={defaultTab === "clientes"}
+                    className={cn(
+                      "text-sm font-black uppercase rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-400 text-gray-400 pb-3 px-0 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                      defaultTab === "clientes" && "opacity-40 cursor-not-allowed select-none"
+                    )}
                   >
                     Prospección
                   </TabsTrigger>
                   <TabsTrigger 
                     value="clientes" 
-                    className="text-sm font-black uppercase rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-400 text-gray-400 pb-3 px-0 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                    disabled={defaultTab === "prospeccion"}
+                    className={cn(
+                      "text-sm font-black uppercase rounded-none border-b-2 border-transparent data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-400 text-gray-400 pb-3 px-0 bg-transparent data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                      defaultTab === "prospeccion" && "opacity-40 cursor-not-allowed select-none"
+                    )}
                   >
                     Cuentas Activas
                   </TabsTrigger>
@@ -895,6 +985,40 @@ export function ZohoMailModal({
                 {/* Columna Izquierda: Plantillas de Cliente y Fechas combinadas */}
                 <div className="col-span-12 md:col-span-5 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
                   <div className="flex flex-col space-y-3 overflow-hidden h-full">
+                     {/* Selector de Segmento A / B con bloqueo cruzado */}
+                     <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl gap-1 shrink-0">
+                       <button
+                         type="button"
+                         disabled={contactSegment === 'B'}
+                         onClick={() => handleToggleSegmentoModal("A")}
+                         className={cn(
+                           "flex-1 py-1 px-2 rounded-lg text-[10px] font-black uppercase transition-all",
+                           contactSegment === 'B' ? "opacity-30 cursor-not-allowed bg-gray-200 dark:bg-gray-900 text-gray-400" : "cursor-pointer",
+                           activeSegmento === "A"
+                             ? "bg-indigo-600 text-white shadow-sm"
+                             : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                         )}
+                         title={contactSegment === 'B' ? "Bloqueado: El contacto pertenece al Segmento B" : ""}
+                       >
+                         ⭐ Seg. A {contactSegment === 'B' && '🔒'}
+                       </button>
+                       <button
+                         type="button"
+                         disabled={contactSegment === 'A'}
+                         onClick={() => handleToggleSegmentoModal("B")}
+                         className={cn(
+                           "flex-1 py-1 px-2 rounded-lg text-[10px] font-black uppercase transition-all",
+                           contactSegment === 'A' ? "opacity-30 cursor-not-allowed bg-gray-200 dark:bg-gray-900 text-gray-400" : "cursor-pointer",
+                           activeSegmento === "B"
+                             ? "bg-amber-600 text-white shadow-sm"
+                             : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
+                         )}
+                         title={contactSegment === 'A' ? "Bloqueado: El contacto pertenece al Segmento A" : ""}
+                       >
+                         🟢 Seg. B {contactSegment === 'A' && '🔒'}
+                       </button>
+                     </div>
+
                     <div className="flex justify-between items-center pr-2">
                       <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Plantillas Clientes

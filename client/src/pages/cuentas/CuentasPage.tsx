@@ -1335,6 +1335,7 @@ export default function CuentasPage() {
         contacto={selectedContactoDraft}
         cuenta={selectedCuentaDraft}
         vendedor={vendedor || ""}
+        defaultTab="clientes"
         onRefresh={async () => {
           await cargarCuentas();
         }}

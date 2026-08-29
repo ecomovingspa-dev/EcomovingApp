@@ -23,7 +23,6 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { ESTADOS_CUENTA } from "../../utils/constants";
 import { ZohoMailModal } from "@/components/modals/ZohoMailModal";
 
 // March 2026 Working Days (Calculated dynamically below)
@@ -70,6 +69,7 @@ export default function TrazabilidadCuentas() {
   const [filtroSector, setFiltroSector] = useState("privado");
   const [filtroEjecutivo, setFiltroEjecutivo] = useState("todos");
   const [filtroSegmento, setFiltroSegmento] = useState("todos");
+  const [filtroSegmentoComercial, setFiltroSegmentoComercial] = useState<string>("todos");
   const [availableSegments, setAvailableSegments] = useState<string[]>([]);
   
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
@@ -275,8 +275,16 @@ export default function TrazabilidadCuentas() {
 
     const validContacts = contactsData || [];
 
+    // Apply localStorage segment overrides if any
+    validContacts.forEach((c: any) => {
+      const savedSeg = localStorage.getItem(`contacto_seg_${c.id}`);
+      if (savedSeg) {
+        c.segmento = savedSeg;
+      }
+    });
+
     // Build accounts map
-    const accountsMap: Record<string, { cliente: string; sector: string; segmento?: string; cuenta_foco?: boolean }> = {};
+    const accountsMap: Record<string, { cliente: string; sector: string; segmento?: string; cuenta_foco?: boolean; cuenta_activa?: boolean }> = {};
     currentCuentas.forEach((acc: any) => {
       accountsMap[acc.id] = { 
         cliente: acc.cliente, 
@@ -633,7 +641,11 @@ export default function TrazabilidadCuentas() {
       (c.empresa_rel_segmento || "").toLowerCase() === filtroSegmento.toLowerCase()
     );
 
-    return matchesSearch && matchesCriticos && matchesActivo && matchesEtapa && matchesSector && matchesEjecutivo && matchesSegmento;
+    const matchesSegmentoComercial = filtroSegmentoComercial === "todos" ? true : (
+      (c.segmento || 'A').toUpperCase() === filtroSegmentoComercial.toUpperCase()
+    );
+
+    return matchesSearch && matchesCriticos && matchesActivo && matchesEtapa && matchesSector && matchesEjecutivo && matchesSegmento && matchesSegmentoComercial;
   });
 
   const sortedAndFiltered = [...filtered].sort((a, b) => {
@@ -870,6 +882,32 @@ export default function TrazabilidadCuentas() {
     }
   };
 
+  const toggleSegmento = async (contacto: any) => {
+    const currentSeg = contacto.segmento || localStorage.getItem(`contacto_seg_${contacto.id}`) || 'A';
+    const nuevoSegmento = currentSeg === 'B' ? 'A' : 'B';
+    
+    // Update local state and localStorage immediately
+    contacto.segmento = nuevoSegmento;
+    localStorage.setItem(`contacto_seg_${contacto.id}`, nuevoSegmento);
+
+    try {
+      await supabase.from('contactos').update({ segmento: nuevoSegmento }).eq('id', contacto.id);
+    } catch (err: any) {
+      console.warn("Supabase update segmento non-blocking error:", err);
+    }
+
+    if (contacto.cuenta_id) {
+      try {
+        await supabase.from('cuentas').update({ segmento: nuevoSegmento }).eq('id', contacto.cuenta_id);
+      } catch (err: any) {
+        console.warn("Supabase cuenta update non-blocking error:", err);
+      }
+    }
+
+    toast.success(`Contacto ${contacto.nombre || ''} movido a Segmento ${nuevoSegmento}`);
+    setContactos([...contactos]);
+  };
+
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-top-4 duration-1000">
       {/* Header & Controls */}
@@ -926,6 +964,17 @@ export default function TrazabilidadCuentas() {
             ))}
           </SelectContent>
         </Select>
+
+        <Select onValueChange={(val) => setFiltroSegmentoComercial(val)} defaultValue="todos">
+          <SelectTrigger className="w-[185px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
+            <SelectValue placeholder="SEGMENTO" />
+          </SelectTrigger>
+          <SelectContent className="bg-gray-900 border-gray-800 text-white">
+            <SelectItem value="todos">TODOS LOS SEGMENTOS</SelectItem>
+            <SelectItem value="A">⭐ SEGMENTO A (COTIZARON)</SelectItem>
+            <SelectItem value="B">🟢 SEGMENTO B (SIN COTIZAR)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* The Matrix */}
@@ -951,8 +1000,23 @@ export default function TrazabilidadCuentas() {
                 <tr key={c.id} className="group hover:bg-white/5 transition-colors">
                   <td className="px-4 py-5 border-r border-gray-900/10">
                     <div className="flex flex-col gap-1.5">
-                      <div className="text-sm font-bold text-white uppercase truncate max-w-[200px]">
-                        {c.nombre?.replace('Contacto Principal - ', '') || 'SIN NOMBRE'}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-bold text-white uppercase truncate max-w-[150px]">
+                          {c.nombre?.replace('Contacto Principal - ', '') || 'SIN NOMBRE'}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleSegmento(c)}
+                          className={cn(
+                            "px-1.5 py-0.5 rounded text-[9px] font-black uppercase transition-all shadow-sm cursor-pointer shrink-0",
+                            (c.segmento || 'A') === 'B' 
+                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30" 
+                              : "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 hover:bg-indigo-500/30"
+                          )}
+                          title="Cambiar Segmento (A: Cotizaron / B: Decisor sin cotizar)"
+                        >
+                          Seg. {c.segmento || 'A'}
+                        </button>
                       </div>
                       <div className="text-[10px] text-gray-400 truncate max-w-[180px] font-medium flex items-center gap-1">
                         <Building2 className="h-3 w-3 text-gray-500" />
@@ -1227,6 +1291,24 @@ export default function TrazabilidadCuentas() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-1">
+                <Label className="text-[10px] font-black text-gray-500 uppercase">Segmento Comercial (Mantención)</Label>
+                <Select 
+                  value={selectedContact?.segmento || "A"} 
+                  onValueChange={(val) => setSelectedContact({ ...selectedContact, segmento: val })}
+                >
+                  <SelectTrigger className="bg-gray-900 border-gray-800 text-white h-[36px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-950 border border-gray-800 text-white">
+                    <SelectItem value="A">⭐ Segmento A (Cotizaron / Interés previo)</SelectItem>
+                    <SelectItem value="B">🟢 Segmento B (Decisor validado sin cotizar)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
 
           </div>
           <DialogFooter className="flex justify-between items-center gap-3 border-t border-gray-800 pt-6">
@@ -1407,6 +1489,7 @@ export default function TrazabilidadCuentas() {
         contacto={selectedContactoDraft}
         cuenta={selectedCuentaDraft}
         vendedor={vendedor || ""}
+        defaultTab="clientes"
         onRefresh={async () => {
           await fetchContactos(calendarDays);
         }}
