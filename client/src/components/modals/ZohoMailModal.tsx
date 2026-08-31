@@ -13,21 +13,93 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_SEGMENTO_A_TEMPLATES = [
-  { id: "builtin-segA-1", orden: 1, name: "A1. Novedad de producto", subject: "Algo nuevo que le puede interesar a {empresa_corto}", body: "Hola {nombre_corto},\n\nEspero que todo esté marchando bien por {empresa_corto}.\n\nQuisimos compartirte una novedad de este mes: [Producto nuevo], una opción que suma bien al tipo de merchandising que suelen manejar equipos como el de ustedes.\n\n{render}\n\nSi te hace sentido, podemos preparar una propuesta rápida con branding de {empresa_corto}. Cualquier duda, quedo atento.\n\nSaludos cordiales," },
-  { id: "builtin-segA-2", orden: 2, name: "A2. Recordatorio / reactivación de propuesta", subject: "¿Seguimos con [Producto cotizado]?", body: "Hola {nombre_corto},\n\nTe escribo porque quedó pendiente la propuesta que revisamos hace un tiempo.\n\n{render}\n\nNo sé si sigue vigente el interés o si las prioridades cambiaron por ahora — de cualquier forma, quedamos disponibles para retomarlo cuando les acomode.\n\nSaludos cordiales," },
-  { id: "builtin-segA-3", orden: 3, name: "A3. Cercanía / relación", subject: "Un saludo para el equipo de {empresa_corto}", body: "Hola {nombre_corto},\n\nQuería escribirte simplemente para saludar y ver cómo va todo por {empresa_corto}.\n\nSeguimos aquí disponibles para cuando surja alguna necesidad de merchandising, sin ningún apuro de por medio.\n\n{render}\n\nCualquier cosa, aquí estamos.\n\nSaludos cordiales," },
-  { id: "builtin-segA-4", orden: 4, name: "A4. Fecha o contexto especial", subject: "Ideas de merchandising para [Mes/fecha]", body: "Hola {nombre_corto},\n\nCon [Mes/fecha] acercándose, pensamos que podría ser un buen momento para conversar sobre merchandising para {empresa_corto}.\n\n{render}\n\nSi les interesa explorarlo, podemos preparar opciones a tiempo para que no los tome con lo justo.\n\nSaludos cordiales," },
-  { id: "builtin-segA-5", orden: 5, name: "A5. Prueba social aplicada", subject: "Un caso que le puede servir a {empresa_corto}", body: "Hola {nombre_corto},\n\nQuería compartirte un caso reciente de una empresa del rubro que implementó algo similar a lo que revisamos contigo.\n\n{render}\n\nEl resultado fue bien recibido, y creemos que algo similar podría funcionar igual de bien para {empresa_corto}. Si quieres, retomamos la conversación.\n\nSaludos cordiales," },
-  { id: "builtin-segA-6", orden: 6, name: "A6. Cierre de ciclo", subject: "¿Seguimos en contacto o lo dejamos por ahora?", body: "Hola {nombre_corto},\n\nHemos estado enviándote novedades sobre merchandising para {empresa_corto}, pero no quiero saturar tu bandeja si en este momento no es prioridad.\n\nSi prefieres, puedo espaciar los envíos o retomar solo cuando tengan una necesidad puntual. Quedo atento.\n\nSaludos cordiales," }
+  {
+    id: "builtin-segA-1",
+    orden: 1,
+    name: "A1. Novedad de producto",
+    subject: "Algo nuevo que le puede interesar a {empresa_corto}",
+    body: "Hola {nombre_corto},\n\nEspero que todo esté marchando bien por {empresa_corto}.\n\nQuisimos compartirte una novedad de este mes: [Producto nuevo], una opción que se adapta muy bien al estándar y tipo de merchandising que suelen manejar ustedes.\n\nSi te parece interesante, podemos preparar una propuesta visual rápida con el branding de {empresa_corto} para que la revisen internamente.\n\nQuedo atento.\n\nSaludos cordiales,"
+  },
+  {
+    id: "builtin-segA-2",
+    orden: 2,
+    name: "A2. Seguimiento / reactivación propuesta",
+    subject: "¿Seguimos con la propuesta de [Producto cotizado]?",
+    body: "Hola {nombre_corto},\n\nTe escribo para hacer seguimiento a la propuesta de [Producto cotizado] que revisamos para {empresa_corto}.\n\nQuería consultar si sigue vigente el proyecto o si las prioridades se movieron por ahora. De cualquier forma, estamos disponibles para retomarlo cuando les acomode o ajustar cantidades/tiempos si las necesidades cambiaron.\n\nSaludos cordiales,"
+  },
+  {
+    id: "builtin-segA-3",
+    orden: 3,
+    name: "A3. Contacto directo tomador decisión",
+    subject: "Merchandising para {empresa_corto} — apoyo en proyectos",
+    body: "Hola {nombre_corto},\n\nTe escribo brevemente sabiendo que estás a cargo de estas definiciones en {empresa_corto}.\n\nQueríamos dejarte presente que seguimos a tu disposición para cuando requieran cotizar o evaluar opciones de merchandising con personalización de alto estándar y tiempos claros de entrega.\n\nCualquier proyecto o requerimiento que surja, lo podemos ver directamente.\n\nSaludos cordiales,"
+  },
+  {
+    id: "builtin-segA-4",
+    orden: 4,
+    name: "A4. Fecha clave / contexto temporada",
+    subject: "Planificación de merchandising para [Mes/fecha]",
+    body: "Hola {nombre_corto},\n\nCon [Mes/fecha] acercándose, es un buen momento para coordinar con tiempo cualquier requerimiento de merchandising o regalos corporativos para {empresa_corto}.\n\nTrabajar con anticipación permite asegurar mejores opciones de personalización y stock. Si tienen algo en mente para estas semanas, podemos preparar alternativas de inmediato.\n\nSaludos cordiales,"
+  },
+  {
+    id: "builtin-segA-5",
+    orden: 5,
+    name: "A5. Validación / prueba social cotización",
+    subject: "Cómo ha funcionado [Producto cotizado] en otras empresas",
+    body: "Hola {nombre_corto},\n\nTe comparto un dato breve sobre [Producto cotizado], que fue la opción que evaluamos juntos para {empresa_corto}: es uno de los productos con mejor recepción y durabilidad que hemos entregado recientemente en proyectos similares.\n\nSi quieren reactivar la cotización o revisar una muestra virtual actualizada, quedo a tu disposición.\n\nSaludos cordiales,"
+  },
+  {
+    id: "builtin-segA-6",
+    orden: 6,
+    name: "A6. Cierre de ciclo / Desconexión",
+    subject: "¿Mantenemos la cotización o cerramos el seguimiento por ahora?",
+    body: "Hola {nombre_corto},\n\nTe he escrito para dar seguimiento a la propuesta de {empresa_corto}, pero entiendo perfectamente que los tiempos y prioridades comerciales van cambiando.\n\nPara no saturar tu bandeja: ¿prefieres que mantengamos la propuesta en pausa y te contacte más adelante, o cerramos el requerimiento por ahora?\n\nQuedo atento a lo que te sea más cómodo.\n\nSaludos cordiales,"
+  }
 ];
 
 const DEFAULT_SEGMENTO_B_TEMPLATES = [
-  { id: "builtin-segB-1", orden: 1, name: "B1. Contenido de valor / tendencia", subject: "Tendencia que está marcando el merchandising este año", body: "Hola {nombre_corto},\n\nTe escribo no para ofrecerte algo puntual, sino para compartirte algo que hemos visto tomar fuerza en empresas del rubro: [Tendencia/Insight].\n\n{render}\n\nSi en algún momento quieres conversar cómo se vería aplicado a {empresa_corto}, con gusto lo vemos.\n\nSaludos cordiales," },
-  { id: "builtin-segB-2", orden: 2, name: "B2. Prueba social / caso de éxito", subject: "Cómo ayudamos a [Caso de éxito] con su merchandising", body: "Hola {nombre_corto},\n\nQuería compartirte un caso que puede ser relevante para {empresa_corto}: trabajamos con un cliente en una necesidad de merchandising similar a la de su rubro.\n\n{render}\n\nNo es un impulso para que cotices ahora, solo pensé que te podía interesar ver cómo se resolvió.\n\nSaludos cordiales," },
-  { id: "builtin-segB-3", orden: 3, name: "B3. Diferenciación", subject: "Lo que nos diferencia al momento de personalizar merchandising", body: "Hola {nombre_corto},\n\nSé que en algún momento pueden evaluar distintas opciones de merchandising, así que quería contarte brevemente qué es lo que nos diferencia: personalización real, tiempos claros y acompañamiento directo.\n\n{render}\n\nSi surge una necesidad más adelante, con gusto conversamos.\n\nSaludos cordiales," },
-  { id: "builtin-segB-4", orden: 4, name: "B4. Invitación blanda a catálogo", subject: "Catálogo de opciones para {empresa_corto}", body: "Hola {nombre_corto},\n\nTe comparto algunas opciones de merchandising que trabajamos, por si en algún momento surge la necesidad en {empresa_corto} y quieren tenerlo a mano.\n\n{render}\n\nNo hay ningún apuro — cuando quieran cotizar algo puntual, aquí estamos.\n\nSaludos cordiales," },
-  { id: "builtin-segB-5", orden: 5, name: "B5. Pregunta de descubrimiento", subject: "Una pregunta rápida para {empresa_corto}", body: "Hola {nombre_corto},\n\nTe escribo con una pregunta simple: ¿cómo están resolviendo hoy el tema de merchandising en {empresa_corto} — eventos, regalos corporativos, onboarding?\n\nDependiendo de tu respuesta, te puedo compartir algo que les podría hacer sentido, sin compromiso.\n\nSaludos cordiales," },
-  { id: "builtin-segB-6", orden: 6, name: "B6. Fecha estacional (sin presión)", subject: "Ideas para [Mes/fecha] en empresas como {empresa_corto}", body: "Hola {nombre_corto},\n\nCon [Mes/fecha] acercándose, quería compartirte algunas ideas de merchandising que suelen funcionar bien en esta fecha para empresas de su rubro.\n\n{render}\n\nSi te sirve conversarlo más en detalle, con gusto agendamos algo breve.\n\nSaludos cordiales," }
+  {
+    id: "builtin-segB-1",
+    orden: 1,
+    name: "B1. Post-entrega y reposición",
+    subject: "¿Cómo anduvo todo con el pedido de {empresa_corto}?",
+    body: "Hola {nombre_corto},\n\nPaso a saludarte y saber cómo ha sido la recepción del último merchandising que trabajamos para {empresa_corto}.\n\nSi ya están cerca de agotar stock o proyectan una reposición para las próximas semanas, avísame y dejamos coordinada la producción con anticipación.\n\nSaludos cordiales,"
+  },
+  {
+    id: "builtin-segB-2",
+    orden: 2,
+    name: "B2. Novedad catálogo / Cross-selling",
+    subject: "Novedad de catálogo para complementar lo de {empresa_corto}",
+    body: "Hola {nombre_corto},\n\nPensando en la línea de merchandising que ya desarrollamos con ustedes, incorporamos nuevas opciones de productos y técnicas de personalización que combinan perfecto con la identidad de {empresa_corto}.\n\nTe comparto un par de ideas adjuntas. Si te hace sentido revisarlo para próximos eventos o entregas internas, lo coordinamos.\n\nSaludos cordiales,"
+  },
+  {
+    id: "builtin-segB-3",
+    orden: 3,
+    name: "B3. Anticipación calendario corporativo",
+    subject: "Coordinación anticipada para [Mes/fecha] — {empresa_corto}",
+    body: "Hola {nombre_corto},\n\nComo ya conocemos los tiempos y requerimientos de {empresa_corto}, te escribo para anticipar lo que puedan necesitar de cara a [Mes/fecha] (regalos de fin de año, aniversarios o eventos corporativos).\n\nComo cliente activo, podemos reservar stock y cupos de producción con prioridad para que no los tome la fecha al límite.\n\n¿Tienen algún hito planificado para esas fechas?\n\nSaludos cordiales,"
+  },
+  {
+    id: "builtin-segB-4",
+    orden: 4,
+    name: "B4. Catálogo actualizado / Matrices",
+    subject: "Catálogo actualizado y opciones vigentes para {empresa_corto}",
+    body: "Hola {nombre_corto},\n\nTe dejo a mano nuestro catálogo actualizado de este trimestre con las nuevas líneas de productos disponibles para {empresa_corto}.\n\nRecuerda que al tener ya sus matrices y especificaciones de marca registradas, cualquier nuevo requerimiento o cotización se procesa de forma más rápida.\n\nQuedo atento a cualquier necesidad que surja en el equipo.\n\nSaludos cordiales,"
+  },
+  {
+    id: "builtin-segB-5",
+    orden: 5,
+    name: "B5. Detección nuevos proyectos / áreas",
+    subject: "Nuevos requerimientos o áreas en {empresa_corto}",
+    body: "Hola {nombre_corto},\n\nAdemás del merchandising que ya trabajamos juntos, quería consultarte si en {empresa_corto} tienen requerimientos próximos en otras áreas (onboarding de nuevos colaboradores, kits para eventos o marketing).\n\nSi hay algún proyecto nuevo en carpeta, podemos preparar propuestas específicas manteniendo la misma calidad de la última entrega.\n\nSaludos cordiales,"
+  },
+  {
+    id: "builtin-segB-6",
+    orden: 6,
+    name: "B6. Agradecimiento y continuidad",
+    subject: "Seguimiento de cuenta — {empresa_corto}",
+    body: "Hola {nombre_corto},\n\nRevisando las cuentas que atendemos, quería agradecerte por la confianza en los proyectos anteriores y confirmar que seguimos 100% disponibles para apoyarte en cualquier nuevo desarrollo.\n\n¿Hay algún proyecto de merchandising en el que estén pensando para este trimestre?\n\nSaludos cordiales,"
+  }
 ];
 
 interface ZohoMailModalProps {
@@ -78,6 +150,24 @@ export function ZohoMailModal({
       return;
     }
     setActiveSegmento(nuevoSeg);
+    const targetTemplates = nuevoSeg === "B" ? templatesSegmentoB : templatesSegmentoA;
+    if (targetTemplates && targetTemplates.length > 0 && selectedContactoDraft) {
+      const firstTmpl = targetTemplates[0];
+      setSelectedTemplateId(firstTmpl.id);
+      const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
+        firstTmpl.subject,
+        firstTmpl.body,
+        selectedContactoDraft,
+        selectedCuentaDraft,
+        vendedor
+      );
+      setDraftData({
+        email: selectedContactoDraft.correo,
+        subject: resolvedSubject,
+        body: resolvedBody,
+        contactoId: selectedContactoDraft.id
+      });
+    }
   };
 
   const templatesClientes = activeSegmento === "B" ? templatesSegmentoB : templatesSegmentoA;
@@ -120,12 +210,12 @@ export function ZohoMailModal({
     cuenta: any,
     vendedorName: string
   ) => {
-    const contactName = contacto?.nombre || "";
-    const shortName = contactName.split(" ")[0];
+    const contactName = (contacto?.nombre || "").trim();
+    const shortName = contactName ? contactName.split(" ")[0] : "";
     const finalCompany = (contacto?.empresa_rel_name || contacto?.empresa || cuenta?.nombre || cuenta?.cliente || "").trim();
     const shortCompany = finalCompany.replace(/\b(SpA|EIRL|S\.A\.|LTDA|Limitada|S\.A)\b/gi, "").trim();
     
-    // Configuración del equipo comercial (harcodeado temporalmente igual que antes)
+    // Configuración del equipo comercial
     const telefonosPorVendedor: Record<string, string> = {
       "José Tomas Gonzalez": "+56942007727",
       "Ignacio Gonzalez": "+56961159807"
@@ -133,13 +223,22 @@ export function ZohoMailModal({
     const telefonoVendedor = telefonosPorVendedor[vendedorName] || "+56942007727";
 
     const replaceAll = (text: string) => {
+      if (!text) return "";
       return text
-        .replace(/{\s*nombre\s*}/gi, contactName)
-        .replace(/{\s*nombre_corto\s*}/gi, shortName)
-        .replace(/{\s*contacto\s*}/gi, shortName)
-        .replace(/{\s*empresa\s*}/gi, finalCompany)
-        .replace(/{\s*empresa_corto\s*}/gi, shortCompany)
-        .replace(/{\s*vendedor\s*}/gi, vendedorName)
+        .replace(/\[\s*Nombre\s*\]/gi, shortName || contactName || "[Nombre]")
+        .replace(/\[\s*Nombre\s*contacto\s*\]/gi, shortName || contactName || "[Nombre]")
+        .replace(/\[\s*Contacto\s*\]/gi, shortName || contactName || "[Contacto]")
+        .replace(/\[\s*Empresa\s*\]/gi, shortCompany || finalCompany || "[Empresa]")
+        .replace(/\[\s*Nombre\s*vendedor\s*\]/gi, vendedorName || "[Nombre vendedor]")
+        .replace(/\[\s*Vendedor\s*\]/gi, vendedorName || "[Nombre vendedor]")
+        .replace(/\[\s*Telefono\s*\]/gi, telefonoVendedor)
+        .replace(/\[\s*Teléfono\s*\]/gi, telefonoVendedor)
+        .replace(/{\s*nombre\s*}/gi, contactName || shortName || "{nombre}")
+        .replace(/{\s*nombre_corto\s*}/gi, shortName || contactName || "{nombre_corto}")
+        .replace(/{\s*contacto\s*}/gi, shortName || contactName || "{contacto}")
+        .replace(/{\s*empresa\s*}/gi, finalCompany || shortCompany || "{empresa}")
+        .replace(/{\s*empresa_corto\s*}/gi, shortCompany || finalCompany || "{empresa_corto}")
+        .replace(/{\s*vendedor\s*}/gi, vendedorName || "{vendedor}")
         .replace(/{\s*telefono\s*}/gi, telefonoVendedor);
     };
     return { resolvedSubject: replaceAll(subject), resolvedBody: replaceAll(body) };
@@ -240,8 +339,34 @@ export function ZohoMailModal({
   }, [isOpen, selectedContactoDraft]);
 
   useEffect(() => {
-    if (isOpen && templates.length > 0 && selectedContactoDraft && !draftData) {
-      const firstTmpl = templates[0];
+    if (isOpen && selectedContactoDraft && !draftData) {
+      const activeList = activeTab === "clientes" ? templatesClientes : templates;
+      if (activeList && activeList.length > 0) {
+        const firstTmpl = activeList[0];
+        setSelectedTemplateId(firstTmpl.id);
+        const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
+          firstTmpl.subject,
+          firstTmpl.body,
+          selectedContactoDraft,
+          selectedCuentaDraft,
+          vendedor
+        );
+        setDraftData({
+          email: selectedContactoDraft.correo,
+          subject: resolvedSubject,
+          body: resolvedBody,
+          contactoId: selectedContactoDraft.id
+        });
+      }
+    }
+  }, [isOpen, templates, templatesClientes, activeTab, selectedContactoDraft, draftData, selectedCuentaDraft, vendedor]);
+
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    setIsEditingTemplateMode(false);
+    const targetList = newTab === "clientes" ? templatesClientes : templates;
+    if (targetList && targetList.length > 0 && selectedContactoDraft) {
+      const firstTmpl = targetList[0];
       setSelectedTemplateId(firstTmpl.id);
       const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
         firstTmpl.subject,
@@ -257,7 +382,7 @@ export function ZohoMailModal({
         contactoId: selectedContactoDraft.id
       });
     }
-  }, [isOpen, templates, selectedContactoDraft, draftData, selectedCuentaDraft, vendedor]);
+  };
 
 
   const handleSelectTemplate = (id: string) => {
@@ -519,7 +644,7 @@ export function ZohoMailModal({
   return (
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-6xl p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-2xl rounded-2xl text-gray-900 dark:text-gray-100">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
             <div className="flex flex-col gap-4 mb-4 border-b border-gray-100 dark:border-gray-800 pb-4">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
