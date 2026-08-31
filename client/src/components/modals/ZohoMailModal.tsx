@@ -1419,10 +1419,106 @@ export function ZohoMailModal({
                             return;
                           }
 
+                          if (!selectedContactoDraft) {
+                            toast.error("No hay contacto seleccionado");
+                            return;
+                          }
+
                           try {
-                            await navigator.clipboard.writeText(cuerpo);
-                            toast.success("¡Cuerpo copiado al portapapeles!");
-                          } catch (err) {
+                            let cleanBody = cuerpo;
+                            let htmlBody = cleanBody.replace(/\n/g, "<br/>");
+                            
+                            const renderImg = imageUrlCliente?.trim() || imageUrl?.trim() || "";
+                            if (renderImg) {
+                              const imgTag = `<img src="${renderImg}" alt="Render Ecomoving" style="max-width:100%; height:auto; margin: 20px 0; border-radius: 12px; border: 1px solid #e2e8f0; display: block;" />`;
+                              
+                              const imagePlaceholders = [
+                                /\{\s*imagen\s*\}/gi,
+                                /\{\s*imagen_url\s*\}/gi,
+                                /\{\s*render\s*\}/gi,
+                                /\(\s*imagen pegada en el cuerpo del correo\s*\)/gi
+                              ];
+
+                              let replaced = false;
+                              for (const regex of imagePlaceholders) {
+                                if (regex.test(htmlBody)) {
+                                  htmlBody = htmlBody.replace(regex, imgTag);
+                                  replaced = true;
+                                }
+                              }
+
+                              if (!replaced) {
+                                const paragraphs = htmlBody.split("<br/><br/>");
+                                if (paragraphs.length > 1) {
+                                  paragraphs.splice(1, 0, imgTag);
+                                  htmlBody = paragraphs.join("<br/><br/>");
+                                } else {
+                                  htmlBody = htmlBody + "<br/><br/>" + imgTag;
+                                }
+                              }
+                            } else {
+                              htmlBody = htmlBody
+                                .replace(/{\s*imagen\s*}/gi, "")
+                                .replace(/{\s*imagen_url\s*}/gi, "")
+                                .replace(/{\s*render\s*}/gi, "")
+                                .replace(/\(\s*imagen pegada en el cuerpo del correo\s*\)/gi, "");
+                            }
+
+                            const pixelUrl = `${window.location.origin}/api/sentinel-pixel?contacto_id=${selectedContactoDraft?.id}&template_id=${selectedTemplateId || ''}`;
+                            const pixelTag = `<img src="${pixelUrl}" width="1" height="1" style="display:none;" />`;
+                            htmlBody = htmlBody + pixelTag;
+
+                            try {
+                              const typeHtml = "text/html";
+                              const typeText = "text/plain";
+                              const blobHtml = new Blob([htmlBody], { type: typeHtml });
+                              const plainTextForClip = cleanBody
+                                .replace(/{\s*imagen\s*}/gi, "")
+                                .replace(/{\s*imagen_url\s*}/gi, "")
+                                .replace(/{\s*render\s*}/gi, "")
+                                .replace(/\(\s*imagen pegada en el cuerpo del correo\s*\)/gi, "");
+                              const blobText = new Blob([plainTextForClip], { type: typeText });
+                              
+                              const data = [
+                                new ClipboardItem({
+                                  [typeHtml]: blobHtml,
+                                  [typeText]: blobText
+                                })
+                              ];
+                              await navigator.clipboard.write(data);
+                            } catch (clipErr) {
+                              console.warn("ClipboardItem API failed, falling back to writeText:", clipErr);
+                              await navigator.clipboard.writeText(cleanBody);
+                            }
+
+                            const now = new Date();
+                            const timestamp = now.getTime();
+                            const formattedDate = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                            
+                            setTemplateSendDates(prev => ({
+                              ...prev,
+                              [selectedTemplateId]: formattedDate
+                            }));
+
+                            await supabase.from('contactos').update({
+                              ultimo_envio: now.toISOString(),
+                              ultimo_evento_trazabilidad: now.toISOString(),
+                              estado: "activo"
+                            }).eq('id', selectedContactoDraft.id);
+
+                            if (selectedContactoDraft.correo) {
+                              await supabase.from('trazabilidad_correos').insert({
+                                contacto_id: selectedContactoDraft.id,
+                                email: selectedContactoDraft.correo.toLowerCase(),
+                                fecha: now.toISOString().split('T')[0],
+                                estado: 'sent',
+                                mensaje_id: `manual_send:${selectedTemplateId}:${timestamp}`
+                              });
+                            }
+
+                            onRefresh();
+                            toast.success("¡Cuerpo copiado con pixel de seguimiento!");
+                          } catch (err: any) {
                             console.error("Error al copiar:", err);
                             toast.error("Error al copiar el cuerpo");
                           }
