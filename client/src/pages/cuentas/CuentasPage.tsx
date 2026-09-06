@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useVendedores } from "../../hooks/useVendedores";
 import { ZohoMailModal } from "@/components/modals/ZohoMailModal";
 import { PautaProspeccionModal } from "@/components/modals/PautaProspeccionModal";
+import { SEGMENTOS_MAESTROS } from "../../utils/constants";
 import {
   Dialog,
   DialogContent,
@@ -23,12 +24,17 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
+const SECTORES_CUENTAS = ["Privado", "Público"];
+
+const sanitizarBusqueda = (texto: string): string => {
+  if (!texto) return "";
+  return texto.replace(/[,()&|]/g, " ").replace(/\s+/g, " ").trim();
+};
+
 export default function CuentasPage() {
   const navigate = useNavigate();
   const { vendedores } = useVendedores();
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
-  const [cuentasFiltradas, setCuentasFiltradas] = useState<Cuenta[]>([]);
-  const [allCuentas, setAllCuentas] = useState<Cuenta[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
@@ -56,11 +62,21 @@ export default function CuentasPage() {
     totalActivas: 0,
   });
 
-  // Estados para filtros y búsqueda
+  // Estados para filtros y búsqueda (limpiando valores heredados inconsistentes)
   const [busqueda, setBusqueda] = useState(() => sessionStorage.getItem("cuentas_busqueda") || "");
-  const [busquedaAplicada, setBusquedaAplicada] = useState(() => sessionStorage.getItem("cuentas_busqueda") || "");
-  const [filtroSector, setFiltroSector] = useState(() => sessionStorage.getItem("cuentas_filtroSector") || "");
-  const [filtroSegmento, setFiltroSegmento] = useState(() => sessionStorage.getItem("cuentas_filtroSegmento") || "");
+  const [filtroSector, setFiltroSector] = useState(() => {
+    const saved = sessionStorage.getItem("cuentas_filtroSector") || "";
+    return saved;
+  });
+  const [filtroSegmento, setFiltroSegmento] = useState(() => {
+    const saved = sessionStorage.getItem("cuentas_filtroSegmento") || "";
+    // Si quedó guardado un valor de sector ('privado' o 'publico') en el filtro de segmento, limpiarlo
+    if (["privado", "publico", "Privado", "Público"].includes(saved)) {
+      sessionStorage.removeItem("cuentas_filtroSegmento");
+      return "";
+    }
+    return saved;
+  });
   const [filtroEstado, setFiltroEstado] = useState(() => sessionStorage.getItem("cuentas_filtroEstado") || "");
   const [filtroVendedor, setFiltroVendedor] = useState(() => sessionStorage.getItem("cuentas_filtroVendedor") || "");
   const [filtroFecha, setFiltroFecha] = useState(() => sessionStorage.getItem("cuentas_filtroFecha") || "");
@@ -92,11 +108,10 @@ export default function CuentasPage() {
   const filasPorPagina = 50;
 
   // Estados para opciones de filtros (se cargan una vez al inicio)
-  const [availableSectors, setAvailableSectors] = useState<string[]>([]);
-  const [availableSegments, setAvailableSegments] = useState<string[]>([]);
+  const [availableSectors, setAvailableSectors] = useState<string[]>(SECTORES_CUENTAS);
+  const [availableSegments, setAvailableSegments] = useState<string[]>(SEGMENTOS_MAESTROS);
   const [totalRecords, setTotalRecords] = useState(0);
 
-  // Determinar si hay algún filtro activo
   // No longer restricted, we use server-side pagination for performance
   const hayFiltroActivo = true;
 
@@ -147,37 +162,21 @@ export default function CuentasPage() {
 
   const cargarOpcionesFiltros = async () => {
     try {
-      // 1. Cargar sectores de las cuentas y normalizar mayúsculas/espacios
-      const { data: accountsData } = await supabase.from("cuentas").select("sector");
-      if (accountsData) {
-        const sectorSet = new Set<string>();
-        accountsData.forEach((c: any) => {
-          if (c.sector && typeof c.sector === 'string') {
-            const trimmed = c.sector.trim();
-            if (trimmed) {
-              // Standardize casing: First letter uppercase, rest lowercase
-              const normalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
-              sectorSet.add(normalized);
-            }
-          }
-        });
-        setAvailableSectors(Array.from(sectorSet).sort());
-      }
+      // 1. Opciones de sector (Privado / Público)
+      setAvailableSectors(SECTORES_CUENTAS);
 
-      // 2. Cargar segmentos de la tabla de catálogo y de las cuentas existentes
-      const { data: catalogData } = await supabase.from("catalogo_segmentos").select("nombre");
-      
-      let allFoundSegments: string[] = [];
-      
-      if (catalogData && catalogData.length > 0) {
-        allFoundSegments = catalogData.map((s: any) => s.nombre).filter(Boolean);
-      }
-      
-      const dbSegments = allCuentas.map((c: Cuenta) => c.segmento).filter(Boolean);
-      
-      setAvailableSegments(Array.from(new Set([...allFoundSegments, ...dbSegments])).sort());
+      // 2. Cargar segmentos (rubros: Educación, Minería, Salud, etc.)
+      const { data: catalogData } = await supabase
+        .from("catalogo_segmentos")
+        .select("nombre");
+
+      const catalogos = catalogData?.map((s: any) => s.nombre).filter(Boolean) || [];
+      const segmentosCombinados = Array.from(new Set([...SEGMENTOS_MAESTROS, ...catalogos])).sort();
+      setAvailableSegments(segmentosCombinados);
     } catch (e) {
       console.error("Error cargando opciones de filtros:", e);
+      setAvailableSectors(SECTORES_CUENTAS);
+      setAvailableSegments(SEGMENTOS_MAESTROS);
     }
   };
 
@@ -217,11 +216,10 @@ export default function CuentasPage() {
     }
   };
 
-  // Carga inicial del listado maestro (ligero) y opciones de filtros
+  // Carga de opciones de filtros y estadísticas al montar
   useEffect(() => {
     cargarEstadisticasProspeccion();
     cargarOpcionesFiltros();
-    cargarCuentas();
   }, []);
 
   const cargarCuentas = async () => {
@@ -229,158 +227,152 @@ export default function CuentasPage() {
       setCargando(true);
       setError("");
 
-      let allData: any[] = [];
-      let from = 0;
-      let to = 999;
-      let hasMore = true;
+      const busquedaLimpia = sanitizarBusqueda(busqueda);
+      const offset = (paginaActual - 1) * filasPorPagina;
+      const limite = filasPorPagina;
 
-      while (hasMore) {
-        const { data, error } = await supabase
-          .from("cuentas")
-          .select("id, cliente, rut, ciudad, sector, segmento, estado, cuenta_foco, etapa_prospeccion, vendedor_id, created_at, cuenta_activa")
-          .order("created_at", { ascending: false })
-          .range(from, to);
+      // Determinar si hay algún filtro activo
+      const tieneFiltros = Boolean(
+        filtroSegmento ||
+        busquedaLimpia ||
+        filtroSector ||
+        filtroEstado ||
+        filtroVendedor ||
+        filtroFoco === "foco" ||
+        (filtroEtapa && filtroEtapa !== "todas") ||
+        filtroFecha
+      );
 
-        if (error) throw error;
+      // Usar count "exact" cuando hay filtros activos; "estimated" para tabla total sin condiciones
+      const tipoConteo: "exact" | "estimated" = tieneFiltros ? "exact" : "estimated";
 
-        if (data && data.length > 0) {
-          allData = [...allData, ...data];
-          if (data.length < 1000) {
-            hasMore = false;
-          } else {
-            from += 1000;
-            to += 1000;
-          }
+      let query = supabase
+        .from("cuentas")
+        .select(
+          "*, vendedores(nombre), contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono, imagen, ultimo_envio, ultimo_evento_trazabilidad, estado, etapa)",
+          { count: tipoConteo }
+        );
+
+      // 1. Filtro directo en sector (Público / Privado) usando ILIKE directo
+      if (filtroSector) {
+        const sectorNormalizado = filtroSector
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .trim();
+
+        if (sectorNormalizado === "publico") {
+          query = query.ilike("sector", "Público");
+        } else if (sectorNormalizado === "privado") {
+          query = query.ilike("sector", "Privado");
         } else {
-          hasMore = false;
+          query = query.ilike("sector", filtroSector.trim());
         }
       }
 
-      setAllCuentas(allData);
+      // 2. Filtro de segmento (Rubro: Educación, Minería, Salud, etc.)
+      if (filtroSegmento && !["privado", "publico", "Privado", "Público"].includes(filtroSegmento)) {
+        query = query.ilike("segmento", filtroSegmento.trim());
+      }
+
+      // 3. Búsqueda directa en SQL con ILIKE sanitizado
+      if (busquedaLimpia) {
+        query = query.or(
+          `cliente.ilike.%${busquedaLimpia}%,rut.ilike.%${busquedaLimpia}%,ciudad.ilike.%${busquedaLimpia}%`
+        );
+      }
+
+      // 4. Filtros adicionales en servidor
+      if (filtroEstado) {
+        query = query.eq("estado", filtroEstado);
+      }
+      if (filtroVendedor) {
+        if (filtroVendedor === "null") {
+          query = query.is("vendedor_id", null);
+        } else {
+          query = query.eq("vendedor_id", filtroVendedor);
+        }
+      }
+      if (filtroFoco === "foco") {
+        query = query.eq("cuenta_foco", true);
+      }
+      if (filtroEtapa && filtroEtapa !== "todas") {
+        if (filtroEtapa === "Sin Verificar") {
+          query = query.or("etapa_prospeccion.is.null,etapa_prospeccion.eq.Sin Verificar");
+        } else {
+          query = query.eq("etapa_prospeccion", filtroEtapa);
+        }
+      }
+      if (filtroFecha) {
+        query = query
+          .gte("created_at", `${filtroFecha}T00:00:00`)
+          .lte("created_at", `${filtroFecha}T23:59:59`);
+      }
+
+      // 5. Ordenamiento y Paginación SQL (LIMIT $limite OFFSET $offset)
+      query = query
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limite - 1);
+
+      const { data, count, error: queryError } = await query;
+
+      if (queryError) throw queryError;
+
+      setCuentas(data || []);
+      setTotalRecords(count || 0);
     } catch (err: any) {
       console.error("Error al cargar cuentas:", err);
-      setError("No se pudieron cargar las cuentas: " + (err.message || err.details || JSON.stringify(err)));
+      setError("No se pudieron cargar las cuentas: " + (err.message || JSON.stringify(err)));
     } finally {
       setCargando(false);
     }
   };
 
-  // Helper para normalizar texto (obviando tildes y mayúsculas)
-  const normalizarTexto = (texto: string): string => {
-    if (!texto) return "";
-    return texto
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-  };
-
-  // Búsqueda y filtrado client-side, con carga perezosa de detalles de la página actual
+  // Resetear a página 1 al cambiar cualquier filtro o término de búsqueda
   useEffect(() => {
-    const filtradas = allCuentas.filter((cuenta) => {
-      // 1. Sector
-      if (filtroSector && cuenta.sector?.toLowerCase() !== filtroSector.toLowerCase()) {
-        return false;
-      }
-      // 2. Segmento
-      if (filtroSegmento && cuenta.segmento !== filtroSegmento) {
-        return false;
-      }
-      // 3. Estado
-      if (filtroEstado && cuenta.estado !== filtroEstado) {
-        return false;
-      }
-      // 4. Vendedor
-      if (filtroVendedor) {
-        if (filtroVendedor === "null") {
-          if (cuenta.vendedor_id !== null && cuenta.vendedor_id !== undefined) return false;
-        } else {
-          if (cuenta.vendedor_id !== filtroVendedor) return false;
-        }
-      }
-      // 5. Foco / Prioridad
-      if (filtroFoco === "foco" && !cuenta.cuenta_foco) {
-        return false;
-      }
-      // 6. Etapa Prospección
-      if (filtroEtapa !== "todas") {
-        if (filtroEtapa === "Sin Verificar") {
-          if (cuenta.etapa_prospeccion && cuenta.etapa_prospeccion !== "Sin Verificar") return false;
-        } else {
-          if (cuenta.etapa_prospeccion !== filtroEtapa) return false;
-        }
-      }
-      // 7. Fecha de ingreso
-      if (filtroFecha) {
-        const fechaCuenta = cuenta.created_at ? cuenta.created_at.split("T")[0] : "";
-        if (fechaCuenta !== filtroFecha) return false;
-      }
-      // 8. Buscador amigable (obvia tildes, mayúsculas y busca todas las palabras del término en cualquier orden)
-      if (busqueda.trim()) {
-        const queryNorm = normalizarTexto(busqueda);
-        const palabrasBuscadas = queryNorm.split(/\s+/).filter(Boolean);
+    setPaginaActual(1);
+  }, [
+    busqueda,
+    filtroSector,
+    filtroSegmento,
+    filtroEstado,
+    filtroVendedor,
+    filtroFoco,
+    filtroEtapa,
+    filtroFecha,
+  ]);
 
-        const clienteNorm = normalizarTexto(cuenta.cliente || "");
-        const rutNorm = normalizarTexto(cuenta.rut || "");
-        const ciudadNorm = normalizarTexto(cuenta.ciudad || "");
+  // Disparador reactivo con debounce para búsquedas y cambios de filtros
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      cargarCuentas();
+    }, 300);
 
-        return palabrasBuscadas.every((palabra) =>
-          clienteNorm.includes(palabra) ||
-          rutNorm.includes(palabra) ||
-          ciudadNorm.includes(palabra)
-        );
-      }
-      return true;
-    });
-
-    setTotalRecords(filtradas.length);
-
-    // Paginación
-    const paginadasLight = filtradas.slice((paginaActual - 1) * filasPorPagina, paginaActual * filasPorPagina);
-
-    let isCancelled = false;
-
-    // Cargar detalles perezosamente (vendedores y contactos) para la página actual
-    const cargarDetallesPagina = async () => {
-      if (paginadasLight.length === 0) {
-        if (!isCancelled) setCuentas([]);
-        return;
-      }
-      try {
-        if (!isCancelled) setCargando(true);
-        if (!isCancelled) setError("");
-
-        const ids = paginadasLight.map(c => c.id);
-        const { data, error: err } = await supabase
-          .from("cuentas")
-          .select("*, vendedores(nombre), contactos:contactos!contactos_cuenta_id_fkey(id, nombre, correo, celular, telefono, imagen, ultimo_envio, ultimo_evento_trazabilidad, estado, etapa)")
-          .in("id", ids);
-
-        if (err) throw err;
-
-        if (!isCancelled) {
-          // Ordenar según el orden de paginadasLight
-          const sorted = paginadasLight.map(pl => data.find(d => d.id === pl.id)).filter(Boolean) as Cuenta[];
-          setCuentas(sorted);
-        }
-      } catch (err: any) {
-        console.error("Error al cargar detalles de la página:", err);
-        if (!isCancelled) setError("No se pudieron cargar los detalles de las cuentas.");
-      } finally {
-        if (!isCancelled) setCargando(false);
-      }
-    };
-
-    cargarDetallesPagina();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [allCuentas, paginaActual, busqueda, filtroSector, filtroSegmento, filtroEstado, filtroVendedor, filtroFoco, filtroEtapa, filtroFecha]);
+    return () => clearTimeout(timer);
+  }, [
+    paginaActual,
+    busqueda,
+    filtroSector,
+    filtroSegmento,
+    filtroEstado,
+    filtroVendedor,
+    filtroFoco,
+    filtroEtapa,
+    filtroFecha,
+  ]);
 
   const totalPaginas = Math.ceil(totalRecords / filasPorPagina);
   const cuentasPaginadas = cuentas;
 
   const handleReset = () => {
+    sessionStorage.removeItem("cuentas_busqueda");
+    sessionStorage.removeItem("cuentas_filtroSector");
+    sessionStorage.removeItem("cuentas_filtroSegmento");
+    sessionStorage.removeItem("cuentas_filtroEstado");
+    sessionStorage.removeItem("cuentas_filtroVendedor");
+    sessionStorage.removeItem("cuentas_filtroFoco");
+    sessionStorage.removeItem("cuentas_filtroEtapa");
+    sessionStorage.removeItem("cuentas_filtroFecha");
     setBusqueda("");
     setFiltroSector("");
     setFiltroSegmento("");
@@ -416,7 +408,6 @@ export default function CuentasPage() {
       if (error) throw error;
 
       // Actualizar estado local
-      setAllCuentas(prev => prev.map(c => c.id === id ? { ...c, ...updatePayload } : c));
       setCuentas(prev => prev.map(c => c.id === id ? { ...c, ...updatePayload } : c));
       
       // Recargar estadísticas si cambió la etapa o las marcas de foco/activa
@@ -437,8 +428,8 @@ export default function CuentasPage() {
     try {
       const { error } = await supabase.from("cuentas").delete().eq("id", id);
       if (error) throw error;
-      setAllCuentas(prev => prev.filter(c => c.id !== id));
       setCuentas(prev => prev.filter((c) => c.id !== id));
+      setTotalRecords(prev => Math.max(0, prev - 1));
     } catch (error: any) {
       console.error("Error:", error);
       alert("Error al eliminar la cuenta");
