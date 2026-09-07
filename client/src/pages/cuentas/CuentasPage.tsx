@@ -65,7 +65,10 @@ export default function CuentasPage() {
   // Estados para filtros y búsqueda (limpiando valores heredados inconsistentes)
   const [busqueda, setBusqueda] = useState(() => sessionStorage.getItem("cuentas_busqueda") || "");
   const [filtroSector, setFiltroSector] = useState(() => {
-    const saved = sessionStorage.getItem("cuentas_filtroSector") || "";
+    const saved = sessionStorage.getItem("cuentas_filtroSector");
+    if (saved === null || saved === undefined) {
+      return "Privado";
+    }
     return saved;
   });
   const [filtroSegmento, setFiltroSegmento] = useState(() => {
@@ -374,7 +377,7 @@ export default function CuentasPage() {
     sessionStorage.removeItem("cuentas_filtroEtapa");
     sessionStorage.removeItem("cuentas_filtroFecha");
     setBusqueda("");
-    setFiltroSector("");
+    setFiltroSector("Privado");
     setFiltroSegmento("");
     setFiltroEstado("");
     setFiltroVendedor("");
