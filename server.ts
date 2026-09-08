@@ -14,6 +14,8 @@ async function startServer() {
 
   // API routes
   const apiRoutes = [
+    { path: "/api/upload-render", file: "./api/upload-render.ts" },
+    { path: "/api/render-image", file: "./api/render-image.ts" },
     { path: "/api/marketing/import-ai", file: "./api/marketing/import-ai.ts" },
     { path: "/api/enrich-accounts", file: "./api/enrich-accounts.ts" },
     { path: "/api/sync-brevo", file: "./api/sync-brevo.ts" },
