@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getSupabase } from './supabase-client.js';
+import { getSupabase, supabaseUrl } from './supabase-client.js';
 import axios from 'axios';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -94,9 +94,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         // Si llegamos aqui, la URL es sintácticamente válida.
-        // Opcional: Podríamos hacer un 'head' request rápido para ver si da 200 OK, pero puede ser lento.
-        // Asumimos que si hay URL, intentamos usarla.
-
         finalHtml = finalHtml
             .replace(/IMAGE_PLACEHOLDER/g, imageUrl)
             .replace(/\{\{IMG_URL\}\}/g, imageUrl);
