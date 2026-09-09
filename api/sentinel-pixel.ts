@@ -1,4 +1,3 @@
-
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
@@ -40,8 +39,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const { contacto_id, template_id } = req.query;
-    const referer = (req.headers.referer || req.headers.referrer || '').toLowerCase();
-    const userAgent = (req.headers['user-agent'] || '').toLowerCase();
+    const rawReferer = req.headers.referer || req.headers.referrer || '';
+    const referer = (Array.isArray(rawReferer) ? rawReferer[0] || '' : rawReferer).toLowerCase();
+    const rawUserAgent = req.headers['user-agent'] || '';
+    const userAgent = (Array.isArray(rawUserAgent) ? rawUserAgent[0] || '' : rawUserAgent).toLowerCase();
     
     // Si la petición proviene de la ventana de redacción de Zoho Mail (remitente tipeando el correo), omitir
     const isSelfComposer = referer.includes('zoho.com/mail') || referer.includes('zoho.cl/mail');
