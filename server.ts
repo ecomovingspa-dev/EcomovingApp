@@ -4,42 +4,60 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 
+import uploadRenderHandler from "./api/upload-render";
+import renderImageHandler from "./api/render-image";
+import importAiHandler from "./api/marketing/import-ai";
+import enrichAccountsHandler from "./api/enrich-accounts";
+import syncBrevoHandler from "./api/sync-brevo";
+import sentinelPixelHandler from "./api/sentinel-pixel";
+import sendCortesiaHandler from "./api/send-cortesia";
+import sendTestProspeccionHandler from "./api/send-test-prospeccion";
+import sendTestHandler from "./api/send-test";
+import cronDailyHandler from "./api/cron-daily";
+import sendTestCobranzaHandler from "./api/send-test-cobranza";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: "50mb" }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-  // API routes
-  const apiRoutes = [
-    { path: "/api/upload-render", file: "./api/upload-render.ts" },
-    { path: "/api/render-image", file: "./api/render-image.ts" },
-    { path: "/api/marketing/import-ai", file: "./api/marketing/import-ai.ts" },
-    { path: "/api/enrich-accounts", file: "./api/enrich-accounts.ts" },
-    { path: "/api/sync-brevo", file: "./api/sync-brevo.ts" },
-    { path: "/api/sentinel-pixel", file: "./api/sentinel-pixel.ts" },
-    { path: "/api/send-cortesia", file: "./api/send-cortesia.ts" },
-    { path: "/api/send-test-prospeccion", file: "./api/send-test-prospeccion.ts" },
-    { path: "/api/send-test", file: "./api/send-test.ts" },
-    { path: "/api/cron-daily", file: "./api/cron-daily.ts" },
-    { path: "/api/send-test-cobranza", file: "./api/send-test-cobranza.ts" },
+  // API Routes
+  const routes: { path: string; handler: (req: any, res: any) => Promise<any> | any }[] = [
+    { path: "/api/upload-render", handler: uploadRenderHandler },
+    { path: "/api/render-image", handler: renderImageHandler },
+    { path: "/api/marketing/import-ai", handler: importAiHandler },
+    { path: "/api/enrich-accounts", handler: enrichAccountsHandler },
+    { path: "/api/sync-brevo", handler: syncBrevoHandler },
+    { path: "/api/sentinel-pixel", handler: sentinelPixelHandler },
+    { path: "/api/send-cortesia", handler: sendCortesiaHandler },
+    { path: "/api/send-test-prospeccion", handler: sendTestProspeccionHandler },
+    { path: "/api/send-test", handler: sendTestHandler },
+    { path: "/api/cron-daily", handler: cronDailyHandler },
+    { path: "/api/send-test-cobranza", handler: sendTestCobranzaHandler },
   ];
 
-  for (const route of apiRoutes) {
+  for (const route of routes) {
     app.all(route.path, async (req, res) => {
       try {
-        const module = await import(route.file);
-        const handler = module.default;
-        await handler(req, res);
+        await route.handler(req, res);
       } catch (err: any) {
         console.error(`Error in ${route.path}:`, err);
-        res.status(500).json({ error: err.message });
+        if (!res.headersSent) {
+          res.status(500).json({ error: err.message || "Internal server error" });
+        }
       }
     });
   }
-  
+
+  // Health check
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -48,10 +66,10 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+    app.get("*all", (_req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
