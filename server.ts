@@ -18,13 +18,8 @@ async function startServer() {
     { path: "/api/render-image", file: "./api/render-image.ts" },
     { path: "/api/marketing/import-ai", file: "./api/marketing/import-ai.ts" },
     { path: "/api/enrich-accounts", file: "./api/enrich-accounts.ts" },
-    { path: "/api/sync-brevo", file: "./api/sync-brevo.ts" },
     { path: "/api/sentinel-pixel", file: "./api/sentinel-pixel.ts" },
-    { path: "/api/send-cortesia", file: "./api/send-cortesia.ts" },
-    { path: "/api/send-test-prospeccion", file: "./api/send-test-prospeccion.ts" },
-    { path: "/api/send-test", file: "./api/send-test.ts" },
     { path: "/api/cron-daily", file: "./api/cron-daily.ts" },
-    { path: "/api/send-test-cobranza", file: "./api/send-test-cobranza.ts" },
   ];
 
   for (const route of apiRoutes) {
