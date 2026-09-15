@@ -79,14 +79,20 @@ export async function compressAndResizeImage(
 
 /**
  * Sube una imagen optimizada (<= 560px, JPEG comprimido, Cache-Control de 1 año)
- * directamente a Supabase Storage con nombre único y devuelve su URL pública permanente.
+ * y devuelve su URL pública permanente.
+ *
+ * Orden de subida (importante para el consumo de egress de Supabase, que es limitado
+ * en el plan gratuito): primero se intenta SIEMPRE Cloudflare R2 a través de
+ * /api/upload-render (egress $0 en R2), y solo si esa ruta falla por completo
+ * (backend caído, sin red, etc.) se recurre a subir directo a un bucket de
+ * Supabase Storage como último recurso, para que la app nunca deje de funcionar.
  */
 export async function uploadRenderImage(
   file: File | Blob,
   contactoId?: string
 ): Promise<UploadRenderResult> {
   const originalSizeKB = Math.round((file.size / 1024) * 10) / 10;
-  
+
   // 1. Comprimir y redimensionar imagen en el cliente ANTES de subir
   let uploadBlob: Blob = file;
   let compressedDataUrl = "";
@@ -106,42 +112,8 @@ export async function uploadRenderImage(
   const fileName = `contacto_${safeId}_${timestamp}.jpg`;
   const contentType = 'image/jpeg';
 
-  // 2. Intentar subir directamente a Supabase Storage con Cache-Control de 1 año
-  const candidateBuckets = ['renders_prospeccion', 'imagenes-marketing', 'logo_ecomoving', 'renders'];
-  
-  for (const bucket of candidateBuckets) {
-    try {
-      const filePath = (bucket === 'renders_prospeccion' || bucket === 'renders')
-        ? fileName
-        : `renders_prospeccion/${fileName}`;
-
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, uploadBlob, {
-          contentType,
-          cacheControl: '31536000, public', // 1 año de caché para evitar descargas repetidas
-          upsert: true
-        });
-
-      if (!error && data) {
-        const { data: pubData } = supabase.storage.from(bucket).getPublicUrl(filePath);
-        if (pubData?.publicUrl) {
-          console.log(`[STORAGE] Render subido con éxito a bucket '${bucket}' (${compressedSizeKB} KB, 560px)`);
-          return {
-            url: pubData.publicUrl,
-            fileName,
-            bucket,
-            originalSizeKB,
-            compressedSizeKB
-          };
-        }
-      }
-    } catch (err) {
-      console.warn(`[STORAGE] Error al intentar bucket ${bucket}:`, err);
-    }
-  }
-
-  // 3. Fallback al endpoint backend enviando la versión ya comprimida
+  // 2. Prioridad: subir vía /api/upload-render, que a su vez prioriza Cloudflare R2
+  //    (egress ilimitado gratis) y solo usa Supabase Storage si R2 no está disponible.
   try {
     let base64Data = compressedDataUrl;
     if (!base64Data) {
@@ -170,19 +142,56 @@ export async function uploadRenderImage(
 
     const resData = await response.json();
     if (resData.url) {
+      console.log(`[STORAGE] Render subido con éxito vía ${resData.storageEngine || 'api'} (${compressedSizeKB} KB, 560px)`);
       return {
         url: resData.url,
         fileName: resData.fileName || fileName,
-        bucket: resData.storageBucket,
+        bucket: resData.storageEngine,
         originalSizeKB,
         compressedSizeKB
       };
     } else {
       throw new Error(resData.error || 'No se pudo obtener URL pública');
     }
-  } catch (fallbackErr: any) {
-    console.error("[STORAGE] Error en fallback de subida:", fallbackErr);
-    throw fallbackErr;
+  } catch (apiErr) {
+    console.warn("[STORAGE] /api/upload-render no disponible, probando subida directa a Supabase Storage como último recurso:", apiErr);
   }
+
+  // 3. Último recurso: subir directamente a un bucket de Supabase Storage
+  const candidateBuckets = ['renders_prospeccion', 'imagenes-marketing', 'logo_ecomoving', 'renders'];
+
+  for (const bucket of candidateBuckets) {
+    try {
+      const filePath = (bucket === 'renders_prospeccion' || bucket === 'renders')
+        ? fileName
+        : `renders_prospeccion/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, uploadBlob, {
+          contentType,
+          cacheControl: '31536000, public', // 1 año de caché para evitar descargas repetidas
+          upsert: true
+        });
+
+      if (!error && data) {
+        const { data: pubData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+        if (pubData?.publicUrl) {
+          console.log(`[STORAGE] Render subido con éxito a bucket '${bucket}' (${compressedSizeKB} KB, 560px) [fallback Supabase]`);
+          return {
+            url: pubData.publicUrl,
+            fileName,
+            bucket,
+            originalSizeKB,
+            compressedSizeKB
+          };
+        }
+      }
+    } catch (err) {
+      console.warn(`[STORAGE] Error al intentar bucket ${bucket}:`, err);
+    }
+  }
+
+  throw new Error('No se pudo subir la imagen: fallaron tanto /api/upload-render (R2) como todos los buckets de Supabase Storage.');
 }
 
