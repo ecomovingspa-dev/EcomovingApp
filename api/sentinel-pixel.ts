@@ -16,6 +16,13 @@ const transparentGif = Buffer.from(
     'base64'
 );
 
+// Período de gracia tras el envío: las aperturas registradas dentro de esta ventana
+// se consideran escaneo automático (proxy de Gmail, Apple Mail Privacy Protection,
+// filtros corporativos de seguridad) y no aperturas humanas reales. Aplica por igual
+// a los correos enviados desde Prospección y desde Cuentas Activas, ya que ambos
+// flujos usan este mismo endpoint de píxel.
+const POST_SEND_GRACE_PERIOD_SECONDS = 60;
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Configurar CORS
     res.setHeader('Access-Control-Allow-Credentials', "true");
@@ -43,7 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const referer = (Array.isArray(rawReferer) ? rawReferer[0] : rawReferer).toLowerCase();
     const rawUserAgent = req.headers['user-agent'] || '';
     const userAgent = (Array.isArray(rawUserAgent) ? rawUserAgent[0] : rawUserAgent).toLowerCase();
-    
+
     // Si la petición proviene de la ventana de redacción de Zoho Mail (remitente tipeando el correo), omitir
     const isSelfComposer = referer.includes('zoho.com/mail') || referer.includes('zoho.cl/mail');
 
@@ -51,9 +58,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Nota: NUNCA marcar GoogleImageProxy ni proxies legítimos de webmails como bots
     const isGoogleProxy = userAgent.includes('googleimageproxy') || userAgent.includes('ggpht.com');
     const isAutomatedBot = !isGoogleProxy && (
-        userAgent.includes('bingpreview') || 
-        userAgent.includes('http-client') || 
-        userAgent.includes('curl') || 
+        userAgent.includes('bingpreview') ||
+        userAgent.includes('http-client') ||
+        userAgent.includes('curl') ||
         userAgent.includes('wget') ||
         userAgent.includes('headless') ||
         userAgent.includes('spider') ||
@@ -79,9 +86,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     const sendTime = new Date(contacto.ultimo_evento_trazabilidad).getTime();
                     const nowTime = new Date().getTime();
                     const diffSeconds = Math.abs(nowTime - sendTime) / 1000;
-                    
+
                     if (diffSeconds < 2 && isSelfComposer) {
                         console.log(`[SENTINEL-PIXEL] Petición ignorada: Demasiado cercana al envío manual (${Math.round(diffSeconds)}s) en composer.`);
+                        return res.status(200).send(transparentGif);
+                    }
+                }
+
+                // Filtro anti falsos-positivos: ignorar aperturas dentro de los primeros
+                // POST_SEND_GRACE_PERIOD_SECONDS desde el envío real del correo (registrado
+                // como estado 'sent' en trazabilidad_correos). Estas aperturas casi siempre
+                // corresponden a escaneo automático de proxies de correo (Gmail, Apple MPP,
+                // gateways corporativos) y no a una persona abriendo el mensaje.
+                const { data: lastSent } = await supabase
+                    .from('trazabilidad_correos')
+                    .select('created_at')
+                    .eq('contacto_id', contacto_id)
+                    .eq('estado', 'sent')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (lastSent && lastSent.created_at) {
+                    const sentTime = new Date(lastSent.created_at).getTime();
+                    const nowTime = new Date().getTime();
+                    const diffSinceSend = (nowTime - sentTime) / 1000;
+
+                    if (diffSinceSend >= 0 && diffSinceSend < POST_SEND_GRACE_PERIOD_SECONDS) {
+                        console.log(`[SENTINEL-PIXEL] Apertura ignorada (posible escaneo automático/proxy): ${Math.round(diffSinceSend)}s desde el envío para contacto ${contacto_id}`);
                         return res.status(200).send(transparentGif);
                     }
                 }
