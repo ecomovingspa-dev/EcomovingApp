@@ -1,0 +1,188 @@
+import { supabase } from './supabase';
+
+export interface UploadRenderResult {
+  url: string;
+  fileName: string;
+  bucket?: string;
+  originalSizeKB?: number;
+  compressedSizeKB?: number;
+}
+
+/**
+ * Comprime y redimensiona cualquier imagen antes de enviarla a la red / Storage.
+ * - Ancho máximo: 560px (ancho exacto de visualización en plantillas de correo).
+ * - Formato: JPEG de alta fidelidad con 80% de calidad (compatibilidad 100% con todos los clientes de email).
+ * - Tamaño objetivo: 30 KB - 80 KB (reducción de hasta 95% respecto a imágenes originales).
+ */
+export async function compressAndResizeImage(
+  fileOrBlob: File | Blob,
+  maxWidth = 560,
+  quality = 0.80
+): Promise<{ blob: Blob; dataUrl: string; width: number; height: number; sizeKB: number }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Error al leer la imagen"));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Error al decodificar la imagen"));
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        // Escalar manteniendo proporción si supera el ancho máximo (560px)
+        if (width > maxWidth) {
+          const ratio = maxWidth / width;
+          width = maxWidth;
+          height = Math.round(height * ratio);
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("No se pudo obtener contexto 2D del canvas"));
+          return;
+        }
+
+        // Fondo blanco para manejar PNGs con transparencia y evitar fondos negros en JPEG
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, width, height);
+
+        // Suavizado de imagen de alta calidad
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convertir a JPEG con compresión optimizada
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error("Error al generar blob comprimido"));
+              return;
+            }
+            const dataUrl = canvas.toDataURL("image/jpeg", quality);
+            const sizeKB = Math.round((blob.size / 1024) * 10) / 10;
+            console.log(`[COMPRESSOR] Imagen optimizada: ${width}x${height}px | ${sizeKB} KB (calidad ${quality * 100}%)`);
+            resolve({ blob, dataUrl, width, height, sizeKB });
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.src = e.target?.result as string;
+    };
+    reader.readAsDataURL(fileOrBlob);
+  });
+}
+
+/**
+ * Sube una imagen optimizada (<= 560px, JPEG comprimido, Cache-Control de 1 año)
+ * directamente a Supabase Storage con nombre único y devuelve su URL pública permanente.
+ */
+export async function uploadRenderImage(
+  file: File | Blob,
+  contactoId?: string
+): Promise<UploadRenderResult> {
+  const originalSizeKB = Math.round((file.size / 1024) * 10) / 10;
+  
+  // 1. Comprimir y redimensionar imagen en el cliente ANTES de subir
+  let uploadBlob: Blob = file;
+  let compressedDataUrl = "";
+  let compressedSizeKB = originalSizeKB;
+
+  try {
+    const compressed = await compressAndResizeImage(file, 560, 0.80);
+    uploadBlob = compressed.blob;
+    compressedDataUrl = compressed.dataUrl;
+    compressedSizeKB = compressed.sizeKB;
+  } catch (compErr) {
+    console.warn("[STORAGE] Advertencia en compresión previa, usando archivo original:", compErr);
+  }
+
+  const timestamp = Date.now();
+  const safeId = contactoId ? String(contactoId).replace(/[^a-zA-Z0-9_-]/g, '') : 'general';
+  const fileName = `contacto_${safeId}_${timestamp}.jpg`;
+  const contentType = 'image/jpeg';
+
+  // 2. Intentar subir directamente a Supabase Storage con Cache-Control de 1 año
+  const candidateBuckets = ['renders_prospeccion', 'imagenes-marketing', 'logo_ecomoving', 'renders'];
+  
+  for (const bucket of candidateBuckets) {
+    try {
+      const filePath = (bucket === 'renders_prospeccion' || bucket === 'renders')
+        ? fileName
+        : `renders_prospeccion/${fileName}`;
+
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, uploadBlob, {
+          contentType,
+          cacheControl: '31536000, public', // 1 año de caché para evitar descargas repetidas
+          upsert: true
+        });
+
+      if (!error && data) {
+        const { data: pubData } = supabase.storage.from(bucket).getPublicUrl(filePath);
+        if (pubData?.publicUrl) {
+          console.log(`[STORAGE] Render subido con éxito a bucket '${bucket}' (${compressedSizeKB} KB, 560px)`);
+          return {
+            url: pubData.publicUrl,
+            fileName,
+            bucket,
+            originalSizeKB,
+            compressedSizeKB
+          };
+        }
+      }
+    } catch (err) {
+      console.warn(`[STORAGE] Error al intentar bucket ${bucket}:`, err);
+    }
+  }
+
+  // 3. Fallback al endpoint backend enviando la versión ya comprimida
+  try {
+    let base64Data = compressedDataUrl;
+    if (!base64Data) {
+      const reader = new FileReader();
+      base64Data = await new Promise((res, rej) => {
+        reader.onloadend = () => res(reader.result as string);
+        reader.onerror = () => rej(new Error('Error al leer blob'));
+        reader.readAsDataURL(uploadBlob);
+      });
+    }
+
+    const response = await fetch('/api/upload-render', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contacto_id: contactoId,
+        image_base64: base64Data,
+        file_name: fileName,
+        content_type: contentType
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Error en servidor: ${response.statusText}`);
+    }
+
+    const resData = await response.json();
+    if (resData.url) {
+      return {
+        url: resData.url,
+        fileName: resData.fileName || fileName,
+        bucket: resData.storageBucket,
+        originalSizeKB,
+        compressedSizeKB
+      };
+    } else {
+      throw new Error(resData.error || 'No se pudo obtener URL pública');
+    }
+  } catch (fallbackErr: any) {
+    console.error("[STORAGE] Error en fallback de subida:", fallbackErr);
+    throw fallbackErr;
+  }
+}
+

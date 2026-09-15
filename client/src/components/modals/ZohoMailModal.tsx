@@ -11,6 +11,7 @@ import { Mail, Edit2, Loader2, CheckCircle2, Image as ImageIcon, Send, Pencil, P
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { uploadRenderImage } from "@/lib/storageUpload";
 
 const DEFAULT_SEGMENTO_A_TEMPLATES = [
   {
@@ -256,6 +257,22 @@ export function ZohoMailModal({
   const [guardandoImagenCliente, setGuardandoImagenCliente] = useState(false);
 
   // Funciones auxiliares
+  const getSentinelTrackingPixelUrl = (contactoId?: string, templateId?: string) => {
+    if (!contactoId) return '';
+    let baseUrl = window.location.origin;
+    // En entornos dev protegidos por auth (Cloud Run dev / localhost),
+    // los servidores externos (Gmail, Outlook, celulares) no pueden pasar el login.
+    // Usamos el host público para que el tracking pixel cargue sin obstáculos.
+    if (
+      baseUrl.includes('run.app') || 
+      baseUrl.includes('localhost') || 
+      baseUrl.includes('127.0.0.1')
+    ) {
+      baseUrl = 'https://ecomoving-app.vercel.app';
+    }
+    return `${baseUrl}/api/sentinel-pixel?contacto_id=${contactoId}&template_id=${encodeURIComponent(templateId || '')}`;
+  };
+
   const formatToInputDate = (ddMMyyyy: string) => {
     if (!ddMMyyyy || ddMMyyyy === "—") return "";
     const parts = ddMMyyyy.split("/");
@@ -487,8 +504,9 @@ export function ZohoMailModal({
     if (isOpen) {
       loadTemplates();
       setIsEditingTemplateMode(false);
-      setImageUrl(selectedContactoDraft?.imagen || "");
-      setImageUrlCliente("");
+      const contactImg = selectedContactoDraft?.imagen || "";
+      setImageUrl(contactImg);
+      setImageUrlCliente(contactImg);
       setDraftData(null);
       
       setTemplateSendDates({});
@@ -801,42 +819,33 @@ export function ZohoMailModal({
     const file = e.target.files?.[0];
     if (!file || !selectedContactoDraft) return;
 
-    if (file.size > 1024 * 1024) {
-      toast.error("La imagen es demasiado grande. Por favor sube una imagen de menos de 1MB.");
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La imagen es demasiado grande. Por favor sube una imagen de menos de 5MB.");
       return;
     }
 
     setGuardandoImagen(true);
     try {
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        try {
-          const base64String = reader.result as string;
-          
-          const { error } = await supabase
-            .from("contactos")
-            .update({ imagen: base64String })
-            .eq("id", selectedContactoDraft.id);
+      const result = await uploadRenderImage(file, selectedContactoDraft.id);
+      
+      const { error } = await supabase
+        .from("contactos")
+        .update({ imagen: result.url })
+        .eq("id", selectedContactoDraft.id);
 
-          if (error) throw error;
+      if (error) throw error;
 
-          toast.success("¡Render personalizado guardado en el contacto!");
-          setImageUrl(base64String);
-          if (selectedContactoDraft) {
-              selectedContactoDraft.imagen = base64String;
-          }
-          await onRefresh();
-        } catch (err: any) {
-          console.error("Error saving image:", err);
-          toast.error("Error al procesar la imagen: " + err.message);
-        } finally {
-          setGuardandoImagen(false);
-        }
-      };
-      reader.readAsDataURL(file);
+      const sizeInfo = result.compressedSizeKB ? ` (${result.compressedSizeKB} KB)` : "";
+      toast.success(`¡Render optimizado${sizeInfo} y guardado con éxito!`);
+      setImageUrl(result.url);
+      if (selectedContactoDraft) {
+        selectedContactoDraft.imagen = result.url;
+      }
+      await onRefresh();
     } catch (err: any) {
-      console.error("Error reading file:", err);
-      toast.error("Error al leer el archivo");
+      console.error("Error saving image:", err);
+      toast.error("Error al procesar la imagen: " + (err?.message || ""));
+    } finally {
       setGuardandoImagen(false);
     }
   };
@@ -845,19 +854,34 @@ export function ZohoMailModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La imagen es demasiado grande. Por favor sube una imagen de menos de 5MB.");
+      return;
+    }
+
     setGuardandoImagenCliente(true);
     try {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setImageUrlCliente(base64String);
-        toast.success("¡Render cargado en la pestaña Clientes!");
-        setGuardandoImagenCliente(false);
-      };
-      reader.readAsDataURL(file);
+      const result = await uploadRenderImage(file, selectedContactoDraft?.id);
+      setImageUrlCliente(result.url);
+      setImageUrl(result.url);
+      
+      if (selectedContactoDraft?.id) {
+        const { error } = await supabase
+          .from("contactos")
+          .update({ imagen: result.url })
+          .eq("id", selectedContactoDraft.id);
+
+        if (error) throw error;
+        selectedContactoDraft.imagen = result.url;
+        await onRefresh();
+      }
+
+      const sizeInfo = result.compressedSizeKB ? ` (${result.compressedSizeKB} KB)` : "";
+      toast.success(`¡Render optimizado${sizeInfo} y guardado con éxito!`);
     } catch (err: any) {
       console.error("Error reading file:", err);
-      toast.error("Error al leer el archivo");
+      toast.error("Error al subir archivo: " + (err?.message || ""));
+    } finally {
       setGuardandoImagenCliente(false);
     }
   };
@@ -1292,7 +1316,15 @@ export function ZohoMailModal({
                         let htmlBody = cleanBody.replace(/\n/g, "<br/>");
                         
                         if (imageUrl.trim()) {
-                          const imgTag = `<img src="${imageUrl.trim()}" alt="Render Ecomoving" style="max-width:100%; height:auto; margin: 20px 0; border-radius: 12px; border: 1px solid #e2e8f0; display: block;" />`;
+                          let publicImgSrc = imageUrl.trim();
+                          if (publicImgSrc.startsWith('data:') && selectedContactoDraft?.id) {
+                            let baseUrl = window.location.origin;
+                            if (baseUrl.includes('run.app') || baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
+                              baseUrl = 'https://ecomoving-app.vercel.app';
+                            }
+                            publicImgSrc = `${baseUrl}/api/render-image?contacto_id=${selectedContactoDraft.id}`;
+                          }
+                          const imgTag = `<div style="margin: 20px 0; text-align: center;"><img src="${publicImgSrc}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
                           
                           const imagePlaceholders = [
                             /\{\s*imagen\s*\}/gi,
@@ -1326,8 +1358,8 @@ export function ZohoMailModal({
                             .replace(/\(\s*imagen pegada en el cuerpo del correo\s*\)/gi, "");
                         }
 
-                        const pixelUrl = `${window.location.origin}/api/sentinel-pixel?contacto_id=${selectedContactoDraft?.id}&template_id=${selectedTemplateId || ''}`;
-                        const pixelTag = `<img src="${pixelUrl}" width="1" height="1" style="display:none;" />`;
+                        const pixelUrl = getSentinelTrackingPixelUrl(selectedContactoDraft?.id, selectedTemplateId || '');
+                        const pixelTag = `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:block; width:1px; min-width:1px; height:1px; min-height:1px; margin:0; padding:0; border:0; opacity:0.01;" />`;
                         htmlBody = htmlBody + pixelTag;
 
                         try {
@@ -1671,19 +1703,19 @@ export function ZohoMailModal({
                         </div>
                       </div>
 
-                      {/* Widget para Subir Render Personalizado desde Computador (Base64) */}
+                      {/* Widget para Subir Render Personalizado desde Computador (Supabase Storage Público) */}
                       <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-150 dark:border-gray-800 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-2.5">
-                          {imageUrl ? (
-                            <img src={imageUrl} className="h-10 w-10 object-cover rounded-lg border border-gray-250 dark:border-gray-700 shadow-sm" alt="Preview render cliente" />
+                          {(imageUrlCliente || imageUrl) ? (
+                            <img src={imageUrlCliente || imageUrl} className="h-10 w-10 object-cover rounded-lg border border-gray-250 dark:border-gray-700 shadow-sm" alt="Preview render cliente" />
                           ) : (
                             <div className="h-10 w-10 bg-gray-250 dark:bg-gray-800 rounded-lg flex items-center justify-center text-[10px] text-gray-400 font-bold border border-dashed border-gray-300 dark:border-gray-700">
                               S/R
                             </div>
                           )}
                           <div>
-                            <div className="text-xs font-bold text-gray-800 dark:text-gray-200">Render Personalizado</div>
-                            <div className="text-[10px] text-gray-500">Se guardará en la ficha del contacto y se insertará en el correo</div>
+                            <div className="text-xs font-bold text-gray-800 dark:text-gray-200">Render Personalizado (Segmento A/B)</div>
+                            <div className="text-[10px] text-gray-500">Se guarda como URL pública en Supabase Storage y se inserta en el correo</div>
                           </div>
                         </div>
                         <input 
@@ -1691,13 +1723,13 @@ export function ZohoMailModal({
                           id="render-image-upload-cliente" 
                           accept="image/*" 
                           className="hidden" 
-                          onChange={handleImageUpload}
+                          onChange={handleImageUploadCliente}
                         />
                         <label 
                           htmlFor="render-image-upload-cliente" 
                           className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 rounded-lg text-xs font-bold cursor-pointer transition-all border border-indigo-200 dark:border-indigo-900/50 flex items-center gap-1 shadow-sm"
                         >
-                          {guardandoImagen ? "Procesando..." : (imageUrl ? "Reemplazar Render" : "Subir Render")}
+                          {(guardandoImagenCliente || guardandoImagen) ? "Subiendo a Storage..." : ((imageUrlCliente || imageUrl) ? "Reemplazar Render" : "Subir Render")}
                         </label>
                       </div>
 
@@ -1759,9 +1791,17 @@ export function ZohoMailModal({
                             let cleanBody = cuerpo;
                             let htmlBody = cleanBody.replace(/\n/g, "<br/>");
                             
-                            const renderImg = imageUrl?.trim() || "";
+                            const renderImg = (imageUrlCliente || imageUrl)?.trim() || "";
                             if (renderImg) {
-                              const imgTag = `<img src="${renderImg}" alt="Render Ecomoving" style="max-width:100%; height:auto; margin: 20px 0; border-radius: 12px; border: 1px solid #e2e8f0; display: block;" />`;
+                              let publicImgSrc = renderImg;
+                              if (publicImgSrc.startsWith('data:') && selectedContactoDraft?.id) {
+                                let baseUrl = window.location.origin;
+                                if (baseUrl.includes('run.app') || baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
+                                  baseUrl = 'https://ecomoving-app.vercel.app';
+                                }
+                                publicImgSrc = `${baseUrl}/api/render-image?contacto_id=${selectedContactoDraft.id}`;
+                              }
+                              const imgTag = `<div style="margin: 20px 0; text-align: center;"><img src="${publicImgSrc}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
                               
                               const imagePlaceholders = [
                                 /\{\s*imagen\s*\}/gi,
@@ -1795,8 +1835,8 @@ export function ZohoMailModal({
                                 .replace(/\(\s*imagen pegada en el cuerpo del correo\s*\)/gi, "");
                             }
 
-                            const pixelUrl = `${window.location.origin}/api/sentinel-pixel?contacto_id=${selectedContactoDraft?.id}&template_id=${selectedTemplateId || ''}`;
-                            const pixelTag = `<img src="${pixelUrl}" width="1" height="1" style="display:none;" />`;
+                            const pixelUrl = getSentinelTrackingPixelUrl(selectedContactoDraft?.id, selectedTemplateId || '');
+                            const pixelTag = `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:block; width:1px; min-width:1px; height:1px; min-height:1px; margin:0; padding:0; border:0; opacity:0.01;" />`;
                             htmlBody = htmlBody + pixelTag;
 
                             try {

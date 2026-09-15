@@ -732,6 +732,13 @@ export default function TrazabilidadCuentas() {
           if (!manualSends[templateId]) manualSends[templateId] = { openEvents: [] };
           // Acumular TODOS los eventos de apertura para contar y obtener primera/última
           evs.forEach(ev => manualSends[templateId].openEvents.push(ev));
+        } else if (parts.length === 3) {
+          // Si el ID vino como manual_open:contacto_id:timestamp sin templateId explícito
+          const targetTemplateId = Object.keys(manualSends)[0] || template.id;
+          if (targetTemplateId) {
+            if (!manualSends[targetTemplateId]) manualSends[targetTemplateId] = { openEvents: [] };
+            evs.forEach(ev => manualSends[targetTemplateId].openEvents.push(ev));
+          }
         }
       } else {
         // Automated SMTP email
@@ -768,10 +775,29 @@ export default function TrazabilidadCuentas() {
 
       const fallbackOpen = (contacto.historial || []).find((h: any) => 
         ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(h.estado?.toLowerCase()) && 
-        new Date(h.created_at || h.fecha).getTime() >= sentTime &&
+        new Date(h.created_at || h.fecha).getTime() >= (sentTime - 120000) &&
         new Date(h.created_at || h.fecha).getTime() < nextSentTime
       );
       if (fallbackOpen) allOpenEvents.push(fallbackOpen);
+
+      // Si el contacto ya fue marcado con apertura en la base de datos y es el último template enviado
+      if (allOpenEvents.length === 0 && contacto.ultimo_estado_brevo === 'opened') {
+        const isLatestSent = !nextTemplate || !manualSends[nextTemplate.id]?.sentEvent;
+        if (isLatestSent) {
+          const anyOpen = (contacto.historial || []).find((h: any) => 
+            ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(h.estado?.toLowerCase())
+          );
+          if (anyOpen) {
+            allOpenEvents.push(anyOpen);
+          } else if (contacto.ultimo_evento_trazabilidad) {
+            allOpenEvents.push({
+              estado: 'opened',
+              fecha: contacto.ultimo_evento_trazabilidad.split('T')[0],
+              created_at: contacto.ultimo_evento_trazabilidad
+            });
+          }
+        }
+      }
     }
 
     if (allOpenEvents.length > 0) {

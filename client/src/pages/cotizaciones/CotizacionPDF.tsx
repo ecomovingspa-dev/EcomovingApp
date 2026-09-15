@@ -2,12 +2,13 @@ import React from "react";
 import { FileDown } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { supabase } from "../../lib/supabase";
 
 interface BotonExportarPDFProps {
   cotizacion: any;
   cuenta: any;
   contacto: any;
-  items: any[];
+  items?: any[];
   totales: any;
   variant?: "button" | "icon";
 }
@@ -22,6 +23,20 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
 }) => {
   const generarPDF = async () => {
     try {
+      let activeItems = items;
+      if (!activeItems || activeItems.length === 0) {
+        if (cotizacion?.id) {
+          const { data: cotData } = await supabase
+            .from("cotizaciones")
+            .select("items")
+            .eq("id", cotizacion.id)
+            .single();
+          activeItems = cotData?.items || [];
+        } else {
+          activeItems = [];
+        }
+      }
+
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.width;
       const pageHeight = doc.internal.pageSize.height;
@@ -134,7 +149,7 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       const condicionPago = cotizacion.condicion_pago || "";
       const tasaFinanciamiento = Number(cotizacion.tasa_financiamiento || 0);
 
-      const tableData = items.map(item => {
+      const tableData = (activeItems || []).map(item => {
         // Cálculo del costo total del item basado en sus subcostos
         const costoBaseItem = (item.subcostos || []).reduce((acc: number, sc: any) => {
           const valorSubCosto = (sc.cantidad || 0) * (sc.precio_unitario || 0) * (1 - (sc.descuento || 0) / 100);

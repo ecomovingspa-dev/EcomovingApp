@@ -40,9 +40,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const { contacto_id, template_id } = req.query;
     const rawReferer = req.headers.referer || req.headers.referrer || '';
-    const referer = (Array.isArray(rawReferer) ? rawReferer[0] || '' : rawReferer).toLowerCase();
+    const referer = (Array.isArray(rawReferer) ? rawReferer[0] : rawReferer).toLowerCase();
     const rawUserAgent = req.headers['user-agent'] || '';
-    const userAgent = (Array.isArray(rawUserAgent) ? rawUserAgent[0] || '' : rawUserAgent).toLowerCase();
+    const userAgent = (Array.isArray(rawUserAgent) ? rawUserAgent[0] : rawUserAgent).toLowerCase();
     
     // Si la petición proviene de la ventana de redacción de Zoho Mail (remitente tipeando el correo), omitir
     const isSelfComposer = referer.includes('zoho.com/mail') || referer.includes('zoho.cl/mail');

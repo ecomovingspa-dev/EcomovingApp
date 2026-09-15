@@ -1,64 +1,72 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
-// Cloudflare R2 es compatible con la API de S3.
-// Docs: https://developers.cloudflare.com/r2/api/s3/api/
-
-const ACCOUNT_ID = process.env.CLOUDFLARE_R2_ACCOUNT_ID || '';
-const ACCESS_KEY_ID = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || '';
-const SECRET_ACCESS_KEY = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || '';
-const BUCKET_NAME = process.env.CLOUDFLARE_R2_BUCKET_NAME || '';
-// Dominio público (custom domain o r2.dev) usado para armar la URL final del archivo
-const PUBLIC_DOMAIN = process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN || '';
-
 let r2Client: S3Client | null = null;
 
-const getR2Client = (): S3Client => {
-    if (!r2Client) {
-        r2Client = new S3Client({
-            region: 'auto',
-            endpoint: `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`,
-            credentials: {
-                accessKeyId: ACCESS_KEY_ID,
-                secretAccessKey: SECRET_ACCESS_KEY,
-            },
-        });
-    }
-    return r2Client;
-};
+const DEFAULT_ACCOUNT_ID = '03e367d3871b20278a4334d39d82c0ef';
+const DEFAULT_ACCESS_KEY_ID = 'b1c71b2729cbf533787c06f50a3f80b9';
+const DEFAULT_SECRET_ACCESS_KEY = 'cc59a42be93f2eee30b7535bac891481db86c539da65dd4eda6bc8636d88c340';
+const DEFAULT_BUCKET_NAME = 'renders-ecomoving';
+const DEFAULT_PUBLIC_DOMAIN = 'pub-87fc17275b644a46b4c63c1ef06d4966.r2.dev';
 
-/**
- * Verifica si todas las variables de entorno necesarias para usar R2 están configuradas.
- */
-export const isR2Configured = (): boolean => {
-    return Boolean(ACCOUNT_ID && ACCESS_KEY_ID && SECRET_ACCESS_KEY && BUCKET_NAME && PUBLIC_DOMAIN);
-};
+export function isR2Configured(): boolean {
+  const accountId = process.env.CLOUDFLARE_R2_ACCOUNT_ID || DEFAULT_ACCOUNT_ID;
+  const accessKeyId = process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || DEFAULT_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || DEFAULT_SECRET_ACCESS_KEY;
+  const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME || DEFAULT_BUCKET_NAME;
 
-/**
- * Sube un buffer a Cloudflare R2 y devuelve la URL pública del archivo.
- */
-export const uploadToR2 = async (
-    fileName: string,
-    buffer: Buffer,
-    contentType: string
-): Promise<{ url: string; key: string }> => {
-    if (!isR2Configured()) {
-        throw new Error('Cloudflare R2 no está configurado (faltan variables de entorno).');
+  return !!(accountId && accessKeyId && secretAccessKey && bucketName);
+}
+
+export function getR2Client(): S3Client {
+  if (!r2Client) {
+    const accountId = (process.env.CLOUDFLARE_R2_ACCOUNT_ID || DEFAULT_ACCOUNT_ID).trim();
+    const accessKeyId = (process.env.CLOUDFLARE_R2_ACCESS_KEY_ID || DEFAULT_ACCESS_KEY_ID).trim();
+    const secretAccessKey = (process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY || DEFAULT_SECRET_ACCESS_KEY).trim();
+
+    if (!accountId || !accessKeyId || !secretAccessKey) {
+      throw new Error('Variables de entorno de Cloudflare R2 no configuradas');
     }
 
-    const client = getR2Client();
+    r2Client = new S3Client({
+      region: 'auto',
+      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId,
+        secretAccessKey,
+      },
+    });
+  }
+  return r2Client;
+}
 
-    await client.send(
-        new PutObjectCommand({
-            Bucket: BUCKET_NAME,
-            Key: fileName,
-            Body: buffer,
-            ContentType: contentType,
-            CacheControl: 'public, max-age=31536000, immutable',
-        })
-    );
+export async function uploadToR2(
+  fileName: string,
+  buffer: Buffer,
+  contentType = 'image/jpeg'
+): Promise<{ url: string; key: string }> {
+  const client = getR2Client();
+  const bucketName = (process.env.CLOUDFLARE_R2_BUCKET_NAME || DEFAULT_BUCKET_NAME).trim();
+  const publicDomain = (process.env.CLOUDFLARE_R2_PUBLIC_DOMAIN || DEFAULT_PUBLIC_DOMAIN).trim();
 
-    const cleanDomain = PUBLIC_DOMAIN.replace(/\/+$/, '');
-    const url = `${cleanDomain}/${fileName}`;
+  const command = new PutObjectCommand({
+    Bucket: bucketName,
+    Key: fileName,
+    Body: buffer,
+    ContentType: contentType,
+    CacheControl: 'public, max-age=31536000, immutable',
+  });
 
-    return { url, key: fileName };
-};
+  await client.send(command);
+
+  let url = '';
+  if (publicDomain) {
+    const cleanDomain = publicDomain.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+    url = `https://${cleanDomain}/${fileName}`;
+  } else {
+    // Si no se configuró dominio público, usar URL por defecto del bucket
+    url = `https://${bucketName}.r2.cloudflarestorage.com/${fileName}`;
+  }
+
+  return { url, key: fileName };
+}
+
