@@ -24,12 +24,10 @@ import {
   CheckCircle,
   XCircle,
   DollarSign,
-  Settings,
   Settings2,
   Check,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { ConfiguracionCobranza } from "@/components/ventas/ConfiguracionCobranza";
 import {
   Select,
   SelectContent,
@@ -87,7 +85,6 @@ export default function VentasPage() {
   const [guardandoAbono, setGuardandoAbono] = useState(false);
   const [abonosHistorial, setAbonosHistorial] = useState<any[]>([]);
   const [cargandoAbonos, setCargandoAbonos] = useState(false);
-  const [configCobranzaOpen, setConfigCobranzaOpen] = useState(false);
 
   // Sincronización
   const [sincronizando, setSincronizando] = useState(false);
@@ -773,15 +770,6 @@ export default function VentasPage() {
               )}
               {sincronizando ? "Procesando..." : "Sincronizar Facturas"}
             </Label>
-
-            <Button
-              variant="outline"
-              className="h-10 gap-2 border-purple-200 text-purple-700 hover:bg-purple-50 dark:border-purple-800 dark:text-purple-400 dark:hover:bg-purple-900/20"
-              onClick={() => setConfigCobranzaOpen(true)}
-            >
-              <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">Configurar Cobranza</span>
-            </Button>
           </div>
         </div>
 
@@ -1683,11 +1671,6 @@ export default function VentasPage() {
           )}
         </DialogContent>
       </Dialog>
-
-      <ConfiguracionCobranza
-        open={configCobranzaOpen}
-        onOpenChange={setConfigCobranzaOpen}
-      />
     </div >
   );
 }
