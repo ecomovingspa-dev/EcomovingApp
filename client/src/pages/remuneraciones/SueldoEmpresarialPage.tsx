@@ -653,6 +653,7 @@ export default function SueldoEmpresarialPage() {
       setParametrosPeriodo({
         uf: ufEstimada,
         utm: utmEstimada,
+        tasaSIS: parametrosPeriodo.tasaSIS,
         topeImponibleUF: topeUF,
         reformaPorcentaje: reforma
       });
@@ -818,6 +819,7 @@ export default function SueldoEmpresarialPage() {
       rutTrabajador: liq.rutTrabajador,
       nombreTrabajador: liq.nombreTrabajador,
       mesAnio: liq.mesAnio,
+      diasTrabajados: (liq as any).diasTrabajados || 30,
       sueldoBruto: liq.sueldoBruto,
       cotizaAFP: liq.cotizaAFP,
       afpSeleccionada: liq.afpSeleccionada,

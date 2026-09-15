@@ -453,7 +453,7 @@ export default function OportunidadesPage() {
 
           const idsExistentes = new Set(oportunidades.map((op) => op.id));
           const nuevasOportunidades = oportunidadesFiltradas.filter(
-            (op) => op && !idsExistentes.has(op.id),
+            (op): op is NonNullable<typeof op> => op !== null && op !== undefined && !idsExistentes.has(op.id),
           );
 
           if (nuevasOportunidades.length === 0) {

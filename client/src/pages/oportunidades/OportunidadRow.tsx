@@ -25,6 +25,7 @@ interface OportunidadRowProps {
     onActualizarVendedor: (id: string, vendedorId: string) => void;
     onToggleEstado: (id: string, estadoActual?: string) => void;
     onEliminar: (id: string) => void;
+    onEditar?: (id: string) => void;
     formatearFecha: (f: any) => string;
     formatearMonto: (m: any) => string;
     getEstadoColor: (e: any) => string;

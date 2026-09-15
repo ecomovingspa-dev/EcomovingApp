@@ -16,3 +16,13 @@ export const SEGMENTOS_MAESTROS = [
   "Caja de Compensación",
   "Minería / Industria"
 ];
+
+export const ESTADOS_CUENTA = [
+  "Prospecto",
+  "Contactado",
+  "En Negociación",
+  "Cerrado Ganado",
+  "Cerrado Perdido",
+  "Inactivo"
+] as const;
+

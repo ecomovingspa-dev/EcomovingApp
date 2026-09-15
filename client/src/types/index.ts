@@ -110,6 +110,10 @@ export interface Cotizacion {
   total: number; // total_neto + iva
   ganancias: number; // total_neto - costo_total
   mg?: string; // Margen global (ej: "25%")
+  condicion_pago?: string | null;
+  tasa_financiamiento?: number | null;
+  costo_factoring?: number | null;
+  descuento_contado?: number | null;
   created_at?: string; // ISO 8601
   // Relaciones (solo para lectura en frontend, no se guardan en Supabase directamente)
   cuenta?: Cuenta;

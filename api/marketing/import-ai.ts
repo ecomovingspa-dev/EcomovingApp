@@ -1,4 +1,4 @@
-import { getSupabase } from '../supabase-client.js';
+import { getSupabase } from '../_utils/supabase-client.js';
 
 const AUTH_TOKEN = "Ecomoving_AI_2026"; // Simple pero efectivo para tu uso personal
 

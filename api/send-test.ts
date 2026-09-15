@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getSupabase } from './supabase-client.js';
+import { getSupabase } from './_utils/supabase-client.js';
 import axios from 'axios';
 
 const DEFAULT_SUPABASE_URL = "https://xgdmyjzyejjmwdqkufhp.supabase.co";

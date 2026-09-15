@@ -744,18 +744,15 @@ export default function CuentasPage() {
                 onChange={(e) => f.set(e.target.value)}
                 className="w-full border-none rounded-xl px-3 py-2.5 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all text-xs font-semibold capitalize"
               >
-                {Array.isArray(f.opts) && typeof f.opts[0] === 'string' ? (
-                  <>
-                    <option value="">{f.label}: Todos</option>
-                    {f.opts.map((opt) => (
-                      <option key={opt} value={opt || ""}>{opt}</option>
-                    ))}
-                  </>
-                ) : (
-                  (f.opts as any[]).map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))
-                )}
+                {f.opts.map((opt: any, idx: number) => {
+                  const val = typeof opt === 'object' && opt !== null ? opt.value : opt;
+                  const lbl = typeof opt === 'object' && opt !== null ? opt.label : opt;
+                  return (
+                    <option key={`${val}-${idx}`} value={val || ""}>
+                      {lbl}
+                    </option>
+                  );
+                })}
               </select>
             </div>
           ))}

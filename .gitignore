@@ -8,3 +8,7 @@ vite.config.ts.*
 client/.env
 .vercel
 .env*.local
+.local/
+.agent/
+scratch/
+*.bin

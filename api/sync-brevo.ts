@@ -1,5 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import { getSupabase } from './supabase-client.js';
+import { getSupabase } from './_utils/supabase-client.js';
 import axios from 'axios';
 
 const BREVO_API_KEY = process.env.BREVO_API_KEY;

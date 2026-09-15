@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getSupabase } from './supabase-client.js';
-import { isR2Configured, uploadToR2 } from './utils/r2.js';
+import { getSupabase } from './_utils/supabase-client.js';
+import { isR2Configured, uploadToR2 } from './_utils/r2.js';
 
 export const config = {
   api: {
