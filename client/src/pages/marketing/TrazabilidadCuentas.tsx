@@ -368,27 +368,8 @@ export default function TrazabilidadCuentas() {
   }, [selectedMonth, selectedYear]);
 
 
-  async function syncWithBrevo() {
-    setLoading(true);
-    try {
-      const resp = await fetch("/api/sync-brevo", { method: "POST" });
-      const data = await resp.json();
-      if (data.success) {
-        toast.success(`Sincronización exitosa: ${data.processed} eventos`);
-        await fetchContactos(calendarDays);
-      } else {
-        throw new Error(data.error || "Fallo en API /api/sync-brevo");
-      }
-    } catch (err: any) {
-      toast.error("Error de Sincronización: Asegúrate de correr 'vercel dev' para la API local.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   const getStatusIcon = (contacto: any, day: string) => {
-    // Excluir plantillas de cortesía manuales del historial del día para no marcar checkmarks en la trazabilidad Brevo
+    // Excluir plantillas de cortesía manuales del historial del día para no marcar checkmarks en la trazabilidad
     const eventosDelDia = (contacto.historial || []).filter((h: any) => h.fecha === day && !h.mensaje_id?.startsWith("manual_template:"));
     
     if (eventosDelDia.length > 0) {
@@ -948,20 +929,6 @@ export default function TrazabilidadCuentas() {
             <h2 className="text-xl font-black text-white tracking-tighter uppercase">🟢 Matrix Sentinel Cuentas Activas</h2>
             <p className="text-xs text-gray-500">Trazabilidad histórica por etapa de envío</p>
           </div>
-        </div>
-
-
-
-        {/* Derecha: Botón Sincronizar */}
-        <div>
-          <button 
-            onClick={syncWithBrevo}
-            disabled={loading}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-black transition-all disabled:opacity-50 h-[36px]"
-          >
-            <RefreshCcw className="h-3.5 w-3.5" />
-            SINCRONIZAR
-          </button>
         </div>
       </div>
 
