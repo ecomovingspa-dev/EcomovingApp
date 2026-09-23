@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
@@ -231,8 +231,18 @@ export function ZohoMailModal({
     }
   };
 
-  const templatesClientes = activeSegmento === "B" ? templatesSegmentoB : templatesSegmentoA;
-  const setTemplatesClientes = activeSegmento === "B" ? setTemplatesSegmentoB : setTemplatesSegmentoA;
+  // Segmentos A y B unificados: una sola lista de plantillas para todas las cuentas activas.
+  // Cada plantilla conserva internamente su segmento/orden original (para guardar ediciones),
+  // pero se numera de forma correlativa en pantalla.
+  const unificarPlantillasClientes = (listaA: any[], listaB: any[]) =>
+    [...listaA, ...listaB].map((t, i) => {
+      const raw = t.rawName || (t.name ? String(t.name).replace(/^\d+\.\s*/, '') : '');
+      return { ...t, name: `${i + 1}. ${raw}` };
+    });
+  const templatesClientes = useMemo(
+    () => unificarPlantillasClientes(templatesSegmentoA, templatesSegmentoB),
+    [templatesSegmentoA, templatesSegmentoB]
+  );
 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
@@ -473,7 +483,7 @@ export function ZohoMailModal({
 
       // Auto-update draft with current active template
       const currentList = activeTab === "clientes" 
-        ? (activeSegmento === "B" ? currentSegB : currentSegA)
+        ? unificarPlantillasClientes(currentSegA, currentSegB)
         : templates;
         
       if (currentList && currentList.length > 0 && selectedContactoDraft) {
@@ -1438,39 +1448,6 @@ export function ZohoMailModal({
                 {/* Columna Izquierda: Plantillas de Cliente y Fechas combinadas */}
                 <div className="col-span-12 md:col-span-5 border-r border-gray-100 dark:border-gray-800 pr-4 flex flex-col justify-between h-[450px]">
                   <div className="flex flex-col space-y-3 overflow-hidden h-full">
-                     {/* Selector de Segmento A / B con bloqueo cruzado */}
-                     <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl gap-1 shrink-0">
-                       <button
-                         type="button"
-                         disabled={contactSegment === 'B'}
-                         onClick={() => handleToggleSegmentoModal("A")}
-                         className={cn(
-                           "flex-1 py-1 px-2 rounded-lg text-[10px] font-black uppercase transition-all",
-                           contactSegment === 'B' ? "opacity-30 cursor-not-allowed bg-gray-200 dark:bg-gray-900 text-gray-400" : "cursor-pointer",
-                           activeSegmento === "A"
-                             ? "bg-indigo-600 text-white shadow-sm"
-                             : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
-                         )}
-                         title={contactSegment === 'B' ? "Bloqueado: El contacto pertenece al Segmento B" : ""}
-                       >
-                         ⭐ Seg. A {contactSegment === 'B' && '🔒'}
-                       </button>
-                       <button
-                         type="button"
-                         disabled={contactSegment === 'A'}
-                         onClick={() => handleToggleSegmentoModal("B")}
-                         className={cn(
-                           "flex-1 py-1 px-2 rounded-lg text-[10px] font-black uppercase transition-all",
-                           contactSegment === 'A' ? "opacity-30 cursor-not-allowed bg-gray-200 dark:bg-gray-900 text-gray-400" : "cursor-pointer",
-                           activeSegmento === "B"
-                             ? "bg-amber-600 text-white shadow-sm"
-                             : "text-gray-500 hover:text-gray-900 dark:hover:text-white"
-                         )}
-                         title={contactSegment === 'A' ? "Bloqueado: El contacto pertenece al Segmento A" : ""}
-                       >
-                         🟢 Seg. B {contactSegment === 'A' && '🔒'}
-                       </button>
-                     </div>
 
                     <div className="flex justify-between items-center pr-2">
                       <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider">
