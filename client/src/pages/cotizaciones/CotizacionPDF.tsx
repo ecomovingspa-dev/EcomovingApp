@@ -143,6 +143,10 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       doc.text(`Tiempo de entrega: ${cotizacion.tiempo_entrega || "No especificado"}`, col1, yPos);
       doc.text(`Validez: ${cotizacion.validez_oferta || "No especificado"}`, col2, yPos);
       doc.text(`Correo electrónico: ${vendCorreo || "No especificado"}`, col3, yPos);
+      yPos += lineHeight;
+
+      // FILA 4: Col 1: Forma de pago
+      doc.text(`Forma de pago: ${cotizacion.forma_pago || "No especificado"}`, col1, yPos);
       yPos += 10;
 
       // TABLA DE PRODUCTOS
