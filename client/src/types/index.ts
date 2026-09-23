@@ -112,6 +112,7 @@ export interface Cotizacion {
   mg?: string; // Margen global (ej: "25%")
   condicion_pago?: string | null;
   tasa_financiamiento?: number | null;
+  forma_pago?: string | null;
   costo_factoring?: number | null;
   descuento_contado?: number | null;
   created_at?: string; // ISO 8601
