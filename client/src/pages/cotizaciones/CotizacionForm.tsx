@@ -511,22 +511,41 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
     }
   };
 
-  const processImageFile = (file: File, callback: (dataUrl: string) => void) => {
+  const processImageFile = (file: File, callback: (url: string) => void) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
         const MAX_WIDTH = 320; // Protocolo v2.1: Optimizado para alta resolución (Retina/PDF) y rendimiento de DB
         const scale = MAX_WIDTH / img.width;
         canvas.width = MAX_WIDTH;
         canvas.height = img.height * scale;
-        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        // Exportar a JPEG de alta fidelidad optimizado
+        if (ctx) {
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+
         const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-        callback(dataUrl);
+
+        // Subir a Cloudflare R2 y guardar SOLO la URL (nunca base64 en la base de datos)
+        try {
+          setMensaje("⏳ Subiendo imagen...");
+          const resp = await fetch("/api/upload-render", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image_base64: dataUrl, content_type: "image/jpeg", prefix: "cotizacion" })
+          });
+          const data = await resp.json().catch(() => ({}));
+          if (!resp.ok || !data.url) throw new Error(data.error || resp.statusText || "Error al subir imagen");
+          callback(data.url);
+          setMensaje("");
+        } catch (err: any) {
+          console.error("[COTIZACION] Error subiendo imagen:", err);
+          setMensaje("❌ No se pudo subir la imagen: " + (err?.message || "error desconocido"));
+        }
       };
       img.src = event.target?.result as string;
     };
