@@ -29,14 +29,18 @@ export default async function handler(req: any, res: any) {
 
         const siguienteEnvio = ultimos && ultimos.length > 0 ? ultimos[0].nombre_envio + 1 : 1;
         const timestamp = Date.now();
-        const nombreImagen = imagen_url ? null : `MKT-${timestamp}.jpg`; // Si no hay URL, reservamos nombre
+        // La imagen debe venir ya subida a Cloudflare R2 (POST /api/upload-render con prefix 'cuentas-prospeccion' o 'cuentas-activas')
+        if (!imagen_url || !/^https:\/\//.test(imagen_url) || imagen_url.includes('supabase.co/storage')) {
+            return res.status(400).json({ error: 'imagen_url es obligatorio y debe ser una URL de Cloudflare R2 (subir primero con /api/upload-render)' });
+        }
+        const nombreImagen = imagen_url.split('/').pop() || `MKT-${timestamp}.jpg`;
 
         // Generar el HTML automáticamente (usamos el mismo bloque de ListaContenidos)
         const lineas = contenido.split('\n').filter((l: string) => l.trim() !== '');
         const titulo = lineas[0] || "ECOMOVING";
         const resto = lineas.slice(1).join('<br><br>');
         
-        const finalImagenUrl = imagen_url || `https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/imagenes-marketing/${nombreImagen}`;
+        const finalImagenUrl = imagen_url;
 
         const cuerpo_html = `
 <!DOCTYPE html>
@@ -57,7 +61,7 @@ export default async function handler(req: any, res: any) {
     <center class="wrapper">
         <table class="main-container" width="700" border="0" cellpadding="0" cellspacing="0">
             <tr><td align="center" style="padding: 50px 0;">
-                <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" alt="Ecomoving" width="200" />
+                <img src="https://pub-87fc17275b644a46b4c63c1ef06d4966.r2.dev/logos/logos_1790139217794_s4nsj4.png" alt="Ecomoving" width="200" />
             </td></tr>
             <tr><td align="center"><h1 class="h1">${titulo}</h1></td></tr>
             <tr><td align="center" style="padding-bottom: 50px;">
