@@ -1317,14 +1317,11 @@ export function ZohoMailModal({
                         
                         if (imageUrl.trim()) {
                           let publicImgSrc = imageUrl.trim();
-                          if (publicImgSrc.startsWith('data:') && selectedContactoDraft?.id) {
-                            let baseUrl = window.location.origin;
-                            if (baseUrl.includes('run.app') || baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
-                              baseUrl = 'https://ecomoving-app.vercel.app';
-                            }
-                            publicImgSrc = `${baseUrl}/api/render-image?contacto_id=${selectedContactoDraft.id}`;
+                          // Solo se incrustan URLs públicas (Cloudflare R2); nunca base64 ni el proxy /api/render-image
+                          if (publicImgSrc.startsWith('data:') || publicImgSrc.includes('/api/render-image')) {
+                            publicImgSrc = '';
                           }
-                          const imgTag = `<div style="margin: 20px 0; text-align: center;"><img src="${publicImgSrc}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
+                          const imgTag = !publicImgSrc ? "" : `<div style="margin: 20px 0; text-align: center;"><img src="${publicImgSrc}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
                           
                           const imagePlaceholders = [
                             /\{\s*imagen\s*\}/gi,
@@ -1794,14 +1791,11 @@ export function ZohoMailModal({
                             const renderImg = (imageUrlCliente || imageUrl)?.trim() || "";
                             if (renderImg) {
                               let publicImgSrc = renderImg;
-                              if (publicImgSrc.startsWith('data:') && selectedContactoDraft?.id) {
-                                let baseUrl = window.location.origin;
-                                if (baseUrl.includes('run.app') || baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
-                                  baseUrl = 'https://ecomoving-app.vercel.app';
-                                }
-                                publicImgSrc = `${baseUrl}/api/render-image?contacto_id=${selectedContactoDraft.id}`;
+                              // Solo se incrustan URLs públicas (Cloudflare R2); nunca base64 ni el proxy /api/render-image
+                              if (publicImgSrc.startsWith('data:') || publicImgSrc.includes('/api/render-image')) {
+                                publicImgSrc = '';
                               }
-                              const imgTag = `<div style="margin: 20px 0; text-align: center;"><img src="${publicImgSrc}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
+                              const imgTag = !publicImgSrc ? "" : `<div style="margin: 20px 0; text-align: center;"><img src="${publicImgSrc}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
                               
                               const imagePlaceholders = [
                                 /\{\s*imagen\s*\}/gi,
