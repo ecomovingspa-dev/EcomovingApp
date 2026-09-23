@@ -675,6 +675,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
             contacto_id: duplicado.contacto_id,
             vendedor_id: duplicado.vendedor_id,
             condicion_pago: duplicado.condicion_pago || "Ninguno",
+        forma_pago: duplicado.forma_pago || null,
             tasa_financiamiento: duplicado.tasa_financiamiento || 0
           };
           const { error: retryError } = await supabase.from("cotizaciones").insert([baseDuplicado]);
@@ -1030,7 +1031,7 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
             </div>
 
             {/* Fila 2: Operativa (5 Columnas) */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Tiempo de Entrega</label>
                 <Input 
@@ -1049,6 +1050,20 @@ export default function CotizacionForm({ id: propId, cuentaId, contactoId, onClo
                   className="h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-sm"
                   placeholder="Ej: 30 días"
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Forma de Pago</label>
+                <select
+                  value={cotizacion.forma_pago || ""}
+                  onChange={(e) => setCotizacion(prev => ({ ...prev, forma_pago: e.target.value || null }))}
+                  className="w-full h-11 bg-gray-50 dark:bg-gray-800 border-none rounded-xl px-4 font-bold text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                >
+                  <option value="">Seleccione...</option>
+                  <option value="50% anticipo - 50% contra entrega">50% anticipo - 50% contra entrega</option>
+                  <option value="100% contra entrega">100% contra entrega</option>
+                  <option value="30 días contra entrega">30 días contra entrega</option>
+                </select>
               </div>
 
               <div className="space-y-1.5">
