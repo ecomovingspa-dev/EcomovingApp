@@ -42,7 +42,7 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       const pageHeight = doc.internal.pageSize.height;
       const margin = 15;
 
-      const logoUrl = "https://pub-87fc17275b644a46b4c63c1ef06d4966.r2.dev/logos/logos_1790139217794_s4nsj4.png";
+      const logoUrl = "https://pub-87fc17275b644a46b4c63c1ef06d4966.r2.dev/logos/logos_1790139217794_s4nsj4.png?v=2";
       let logoImg: HTMLImageElement | null = null;
 
       try {
