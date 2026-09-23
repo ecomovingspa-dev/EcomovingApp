@@ -181,6 +181,26 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
         };
       });
 
+      // Las imágenes ahora son URLs (Cloudflare R2): convertirlas a dataURL antes de dibujar
+      const toDataUrl = async (src: string): Promise<string | null> => {
+        if (!src || src.startsWith("data:")) return src || null;
+        try {
+          const blob = await fetch(src, { mode: "cors" }).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.blob(); });
+          return await new Promise<string>((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onloadend = () => resolve(fr.result as string);
+            fr.onerror = reject;
+            fr.readAsDataURL(blob);
+          });
+        } catch (e) {
+          console.warn("No se pudo cargar imagen para PDF:", src, e);
+          return null;
+        }
+      };
+      await Promise.all(tableData.map(async (row: any) => {
+        if (row.imagen) row.imagen = await toDataUrl(row.imagen);
+      }));
+
       autoTable(doc, {
         startY: yPos,
         head: [["", "Descripción", "Cant.", "Precio Unit.", "Subtotal"]],
