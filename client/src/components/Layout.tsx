@@ -63,7 +63,7 @@ export default function Layout() {
         <div className="h-16 flex items-center px-4 border-b border-gray-100 dark:border-gray-700">
           <div className="flex items-center gap-3 overflow-hidden">
             <img
-              src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png"
+              src="https://pub-87fc17275b644a46b4c63c1ef06d4966.r2.dev/logos/logos_1790139217794_s4nsj4.png"
               alt="Ecomoving Logo"
               className={cn(
                 "h-8 transition-all duration-300 object-contain",
@@ -72,7 +72,7 @@ export default function Layout() {
             />
             {isCollapsed && (
               <img
-                src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo.png"
+                src="https://pub-87fc17275b644a46b4c63c1ef06d4966.r2.dev/logos/logos_1790139219368_ip7imt.png"
                 alt="Ecomoving Logo Icon"
                 className="h-8 w-8 object-contain animate-in fade-in zoom-in duration-300"
               />
