@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
@@ -13,153 +13,46 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { uploadRenderImage } from "@/lib/storageUpload";
 
-const DEFAULT_SEGMENTO_A_TEMPLATES = [
+const DEFAULT_TEMPLATES_CLIENTES = [
   {
-    id: "builtin-segA-1",
+    id: "builtin-clientes-1",
     orden: 1,
-    segmento: "A",
     name: "1. Check-in simple (sin pedir nada)",
     rawName: "Check-in simple (sin pedir nada)",
     subject: "¿Sigue vigente el interés en merchandising para {empresa}?",
     body: "Hola {nombre},\n\nEspero que todo esté marchando bien por {empresa}. Te escribo solo para saber cómo va todo y si en algún momento retoman la idea de renovar su merchandising corporativo, quedamos atentos.\n\nNo es necesario que respondas si por ahora no hay novedades, solo quería que supieras que seguimos disponibles.\n\nSaludos cordiales,"
   },
   {
-    id: "builtin-segA-2",
+    id: "builtin-clientes-2",
     orden: 2,
-    segmento: "A",
     name: "2. Nueva línea de productos / catálogo actualizado",
     rawName: "Nueva línea de productos / catálogo actualizado",
     subject: "Sumamos nuevas opciones a nuestro catálogo de merchandising",
     body: "Hola {nombre},\n\nQuería contarte que ampliamos nuestro catálogo con nuevas alternativas en grabado láser e impresión UV, pensando en piezas más durables y con mejor terminación para regalos corporativos.\n\nSi te sirve, puedo enviarte el catálogo actualizado para que lo tengan a mano la próxima vez que evalúen opciones.\n\nSaludos cordiales,"
   },
   {
-    id: "builtin-segA-3",
+    id: "builtin-clientes-3",
     orden: 3,
-    segmento: "A",
     name: "3. Prueba social / caso de éxito reciente",
     rawName: "Prueba social / caso de éxito reciente",
     subject: "Un proyecto reciente que puede interesarte",
     body: "Hola {nombre},\n\nQuería compartirte un proyecto que hicimos recientemente para otro cliente, donde trabajamos piezas de merchandising con materiales sostenibles y muy buena recepción del equipo.\n\nSi en algún momento quieren ver ejemplos similares aplicados a {empresa}, con gusto preparamos una propuesta de referencia.\n\nSaludos cordiales,"
   },
   {
-    id: "builtin-segA-4",
+    id: "builtin-clientes-4",
     orden: 4,
-    segmento: "A",
     name: "4. Ángulo sustentabilidad",
     rawName: "Ángulo sustentabilidad",
     subject: "Merchandising con materiales sostenibles para {empresa}",
     body: "Hola {nombre},\n\nSé que muchas empresas están priorizando proveedores con foco en sostenibilidad, y quería recordarte que en Ecomoving trabajamos materiales sostenibles junto con procesos de grabado láser e impresión UV de precisión.\n\nSi esto se alinea con algún lineamiento interno de {empresa}, encantados de conversarlo.\n\nSaludos cordiales,"
   },
   {
-    id: "builtin-segA-5",
+    id: "builtin-clientes-5",
     orden: 5,
-    segmento: "A",
     name: "5. Fecha estacional / regalos de fin de año",
     rawName: "Fecha estacional / regalos de fin de año",
     subject: "Pensando en los regalos corporativos de fin de año",
     body: "Hola {nombre},\n\nSe acerca la época en que muchas empresas comienzan a definir sus regalos corporativos, y quería ponerme a disposición con tiempo por si {empresa} está evaluando opciones para este período.\n\nPodemos preparar alternativas según presupuesto y cantidad, sin compromiso.\n\nSaludos cordiales,"
-  },
-  {
-    id: "builtin-segA-6",
-    orden: 6,
-    segmento: "A",
-    name: "6. Nuevo render / propuesta visual (usa {render})",
-    rawName: "Nuevo render / propuesta visual (usa {render})",
-    subject: "Una idea visual para {empresa}",
-    body: "Hola {nombre},\n\nSeguimos pensando en cómo podría verse la línea gráfica de {empresa} en productos de merchandising, y preparamos este concepto:\n\n{render}\n\nSi te hace sentido, podemos ajustar colores, materiales o formato según lo que more se acomode a la marca.\n\nSaludos cordiales,"
-  },
-  {
-    id: "builtin-segA-7",
-    orden: 7,
-    segmento: "A",
-    name: "7. Pregunta abierta / feedback",
-    rawName: "Pregunta abierta / feedback",
-    subject: "Una consulta rápida para {empresa}",
-    body: "Hola {nombre},\n\nQuería hacerte una consulta breve: ¿qué es lo que más valoran hoy en un proveedor de merchandising corporativo? Calidad de materiales, tiempos de entrega, personalización, precio...\n\nMe sirve para entender mejor qué podríamos ofrecerles y no insistir con propuestas que no calzan con lo que necesitan.\n\nSaludos cordiales,"
-  },
-  {
-    id: "builtin-segA-8",
-    orden: 8,
-    segmento: "A",
-    name: "8. Referido / conector interno",
-    rawName: "Referido / conector interno",
-    subject: "¿Hay alguien más en {empresa} a quien esto le sirva?",
-    body: "Hola {nombre},\n\nSé que quizás por ahora no haya un proyecto activo de tu lado, pero quería preguntarte si conoces a alguien más dentro de {empresa} — Marketing, RRHH o Compras — a quien le pueda interesar una propuesta de merchandising corporativo.\n\nCualquier referencia es bienvenida, y por supuesto seguimos disponibles para ti también.\n\nSaludos cordiales,"
-  },
-  {
-    id: "builtin-segA-9",
-    orden: 9,
-    segmento: "A",
-    name: "9. Novedad / capacidad nueva del taller",
-    rawName: "Novedad / capacidad nueva del taller",
-    subject: "Nueva capacidad de producción que puede interesarte",
-    body: "Hola {nombre},\n\nQuería contarte que incorporamos nueva tecnología de grabado láser que nos permite trabajar con mayor precisión y en menos tiempo de entrega.\n\nSi tienen algún proyecto en mente, ahora podemos responder con plazos más ajustados que antes.\n\nSaludos cordiales,"
-  },
-  {
-    id: "builtin-segA-10",
-    orden: 10,
-    segmento: "A",
-    name: "10. Cierre suave / última mantención antes de espaciar contacto",
-    rawName: "Cierre suave / última mantención antes de espaciar contacto",
-    subject: "Seguimos disponibles cuando lo necesiten",
-    body: "Hola {nombre},\n\nSé que hemos conversado en distintas ocasiones sin que se concrete un proyecto todavía, y quiero que sepas que no hay ningún problema con eso. Seguimos disponibles para cuando surja la necesidad.\n\nSi prefieres que espaciemos el contacto por ahora, dime con confianza y ajustamos la frecuencia.\n\nSaludos cordiales,"
-  }
-];
-
-const DEFAULT_SEGMENTO_B_TEMPLATES = [
-  {
-    id: "builtin-segB-1",
-    orden: 1,
-    segmento: "B",
-    name: "1. Post-entrega y reposición",
-    rawName: "Post-entrega y reposición",
-    subject: "¿Cómo anduvo todo con el pedido de {empresa_corto}?",
-    body: "Hola {nombre_corto},\n\nPaso a saludarte y saber cómo ha sido la recepción del último merchandising que trabajamos para {empresa_corto}.\n\nSi ya están cerca de agotar stock o proyectan una reposición para las próximas semanas, avísame y dejamos coordinada la producción con anticipación.\n\nSaludos cordiales,"
-  },
-  {
-    id: "builtin-segB-2",
-    orden: 2,
-    segmento: "B",
-    name: "2. Novedad catálogo / Cross-selling",
-    rawName: "Novedad catálogo / Cross-selling",
-    subject: "Novedad de catálogo para complementar lo de {empresa_corto}",
-    body: "Hola {nombre_corto},\n\nPensando en la línea de merchandising que ya desarrollamos con ustedes, incorporamos nuevas opciones de productos y técnicas de personalización que combinan perfecto con la identidad de {empresa_corto}.\n\nTe comparto un par de ideas adjuntas. Si te hace sentido revisarlo para próximos eventos o entregas internas, lo coordinamos.\n\nSaludos cordiales,"
-  },
-  {
-    id: "builtin-segB-3",
-    orden: 3,
-    segmento: "B",
-    name: "3. Anticipación calendario corporativo",
-    rawName: "Anticipación calendario corporativo",
-    subject: "Coordinación anticipada para [Mes/fecha] — {empresa_corto}",
-    body: "Hola {nombre_corto},\n\nComo ya conocemos los tiempos y requerimientos de {empresa_corto}, te escribo para anticipar lo que puedan necesitar de cara a [Mes/fecha] (regalos de fin de año, aniversarios o eventos corporativos).\n\nComo cliente activo, podemos reservar stock y cupos de producción con prioridad para que no los tome la fecha al límite.\n\n¿Tienen algún hito planificado para esas fechas?\n\nSaludos cordiales,"
-  },
-  {
-    id: "builtin-segB-4",
-    orden: 4,
-    segmento: "B",
-    name: "4. Catálogo actualizado / Matrices",
-    rawName: "Catálogo actualizado / Matrices",
-    subject: "Catálogo actualizado y opciones vigentes para {empresa_corto}",
-    body: "Hola {nombre_corto},\n\nTe dejo a mano nuestro catálogo actualizado de este trimestre con las nuevas líneas de productos disponibles para {empresa_corto}.\n\nRecuerda que al tener ya sus matrices y especificaciones de marca registradas, cualquier nuevo requerimiento o cotización se procesa de forma más rápida.\n\nQuedo atento a cualquier necesidad que surja en el equipo.\n\nSaludos cordiales,"
-  },
-  {
-    id: "builtin-segB-5",
-    orden: 5,
-    segmento: "B",
-    name: "5. Detección nuevos proyectos / áreas",
-    rawName: "Detección nuevos proyectos / áreas",
-    subject: "Nuevos requerimientos o áreas en {empresa_corto}",
-    body: "Hola {nombre_corto},\n\nAdemás del merchandising que ya trabajamos juntos, quería consultarte si en {empresa_corto} tienen requerimientos próximos en otras áreas (onboarding de nuevos colaboradores, kits para eventos o marketing).\n\nSi hay algún proyecto nuevo en carpeta, podemos preparar propuestas específicas manteniendo la misma calidad de la última entrega.\n\nSaludos cordiales,"
-  },
-  {
-    id: "builtin-segB-6",
-    orden: 6,
-    segmento: "B",
-    name: "6. Agradecimiento y continuidad",
-    rawName: "Agradecimiento y continuidad",
-    subject: "Seguimiento de cuenta — {empresa_corto}",
-    body: "Hola {nombre_corto},\n\nRevisando las cuentas que atendemos, quería agradecerte por la confianza en los proyectos anteriores y confirmar que seguimos 100% disponibles para apoyarte en cualquier nuevo desarrollo.\n\n¿Hay algún proyecto de merchandising en el que estén pensando para este trimestre?\n\nSaludos cordiales,"
   }
 ];
 
@@ -184,65 +77,7 @@ export function ZohoMailModal({
 }: ZohoMailModalProps) {
   
   const [templates, setTemplates] = useState<any[]>([]);
-  const contactSegment = (() => {
-    if (selectedContactoDraft?.id) {
-      const saved = localStorage.getItem(`contacto_seg_${selectedContactoDraft.id}`);
-      if (saved) return saved;
-    }
-    return selectedContactoDraft?.segmento || "A";
-  })();
-
-  const [activeSegmento, setActiveSegmento] = useState<string>(contactSegment);
-  const [templatesSegmentoA, setTemplatesSegmentoA] = useState<any[]>(DEFAULT_SEGMENTO_A_TEMPLATES);
-  const [templatesSegmentoB, setTemplatesSegmentoB] = useState<any[]>(DEFAULT_SEGMENTO_B_TEMPLATES);
-
-  useEffect(() => {
-    if (selectedContactoDraft) {
-      const saved = selectedContactoDraft.id ? localStorage.getItem(`contacto_seg_${selectedContactoDraft.id}`) : null;
-      const seg = saved || selectedContactoDraft.segmento || "A";
-      setActiveSegmento(seg);
-    }
-  }, [selectedContactoDraft]);
-
-  const handleToggleSegmentoModal = async (nuevoSeg: string) => {
-    // Si el contacto pertenece a un segmento distinto, bloqueamos el cambio por pestaña para evitar confusión
-    if (contactSegment !== nuevoSeg) {
-      toast.error(`Este contacto es del Segmento ${contactSegment}. La pestaña del Segmento ${nuevoSeg} está bloqueada.`);
-      return;
-    }
-    setActiveSegmento(nuevoSeg);
-    const targetTemplates = nuevoSeg === "B" ? templatesSegmentoB : templatesSegmentoA;
-    if (targetTemplates && targetTemplates.length > 0 && selectedContactoDraft) {
-      const firstTmpl = targetTemplates[0];
-      setSelectedTemplateId(firstTmpl.id);
-      const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
-        firstTmpl.subject,
-        firstTmpl.body,
-        selectedContactoDraft,
-        selectedCuentaDraft,
-        vendedor
-      );
-      setDraftData({
-        email: selectedContactoDraft.correo,
-        subject: resolvedSubject,
-        body: resolvedBody,
-        contactoId: selectedContactoDraft.id
-      });
-    }
-  };
-
-  // Segmentos A y B unificados: una sola lista de plantillas para todas las cuentas activas.
-  // Cada plantilla conserva internamente su segmento/orden original (para guardar ediciones),
-  // pero se numera de forma correlativa en pantalla.
-  const unificarPlantillasClientes = (listaA: any[], listaB: any[]) =>
-    [...listaA, ...listaB].map((t, i) => {
-      const raw = t.rawName || (t.name ? String(t.name).replace(/^\d+\.\s*/, '') : '');
-      return { ...t, name: `${i + 1}. ${raw}` };
-    });
-  const templatesClientes = useMemo(
-    () => unificarPlantillasClientes(templatesSegmentoA, templatesSegmentoB),
-    [templatesSegmentoA, templatesSegmentoB]
-  );
+  const [templatesClientes, setTemplatesClientes] = useState<any[]>(DEFAULT_TEMPLATES_CLIENTES);
 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
@@ -356,134 +191,31 @@ export function ZohoMailModal({
         setTemplates(prospectionTemplates);
       }
 
-      // Load Segmento A & B templates with hardcoded built-ins as foolproof fallback
-      const { data: dbClientesA, error: dbClientesAErr } = await supabase
+      // Load Plantillas Clientes (cuentas activas) with hardcoded built-ins as foolproof fallback
+      const { data: dbClientes, error: dbClientesErr } = await supabase
         .from("configuracion_clientes")
         .select("*")
         .eq("activo", true)
         .order("orden", { ascending: true });
 
-      let currentSegA = DEFAULT_SEGMENTO_A_TEMPLATES;
-      let currentSegB = DEFAULT_SEGMENTO_B_TEMPLATES;
+      let currentClientes = DEFAULT_TEMPLATES_CLIENTES;
 
-      if (!dbClientesAErr && dbClientesA && dbClientesA.length > 0) {
-        const segA = dbClientesA.filter((t: any) => t.segmento === 'A' || !t.segmento);
-        const segB = dbClientesA.filter((t: any) => t.segmento === 'B');
-        
-        currentSegA = DEFAULT_SEGMENTO_A_TEMPLATES.map((defTmpl) => {
-          // Check local storage for user custom edits first
-          const localKey = `ecomoving_tpl_A_${defTmpl.orden}`;
-          const localSavedStr = localStorage.getItem(localKey);
-          let localSaved: any = null;
-          if (localSavedStr) {
-            try { localSaved = JSON.parse(localSavedStr); } catch (e) {}
-          }
-
-          const dbMatch = segA.find((dbT: any) => Number(dbT.orden) === Number(defTmpl.orden));
-          if (dbMatch) {
-            const isLegacyOldTest = 
-              (dbMatch.mensaje_intro && dbMatch.mensaje_intro.includes("Te envío el render para {empresa}:")) ||
-              (dbMatch.mensaje_intro && dbMatch.mensaje_intro.includes("Te comparto este render para Universidad Gabriela Mistral:"));
-
-            if (isLegacyOldTest && !localSaved) {
-              supabase.from("configuracion_clientes").update({
-                nombre: defTmpl.rawName,
-                asunto_template: defTmpl.subject,
-                mensaje_intro: defTmpl.body,
-                mensaje_cierre: "",
-                segmento: "A"
-              }).eq("id", dbMatch.id).then();
-
-              return {
-                id: `builtin-clientes-a-${defTmpl.orden}`,
-                dbId: dbMatch.id,
-                orden: defTmpl.orden,
-                segmento: "A",
-                name: defTmpl.name,
-                rawName: defTmpl.rawName,
-                subject: defTmpl.subject,
-                body: defTmpl.body
-              };
-            }
-
-            const rawName = localSaved?.rawName || dbMatch.nombre || defTmpl.rawName;
-            const cleanSubject = localSaved?.subject || dbMatch.asunto_template || defTmpl.subject;
-            const cleanBody = localSaved?.body || (dbMatch.mensaje_intro ? `${dbMatch.mensaje_intro}\n\n${dbMatch.mensaje_cierre || ""}`.trim() : defTmpl.body);
-
-            return {
-              id: `builtin-clientes-a-${dbMatch.orden}`,
-              dbId: dbMatch.id,
-              orden: dbMatch.orden,
-              segmento: "A",
-              name: `${dbMatch.orden}. ${rawName}`,
-              rawName: rawName,
-              subject: cleanSubject,
-              body: cleanBody
-            };
-          } else {
-            const rawName = localSaved?.rawName || defTmpl.rawName;
-            const cleanSubject = localSaved?.subject || defTmpl.subject;
-            const cleanBody = localSaved?.body || defTmpl.body;
-
-            supabase.from("configuracion_clientes").insert({
-              orden: defTmpl.orden,
-              nombre: rawName,
-              asunto_template: cleanSubject,
-              mensaje_intro: cleanBody,
-              mensaje_cierre: "",
-              segmento: "A",
-              activo: true
-            }).then();
-
-            return {
-              id: `builtin-clientes-a-${defTmpl.orden}`,
-              orden: defTmpl.orden,
-              segmento: "A",
-              name: `${defTmpl.orden}. ${rawName}`,
-              rawName: rawName,
-              subject: cleanSubject,
-              body: cleanBody
-            };
-          }
-        });
-        setTemplatesSegmentoA(currentSegA);
-
-        currentSegB = DEFAULT_SEGMENTO_B_TEMPLATES.map((defTmpl) => {
-          const localKey = `ecomoving_tpl_B_${defTmpl.orden}`;
-          const localSavedStr = localStorage.getItem(localKey);
-          let localSaved: any = null;
-          if (localSavedStr) {
-            try { localSaved = JSON.parse(localSavedStr); } catch (e) {}
-          }
-
-          const dbMatch = segB.find((dbT: any) => Number(dbT.orden) === Number(defTmpl.orden));
-          if (dbMatch) {
-            const rawName = localSaved?.rawName || dbMatch.nombre || defTmpl.rawName;
-            const cleanSubject = localSaved?.subject || dbMatch.asunto_template || defTmpl.subject;
-            const cleanBody = localSaved?.body || (dbMatch.mensaje_intro ? `${dbMatch.mensaje_intro}\n\n${dbMatch.mensaje_cierre || ""}`.trim() : defTmpl.body);
-
-            return {
-              id: `builtin-clientes-b-${dbMatch.orden}`,
-              dbId: dbMatch.id,
-              orden: dbMatch.orden,
-              segmento: "B",
-              name: `${dbMatch.orden}. ${rawName}`,
-              rawName: rawName,
-              subject: cleanSubject,
-              body: cleanBody
-            };
-          }
-          return defTmpl;
-        });
-        setTemplatesSegmentoB(currentSegB);
-      } else {
-        setTemplatesSegmentoA(DEFAULT_SEGMENTO_A_TEMPLATES);
-        setTemplatesSegmentoB(DEFAULT_SEGMENTO_B_TEMPLATES);
+      if (!dbClientesErr && dbClientes && dbClientes.length > 0) {
+        currentClientes = dbClientes.map((dbT: any) => ({
+          id: `builtin-clientes-${dbT.orden}`,
+          dbId: dbT.id,
+          orden: dbT.orden,
+          name: `${dbT.orden}. ${dbT.nombre}`,
+          rawName: dbT.nombre || "",
+          subject: dbT.asunto_template || "",
+          body: `${dbT.mensaje_intro || ""}\n\n${dbT.mensaje_cierre || ""}`.trim()
+        }));
       }
+      setTemplatesClientes(currentClientes);
 
       // Auto-update draft with current active template
       const currentList = activeTab === "clientes" 
-        ? unificarPlantillasClientes(currentSegA, currentSegB)
+        ? currentClientes
         : templates;
         
       if (currentList && currentList.length > 0 && selectedContactoDraft) {
@@ -588,7 +320,6 @@ export function ZohoMailModal({
     setSelectedTemplateId(id);
     let tmpl = templates.find(t => t.id === id);
     if (!tmpl) tmpl = templatesClientes.find(t => t.id === id);
-    if (!tmpl) tmpl = templatesSegmentoA.find(t => t.id === id) || templatesSegmentoB.find(t => t.id === id);
     if (tmpl && selectedContactoDraft) {
       const { resolvedSubject, resolvedBody } = resolveTemplateVariables(
         tmpl.subject,
@@ -618,19 +349,15 @@ export function ZohoMailModal({
     let tmpl: any = null;
 
     if (isCliente) {
-      tmpl = templatesClientes.find(t => t.id === selectedTemplateId)
-        || templatesSegmentoA.find(t => t.id === selectedTemplateId)
-        || templatesSegmentoB.find(t => t.id === selectedTemplateId);
+      tmpl = templatesClientes.find(t => t.id === selectedTemplateId);
     } else {
       tmpl = templates.find(t => t.id === selectedTemplateId);
     }
 
     if (!tmpl) {
       tmpl = templatesClientes.find(t => t.id === selectedTemplateId)
-        || templatesSegmentoA.find(t => t.id === selectedTemplateId)
-        || templatesSegmentoB.find(t => t.id === selectedTemplateId)
         || templates.find(t => t.id === selectedTemplateId);
-      if (tmpl && (tmpl.segmento || activeTab === "clientes")) {
+      if (tmpl && activeTab === "clientes") {
         isCliente = true;
       }
     }
@@ -645,21 +372,8 @@ export function ZohoMailModal({
       const cleanName = tempEditName.trim() || tmpl.rawName || tmpl.name;
       const cleanSubject = tempEditSubject;
       const cleanBody = tempEditBody;
-      const seg = tmpl.segmento || activeSegmento || "A";
       const orden = tmpl.orden || 1;
       const tableName = isCliente ? "configuracion_clientes" : "configuracion_prospeccion";
-
-      // Always save to localStorage immediately as reliable backup
-      if (isCliente) {
-        localStorage.setItem(`ecomoving_tpl_${seg}_${orden}`, JSON.stringify({
-          orden,
-          name: `${orden}. ${cleanName}`,
-          rawName: cleanName,
-          subject: cleanSubject,
-          body: cleanBody,
-          segmento: seg
-        }));
-      }
 
       let savedDbId = tmpl.dbId;
 
@@ -671,7 +385,6 @@ export function ZohoMailModal({
           mensaje_cierre: "",
           activo: true
         };
-        if (isCliente) updatePayload.segmento = seg;
 
         const { error } = await supabase
           .from(tableName)
@@ -686,11 +399,10 @@ export function ZohoMailModal({
 
       if (!savedDbId) {
         // Check if matching row exists in DB
-        let query = supabase.from(tableName).select("id").eq("orden", orden);
-        if (isCliente) {
-          query = query.eq("segmento", seg);
-        }
-        const { data: existingRows, error: searchErr } = await query;
+        const { data: existingRows, error: searchErr } = await supabase
+          .from(tableName)
+          .select("id")
+          .eq("orden", orden);
         
         if (!searchErr && existingRows && existingRows.length > 0) {
           savedDbId = existingRows[0].id;
@@ -701,7 +413,6 @@ export function ZohoMailModal({
             mensaje_cierre: "",
             activo: true
           };
-          if (isCliente) updatePayload.segmento = seg;
 
           const { error: updErr } = await supabase
             .from(tableName)
@@ -719,9 +430,7 @@ export function ZohoMailModal({
             mensaje_cierre: "",
             activo: true
           };
-          if (isCliente) {
-            insertPayload.segmento = seg;
-          }
+
           const { data: inserted, error: insertErr } = await supabase
             .from(tableName)
             .insert(insertPayload)
@@ -738,25 +447,14 @@ export function ZohoMailModal({
 
       // Update local state immediately
       if (isCliente) {
-        if (seg === 'A') {
-          setTemplatesSegmentoA(prev => prev.map(t => (t.id === tmpl.id || Number(t.orden) === Number(orden)) ? {
-            ...t,
-            dbId: savedDbId || t.dbId,
-            name: `${t.orden}. ${cleanName}`,
-            rawName: cleanName,
-            subject: cleanSubject,
-            body: cleanBody
-          } : t));
-        } else {
-          setTemplatesSegmentoB(prev => prev.map(t => (t.id === tmpl.id || Number(t.orden) === Number(orden)) ? {
-            ...t,
-            dbId: savedDbId || t.dbId,
-            name: `${t.orden}. ${cleanName}`,
-            rawName: cleanName,
-            subject: cleanSubject,
-            body: cleanBody
-          } : t));
-        }
+        setTemplatesClientes(prev => prev.map(t => (t.id === tmpl.id || Number(t.orden) === Number(orden)) ? {
+          ...t,
+          dbId: savedDbId || t.dbId,
+          name: `${t.orden}. ${cleanName}`,
+          rawName: cleanName,
+          subject: cleanSubject,
+          body: cleanBody
+        } : t));
       } else {
         setTemplates(prev => prev.map(t => (t.id === tmpl.id || Number(t.orden) === Number(orden)) ? {
           ...t,
