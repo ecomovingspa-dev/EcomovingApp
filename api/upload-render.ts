@@ -30,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const supabase = getSupabase();
-    const { contacto_id, image_base64, file_name, content_type } = req.body || {};
+    const { contacto_id, image_base64, file_name, content_type, prefix } = req.body || {};
 
     if (!image_base64) {
       return res.status(400).json({ error: 'Falta image_base64 en la solicitud' });
@@ -54,7 +54,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const extension = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
     const timestamp = Date.now();
     const safeContactoId = contacto_id ? String(contacto_id).replace(/[^a-zA-Z0-9_-]/g, '') : 'general';
-    const uniqueFileName = `contacto_${safeContactoId}_${timestamp}.${extension}`;
+    // Prefijo del archivo en R2 (contacto por defecto; 'cotizacion', 'marketing', etc.)
+    const safePrefix = prefix ? String(prefix).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 30) || 'contacto' : 'contacto';
+    const uniqueFileName = safePrefix === 'contacto'
+      ? `contacto_${safeContactoId}_${timestamp}.${extension}`
+      : `${safePrefix}/${safePrefix}_${timestamp}_${Math.random().toString(36).slice(2, 8)}.${extension}`;
 
     let publicUrl = '';
     let storageEngine = 'supabase';
@@ -101,6 +105,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const { data: pubData } = supabase.storage.from(uploadedBucket).getPublicUrl(uploadedPath);
         publicUrl = pubData.publicUrl;
         storageEngine = `supabase-${uploadedBucket}`;
+      } else if (safePrefix !== 'contacto') {
+        return res.status(500).json({ error: 'No se pudo subir la imagen a R2 ni a Supabase Storage' });
       } else {
         // Proxy URL
         const protocol = req.headers['x-forwarded-proto'] || 'https';
@@ -111,7 +117,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // 3. Guardar la URL pública en la tabla contactos
-    if (contacto_id) {
+    if (contacto_id && safePrefix === 'contacto') {
       const { error: dbError } = await supabase
         .from('contactos')
         .update({ imagen: publicUrl })
