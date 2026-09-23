@@ -1,5 +1,3 @@
-import { supabase } from './supabase';
-
 export interface UploadRenderResult {
   url: string;
   fileName: string;
@@ -153,45 +151,9 @@ export async function uploadRenderImage(
     } else {
       throw new Error(resData.error || 'No se pudo obtener URL pública');
     }
-  } catch (apiErr) {
-    console.warn("[STORAGE] /api/upload-render no disponible, probando subida directa a Supabase Storage como último recurso:", apiErr);
+  } catch (apiErr: any) {
+    console.error("[STORAGE] Error subiendo a Cloudflare R2 vía /api/upload-render:", apiErr);
+    throw new Error('No se pudo subir la imagen a Cloudflare R2: ' + (apiErr?.message || 'error desconocido'));
   }
-
-  // 3. Último recurso: subir directamente a un bucket de Supabase Storage
-  const candidateBuckets = ['renders_prospeccion', 'imagenes-marketing', 'logo_ecomoving', 'renders'];
-
-  for (const bucket of candidateBuckets) {
-    try {
-      const filePath = (bucket === 'renders_prospeccion' || bucket === 'renders')
-        ? fileName
-        : `renders_prospeccion/${fileName}`;
-
-      const { data, error } = await supabase.storage
-        .from(bucket)
-        .upload(filePath, uploadBlob, {
-          contentType,
-          cacheControl: '31536000, public', // 1 año de caché para evitar descargas repetidas
-          upsert: true
-        });
-
-      if (!error && data) {
-        const { data: pubData } = supabase.storage.from(bucket).getPublicUrl(filePath);
-        if (pubData?.publicUrl) {
-          console.log(`[STORAGE] Render subido con éxito a bucket '${bucket}' (${compressedSizeKB} KB, 560px) [fallback Supabase]`);
-          return {
-            url: pubData.publicUrl,
-            fileName,
-            bucket,
-            originalSizeKB,
-            compressedSizeKB
-          };
-        }
-      }
-    } catch (err) {
-      console.warn(`[STORAGE] Error al intentar bucket ${bucket}:`, err);
-    }
-  }
-
-  throw new Error('No se pudo subir la imagen: fallaron tanto /api/upload-render (R2) como todos los buckets de Supabase Storage.');
 }
 
