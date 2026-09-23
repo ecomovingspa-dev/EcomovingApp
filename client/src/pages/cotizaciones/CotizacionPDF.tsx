@@ -42,7 +42,7 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       const pageHeight = doc.internal.pageSize.height;
       const margin = 15;
 
-      const logoUrl = "https://pub-87fc17275b644a46b4c63c1ef06d4966.r2.dev/logos/logos_1790139219368_ip7imt.png";
+      const logoUrl = "https://pub-87fc17275b644a46b4c63c1ef06d4966.r2.dev/logos/logos_1790139217794_s4nsj4.png";
       let logoImg: HTMLImageElement | null = null;
 
       try {
@@ -63,7 +63,7 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
         // Logo ou Título
         if (logoImg) {
           const logoHeight = 12;
-          const logoWidth = (370 / 206) * logoHeight;
+          const logoWidth = (logoImg.naturalWidth / logoImg.naturalHeight) * logoHeight;
           doc.addImage(logoImg, "PNG", margin, 10, logoWidth, logoHeight);
         } else {
           doc.setTextColor(0, 150, 136);
