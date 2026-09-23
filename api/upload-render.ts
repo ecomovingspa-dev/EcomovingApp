@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Prefijo del archivo en R2 (contacto por defecto; 'cotizacion', 'marketing', etc.)
     const safePrefix = prefix ? String(prefix).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 30) || 'contacto' : 'contacto';
     const uniqueFileName = safePrefix === 'contacto'
-      ? `contacto_${safeContactoId}_${timestamp}.${extension}`
+      ? `prospeccion/contacto_${safeContactoId}_${timestamp}.${extension}`
       : `${safePrefix}/${safePrefix}_${timestamp}_${Math.random().toString(36).slice(2, 8)}.${extension}`;
 
     let publicUrl = '';
