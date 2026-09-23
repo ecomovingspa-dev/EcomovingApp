@@ -63,7 +63,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let publicUrl = '';
     let storageEngine = 'supabase';
 
-    // 1. Prioridad: Cloudflare R2 ($0 Egress ilimitado) si está configurado
+    // 1. Cloudflare R2 ($0 egress)
     if (isR2Configured()) {
       try {
         const r2Result = await uploadToR2(uniqueFileName, buffer, mimeType);
@@ -71,49 +71,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         storageEngine = 'cloudflare-r2';
         console.log(`[UPLOAD-RENDER] Imagen subida exitosamente a Cloudflare R2: ${publicUrl}`);
       } catch (r2Err) {
-        console.error('[UPLOAD-RENDER] Error subiendo a Cloudflare R2, recurriendo a Supabase:', r2Err);
+        console.error('[UPLOAD-RENDER] Error subiendo a Cloudflare R2:', r2Err);
       }
     }
 
-    // 2. Fallback: Supabase Storage
+    // Solo Cloudflare R2: nunca Supabase Storage ni base64 (evita consumo de egress en Supabase)
     if (!publicUrl) {
-      const targetBuckets = ['renders_prospeccion', 'imagenes-marketing', 'logo_ecomoving', 'renders'];
-      let uploadedBucket = '';
-      let uploadedPath = '';
-
-      for (const bucket of targetBuckets) {
-        const filePath = bucket === 'renders_prospeccion' || bucket === 'renders' 
-          ? uniqueFileName 
-          : `renders_prospeccion/${uniqueFileName}`;
-
-        const { data, error } = await supabase.storage
-          .from(bucket)
-          .upload(filePath, buffer, {
-            contentType: mimeType,
-            cacheControl: '31536000, public',
-            upsert: true
-          });
-
-        if (!error && data) {
-          uploadedBucket = bucket;
-          uploadedPath = filePath;
-          break;
-        }
-      }
-
-      if (uploadedBucket && uploadedPath) {
-        const { data: pubData } = supabase.storage.from(uploadedBucket).getPublicUrl(uploadedPath);
-        publicUrl = pubData.publicUrl;
-        storageEngine = `supabase-${uploadedBucket}`;
-      } else if (safePrefix !== 'contacto') {
-        return res.status(500).json({ error: 'No se pudo subir la imagen a R2 ni a Supabase Storage' });
-      } else {
-        // Proxy URL
-        const protocol = req.headers['x-forwarded-proto'] || 'https';
-        const host = req.headers.host || 'ecomoving-app.vercel.app';
-        publicUrl = `${protocol}://${host}/api/render-image?contacto_id=${safeContactoId}&v=${timestamp}`;
-        storageEngine = 'api-proxy';
-      }
+      return res.status(500).json({ error: 'No se pudo subir la imagen a Cloudflare R2. Intenta nuevamente.' });
     }
 
     // 3. Guardar la URL pública en la tabla contactos
