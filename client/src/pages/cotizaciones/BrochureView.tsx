@@ -173,7 +173,7 @@ export default function BrochureView({
                     <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#2d4a22]/10 rounded-full -ml-40 -mb-40 blur-3xl"></div>
                     
                     <img 
-                        src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" 
+                        src="https://pub-87fc17275b644a46b4c63c1ef06d4966.r2.dev/logos/logos_1790139217794_s4nsj4.png" 
                         className="w-80 object-contain mb-12" 
                         alt="Ecomoving" 
                     />
@@ -215,7 +215,7 @@ export default function BrochureView({
                         >
                             <div className={`w-24 ${color.bg} flex flex-col py-12 items-center justify-between shrink-0`}>
                                 <div className="transform -rotate-90 w-48 h-12 flex items-center justify-center mt-32 origin-center">
-                                    <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" className="w-full filter brightness-0 invert opacity-60" alt="" />
+                                    <img src="https://pub-87fc17275b644a46b4c63c1ef06d4966.r2.dev/logos/logos_1790139217794_s4nsj4.png" className="w-full filter brightness-0 invert opacity-60" alt="" />
                                 </div>
                                 <div className="text-[10px] font-black text-white/40 tracking-[0.3em] rotate-90 pb-20 uppercase font-mono tracking-widest">Item {idx + 1}</div>
                             </div>
@@ -268,7 +268,7 @@ export default function BrochureView({
                     >
                         <div className="p-16 h-full flex flex-col">
                             <div className="flex items-center gap-6 mb-12 border-b-2 border-neutral-100 pb-6">
-                                <img src="https://xgdmyjzyejjmwdqkufhp.supabase.co/storage/v1/object/public/logo_ecomoving/Logo_horizontal.png" className="h-10" alt="" />
+                                <img src="https://pub-87fc17275b644a46b4c63c1ef06d4966.r2.dev/logos/logos_1790139217794_s4nsj4.png" className="h-10" alt="" />
                                 <div className="h-8 w-px bg-neutral-200"></div>
                                 <h3 className="text-2xl font-black uppercase tracking-[0.2em] text-[#2d4a22]">Galería de Proyectos</h3>
                             </div>
