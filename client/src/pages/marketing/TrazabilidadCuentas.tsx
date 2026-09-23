@@ -6,7 +6,7 @@ import {
   Mail, CheckCircle2, Eye, AlertCircle, Circle, 
   Search, RefreshCcw, Trash2, HelpCircle, 
   Wrench, Truck, Settings, Building2,
-  Plus, Pencil, ArrowLeft, Sparkles, Check, Lock
+  Plus, Pencil, ArrowLeft, Sparkles, Check, Lock, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -74,6 +74,28 @@ export default function TrazabilidadCuentas() {
   
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+  // Cuatrimestre visible en el Sentinel (0: Ene-Abr, 1: May-Ago, 2: Sep-Dic)
+  const [cuatriYear, setCuatriYear] = useState<number>(new Date().getFullYear());
+  const [cuatriIdx, setCuatriIdx] = useState<number>(Math.floor(new Date().getMonth() / 4));
+  const MESES_NOMBRE = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"];
+  const BLOQUES_SEMANA = [
+    { label: "S1", desde: 1, hasta: 7 },
+    { label: "S2", desde: 8, hasta: 14 },
+    { label: "S3", desde: 15, hasta: 21 },
+    { label: "S4", desde: 22, hasta: 31 },
+  ];
+  const mesesCuatrimestre = [0, 1, 2, 3].map(i => cuatriIdx * 4 + i);
+  const moverCuatrimestre = (delta: number) => {
+    let idx = cuatriIdx + delta;
+    let year = cuatriYear;
+    if (idx < 0) { idx = 2; year -= 1; }
+    if (idx > 2) { idx = 0; year += 1; }
+    setCuatriIdx(idx);
+    setCuatriYear(year);
+  };
+  const hoy = new Date();
+  const bloqueActual = Math.min(3, Math.floor((hoy.getDate() - 1) / 7));
 
   useEffect(() => {
     if (vendedores && vendedores.length > 0 && (vendedor === "Vendedor 1" || vendedor === "")) {
@@ -622,9 +644,8 @@ export default function TrazabilidadCuentas() {
       (c.empresa_rel_segmento || "").toLowerCase() === filtroSegmento.toLowerCase()
     );
 
-    const matchesSegmentoComercial = filtroSegmentoComercial === "todos" ? true : (
-      (c.segmento || 'A').toUpperCase() === filtroSegmentoComercial.toUpperCase()
-    );
+    // Segmentos A/B unificados: todas las cuentas activas reciben el mismo tratamiento
+    const matchesSegmentoComercial = true;
 
     return matchesSearch && matchesCriticos && matchesActivo && matchesEtapa && matchesSector && matchesEjecutivo && matchesSegmento && matchesSegmentoComercial;
   });
@@ -958,16 +979,28 @@ export default function TrazabilidadCuentas() {
           </SelectContent>
         </Select>
 
-        <Select onValueChange={(val) => setFiltroSegmentoComercial(val)} defaultValue="todos">
-          <SelectTrigger className="w-[185px] bg-gray-800 border-gray-700 text-[10px] font-black uppercase text-white h-[36px] rounded-xl">
-            <SelectValue placeholder="SEGMENTO" />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-900 border-gray-800 text-white">
-            <SelectItem value="todos">TODOS LOS SEGMENTOS</SelectItem>
-            <SelectItem value="A">⭐ SEGMENTO A (COTIZARON)</SelectItem>
-            <SelectItem value="B">🟢 SEGMENTO B (SIN COTIZAR)</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Navegación por cuatrimestre */}
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            type="button"
+            onClick={() => moverCuatrimestre(-1)}
+            className="h-[36px] w-[36px] flex items-center justify-center rounded-xl bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
+            title="Cuatrimestre anterior"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="h-[36px] px-4 flex items-center rounded-xl bg-gray-800 border border-gray-700 text-[10px] font-black uppercase text-white tracking-wider">
+            {MESES_NOMBRE[mesesCuatrimestre[0]]} – {MESES_NOMBRE[mesesCuatrimestre[3]]} {cuatriYear}
+          </div>
+          <button
+            type="button"
+            onClick={() => moverCuatrimestre(1)}
+            className="h-[36px] w-[36px] flex items-center justify-center rounded-xl bg-gray-800 border border-gray-700 text-gray-300 hover:bg-gray-700"
+            title="Cuatrimestre siguiente"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* The Matrix */}
@@ -979,9 +1012,14 @@ export default function TrazabilidadCuentas() {
                 <th className="px-4 py-4 w-[240px]">
                   CONTACTO
                 </th>
-                {["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"].map((mes, idx) => (
-                  <th key={mes} className="px-1 py-4 text-center border-l border-gray-800/50">
-                    <span className="text-[10px] font-black uppercase text-gray-400">{mes}</span>
+                {mesesCuatrimestre.map((mIdx) => (
+                  <th key={mIdx} colSpan={4} className="px-1 pt-3 pb-2 text-center border-l border-gray-800/50">
+                    <div className="text-[10px] font-black uppercase text-gray-300">{MESES_NOMBRE[mIdx]}</div>
+                    <div className="grid grid-cols-4 mt-1.5">
+                      {BLOQUES_SEMANA.map(b => (
+                        <span key={b.label} className="text-[8px] font-bold text-gray-600" title={`Días ${b.desde}–${b.hasta === 31 ? 'fin de mes' : b.hasta}`}>{b.label}</span>
+                      ))}
+                    </div>
                   </th>
                 ))}
                 <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[90px]">ESTADO SECUENCIA</th>
@@ -997,19 +1035,6 @@ export default function TrazabilidadCuentas() {
                         <div className="text-sm font-bold text-white uppercase truncate max-w-[150px]">
                           {c.nombre?.replace('Contacto Principal - ', '') || 'SIN NOMBRE'}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => toggleSegmento(c)}
-                          className={cn(
-                            "px-1.5 py-0.5 rounded text-[9px] font-black uppercase transition-all shadow-sm cursor-pointer shrink-0",
-                            (c.segmento || 'A') === 'B' 
-                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30" 
-                              : "bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 hover:bg-indigo-500/30"
-                          )}
-                          title="Cambiar Segmento (A: Cotizaron / B: Decisor sin cotizar)"
-                        >
-                          Seg. {c.segmento || 'A'}
-                        </button>
                       </div>
                       <div className="text-[10px] text-gray-400 truncate max-w-[180px] font-medium flex items-center gap-1">
                         <Building2 className="h-3 w-3 text-gray-500" />
@@ -1017,66 +1042,66 @@ export default function TrazabilidadCuentas() {
                       </div>
                     </div>
                   </td>
-                  {["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"].map((mes, idx) => {
-                    const mesIndexStr = String(idx + 1).padStart(2, '0');
-                    const historyForMonth = (c.historial || []).filter((h: any) => {
-                      if (!h.fecha) return false;
-                      const [yyyy, mm] = h.fecha.split("-");
-                      return mm === mesIndexStr && yyyy === String(selectedYear);
-                    });
-
-                    const isSent = historyForMonth.length > 0;
-                    const latest = historyForMonth.sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())[0];
-                    const statusObj = latest ? {
-                      status: latest.estado,
-                      fecha: latest.fecha,
-                      openCount: latest.open_count
-                    } : { status: 'none' };
-
-                    const currentRealMonth = new Date().getMonth();
-                    const allHistory = (c.historial || []).sort((a: any, b: any) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+                  {(() => {
+                    const allHistory = [...(c.historial || [])]
+                      .filter((h: any) => h.fecha)
+                      .sort((a: any, b: any) => String(b.fecha).localeCompare(String(a.fecha)));
                     const lastEmailEver = allHistory[0];
-                    let mostrarBanderin = false;
-                    let diasDesdeUltimo = 0;
-                    
-                    if (idx === currentRealMonth) {
-                      if (!lastEmailEver) {
-                        mostrarBanderin = true;
-                        diasDesdeUltimo = 30; // default for never sent
-                      } else {
-                        const dias = calcularDiasHabiles(lastEmailEver.fecha, new Date());
-                        if (dias >= 30) {
+                    return mesesCuatrimestre.flatMap((mIdx) => BLOQUES_SEMANA.map((bloque, bIdx) => {
+                      const mesStr = String(mIdx + 1).padStart(2, '0');
+                      const eventos = allHistory.filter((h: any) => {
+                        const [yyyy, mm, dd] = String(h.fecha).split("-");
+                        const dia = Number(dd);
+                        return yyyy === String(cuatriYear) && mm === mesStr && dia >= bloque.desde && dia <= bloque.hasta;
+                      });
+                      const isSent = eventos.length > 0;
+                      const abierto = eventos.some((h: any) => ['opened', 'unique_opened', 'clicks', 'click'].includes(String(h.estado || '').toLowerCase()));
+                      const latest = eventos[0];
+                      const diaEnvio = latest ? String(latest.fecha).split("-")[2] : "";
+
+                      const esBloqueActual = cuatriYear === hoy.getFullYear() && mIdx === hoy.getMonth() && bIdx === bloqueActual;
+                      let diasDesdeUltimo = 0;
+                      let mostrarBanderin = false;
+                      if (esBloqueActual && !isSent) {
+                        if (!lastEmailEver) {
                           mostrarBanderin = true;
-                          diasDesdeUltimo = dias;
+                        } else {
+                          diasDesdeUltimo = calcularDiasHabiles(lastEmailEver.fecha, hoy);
+                          mostrarBanderin = diasDesdeUltimo >= 5;
                         }
                       }
-                    }
 
-                    return (
-                      <td key={mes} className="px-2 py-4 text-center border-l border-gray-800/30 group-hover:border-gray-700/50 relative">
-                        {mostrarBanderin && (
-                          <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center animate-bounce">
-                            <div className="flex items-center gap-1 bg-red-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-lg shadow-red-500/40 animate-pulse">
-                              <AlertCircle className="h-2 w-2" />
-                              <span>{diasDesdeUltimo}D</span>
-                            </div>
-                            <div className="w-1 h-1 border-l-[4px] border-l-transparent border-t-[4px] border-t-red-600 border-r-[4px] border-r-transparent opacity-90" />
-                          </div>
-                        )}
-                        <div className={`flex flex-col items-center gap-1 cursor-pointer ${mostrarBanderin ? 'mt-4' : ''}`} onClick={() => abrirModalZoho(c, { cliente: c.empresa_rel_name || c.empresa })}>
-                          {isSent ? renderTemplateCell(statusObj) : <Circle className="h-4 w-4 text-gray-600" />}
-                          <span className="text-[8px] font-medium text-gray-600 mt-1 uppercase tracking-wider">
-                            {isSent ? translateStatus(latest.estado) : "Sin enviar"}
-                          </span>
-                          {isSent && latest.fecha && (
-                            <span className="text-[8px] font-bold text-gray-500/80 tracking-tight">
-                              Env: {new Date(latest.fecha).getDate().toString().padStart(2, '0')}/{mesIndexStr}
-                            </span>
+                      return (
+                        <td
+                          key={`${mIdx}-${bIdx}`}
+                          className={cn(
+                            "px-0.5 py-4 text-center relative",
+                            bIdx === 0 ? "border-l border-gray-800/50" : "",
+                            esBloqueActual ? "bg-indigo-500/10" : ""
                           )}
-                        </div>
-                      </td>
-                    );
-                  })}
+                        >
+                          <div
+                            className="flex flex-col items-center gap-0.5 cursor-pointer"
+                            onClick={() => abrirModalZoho(c, { cliente: c.empresa_rel_name || c.empresa })}
+                            title={isSent
+                              ? `${abierto ? 'Abierto' : translateStatus(latest.estado)} · ${diaEnvio}/${mesStr}`
+                              : `Sin enviar (${bloque.label}: días ${bloque.desde}–${bloque.hasta === 31 ? 'fin' : bloque.hasta})`}
+                          >
+                            {isSent ? (
+                              abierto
+                                ? <Eye className="h-4 w-4 text-amber-400" />
+                                : <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                            ) : (
+                              <Circle className={cn("h-4 w-4", mostrarBanderin ? "text-red-500" : "text-gray-700")} />
+                            )}
+                            <span className={cn("text-[8px] font-bold tracking-tight", mostrarBanderin ? "text-red-400" : "text-gray-500")}>
+                              {isSent ? `${diaEnvio}/${mesStr}` : (mostrarBanderin ? (lastEmailEver ? `${diasDesdeUltimo}D` : "NUEVO") : "\u00A0")}
+                            </span>
+                          </div>
+                        </td>
+                      );
+                    }));
+                  })()}
                   
                   <td className="px-2 py-5 text-center border-l border-gray-900/10">
                     <div className="flex flex-col justify-center items-center gap-1.5">
@@ -1279,24 +1304,6 @@ export default function TrazabilidadCuentas() {
                   <SelectContent className="bg-gray-900 border-gray-850 text-white">
                     <SelectItem value="prospeccion">Prospección</SelectItem>
                     <SelectItem value="marketing">Marketing</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-1">
-                <Label className="text-[10px] font-black text-gray-500 uppercase">Segmento Comercial (Mantención)</Label>
-                <Select 
-                  value={selectedContact?.segmento || "A"} 
-                  onValueChange={(val) => setSelectedContact({ ...selectedContact, segmento: val })}
-                >
-                  <SelectTrigger className="bg-gray-900 border-gray-800 text-white h-[36px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-gray-950 border border-gray-800 text-white">
-                    <SelectItem value="A">⭐ Segmento A (Cotizaron / Interés previo)</SelectItem>
-                    <SelectItem value="B">🟢 Segmento B (Decisor validado sin cotizar)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
