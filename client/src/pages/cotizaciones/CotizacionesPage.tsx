@@ -77,6 +77,7 @@ export default function CotizacionesPage() {
             estado_cotizacion,
             tiempo_entrega,
             validez_oferta,
+          forma_pago,
             fecha,
             id_mercado_publico,
             contacto_id,
