@@ -14,8 +14,8 @@ export interface UploadRenderResult {
  */
 export async function compressAndResizeImage(
   fileOrBlob: File | Blob,
-  maxWidth = 560,
-  quality = 0.80
+  maxWidth = 1600,
+  quality = 0.90
 ): Promise<{ blob: Blob; dataUrl: string; width: number; height: number; sizeKB: number }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -97,7 +97,7 @@ export async function uploadRenderImage(
   let compressedSizeKB = originalSizeKB;
 
   try {
-    const compressed = await compressAndResizeImage(file, 560, 0.80);
+    const compressed = await compressAndResizeImage(file, 1600, 0.90);
     uploadBlob = compressed.blob;
     compressedDataUrl = compressed.dataUrl;
     compressedSizeKB = compressed.sizeKB;
