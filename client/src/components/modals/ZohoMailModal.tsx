@@ -12,6 +12,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { uploadRenderImage } from "@/lib/storageUpload";
+import { fetchImageAsEmailDataUrl } from "@/utils/image";
 
 const DEFAULT_TEMPLATES_CLIENTES = [
   {
@@ -1025,9 +1026,17 @@ export function ZohoMailModal({
                         
                         if (imageUrl.trim()) {
                           let publicImgSrc = imageUrl.trim();
-                          // Solo se incrustan URLs públicas (Cloudflare R2); nunca base64 ni el proxy /api/render-image
-                          if (publicImgSrc.startsWith('data:') || publicImgSrc.includes('/api/render-image')) {
+                          // Nunca el proxy /api/render-image (dinámico, dependía de Supabase).
+                          if (publicImgSrc.includes('/api/render-image')) {
                             publicImgSrc = '';
+                          }
+                          // Se incrusta como base64: la imagen viaja dentro del propio correo en
+                          // vez de cargarse desde una URL externa (R2), lo que evita que filtros
+                          // antispam institucionales penalicen el hotlink a un dominio de terceros.
+                          // La descarga es un fetch directo a R2 (no pasa por Supabase).
+                          if (publicImgSrc) {
+                            const embedded = await fetchImageAsEmailDataUrl(publicImgSrc);
+                            publicImgSrc = embedded || '';
                           }
                           const imgTag = !publicImgSrc ? "" : `<div style="margin: 20px 0; text-align: center;"><img src="${publicImgSrc}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
                           
@@ -1466,9 +1475,15 @@ export function ZohoMailModal({
                             const renderImg = (imageUrlCliente || imageUrl)?.trim() || "";
                             if (renderImg) {
                               let publicImgSrc = renderImg;
-                              // Solo se incrustan URLs públicas (Cloudflare R2); nunca base64 ni el proxy /api/render-image
-                              if (publicImgSrc.startsWith('data:') || publicImgSrc.includes('/api/render-image')) {
+                              // Nunca el proxy /api/render-image (dinámico, dependía de Supabase).
+                              if (publicImgSrc.includes('/api/render-image')) {
                                 publicImgSrc = '';
+                              }
+                              // Se incrusta como base64 (fetch directo a R2, sin pasar por Supabase)
+                              // para que el correo no dependa de cargar una imagen externa.
+                              if (publicImgSrc) {
+                                const embedded = await fetchImageAsEmailDataUrl(publicImgSrc);
+                                publicImgSrc = embedded || '';
                               }
                               const imgTag = !publicImgSrc ? "" : `<div style="margin: 20px 0; text-align: center;"><img src="${publicImgSrc}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
                               
