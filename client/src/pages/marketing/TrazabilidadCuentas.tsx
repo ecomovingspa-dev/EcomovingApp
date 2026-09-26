@@ -284,7 +284,7 @@ export default function TrazabilidadCuentas() {
       .from("contactos")
       .select("*")
       .in("etapa", ["prospeccion", "marketing"])
-      .eq("estado", "activo")
+
       .not("correo", "is", null)
       .neq("correo", "")
       .order("nombre", { ascending: true });
