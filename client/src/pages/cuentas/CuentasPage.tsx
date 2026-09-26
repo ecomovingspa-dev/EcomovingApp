@@ -707,7 +707,7 @@ export default function CuentasPage() {
         <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
           {[
             { label: "Sector", val: filtroSector, set: setFiltroSector, opts: availableSectors },
-            { label: "Segmento", val: filtroSegmento, set: setFiltroSegmento, opts: availableSegments },
+            { label: "Segmento", val: filtroSegmento, set: setFiltroSegmento, opts: [{ value: "", label: "Segmento: Todos" }, ...availableSegments.map((s) => ({ value: s, label: s }))] },
             {
               label: "Vendedor",
               val: filtroVendedor,
