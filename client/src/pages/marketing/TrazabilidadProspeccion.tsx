@@ -282,14 +282,26 @@ export default function TrazabilidadProspeccion() {
     const currentCuentas = allCuentas;
 
     // 1.2 Obtener base de contactos (Prospección, Nutrición y Marketing - solo activos)
-    const { data: contactsData, error } = await supabase
-      .from("contactos")
-      .select("*")
-      .in("etapa", ["prospeccion", "marketing"])
-
-      .not("correo", "is", null)
-      .neq("correo", "")
-      .order("nombre", { ascending: true });
+    // La base entrega maximo 1000 filas por pedido: se piden en tandas hasta traer todos los contactos
+    const contactsData: any[] = [];
+    let error: any = null;
+    for (let desde = 0; ; desde += 1000) {
+      const { data: tanda, error: errorTanda } = await supabase
+        .from("contactos")
+        .select("*")
+        .in("etapa", ["prospeccion", "marketing"])
+        .not("correo", "is", null)
+        .neq("correo", "")
+        .order("nombre", { ascending: true })
+        .order("id", { ascending: true })
+        .range(desde, desde + 999);
+      if (errorTanda) {
+        error = errorTanda;
+        break;
+      }
+      contactsData.push(...(tanda || []));
+      if (!tanda || tanda.length < 1000) break;
+    }
 
     if (error) {
       toast.error("Error al cargar contactos");
@@ -297,7 +309,13 @@ export default function TrazabilidadProspeccion() {
       return;
     }
 
-    const validContacts = contactsData || [];
+    // Marketing solo trabaja cuentas Privadas o sin sector definido: se excluyen las cuentas Publicas
+    const cuentasPublicas = new Set(
+      currentCuentas
+        .filter((acc: any) => ["público", "publico"].includes((acc.sector || "").trim().toLowerCase()))
+        .map((acc: any) => acc.id)
+    );
+    const validContacts = (contactsData || []).filter((c: any) => !cuentasPublicas.has(c.cuenta_id));
 
     // Build accounts map
     const accountsMap: Record<string, { cliente: string; sector: string; segmento?: string; cuenta_foco?: boolean }> = {};
