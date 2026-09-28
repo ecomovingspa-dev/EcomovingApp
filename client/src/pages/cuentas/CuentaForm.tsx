@@ -4,6 +4,7 @@ import { supabase } from "../../lib/supabase";
 import type { Cuenta } from "../../types";
 
 import { useVendedores } from "../../hooks/useVendedores";
+import { CompletarCamposDialog, camposFaltantes, type CampoObligatorio } from "./CompletarCamposDialog";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,8 @@ export default function CuentaForm() {
 
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
+  // Campos que faltan para poder guardar una cuenta marcada como Foco o Activa
+  const [faltantesForm, setFaltantesForm] = useState<CampoObligatorio[]>([]);
   const { vendedores } = useVendedores();
   const [cuenta, setCuenta] = useState<Partial<Cuenta>>({
     cliente: "",
@@ -143,6 +146,15 @@ export default function CuentaForm() {
     if (!cuenta.cliente?.trim()) {
       setMensaje("⚠️ El nombre del cliente es obligatorio");
       return;
+    }
+
+    // Cuenta Foco / Cuenta Activa: Sector, Segmento y Ciudad son obligatorios
+    if (cuenta.cuenta_foco || (cuenta as any).cuenta_activa) {
+      const faltantes = camposFaltantes(cuenta);
+      if (faltantes.length > 0) {
+        setFaltantesForm(faltantes);
+        return;
+      }
     }
 
     setGuardando(true);
@@ -489,6 +501,19 @@ export default function CuentaForm() {
                 : "💾 Guardar"}
           </button>
         </div>
+        <CompletarCamposDialog
+          abierto={faltantesForm.length > 0}
+          faltantes={faltantesForm}
+          nombreCuenta={cuenta.cliente}
+          destino={cuenta.cuenta_foco ? "Cuenta Foco" : "Cuenta Activa"}
+          textoConfirmar="Completar"
+          onCancelar={() => setFaltantesForm([])}
+          onConfirmar={(valores) => {
+            setCuenta((prev) => ({ ...prev, ...valores }));
+            setFaltantesForm([]);
+            setMensaje("✅ Datos completados. Presiona Guardar para continuar.");
+          }}
+        />
       </form>
     </div>
   );
