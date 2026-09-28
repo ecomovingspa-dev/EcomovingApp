@@ -1024,7 +1024,7 @@ export default function TrazabilidadCuentas() {
       {/* The Matrix */}
       <div className="bg-gray-950 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left table-fixed">
+          <table className="w-full min-w-[1300px] text-left table-fixed">
             <thead>
               <tr className="bg-gray-900/80 border-b border-gray-800 text-[9px] font-black tracking-widest text-gray-500 uppercase">
                 <th className="px-4 py-4 w-[240px]">
@@ -1132,16 +1132,16 @@ export default function TrazabilidadCuentas() {
                                       </span>
                                     )}
                                   </div>
-                                  <span className={cn("text-[8px] tracking-tight", esCaliente ? "text-orange-300 font-bold" : "text-purple-300")}>Abierto</span>
-                                  <span className="text-gray-500 text-[8px]">Env: {fechaEnvio}</span>
-                                  <span className="text-gray-500 text-[8px]">1ª: {primeraApertura}</span>
-                                  <span className="text-gray-500 text-[8px]">Últ: {ultimaApertura}</span>
+                                  <span className={cn("text-[8px] tracking-tight whitespace-nowrap", esCaliente ? "text-orange-300 font-bold" : "text-purple-300")}>Abierto</span>
+                                  <span className="text-gray-500 text-[8px] whitespace-nowrap">Env: {fechaEnvio}</span>
+                                  <span className="text-gray-500 text-[8px] whitespace-nowrap">1ª: {primeraApertura}</span>
+                                  <span className="text-gray-500 text-[8px] whitespace-nowrap">Últ: {ultimaApertura}</span>
                                 </>
                               ) : (
                                 <>
                                   <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                                  <span className="text-[8px] tracking-tight text-emerald-300">Enviado</span>
-                                  <span className="text-gray-500 text-[8px]">Env: {fechaEnvio}</span>
+                                  <span className="text-[8px] tracking-tight whitespace-nowrap text-emerald-300">Enviado</span>
+                                  <span className="text-gray-500 text-[8px] whitespace-nowrap">Env: {fechaEnvio}</span>
                                 </>
                               )
                             ) : (
