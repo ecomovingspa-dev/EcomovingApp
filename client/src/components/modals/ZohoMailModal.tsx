@@ -175,7 +175,6 @@ const copiarCorreoAlPortapapeles = async (
   return { modo: "texto", imagenOk: false, hayImagen: r.hayImagen };
 };
 
-
 export function ZohoMailModal({
   isOpen,
   onOpenChange,
@@ -1131,82 +1130,11 @@ export function ZohoMailModal({
                           cleanBody = cleanBody.replace(signatureToSearchSimple, "").trim();
                         }
 
-                        let htmlBody = cleanBody.replace(/\n/g, "<br/>");
-                        
-                        if (imageUrl.trim()) {
-                          let publicImgSrc = imageUrl.trim();
-                          // Nunca el proxy /api/render-image (dinámico, dependía de Supabase).
-                          if (publicImgSrc.includes('/api/render-image')) {
-                            publicImgSrc = '';
-                          }
-                          // Se incrusta como base64: la imagen viaja dentro del propio correo en
-                          // vez de cargarse desde una URL externa (R2), lo que evita que filtros
-                          // antispam institucionales penalicen el hotlink a un dominio de terceros.
-                          // La descarga es un fetch directo a R2 (no pasa por Supabase).
-                          if (publicImgSrc) {
-                            const embedded = await fetchImageAsEmailDataUrl(publicImgSrc);
-                            publicImgSrc = embedded || '';
-                          }
-                          const imgTag = !publicImgSrc ? "" : `<div style="margin: 20px 0; text-align: center;"><img src="${publicImgSrc}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
-                          
-                          const imagePlaceholders = [
-                            /\{\s*imagen\s*\}/gi,
-                            /\{\s*imagen_url\s*\}/gi,
-                            /\{\s*render\s*\}/gi,
-                            /\(\s*imagen pegada en el cuerpo del correo\s*\)/gi
-                          ];
-
-                          let replaced = false;
-                          for (const regex of imagePlaceholders) {
-                            if (regex.test(htmlBody)) {
-                              htmlBody = htmlBody.replace(regex, imgTag);
-                              replaced = true;
-                            }
-                          }
-
-                          if (!replaced) {
-                            const paragraphs = htmlBody.split("<br/><br/>");
-                            if (paragraphs.length > 1) {
-                              paragraphs.splice(1, 0, imgTag);
-                              htmlBody = paragraphs.join("<br/><br/>");
-                            } else {
-                              htmlBody = htmlBody + "<br/><br/>" + imgTag;
-                            }
-                          }
-                        } else {
-                          htmlBody = htmlBody
-                            .replace(/{\s*imagen\s*}/gi, "")
-                            .replace(/{\s*imagen_url\s*}/gi, "")
-                            .replace(/{\s*render\s*}/gi, "")
-                            .replace(/\(\s*imagen pegada en el cuerpo del correo\s*\)/gi, "");
-                        }
-
-                        const pixelUrl = getSentinelTrackingPixelUrl(selectedContactoDraft?.id, selectedTemplateId || '');
-                        const pixelTag = `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:block; width:1px; min-width:1px; height:1px; min-height:1px; margin:0; padding:0; border:0; opacity:0.01;" />`;
-                        htmlBody = htmlBody + pixelTag;
-
-                        try {
-                          const typeHtml = "text/html";
-                          const typeText = "text/plain";
-                          const blobHtml = new Blob([htmlBody], { type: typeHtml });
-                          const plainTextForClip = cleanBody
-                            .replace(/{\s*imagen\s*}/gi, "")
-                            .replace(/{\s*imagen_url\s*}/gi, "")
-                            .replace(/{\s*render\s*}/gi, "")
-                            .replace(/\(\s*imagen pegada en el cuerpo del correo\s*\)/gi, "");
-                          const blobText = new Blob([plainTextForClip], { type: typeText });
-                          
-                          const data = [
-                            new ClipboardItem({
-                              [typeHtml]: blobHtml,
-                              [typeText]: blobText
-                            })
-                          ];
-                          await navigator.clipboard.write(data);
-                        } catch (clipErr) {
-                          console.warn("ClipboardItem API failed, falling back to writeText:", clipErr);
-                          await navigator.clipboard.writeText(cleanBody);
-                        }
+                        const renderImgProsp = imageUrl.trim();
+                        const pixelUrlProsp = getSentinelTrackingPixelUrl(selectedContactoDraft?.id, selectedTemplateId || '');
+                        // La copia se inicia de inmediato (dentro del clic) para que el navegador no la bloquee
+                        // mientras se descarga la imagen; el HTML con imagen y pixel se completa en paralelo.
+                        const resultadoCopiaProsp = await copiarCorreoAlPortapapeles(cleanBody, renderImgProsp, pixelUrlProsp);
 
                         const now = new Date();
                         const timestamp = now.getTime();
@@ -1242,7 +1170,15 @@ export function ZohoMailModal({
                         
                         onRefresh();
 
-                        toast.success("¡Cuerpo e imagen copiados! Puedes pegarlo en tu correo.");
+                        if (resultadoCopiaProsp.modo === "texto") {
+                          toast.warning("Se copió solo el texto: no se pudo copiar la imagen. Vuelve a presionar COPIAR CUERPO.");
+                        } else if (resultadoCopiaProsp.hayImagen && !resultadoCopiaProsp.imagenOk) {
+                          toast.warning("Cuerpo copiado. La imagen no se pudo incrustar y va como enlace; revisa que se vea al pegar.");
+                        } else if (!resultadoCopiaProsp.hayImagen && cleanBody.match(/\{\s*render\s*\}/i)) {
+                          toast.warning("Cuerpo copiado, pero este contacto no tiene render: sube uno con Reemplazar Render.");
+                        } else {
+                          toast.success("¡Cuerpo e imagen copiados! Puedes pegarlo en tu correo.");
+                        }
                       } catch (err: any) {
                         console.error("Error al copiar:", err);
                         toast.error("Error al copiar el cuerpo");
@@ -1583,6 +1519,8 @@ export function ZohoMailModal({
                             // La copia se inicia de inmediato (dentro del clic) para que el navegador no la bloquee
                             // mientras se descarga la imagen; el HTML con imagen y pixel se completa en paralelo.
                             const resultadoCopia = await copiarCorreoAlPortapapeles(cuerpo, renderImg, pixelUrl);
+                            
+
 
                             const now = new Date();
                             const timestamp = now.getTime();
