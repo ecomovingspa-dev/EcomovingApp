@@ -67,6 +67,115 @@ interface ZohoMailModalProps {
   defaultTab?: "prospeccion" | "clientes";
 }
 
+// ---------------------------------------------------------------------------
+// Copiado del correo (compartido por Prospección y Cuentas Activas)
+// ---------------------------------------------------------------------------
+const PLACEHOLDERS_IMAGEN = [
+  /\{\s*imagen\s*\}/gi,
+  /\{\s*imagen_url\s*\}/gi,
+  /\{\s*render\s*\}/gi,
+  /\(\s*imagen pegada en el cuerpo del correo\s*\)/gi,
+];
+
+const quitarPlaceholdersImagen = (texto: string) =>
+  PLACEHOLDERS_IMAGEN.reduce((t, re) => t.replace(re, ""), texto);
+
+// Arma el HTML final: texto + imagen en el lugar de {render} + pixel de seguimiento.
+// Si no se puede incrustar la imagen como base64, usa la URL pública en vez de perderla.
+const construirCorreoHtml = async (
+  cuerpo: string,
+  renderImg: string,
+  pixelUrl: string
+): Promise<{ html: string; imagenOk: boolean; hayImagen: boolean }> => {
+  let html = cuerpo.replace(/\n/g, "<br/>");
+  let imagenOk = true;
+  const hayImagen = !!renderImg && !renderImg.includes("/api/render-image");
+
+  if (hayImagen) {
+    let src = (await fetchImageAsEmailDataUrl(renderImg)) || "";
+    if (!src) {
+      src = renderImg;
+      imagenOk = false;
+    }
+    const imgTag = `<div style="margin: 20px 0; text-align: center;"><img src="${{src}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
+    let reemplazado = false;
+    for (const re of PLACEHOLDERS_IMAGEN) {
+      const nuevo = html.replace(re, () => imgTag);
+      if (nuevo !== html) {
+        html = nuevo;
+        reemplazado = true;
+      }
+    }
+    if (!reemplazado) {
+      const parrafos = html.split("<br/><br/>");
+      if (parrafos.length > 1) {
+        parrafos.splice(1, 0, imgTag);
+        html = parrafos.join("<br/><br/>");
+      } else {
+        html = html + "<br/><br/>" + imgTag;
+      }
+    }
+  } else {
+    html = quitarPlaceholdersImagen(html);
+  }
+
+  if (pixelUrl) {
+    html += `<img src="${{pixelUrl}" width="1" height="1" alt="" style="display:block; width:1px; min-width:1px; height:1px; min-height:1px; margin:0; padding:0; border:0; opacity:0.01;" />`;
+  }
+  return { html, imagenOk, hayImagen };
+};
+
+// Copia el correo como HTML enriquecido. La copia se inicia de inmediato (con el HTML
+// "prometido") para no perder el permiso del clic mientras se descarga la imagen.
+// Si el navegador la rechaza, se reintenta con el método clásico (que también copia la imagen).
+const copiarCorreoAlPortapapeles = async (
+  cuerpo: string,
+  renderImg: string,
+  pixelUrl: string
+): Promise<{ modo: "html" | "clasico" | "texto"; imagenOk: boolean; hayImagen: boolean }> => {
+  const texto = quitarPlaceholdersImagen(cuerpo);
+  const armado = construirCorreoHtml(cuerpo, renderImg, pixelUrl);
+  armado.catch(() => {});
+
+  try {
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "text/html": armado.then((r) => new Blob([r.html], { type: "text/html" })),
+        "text/plain": new Blob([texto], { type: "text/plain" }),
+      }),
+    ]);
+    const r = await armado;
+    return { modo: "html", imagenOk: r.imagenOk, hayImagen: r.hayImagen };
+  } catch (err) {
+    console.warn("Portapapeles moderno falló, probando método clásico:", err);
+  }
+
+  const r = await armado;
+  try {
+    const cont = document.createElement("div");
+    cont.contentEditable = "true";
+    cont.style.cssText = "position:fixed;left:-99999px;top:0;opacity:0;";
+    cont.innerHTML = r.html;
+    document.body.appendChild(cont);
+    const rango = document.createRange();
+    rango.selectNodeContents(cont);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(rango);
+    const ok = document.execCommand("copy");
+    sel?.removeAllRanges();
+    document.body.removeChild(cont);
+    if (ok) return { modo: "clasico", imagenOk: r.imagenOk, hayImagen: r.hayImagen };
+  } catch (err) {
+    console.warn("Copiado clásico falló:", err);
+  }
+
+  // Último recurso: solo texto (sin {render} literal).
+  await navigator.clipboard.writeText(texto);
+  return { modo: "texto", imagenOk: false, hayImagen: r.hayImagen };
+};
+
+
 export function ZohoMailModal({
   isOpen,
   onOpenChange,
@@ -1469,82 +1578,11 @@ export function ZohoMailModal({
                           }
 
                           try {
-                            let cleanBody = cuerpo;
-                            let htmlBody = cleanBody.replace(/\n/g, "<br/>");
-                            
                             const renderImg = (imageUrlCliente || imageUrl)?.trim() || "";
-                            if (renderImg) {
-                              let publicImgSrc = renderImg;
-                              // Nunca el proxy /api/render-image (dinámico, dependía de Supabase).
-                              if (publicImgSrc.includes('/api/render-image')) {
-                                publicImgSrc = '';
-                              }
-                              // Se incrusta como base64 (fetch directo a R2, sin pasar por Supabase)
-                              // para que el correo no dependa de cargar una imagen externa.
-                              if (publicImgSrc) {
-                                const embedded = await fetchImageAsEmailDataUrl(publicImgSrc);
-                                publicImgSrc = embedded || '';
-                              }
-                              const imgTag = !publicImgSrc ? "" : `<div style="margin: 20px 0; text-align: center;"><img src="${publicImgSrc}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
-                              
-                              const imagePlaceholders = [
-                                /\{\s*imagen\s*\}/gi,
-                                /\{\s*imagen_url\s*\}/gi,
-                                /\{\s*render\s*\}/gi,
-                                /\(\s*imagen pegada en el cuerpo del correo\s*\)/gi
-                              ];
-
-                              let replaced = false;
-                              for (const regex of imagePlaceholders) {
-                                if (regex.test(htmlBody)) {
-                                  htmlBody = htmlBody.replace(regex, imgTag);
-                                  replaced = true;
-                                }
-                              }
-
-                              if (!replaced) {
-                                const paragraphs = htmlBody.split("<br/><br/>");
-                                if (paragraphs.length > 1) {
-                                  paragraphs.splice(1, 0, imgTag);
-                                  htmlBody = paragraphs.join("<br/><br/>");
-                                } else {
-                                  htmlBody = htmlBody + "<br/><br/>" + imgTag;
-                                }
-                              }
-                            } else {
-                              htmlBody = htmlBody
-                                .replace(/{\s*imagen\s*}/gi, "")
-                                .replace(/{\s*imagen_url\s*}/gi, "")
-                                .replace(/{\s*render\s*}/gi, "")
-                                .replace(/\(\s*imagen pegada en el cuerpo del correo\s*\)/gi, "");
-                            }
-
                             const pixelUrl = getSentinelTrackingPixelUrl(selectedContactoDraft?.id, selectedTemplateId || '');
-                            const pixelTag = `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:block; width:1px; min-width:1px; height:1px; min-height:1px; margin:0; padding:0; border:0; opacity:0.01;" />`;
-                            htmlBody = htmlBody + pixelTag;
-
-                            try {
-                              const typeHtml = "text/html";
-                              const typeText = "text/plain";
-                              const blobHtml = new Blob([htmlBody], { type: typeHtml });
-                              const plainTextForClip = cleanBody
-                                .replace(/{\s*imagen\s*}/gi, "")
-                                .replace(/{\s*imagen_url\s*}/gi, "")
-                                .replace(/{\s*render\s*}/gi, "")
-                                .replace(/\(\s*imagen pegada en el cuerpo del correo\s*\)/gi, "");
-                              const blobText = new Blob([plainTextForClip], { type: typeText });
-                              
-                              const data = [
-                                new ClipboardItem({
-                                  [typeHtml]: blobHtml,
-                                  [typeText]: blobText
-                                })
-                              ];
-                              await navigator.clipboard.write(data);
-                            } catch (clipErr) {
-                              console.warn("ClipboardItem API failed, falling back to writeText:", clipErr);
-                              await navigator.clipboard.writeText(cleanBody);
-                            }
+                            // La copia se inicia de inmediato (dentro del clic) para que el navegador no la bloquee
+                            // mientras se descarga la imagen; el HTML con imagen y pixel se completa en paralelo.
+                            const resultadoCopia = await copiarCorreoAlPortapapeles(cuerpo, renderImg, pixelUrl);
 
                             const now = new Date();
                             const timestamp = now.getTime();
@@ -1572,7 +1610,15 @@ export function ZohoMailModal({
                             }
 
                             onRefresh();
-                            toast.success("¡Cuerpo e imagen copiados con pixel de seguimiento!");
+                            if (resultadoCopia.modo === "texto") {
+                              toast.warning("Se copió solo el texto: no se pudo copiar la imagen. Vuelve a presionar COPIAR CUERPO.");
+                            } else if (resultadoCopia.hayImagen && !resultadoCopia.imagenOk) {
+                              toast.warning("Cuerpo copiado. La imagen no se pudo incrustar y va como enlace; revisa que se vea al pegar.");
+                            } else if (!resultadoCopia.hayImagen && cuerpo.match(/\{\s*render\s*\}/i)) {
+                              toast.warning("Cuerpo copiado, pero este contacto no tiene render: sube uno con Reemplazar Render.");
+                            } else {
+                              toast.success("¡Cuerpo e imagen copiados con pixel de seguimiento!");
+                            }
                           } catch (err: any) {
                             console.error("Error al copiar:", err);
                             toast.error("Error al copiar el cuerpo");
