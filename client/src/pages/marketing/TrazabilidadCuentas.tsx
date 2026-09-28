@@ -1076,6 +1076,22 @@ export default function TrazabilidadCuentas() {
                       const abierto = eventos.some((h: any) => ['opened', 'unique_opened', 'clicks', 'click'].includes(String(h.estado || '').toLowerCase()));
                       const latest = eventos[0];
                       const diaEnvio = latest ? String(latest.fecha).split("-")[2] : "";
+                        // Mismo detalle que la matriz de Prospección: fecha de envío, cantidad de aperturas, primera y última apertura
+                        const ESTADOS_APERTURA = ['opened', 'unique_opened', 'clicks', 'click'];
+                        const aperturas = eventos
+                          .filter((h: any) => ESTADOS_APERTURA.includes(String(h.estado || '').toLowerCase()))
+                          .sort((a: any, b: any) => String(a.fecha).localeCompare(String(b.fecha)) || String(a.created_at || '').localeCompare(String(b.created_at || '')));
+                        const cantAperturas = aperturas.length;
+                        const esCaliente = cantAperturas >= 3;
+                        const fmtCorto = (f: any) => {
+                          if (!f) return "";
+                          const [, mm, dd] = String(f).split("T")[0].split("-");
+                          return `${dd}/${mm}`;
+                        };
+                        const eventosEnvio = eventos.filter((h: any) => !ESTADOS_APERTURA.includes(String(h.estado || '').toLowerCase()));
+                        const fechaEnvio = fmtCorto((eventosEnvio.length > 0 ? eventosEnvio[eventosEnvio.length - 1] : eventos[eventos.length - 1])?.fecha);
+                        const primeraApertura = fmtCorto(aperturas[0]?.fecha);
+                        const ultimaApertura = fmtCorto(aperturas[aperturas.length - 1]?.fecha);
 
                       const esBloqueActual = cuatriYear === hoy.getFullYear() && mIdx === hoy.getMonth() && bIdx === bloqueActual;
                       let diasDesdeUltimo = 0;
@@ -1102,19 +1118,40 @@ export default function TrazabilidadCuentas() {
                             className="flex flex-col items-center gap-0.5 cursor-pointer"
                             onClick={() => abrirModalZoho(c, { cliente: c.empresa_rel_name || c.empresa })}
                             title={isSent
-                              ? `${abierto ? 'Abierto' : translateStatus(latest.estado)} · ${diaEnvio}/${mesStr}`
+                              ? `${abierto ? 'Abierto' : translateStatus(latest.estado)} · Env: ${fechaEnvio}${abierto ? ` · Aperturas: ${cantAperturas} · 1ª: ${primeraApertura} · Últ: ${ultimaApertura}` : ''}`
                               : `Sin enviar (${bloque.label}: días ${bloque.desde}–${bloque.hasta === 31 ? 'fin' : bloque.hasta})`}
                           >
                             {isSent ? (
-                              abierto
-                                ? <Eye className="h-4 w-4 text-amber-400" />
-                                : <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                              abierto ? (
+                                <>
+                                  <div className="relative">
+                                    <Eye className={cn("h-4 w-4", esCaliente ? "text-orange-400" : "text-purple-400")} />
+                                    {cantAperturas > 1 && (
+                                      <span className={cn("absolute -top-1.5 -right-3 text-[8px] font-black px-1 rounded-full text-white", esCaliente ? "bg-orange-500" : "bg-purple-500")}>
+                                        ×{cantAperturas}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className={cn("text-[8px] tracking-tight", esCaliente ? "text-orange-300 font-bold" : "text-purple-300")}>Abierto</span>
+                                  <span className="text-gray-500 text-[8px]">Env: {fechaEnvio}</span>
+                                  <span className="text-gray-500 text-[8px]">1ª: {primeraApertura}</span>
+                                  <span className="text-gray-500 text-[8px]">Últ: {ultimaApertura}</span>
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                                  <span className="text-[8px] tracking-tight text-emerald-300">Enviado</span>
+                                  <span className="text-gray-500 text-[8px]">Env: {fechaEnvio}</span>
+                                </>
+                              )
                             ) : (
-                              <Circle className={cn("h-4 w-4", mostrarBanderin ? "text-red-500" : "text-gray-700")} />
+                              <>
+                                <Circle className={cn("h-4 w-4", mostrarBanderin ? "text-red-500" : "text-gray-700")} />
+                                <span className={cn("text-[8px] font-bold tracking-tight", mostrarBanderin ? "text-red-400" : "text-gray-500")}>
+                                  {mostrarBanderin ? (lastEmailEver ? `${diasDesdeUltimo}D` : "NUEVO") : "\u00A0"}
+                                </span>
+                              </>
                             )}
-                            <span className={cn("text-[8px] font-bold tracking-tight", mostrarBanderin ? "text-red-400" : "text-gray-500")}>
-                              {isSent ? `${diaEnvio}/${mesStr}` : (mostrarBanderin ? (lastEmailEver ? `${diasDesdeUltimo}D` : "NUEVO") : "\u00A0")}
-                            </span>
                           </div>
                         </td>
                       );
