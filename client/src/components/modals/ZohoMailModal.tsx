@@ -97,7 +97,7 @@ const construirCorreoHtml = async (
       src = renderImg;
       imagenOk = false;
     }
-    const imgTag = `<div style="margin: 20px 0; text-align: center;"><img src="${{src}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
+    const imgTag = `<div style="margin: 20px 0; text-align: center;"><img src="${src}" alt="Render Ecomoving" width="560" style="width: 100%; max-width: 560px; height: auto; border-radius: 12px; border: 1px solid #e2e8f0; display: block; margin: 0 auto;" /></div>`;
     let reemplazado = false;
     for (const re of PLACEHOLDERS_IMAGEN) {
       const nuevo = html.replace(re, () => imgTag);
@@ -120,7 +120,7 @@ const construirCorreoHtml = async (
   }
 
   if (pixelUrl) {
-    html += `<img src="${{pixelUrl}" width="1" height="1" alt="" style="display:block; width:1px; min-width:1px; height:1px; min-height:1px; margin:0; padding:0; border:0; opacity:0.01;" />`;
+    html += `<img src="${pixelUrl}" width="1" height="1" alt="" style="display:block; width:1px; min-width:1px; height:1px; min-height:1px; margin:0; padding:0; border:0; opacity:0.01;" />`;
   }
   return { html, imagenOk, hayImagen };
 };
