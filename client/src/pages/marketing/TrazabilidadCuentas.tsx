@@ -1024,10 +1024,10 @@ export default function TrazabilidadCuentas() {
       {/* The Matrix */}
       <div className="bg-gray-950 rounded-2xl border border-gray-800 shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1300px] text-left table-fixed">
+          <table className="w-full min-w-[1150px] text-left table-fixed">
             <thead>
               <tr className="bg-gray-900/80 border-b border-gray-800 text-[9px] font-black tracking-widest text-gray-500 uppercase">
-                <th className="px-4 py-4 w-[240px]">
+                <th className="px-4 py-4 w-[200px]">
                   CONTACTO
                 </th>
                 {mesesCuatrimestre.map((mIdx) => (
@@ -1040,8 +1040,8 @@ export default function TrazabilidadCuentas() {
                     </div>
                   </th>
                 ))}
-                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[90px]">ESTADO SECUENCIA</th>
-                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[90px]">ACCIONES</th>
+                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[100px]">ESTADO SECUENCIA</th>
+                <th className="px-2 py-4 text-center border-l border-gray-800/50 w-[130px]">ACCIONES</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-900">
