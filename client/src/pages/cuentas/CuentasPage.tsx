@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useVendedores } from "../../hooks/useVendedores";
+import { CompletarCamposDialog, camposFaltantes, type CampoObligatorio } from "./CompletarCamposDialog";
 import { ZohoMailModal } from "@/components/modals/ZohoMailModal";
 import { PautaProspeccionModal } from "@/components/modals/PautaProspeccionModal";
 import { SEGMENTOS_MAESTROS } from "../../utils/constants";
@@ -38,6 +39,8 @@ export default function CuentasPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
   const [guardandoId, setGuardandoId] = useState<string | null>(null);
+  // Ventana que pide Sector / Segmento / Ciudad cuando faltan para pasar a Cuenta Foco o Cuenta Activa
+  const [pendienteCompletar, setPendienteCompletar] = useState<{ id: string; campo: "cuenta_foco" | "cuenta_activa"; valor: boolean; faltantes: CampoObligatorio[]; nombre: string } | null>(null);
   const [enriqueciendoId, setEnriqueciendoId] = useState<string | null>(null);
   const [buscandoSimilaresId, setBuscandoSimilaresId] = useState<string | null>(null);
   const [cuentaIdActiva, setCuentaIdActiva] = useState<string | null>(null);
@@ -388,13 +391,22 @@ export default function CuentasPage() {
   };
 
 
-  const actualizarCuentaInline = async (id: string, campo: keyof Cuenta, valor: any) => {
+  const actualizarCuentaInline = async (id: string, campo: keyof Cuenta, valor: any, extra?: Partial<Record<CampoObligatorio, string>>) => {
     const cuentaOriginal = cuentas.find(c => c.id === id);
-    if (cuentaOriginal && cuentaOriginal[campo] === valor) return;
+    if (cuentaOriginal && cuentaOriginal[campo] === valor && !extra) return;
+
+    // Para pasar a Cuenta Foco o Cuenta Activa: Sector, Segmento y Ciudad son obligatorios
+    if ((campo === "cuenta_foco" || campo === "cuenta_activa") && valor === true) {
+      const faltantes = camposFaltantes({ ...(cuentaOriginal || {}), ...(extra || {}) });
+      if (faltantes.length > 0) {
+        setPendienteCompletar({ id, campo, valor, faltantes, nombre: cuentaOriginal?.cliente || "" });
+        return;
+      }
+    }
 
     setGuardandoId(id);
     try {
-      const updatePayload: any = { [campo]: valor };
+      const updatePayload: any = { [campo]: valor, ...(extra || {}) };
       
       // Mutuamente excluyentes: si se marca Foco, se desmarca Activa y viceversa
       if (campo === "cuenta_foco" && valor === true) {
@@ -1318,6 +1330,21 @@ export default function CuentasPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* VENTANA: COMPLETAR CAMPOS OBLIGATORIOS PARA FOCO / ACTIVA */}
+      <CompletarCamposDialog
+        abierto={!!pendienteCompletar}
+        faltantes={pendienteCompletar?.faltantes || []}
+        nombreCuenta={pendienteCompletar?.nombre}
+        destino={pendienteCompletar?.campo === "cuenta_activa" ? "Cuenta Activa" : "Cuenta Foco"}
+        onCancelar={() => setPendienteCompletar(null)}
+        onConfirmar={async (valores) => {
+          const p = pendienteCompletar;
+          if (!p) return;
+          setPendienteCompletar(null);
+          await actualizarCuentaInline(p.id, p.campo, p.valor, valores);
+        }}
+      />
 
       {/* MODAL DE REDACCION ZOHO */}
       <ZohoMailModal
