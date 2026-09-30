@@ -189,7 +189,7 @@ export const BotonExportarPDF: React.FC<BotonExportarPDFProps> = ({
       const toDataUrl = async (src: string): Promise<string | null> => {
         if (!src || src.startsWith("data:")) return src || null;
         try {
-          const blob = await fetch(src, { mode: "cors" }).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.blob(); });
+          const blob = await fetch(src, { mode: "cors", cache: "reload" }).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.blob(); });
           return await new Promise<string>((resolve, reject) => {
             const fr = new FileReader();
             fr.onloadend = () => resolve(fr.result as string);
