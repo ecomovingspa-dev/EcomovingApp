@@ -352,15 +352,14 @@ export default function TrazabilidadCuentas() {
       let allHistory: any[] = [];
       let from = 0;
       const limit = 1000;
-      const startDate = days[0]?.date || '2026-03-01';
-      const endDate = days[days.length - 1]?.date || '2026-12-31';
+      // Se trae TODO el historial existente (sin filtrar por fechas), para poder revisar meses anteriores
       
       while (true) {
         const { data, error: hError } = await supabase
           .from("trazabilidad_correos")
           .select("*")
-          .gte("fecha", startDate)
-          .lte("fecha", endDate)
+          .order("fecha", { ascending: true })
+          .order("id", { ascending: true })
           .range(from, from + limit - 1);
 
         if (hError) {
