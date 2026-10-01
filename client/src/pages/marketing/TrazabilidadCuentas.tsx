@@ -24,7 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ZohoMailModal } from "@/components/modals/ZohoMailModal";
-import { HistorialContactoDialog, ESTADO_APERTURA_IGNORADA } from "@/components/modals/HistorialContactoDialog";
+import { HistorialContactoDialog, aperturasValidas } from "@/components/modals/HistorialContactoDialog";
 
 // March 2026 Working Days (Calculated dynamically below)
 interface CalendarDay {
@@ -380,14 +380,14 @@ export default function TrazabilidadCuentas() {
     }
 
     // 3. Vincular historial a contactos
-    // historialCompleto incluye las aperturas ignoradas (para mostrarlas en el Historial);
-    // historial solo trae lo que cuenta para el semáforo.
+    // historialCompleto trae todo lo registrado; historial solo lo que cuenta: se quitan las
+    // aperturas dentro de los 5 minutos siguientes a un envío (descartadas) y las ignoradas.
     const merged = (contactsData || []).map(c => {
       const todo = historyData.filter(h => h.email === c.correo || h.contacto_id === c.id);
       return {
         ...c,
         historialCompleto: todo,
-        historial: todo.filter(h => String(h.estado || '').toLowerCase() !== ESTADO_APERTURA_IGNORADA)
+        historial: aperturasValidas(todo)
       };
     });
 
@@ -1227,7 +1227,6 @@ export default function TrazabilidadCuentas() {
         open={!!historialContactoId}
         onOpenChange={(abierto) => { if (!abierto) setHistorialContactoId(null); }}
         contacto={contactos.find((x: any) => x.id === historialContactoId) || null}
-        onCambio={async () => { await fetchContactos(calendarDays); }}
       />
 
       {/* MODAL DE EDICIÓN Y GESTIÓN DE CONTACTO */}

@@ -25,7 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ESTADOS_CUENTA } from "../../utils/constants";
 import { ZohoMailModal } from "@/components/modals/ZohoMailModal";
-import { HistorialContactoDialog, ESTADO_APERTURA_IGNORADA } from "@/components/modals/HistorialContactoDialog";
+import { HistorialContactoDialog, aperturasValidas, ESTADOS_APERTURA, ESTADO_APERTURA_IGNORADA } from "@/components/modals/HistorialContactoDialog";
 
 // March 2026 Working Days (Calculated dynamically below)
 interface CalendarDay {
@@ -369,14 +369,14 @@ export default function TrazabilidadProspeccion() {
     }
 
     // 3. Vincular historial a contactos
-    // historialCompleto incluye las aperturas ignoradas (para mostrarlas en el Historial);
-    // historial solo trae lo que cuenta para el semáforo.
+    // historialCompleto trae todo lo registrado; historial solo lo que cuenta: se quitan las
+    // aperturas dentro de los 5 minutos siguientes a un envío (descartadas) y las ignoradas.
     const merged = (contactsData || []).map(c => {
       const todo = historyData.filter(h => h.email === c.correo || h.contacto_id === c.id);
       return {
         ...c,
         historialCompleto: todo,
-        historial: todo.filter(h => String(h.estado || '').toLowerCase() !== ESTADO_APERTURA_IGNORADA)
+        historial: aperturasValidas(todo)
       };
     });
 
@@ -794,8 +794,8 @@ export default function TrazabilidadProspeccion() {
       if (fallbackOpen) allOpenEvents.push(fallbackOpen);
 
       // Si el contacto ya fue marcado con apertura en la base de datos y es el último template enviado
-      const tieneFilasApertura = (contacto.historial || []).some((h: any) =>
-        ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(h.estado?.toLowerCase()));
+      const tieneFilasApertura = (contacto.historialCompleto || contacto.historial || []).some((h: any) =>
+        [...ESTADOS_APERTURA, ESTADO_APERTURA_IGNORADA].includes(String(h.estado || '').toLowerCase()));
       // Respaldo solo para contactos antiguos sin ninguna fila de apertura en el historial
       if (allOpenEvents.length === 0 && !tieneFilasApertura && contacto.ultimo_estado_brevo === 'opened') {
         const isLatestSent = !nextTemplate || !manualSends[nextTemplate.id]?.sentEvent;
@@ -1079,7 +1079,6 @@ export default function TrazabilidadProspeccion() {
         open={!!historialContactoId}
         onOpenChange={(abierto) => { if (!abierto) setHistorialContactoId(null); }}
         contacto={contactos.find((x: any) => x.id === historialContactoId) || null}
-        onCambio={async () => { await fetchContactos(); }}
       />
 
       {/* MODAL DE EDICIÓN Y GESTIÓN DE CONTACTO */}
