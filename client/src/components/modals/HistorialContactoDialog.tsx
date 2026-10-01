@@ -1,26 +1,46 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { toast } from "sonner";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
 } from "@/components/ui/dialog";
-import { Send, Eye, EyeOff, AlertTriangle, Undo2, Loader2 } from "lucide-react";
+import { Send, Eye } from "lucide-react";
 
-// Estados de la tabla trazabilidad_correos que cuentan como "apertura real"
+// Estados de la tabla trazabilidad_correos que cuentan como "apertura"
 export const ESTADOS_APERTURA = ["opened", "unique_opened", "clicks", "click", "loadedbyproxy"];
-// Estado que se le pone a una apertura que el usuario decidió ignorar (no cuenta como lectura)
+// Aperturas que se marcaron como ignoradas en una versión anterior: no se cuentan ni se muestran
 export const ESTADO_APERTURA_IGNORADA = "opened_ignored";
 
-// Margen para tolerar que el reloj del envío quede unos segundos después de la apertura
-const TOLERANCIA_MS = 2 * 60 * 1000;
+// Regla de negocio: una apertura que llega dentro de los 5 minutos siguientes al envío
+// (momento en que se copia el correo) se descarta y no cuenta como lectura.
+// Todo lo que llega después se considera lectura.
+export const VENTANA_DESCARTE_MS = 5 * 60 * 1000;
+
+const esApertura = (h: any) => ESTADOS_APERTURA.includes(String(h?.estado || "").toLowerCase());
+const momento = (h: any) => new Date(h.created_at || h.fecha).getTime();
+
+/**
+ * Devuelve el historial que cuenta: quita las aperturas ignoradas y las que llegaron
+ * dentro de los 5 minutos siguientes a un envío. Los envíos se mantienen siempre.
+ */
+export function aperturasValidas(eventos: any[]): any[] {
+  const lista = eventos || [];
+  const envios = lista
+    .filter((h) => !esApertura(h) && String(h?.estado || "").toLowerCase() !== ESTADO_APERTURA_IGNORADA)
+    .map(momento);
+  return lista.filter((h) => {
+    const estado = String(h?.estado || "").toLowerCase();
+    if (estado === ESTADO_APERTURA_IGNORADA) return false;
+    if (!esApertura(h)) return true;
+    const t = momento(h);
+    return !envios.some((s) => t >= s && t - s < VENTANA_DESCARTE_MS);
+  });
+}
 
 interface Entrada {
   id: string;
   tipo: "envio" | "apertura";
   ts: number;
   plantilla: string;
-  ignorada: boolean;
-  dudosa: boolean;
   envioAsociado?: string;
   imagenUrl?: string;
 }
@@ -73,12 +93,10 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   contacto: any | null;
-  onCambio: () => Promise<void> | void;
 }
 
-export function HistorialContactoDialog({ open, onOpenChange, contacto, onCambio }: Props) {
+export function HistorialContactoDialog({ open, onOpenChange, contacto }: Props) {
   const [nombres, setNombres] = useState<Record<string, string>>({});
-  const [procesando, setProcesando] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) cargarNombresPlantillas().then(setNombres);
@@ -86,87 +104,51 @@ export function HistorialContactoDialog({ open, onOpenChange, contacto, onCambio
 
   const entradas: Entrada[] = useMemo(() => {
     if (!contacto) return [];
-    const eventos: any[] = contacto.historialCompleto || contacto.historial || [];
+    // contacto.historial ya viene sin las aperturas descartadas (ver aperturasValidas)
+    const eventos: any[] = contacto.historial || [];
 
     const base = eventos.map((h: any) => {
-      const estado = String(h.estado || "").toLowerCase();
-      const ts = new Date(h.created_at || h.fecha).getTime();
+      const apertura = esApertura(h);
+      const ts = momento(h);
       const partes = String(h.mensaje_id || "").split(":");
-      const esApertura = ESTADOS_APERTURA.includes(estado) || estado === ESTADO_APERTURA_IGNORADA;
 
       let plantilla = "";
-      if (esApertura) {
+      if (apertura) {
         // manual_open:<contacto>:<plantilla>:<hora>  (sin plantilla: manual_open:<contacto>:<hora>)
         plantilla = partes.length >= 4 ? nombrePlantilla(partes[2], nombres) : "";
       } else if ((h.mensaje_id || "").startsWith("manual_send:")) {
         plantilla = nombrePlantilla(partes[1], nombres);
-      } else if ((h.mensaje_id || "").startsWith("manual_template:") || (h.mensaje_id || "").startsWith("manual_templ")) {
+      } else if ((h.mensaje_id || "").startsWith("manual_templ")) {
         plantilla = "Plantilla de cortesía";
       } else {
         plantilla = "Registro antiguo";
       }
       return {
         id: h.id as string,
-        tipo: (esApertura ? "apertura" : "envio") as "envio" | "apertura",
+        tipo: (apertura ? "apertura" : "envio") as "envio" | "apertura",
         ts,
         plantilla,
-        ignorada: estado === ESTADO_APERTURA_IGNORADA,
-        dudosa: false,
         envioAsociado: undefined as string | undefined,
-        imagenUrl: !esApertura && h.imagen_url ? String(h.imagen_url) : undefined,
+        imagenUrl: !apertura && h.imagen_url ? String(h.imagen_url) : undefined,
       };
     });
 
     const envios = base.filter((e) => e.tipo === "envio").sort((a, b) => a.ts - b.ts);
-
     base.forEach((e) => {
       if (e.tipo !== "apertura") return;
       let previo: typeof envios[number] | undefined;
       for (const s of envios) {
-        if (s.ts <= e.ts + TOLERANCIA_MS) previo = s;
+        if (s.ts <= e.ts) previo = s;
         else break;
       }
-      if (previo) {
-        e.envioAsociado = previo.plantilla;
-      } else {
-        e.dudosa = true;
-      }
+      if (previo) e.envioAsociado = previo.plantilla;
     });
 
     return base.sort((a, b) => b.ts - a.ts);
   }, [contacto, nombres]);
 
   const totalEnvios = entradas.filter((e) => e.tipo === "envio").length;
-  const totalAperturas = entradas.filter((e) => e.tipo === "apertura" && !e.ignorada).length;
-  const totalIgnoradas = entradas.filter((e) => e.ignorada).length;
-
-  const cambiarApertura = async (entrada: Entrada, ignorar: boolean) => {
-    if (!contacto) return;
-    setProcesando(entrada.id);
-    try {
-      const { error } = await supabase
-        .from("trazabilidad_correos")
-        .update({ estado: ignorar ? ESTADO_APERTURA_IGNORADA : "opened" })
-        .eq("id", entrada.id);
-      if (error) throw error;
-
-      // Dejar el estado resumen del contacto coherente con las aperturas que siguen contando
-      const quedan = entradas.filter(
-        (e) => e.tipo === "apertura" && e.id !== entrada.id && !e.ignorada
-      ).length + (ignorar ? 0 : 1);
-      const nuevoEstado = quedan > 0 ? "opened" : totalEnvios > 0 ? "request" : null;
-      await supabase.from("contactos").update({ ultimo_estado_brevo: nuevoEstado }).eq("id", contacto.id);
-
-      toast.success(ignorar ? "Apertura ignorada: ya no cuenta como lectura" : "Apertura restaurada");
-      await onCambio();
-    } catch (err) {
-      console.error("Error al actualizar apertura:", err);
-      toast.error("No se pudo actualizar la apertura");
-    } finally {
-      setProcesando(null);
-    }
-  };
-
+  const totalAperturas = entradas.filter((e) => e.tipo === "apertura").length;
   const nombreContacto = contacto?.nombre?.replace("Contacto Principal - ", "") || "Contacto";
 
   return (
@@ -178,7 +160,6 @@ export function HistorialContactoDialog({ open, onOpenChange, contacto, onCambio
           </DialogTitle>
           <DialogDescription className="text-gray-500">
             {contacto?.correo} — {totalEnvios} envío(s), {totalAperturas} apertura(s)
-            {totalIgnoradas > 0 ? `, ${totalIgnoradas} ignorada(s)` : ""}
           </DialogDescription>
         </DialogHeader>
 
@@ -195,20 +176,12 @@ export function HistorialContactoDialog({ open, onOpenChange, contacto, onCambio
               className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 ${
                 e.tipo === "envio"
                   ? "border-emerald-500/20 bg-emerald-500/5"
-                  : e.ignorada
-                  ? "border-gray-800 bg-gray-900/40 opacity-60"
-                  : e.dudosa
-                  ? "border-amber-500/30 bg-amber-500/5"
                   : "border-purple-500/20 bg-purple-500/5"
               }`}
             >
               <div className="mt-0.5">
                 {e.tipo === "envio" ? (
                   <Send className="h-4 w-4 text-emerald-400" />
-                ) : e.ignorada ? (
-                  <EyeOff className="h-4 w-4 text-gray-500" />
-                ) : e.dudosa ? (
-                  <AlertTriangle className="h-4 w-4 text-amber-400" />
                 ) : (
                   <Eye className="h-4 w-4 text-purple-400" />
                 )}
@@ -216,13 +189,10 @@ export function HistorialContactoDialog({ open, onOpenChange, contacto, onCambio
 
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-bold text-white">
-                  {e.tipo === "envio"
-                    ? `Enviado · ${e.plantilla}`
-                    : e.ignorada
-                    ? "Apertura ignorada"
-                    : "Apertura"}
+                  {e.tipo === "envio" ? `Enviado · ${e.plantilla}` : "Apertura"}
                 </div>
                 <div className="text-[11px] text-gray-400">{formatearFechaHora(e.ts)}</div>
+
                 {e.tipo === "envio" && e.imagenUrl && (
                   <a href={e.imagenUrl} target="_blank" rel="noopener noreferrer" className="inline-block mt-1.5" title="Abrir imagen enviada">
                     <img
@@ -236,39 +206,19 @@ export function HistorialContactoDialog({ open, onOpenChange, contacto, onCambio
                 {e.tipo === "envio" && !e.imagenUrl && e.plantilla !== "Registro antiguo" && (
                   <div className="text-[10px] text-gray-600">Imagen no registrada (envío anterior a esta función)</div>
                 )}
-                {e.tipo === "apertura" && e.envioAsociado && (
-                  <div className="text-[10px] text-gray-500">Del envío: {e.envioAsociado}</div>
-                )}
-                {e.tipo === "apertura" && e.dudosa && !e.ignorada && (
-                  <div className="text-[10px] text-amber-400">
-                    Dudosa: no hay un envío registrado antes de esta apertura. Puede ser tuya al revisar la bandeja de enviados.
+
+                {e.tipo === "apertura" && (
+                  <div className="text-[10px] text-gray-500">
+                    {e.envioAsociado ? `Del envío: ${e.envioAsociado}` : "Sin envío registrado antes de esta apertura"}
                   </div>
                 )}
               </div>
-
-              {e.tipo === "apertura" && (
-                <button
-                  disabled={procesando === e.id}
-                  onClick={() => cambiarApertura(e, !e.ignorada)}
-                  className="shrink-0 flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 disabled:opacity-50"
-                  title={e.ignorada ? "Volver a contar esta apertura" : "No contar esta apertura como lectura"}
-                >
-                  {procesando === e.id ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : e.ignorada ? (
-                    <Undo2 className="h-3 w-3" />
-                  ) : (
-                    <EyeOff className="h-3 w-3" />
-                  )}
-                  {e.ignorada ? "Restaurar" : "Ignorar"}
-                </button>
-              )}
             </div>
           ))}
         </div>
 
         <div className="text-[10px] text-gray-600">
-          Las aperturas que llegan dentro de los 5 minutos siguientes a copiar el correo se descartan solas. Las demás pueden ser tuyas: ignóralas si lo son.
+          Las aperturas dentro de los 5 minutos siguientes al envío se descartan y no se muestran. Todas las demás cuentan como lectura.
         </div>
       </DialogContent>
     </Dialog>
