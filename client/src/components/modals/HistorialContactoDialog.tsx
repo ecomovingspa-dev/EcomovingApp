@@ -22,6 +22,7 @@ interface Entrada {
   ignorada: boolean;
   dudosa: boolean;
   envioAsociado?: string;
+  imagenUrl?: string;
 }
 
 let cachePlantillas: Record<string, string> | null = null;
@@ -112,6 +113,7 @@ export function HistorialContactoDialog({ open, onOpenChange, contacto, onCambio
         ignorada: estado === ESTADO_APERTURA_IGNORADA,
         dudosa: false,
         envioAsociado: undefined as string | undefined,
+        imagenUrl: !esApertura && h.imagen_url ? String(h.imagen_url) : undefined,
       };
     });
 
@@ -221,6 +223,19 @@ export function HistorialContactoDialog({ open, onOpenChange, contacto, onCambio
                     : "Apertura"}
                 </div>
                 <div className="text-[11px] text-gray-400">{formatearFechaHora(e.ts)}</div>
+                {e.tipo === "envio" && e.imagenUrl && (
+                  <a href={e.imagenUrl} target="_blank" rel="noopener noreferrer" className="inline-block mt-1.5" title="Abrir imagen enviada">
+                    <img
+                      src={e.imagenUrl}
+                      alt="Imagen enviada en este correo"
+                      loading="lazy"
+                      className="h-20 w-auto max-w-[220px] rounded-md border border-gray-700 object-cover"
+                    />
+                  </a>
+                )}
+                {e.tipo === "envio" && !e.imagenUrl && e.plantilla !== "Registro antiguo" && (
+                  <div className="text-[10px] text-gray-600">Imagen no registrada (envío anterior a esta función)</div>
+                )}
                 {e.tipo === "apertura" && e.envioAsociado && (
                   <div className="text-[10px] text-gray-500">Del envío: {e.envioAsociado}</div>
                 )}

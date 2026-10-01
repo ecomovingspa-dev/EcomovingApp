@@ -1163,7 +1163,8 @@ export function ZohoMailModal({
                           email: selectedContactoDraft.correo.toLowerCase(),
                           fecha: now.toISOString().split('T')[0],
                           estado: 'sent',
-                          mensaje_id: `manual_send:${selectedTemplateId}:${timestamp}`
+                          mensaje_id: `manual_send:${selectedTemplateId}:${timestamp}`,
+                          imagen_url: renderImgProsp || null
                         });
                         
                         
@@ -1543,7 +1544,8 @@ export function ZohoMailModal({
                                 email: selectedContactoDraft.correo.toLowerCase(),
                                 fecha: now.toISOString().split('T')[0],
                                 estado: 'sent',
-                                mensaje_id: `manual_send:${selectedTemplateId}:${timestamp}`
+                                mensaje_id: `manual_send:${selectedTemplateId}:${timestamp}`,
+                                imagen_url: renderImg || null
                               });
                             }
 
