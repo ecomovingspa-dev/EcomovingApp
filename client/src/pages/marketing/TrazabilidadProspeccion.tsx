@@ -6,7 +6,7 @@ import {
   Mail, CheckCircle2, Eye, AlertCircle, Circle, 
   Search, RefreshCcw, Trash2, HelpCircle, 
   Wrench, Truck, Settings, Building2,
-  Plus, Pencil, ArrowLeft, Sparkles, Check, Lock
+  Plus, Pencil, ArrowLeft, Sparkles, Check, Lock, History
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ESTADOS_CUENTA } from "../../utils/constants";
 import { ZohoMailModal } from "@/components/modals/ZohoMailModal";
+import { HistorialContactoDialog, ESTADO_APERTURA_IGNORADA } from "@/components/modals/HistorialContactoDialog";
 
 // March 2026 Working Days (Calculated dynamically below)
 interface CalendarDay {
@@ -81,6 +82,7 @@ export default function TrazabilidadProspeccion() {
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [guardandoContacto, setGuardandoContacto] = useState(false);
+  const [historialContactoId, setHistorialContactoId] = useState<string | null>(null);
 
   // --- Estados de Plantillas ---
   const [isZohoModalOpen, setIsZohoModalOpen] = useState(false);
@@ -367,10 +369,16 @@ export default function TrazabilidadProspeccion() {
     }
 
     // 3. Vincular historial a contactos
-    const merged = (contactsData || []).map(c => ({
-      ...c,
-      historial: historyData.filter(h => h.email === c.correo || h.contacto_id === c.id)
-    }));
+    // historialCompleto incluye las aperturas ignoradas (para mostrarlas en el Historial);
+    // historial solo trae lo que cuenta para el semáforo.
+    const merged = (contactsData || []).map(c => {
+      const todo = historyData.filter(h => h.email === c.correo || h.contacto_id === c.id);
+      return {
+        ...c,
+        historialCompleto: todo,
+        historial: todo.filter(h => String(h.estado || '').toLowerCase() !== ESTADO_APERTURA_IGNORADA)
+      };
+    });
 
     setContactos(merged);
     setLoading(false);
@@ -470,7 +478,7 @@ export default function TrazabilidadProspeccion() {
 
     setGuardandoContacto(true);
     try {
-      const { id, empresa_rel_name, empresa_rel_sector, historial, ...updates } = selectedContact;
+      const { id, empresa_rel_name, empresa_rel_sector, historial, historialCompleto, ...updates } = selectedContact;
       const { error } = await supabase
         .from("contactos")
         .update(updates)
@@ -706,6 +714,7 @@ export default function TrazabilidadProspeccion() {
     // 2. Identify manual sends/opens and automated sends
     const manualSends: Record<string, { sentEvent?: any; openEvents: any[] }> = {};
     const autoSends: { sentEvent: any; openEvent?: any; date: number }[] = [];
+    const aperturasSinPlantilla: any[] = [];
 
     Object.entries(eventsByMsg).forEach(([msgId, evs]) => {
       if (msgId.startsWith("manual_send:") || msgId.startsWith("manual_template:")) {
@@ -720,18 +729,14 @@ export default function TrazabilidadProspeccion() {
         }
       } else if (msgId.startsWith("manual_open:")) {
         const parts = msgId.split(":");
-        if (parts.length >= 4) {
-          const templateId = parts[2];
-          if (!manualSends[templateId]) manualSends[templateId] = { openEvents: [] };
+        const templateIdExplicito = parts.length >= 4 && parts[2] !== "unknown" ? parts[2] : null;
+        if (templateIdExplicito) {
+          if (!manualSends[templateIdExplicito]) manualSends[templateIdExplicito] = { openEvents: [] };
           // Acumular TODOS los eventos de apertura para contar y obtener primera/última
-          evs.forEach(ev => manualSends[templateId].openEvents.push(ev));
-        } else if (parts.length === 3) {
-          // Si el ID vino como manual_open:contacto_id:timestamp sin templateId explícito
-          const targetTemplateId = Object.keys(manualSends)[0] || template.id;
-          if (targetTemplateId) {
-            if (!manualSends[targetTemplateId]) manualSends[targetTemplateId] = { openEvents: [] };
-            evs.forEach(ev => manualSends[targetTemplateId].openEvents.push(ev));
-          }
+          evs.forEach(ev => manualSends[templateIdExplicito].openEvents.push(ev));
+        } else {
+          // Apertura sin plantilla identificada: se atribuye más abajo al envío anterior más cercano
+          evs.forEach(ev => aperturasSinPlantilla.push(ev));
         }
       } else {
         // Automated SMTP email
@@ -744,6 +749,21 @@ export default function TrazabilidadProspeccion() {
         const date = new Date(sentEvent.created_at || sentEvent.fecha).getTime();
         autoSends.push({ sentEvent, openEvent, date });
       }
+    });
+
+    // Aperturas sin plantilla: cuentan solo para el envío más reciente anterior a la apertura.
+    // Si no existe un envío registrado antes (p. ej. alguien revisó la bandeja de enviados), no se
+    // atribuyen a ninguna columna: se pueden revisar en el Historial del contacto.
+    aperturasSinPlantilla.forEach((ev: any) => {
+      const openTime = new Date(ev.created_at || ev.fecha).getTime();
+      let mejorId: string | null = null;
+      let mejorTime = -Infinity;
+      Object.entries(manualSends).forEach(([tid, ms]) => {
+        if (!ms.sentEvent) return;
+        const st = new Date(ms.sentEvent.created_at || ms.sentEvent.fecha).getTime();
+        if (st <= openTime + 120000 && st > mejorTime) { mejorTime = st; mejorId = tid; }
+      });
+      if (mejorId) manualSends[mejorId].openEvents.push(ev);
     });
 
     // Sort automated sends oldest first
@@ -774,7 +794,10 @@ export default function TrazabilidadProspeccion() {
       if (fallbackOpen) allOpenEvents.push(fallbackOpen);
 
       // Si el contacto ya fue marcado con apertura en la base de datos y es el último template enviado
-      if (allOpenEvents.length === 0 && contacto.ultimo_estado_brevo === 'opened') {
+      const tieneFilasApertura = (contacto.historial || []).some((h: any) =>
+        ['opened', 'unique_opened', 'clicks', 'loadedbyproxy'].includes(h.estado?.toLowerCase()));
+      // Respaldo solo para contactos antiguos sin ninguna fila de apertura en el historial
+      if (allOpenEvents.length === 0 && !tieneFilasApertura && contacto.ultimo_estado_brevo === 'opened') {
         const isLatestSent = !nextTemplate || !manualSends[nextTemplate.id]?.sentEvent;
         if (isLatestSent) {
           const anyOpen = (contacto.historial || []).find((h: any) => 
@@ -1027,6 +1050,13 @@ export default function TrazabilidadProspeccion() {
                   <td className="px-2 py-5 text-center border-l border-gray-900/10">
                     <div className="flex justify-center items-center gap-2">
                       <button 
+                        onClick={() => setHistorialContactoId(c.id)} 
+                        className="p-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md hover:scale-110 transition-all flex items-center justify-center border border-gray-750"
+                        title="Ver historial de envíos y aperturas"
+                      >
+                        <History className="h-4 w-4 text-emerald-400" />
+                      </button>
+                      <button 
                         onClick={() => {
                           const mockCuenta = { cliente: c.empresa_rel_name || c.empresa };
                           abrirModalZoho(c, mockCuenta);
@@ -1044,6 +1074,13 @@ export default function TrazabilidadProspeccion() {
           </table>
         </div>
       </div>
+
+      <HistorialContactoDialog
+        open={!!historialContactoId}
+        onOpenChange={(abierto) => { if (!abierto) setHistorialContactoId(null); }}
+        contacto={contactos.find((x: any) => x.id === historialContactoId) || null}
+        onCambio={async () => { await fetchContactos(); }}
+      />
 
       {/* MODAL DE EDICIÓN Y GESTIÓN DE CONTACTO */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>

@@ -6,7 +6,7 @@ import {
   Mail, CheckCircle2, Eye, AlertCircle, Circle, 
   Search, RefreshCcw, Trash2, HelpCircle, 
   Wrench, Truck, Settings, Building2,
-  Plus, Pencil, ArrowLeft, Sparkles, Check, Lock, ChevronLeft, ChevronRight
+  Plus, Pencil, ArrowLeft, Sparkles, Check, Lock, ChevronLeft, ChevronRight, History
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -24,6 +24,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { ZohoMailModal } from "@/components/modals/ZohoMailModal";
+import { HistorialContactoDialog, ESTADO_APERTURA_IGNORADA } from "@/components/modals/HistorialContactoDialog";
 
 // March 2026 Working Days (Calculated dynamically below)
 interface CalendarDay {
@@ -106,6 +107,7 @@ export default function TrazabilidadCuentas() {
   const [selectedContact, setSelectedContact] = useState<any>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [guardandoContacto, setGuardandoContacto] = useState(false);
+  const [historialContactoId, setHistorialContactoId] = useState<string | null>(null);
 
   // --- Estados de Plantillas ---
   const [isZohoModalOpen, setIsZohoModalOpen] = useState(false);
@@ -378,10 +380,16 @@ export default function TrazabilidadCuentas() {
     }
 
     // 3. Vincular historial a contactos
-    const merged = (contactsData || []).map(c => ({
-      ...c,
-      historial: historyData.filter(h => h.email === c.correo || h.contacto_id === c.id)
-    }));
+    // historialCompleto incluye las aperturas ignoradas (para mostrarlas en el Historial);
+    // historial solo trae lo que cuenta para el semáforo.
+    const merged = (contactsData || []).map(c => {
+      const todo = historyData.filter(h => h.email === c.correo || h.contacto_id === c.id);
+      return {
+        ...c,
+        historialCompleto: todo,
+        historial: todo.filter(h => String(h.estado || '').toLowerCase() !== ESTADO_APERTURA_IGNORADA)
+      };
+    });
 
     setContactos(merged);
     setLoading(false);
@@ -496,7 +504,7 @@ export default function TrazabilidadCuentas() {
 
     setGuardandoContacto(true);
     try {
-      const { id, empresa_rel_name, empresa_rel_sector, historial, ...updates } = selectedContact;
+      const { id, empresa_rel_name, empresa_rel_sector, historial, historialCompleto, ...updates } = selectedContact;
       const { error } = await supabase
         .from("contactos")
         .update(updates)
@@ -1060,14 +1068,36 @@ export default function TrazabilidadCuentas() {
                     </div>
                   </td>
                   {(() => {
-                    const allHistory = [...(c.historial || [])]
-                      .filter((h: any) => h.fecha)
-                      .sort((a: any, b: any) => String(b.fecha).localeCompare(String(a.fecha)));
-                    const lastEmailEver = allHistory[0];
+                    // Las aperturas se cuentan en la semana del envío al que pertenecen. Una apertura sin un
+                    // envío registrado antes (p. ej. al revisar la bandeja de enviados) no marca la semana
+                    // como enviada: se puede revisar en el Historial del contacto.
+                    const esAperturaEvento = (h: any) =>
+                      ['opened', 'unique_opened', 'clicks', 'click', 'loadedbyproxy'].includes(String(h.estado || '').toLowerCase());
+                    const momentoEvento = (h: any) => new Date(h.created_at || h.fecha).getTime();
+                    const historialConFecha = (c.historial || []).filter((h: any) => h.fecha);
+                    const enviosOrdenados = historialConFecha
+                      .filter((h: any) => !esAperturaEvento(h))
+                      .sort((a: any, b: any) => momentoEvento(a) - momentoEvento(b));
+                    const aperturasAtribuidas = historialConFecha
+                      .filter((h: any) => esAperturaEvento(h))
+                      .map((h: any) => {
+                        let previo: any = null;
+                        for (const s of enviosOrdenados) {
+                          if (momentoEvento(s) <= momentoEvento(h) + 120000) previo = s;
+                          else break;
+                        }
+                        return previo ? { ...h, fechaBloque: previo.fecha } : null;
+                      })
+                      .filter(Boolean);
+                    const allHistory = [
+                      ...enviosOrdenados.map((h: any) => ({ ...h, fechaBloque: h.fecha })),
+                      ...aperturasAtribuidas,
+                    ].sort((a: any, b: any) => String(b.fechaBloque).localeCompare(String(a.fechaBloque)));
+                    const lastEmailEver = enviosOrdenados.length > 0 ? enviosOrdenados[enviosOrdenados.length - 1] : undefined;
                     return mesesCuatrimestre.flatMap((mIdx) => BLOQUES_SEMANA.map((bloque, bIdx) => {
                       const mesStr = String(mIdx + 1).padStart(2, '0');
                       const eventos = allHistory.filter((h: any) => {
-                        const [yyyy, mm, dd] = String(h.fecha).split("-");
+                        const [yyyy, mm, dd] = String(h.fechaBloque).split("-");
                         const dia = Number(dd);
                         return yyyy === String(cuatriYear) && mm === mesStr && dia >= bloque.desde && dia <= bloque.hasta;
                       });
@@ -1168,6 +1198,13 @@ export default function TrazabilidadCuentas() {
                   <td className="px-2 py-5 text-center border-l border-gray-900/10">
                     <div className="flex justify-center items-center gap-2">
                       <button 
+                        onClick={() => setHistorialContactoId(c.id)} 
+                        className="p-1 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-md hover:scale-110 transition-all flex items-center justify-center border border-gray-750"
+                        title="Ver historial de envíos y aperturas"
+                      >
+                        <History className="h-4 w-4 text-emerald-400" />
+                      </button>
+                      <button 
                         onClick={() => {
                           const mockCuenta = { cliente: c.empresa_rel_name || c.empresa };
                           abrirModalZoho(c, mockCuenta);
@@ -1185,6 +1222,13 @@ export default function TrazabilidadCuentas() {
           </table>
         </div>
       </div>
+
+      <HistorialContactoDialog
+        open={!!historialContactoId}
+        onOpenChange={(abierto) => { if (!abierto) setHistorialContactoId(null); }}
+        contacto={contactos.find((x: any) => x.id === historialContactoId) || null}
+        onCambio={async () => { await fetchContactos(calendarDays); }}
+      />
 
       {/* MODAL DE EDICIÓN Y GESTIÓN DE CONTACTO */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
