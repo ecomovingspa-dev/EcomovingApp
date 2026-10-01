@@ -16,12 +16,13 @@ const transparentGif = Buffer.from(
     'base64'
 );
 
-// Período de gracia tras el envío: las aperturas registradas dentro de esta ventana
-// se consideran escaneo automático (proxy de Gmail, Apple Mail Privacy Protection,
-// filtros corporativos de seguridad) y no aperturas humanas reales. Aplica por igual
-// a los correos enviados desde Prospección y desde Cuentas Activas, ya que ambos
-// flujos usan este mismo endpoint de píxel.
-const POST_SEND_GRACE_PERIOD_SECONDS = 60;
+// Período de gracia tras copiar el correo en el modal (momento en que se registra el envío):
+// las aperturas registradas dentro de esta ventana no se cuentan. Cubre el tiempo que toma
+// pegar el correo en Zoho, cargar la imagen y presionar Enviar (hasta ~3 minutos), más el
+// escaneo automático que ocurre justo después del envío (proxy de Gmail, Apple Mail Privacy
+// Protection, filtros corporativos). Aplica por igual a Prospección y Cuentas Activas, ya
+// que ambos flujos usan este mismo endpoint de píxel.
+const POST_SEND_GRACE_PERIOD_SECONDS = 300;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Configurar CORS
@@ -76,23 +77,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             // 1. Obtener los datos del contacto
             const { data: contacto, error: contactError } = await supabase
                 .from('contactos')
-                .select('id, correo, nombre, ultimo_evento_trazabilidad, ultimo_estado_brevo')
+                .select('id, correo, nombre')
                 .eq('id', contacto_id)
                 .single();
 
             if (!contactError && contacto && contacto.correo) {
-                // Filtro temporal mínimo de 2 segundos para evitar pre-renders instantáneos al pegar en composer
-                if (contacto.ultimo_evento_trazabilidad && contacto.ultimo_estado_brevo !== 'opened') {
-                    const sendTime = new Date(contacto.ultimo_evento_trazabilidad).getTime();
-                    const nowTime = new Date().getTime();
-                    const diffSeconds = Math.abs(nowTime - sendTime) / 1000;
-
-                    if (diffSeconds < 2 && isSelfComposer) {
-                        console.log(`[SENTINEL-PIXEL] Petición ignorada: Demasiado cercana al envío manual (${Math.round(diffSeconds)}s) en composer.`);
-                        return res.status(200).send(transparentGif);
-                    }
-                }
-
                 // Filtro anti falsos-positivos: ignorar aperturas dentro de los primeros
                 // POST_SEND_GRACE_PERIOD_SECONDS desde el envío real del correo (registrado
                 // como estado 'sent' en trazabilidad_correos). Estas aperturas casi siempre
