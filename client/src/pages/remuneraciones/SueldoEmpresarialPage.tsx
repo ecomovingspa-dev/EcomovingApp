@@ -254,6 +254,7 @@ function numeroALetras(num: number): string {
     return letras;
   };
 
+  num = Math.round(num);
   if (num === 0) return "CERO PESOS";
   const letras = Millones(num);
   return `${letras} PESOS`;
